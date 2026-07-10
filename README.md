@@ -1,20 +1,22 @@
 # Barbearia do Ju — Site Oficial
 
-Versão final pronta para GitHub Pages.
+Versão 3.0 Final com SEO técnico, PWA, Open Graph, robots.txt, sitemap.xml e dados estruturados para publicação no domínio oficial.
 
-## Como publicar
-1. Crie o repositório `barbearia-do-ju` no GitHub.
-2. Envie todos os arquivos desta pasta para a raiz do repositório.
-3. Em **Settings > Pages**, selecione **Deploy from a branch** e a branch `main`, pasta `/root`.
-4. O site ficará em: https://barbeariadoju.github.io/barbearia-do-ju/
+## Domínio oficial
 
-## Incluído
-- Landing page premium
-- Catálogo de produtos com carrinho e envio por WhatsApp
-- VCF revisado para salvar contato
-- Pix com QR Code
-- Wi-Fi com botão copiar
-- SEO local e PWA instalável
+https://www.barbeariadoju.com.br
 
+## Arquivos principais
 
-Versão 1.2: adicionada página servicos.html com catálogo próprio, pré-agendamento via WhatsApp, opção de agendar pelo Fresha e links separados para ver avaliações/deixar avaliação no Google.
+- `index.html` — página inicial
+- `servicos.html` — catálogo de serviços e agendamento via WhatsApp
+- `produtos.html` — catálogo de produtos e bebidas
+- `style.css` — estilos do site
+- `script.js` — interações, carrinho e envio para WhatsApp
+- `manifest.webmanifest` e `sw.js` — PWA
+- `robots.txt` e `sitemap.xml` — SEO técnico
+- `CNAME` — domínio personalizado do GitHub Pages
+
+## Publicação
+
+Envie todos os arquivos e pastas deste pacote para a raiz do repositório `barbeariadoju/site` no GitHub.

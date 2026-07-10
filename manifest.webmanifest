@@ -1,14 +1,57 @@
 {
-  "name": "Barbearia do Ju",
+  "name": "Barbearia do Ju | Bragança Paulista",
   "short_name": "Barbearia do Ju",
-  "description": "Site oficial da Barbearia do Ju em Bragança Paulista.",
-  "start_url": "./",
-  "scope": "./",
+  "description": "Site oficial da Barbearia do Ju em Bragança Paulista: serviços, produtos e agendamento pelo WhatsApp.",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#080808",
   "theme_color": "#0b0b0b",
+  "lang": "pt-BR",
+  "categories": [
+    "business",
+    "lifestyle"
+  ],
   "icons": [
-    {"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agendar",
+      "short_name": "Agendar",
+      "description": "Ver serviços e solicitar agendamento",
+      "url": "/servicos.html",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Produtos",
+      "short_name": "Produtos",
+      "description": "Ver produtos e bebidas",
+      "url": "/produtos.html",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
