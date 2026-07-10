@@ -1028,3 +1028,58 @@ footer a:hover,
     }
   }
 }
+
+/* Correções finais: centralização do logo e do cartão rápido no iOS */
+.logo-frame,
+.logo-frame picture{
+  display:block !important;
+  width:100% !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  text-align:center !important;
+  line-height:0 !important;
+}
+.logo-frame .logo{
+  display:block !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  transform:translateX(-0.35%) !important;
+  -webkit-transform:translateX(-0.35%) !important;
+}
+
+.quick-card{
+  text-align:center !important;
+}
+.quick-card > a,
+.quick-card > div{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+.quick-card > a b,
+.quick-card > a span,
+.quick-card > div b,
+.quick-card > div span{
+  display:block !important;
+  width:100% !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  text-align:center !important;
+}
+
+@supports (-webkit-touch-callout:none){
+  .quick-card{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    justify-items:stretch !important;
+    align-items:center !important;
+  }
+  .quick-card > a,
+  .quick-card > div{
+    width:100% !important;
+    min-width:0 !important;
+    align-self:stretch !important;
+  }
+}
