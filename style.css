@@ -975,49 +975,56 @@ footer a:hover,
 @media(max-width:620px){.smart-product-grid{grid-template-columns:1fr}.bottom-back-btn{left:14px;bottom:calc(72px + env(safe-area-inset-bottom));font-size:.92rem;padding:12px 14px}.open-cart-btn.show + .bottom-back-btn{bottom:calc(82px + env(safe-area-inset-bottom))}.floating{display:none!important}}
 
 
-/* Correção de alinhamento do título principal no Safari/iOS */
+/* Correção definitiva do título principal no Safari/iOS */
 .hero-title{
-  display:block;
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
   width:100%;
   max-width:1100px;
   margin:.2em auto !important;
   padding:0 8px;
   text-align:center !important;
-  text-wrap:balance;
   -webkit-font-smoothing:antialiased;
-  font-kerning:normal;
+  text-rendering:geometricPrecision;
+  font-kerning:none;
 }
 .hero-title-line{
-  display:block;
-  width:100%;
-  text-align:center;
+  display:block !important;
+  width:auto !important;
+  max-width:100%;
+  margin:0 auto;
+  text-align:center !important;
+  white-space:nowrap !important;
+  overflow-wrap:normal !important;
+  word-break:normal !important;
+  hyphens:none !important;
 }
-.hero-title-mobile-break{display:inline;}
+.hero-title-mobile-break{display:contents;}
 
 @media (max-width:520px){
   .hero-title{
     width:100% !important;
     max-width:100% !important;
-    padding:0 4px !important;
-    font-size:clamp(2.45rem,12vw,3.7rem) !important;
-    line-height:.96 !important;
-    letter-spacing:.025em !important;
-    overflow-wrap:normal !important;
-    word-break:keep-all !important;
-    hyphens:none !important;
-  }
-  .hero-title-mobile-break{
-    display:block;
-    text-align:center;
+    padding:0 2px !important;
+    font-size:clamp(2.15rem,10.7vw,3.15rem) !important;
+    line-height:.98 !important;
+    letter-spacing:.012em !important;
   }
 }
 
-/* Ajuste específico para a largura dos iPhones menores */
+/* Safari móvel calcula fontes condensadas de forma diferente.
+   Este ajuste reduz levemente a largura sem deslocar o centro. */
 @supports (-webkit-touch-callout:none){
   @media (max-width:430px){
     .hero-title{
-      font-size:clamp(2.35rem,11.4vw,3.35rem) !important;
-      letter-spacing:.018em !important;
+      font-size:clamp(2.05rem,10.25vw,2.95rem) !important;
+      letter-spacing:0 !important;
+    }
+    .hero-title-line{
+      transform:translateZ(0);
+      -webkit-transform:translateZ(0);
     }
   }
 }
