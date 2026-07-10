@@ -973,3 +973,51 @@ footer a:hover,
 .cart-panel.active ~ .bottom-back-btn{opacity:.28;pointer-events:none}
 .cart-panel .send-cart:last-child{font-size:1.02rem;padding:15px 16px!important}
 @media(max-width:620px){.smart-product-grid{grid-template-columns:1fr}.bottom-back-btn{left:14px;bottom:calc(72px + env(safe-area-inset-bottom));font-size:.92rem;padding:12px 14px}.open-cart-btn.show + .bottom-back-btn{bottom:calc(82px + env(safe-area-inset-bottom))}.floating{display:none!important}}
+
+
+/* Correção de alinhamento do título principal no Safari/iOS */
+.hero-title{
+  display:block;
+  width:100%;
+  max-width:1100px;
+  margin:.2em auto !important;
+  padding:0 8px;
+  text-align:center !important;
+  text-wrap:balance;
+  -webkit-font-smoothing:antialiased;
+  font-kerning:normal;
+}
+.hero-title-line{
+  display:block;
+  width:100%;
+  text-align:center;
+}
+.hero-title-mobile-break{display:inline;}
+
+@media (max-width:520px){
+  .hero-title{
+    width:100% !important;
+    max-width:100% !important;
+    padding:0 4px !important;
+    font-size:clamp(2.45rem,12vw,3.7rem) !important;
+    line-height:.96 !important;
+    letter-spacing:.025em !important;
+    overflow-wrap:normal !important;
+    word-break:keep-all !important;
+    hyphens:none !important;
+  }
+  .hero-title-mobile-break{
+    display:block;
+    text-align:center;
+  }
+}
+
+/* Ajuste específico para a largura dos iPhones menores */
+@supports (-webkit-touch-callout:none){
+  @media (max-width:430px){
+    .hero-title{
+      font-size:clamp(2.35rem,11.4vw,3.35rem) !important;
+      letter-spacing:.018em !important;
+    }
+  }
+}
