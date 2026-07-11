@@ -278,5 +278,19 @@
     });
     renderServices();
   </script>
+
+<script>
+(function(){
+  const btn = document.getElementById('agendamento-fresha');
+  if(btn){
+    btn.addEventListener('click', function(){
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: 'clique_agendamento_fresha'
+      });
+    });
+  }
+})();
+</script>
 </body>
 </html>
