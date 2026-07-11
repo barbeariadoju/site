@@ -2,6 +2,14 @@
 
 <html lang="pt-BR">
 <head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-T9KR76KB');</script>
+  <!-- End Google Tag Manager -->
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Serviços e Agendamento | Barbearia do Ju em Bragança Paulista</title>
@@ -35,6 +43,11 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Serviços e agendamento | Barbearia do Ju","url":"https://www.barbeariadoju.com.br/servicos.html","description":"Catálogo de serviços da Barbearia do Ju com corte masculino, barba, barboterapia, sobrancelha, luzes, pigmentação e estética masculina em Bragança Paulista.","isPartOf":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"breadcrumb":{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Início","item":"https://www.barbeariadoju.com.br/"},{"@type":"ListItem","position":2,"name":"Serviços","item":"https://www.barbeariadoju.com.br/servicos.html"}]}}</script>
 </head>
 <body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T9KR76KB"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
 <div class="bg-grain"></div>
 <main>
 <section class="products-hero services-hero">
@@ -58,7 +71,7 @@
 </div>
 </section>
 <section class="section service-section reveal">
-<div class="section-head"><p class="eyebrow">Cortes</p><h2>Cortes masculinos.</h2><p>Serviços de corte masculino realizados com técnica, precisão e atenção aos detalhes.</p></div>
+<div class="section-head"><p class="eyebrow">Cortes</p><h2>Cortes masculinos.</h2><p>Serviços de corte masculino realizados com técnica, precisão and atenção aos detalhes.</p></div>
 <div class="service-grid">
 <article class="service-card"><div class="service-content"><div class="service-top"><h3>Corte + Lavagem</h3></div><span class="service-tag">Finalização completa</span><p>Corte masculino personalizado com lavagem profissional para maior conforto, sensação de limpeza e acabamento caprichado.</p><div class="service-meta"><span>Tempo: 40 min</span><strong>R$ 50,00</strong></div><button class="service-btn" data-name="Corte + Lavagem" data-price="50.00" data-time="40 min" type="button">Adicionar</button></div></article>
 <article class="service-card"><div class="service-content"><div class="service-top"><h3>Corte de cabelo</h3></div><span class="service-tag hot">Mais procurado</span><p>Corte de cabelo masculino realizado com técnica, precisão e atenção aos detalhes para valorizar seu estilo.</p><div class="service-meta"><span>Tempo: 30 min</span><strong>R$ 40,00</strong></div><button class="service-btn" data-name="Corte de cabelo" data-price="40.00" data-time="30 min" type="button">Adicionar</button></div></article>
@@ -237,13 +250,11 @@
     openServiceCart?.addEventListener('click', showServiceCart);
     document.getElementById('view-service-cart')?.addEventListener('click', showServiceCart);
     function abrirWhatsAppPedido(texto){
-      // Link mais leve e estável para WhatsApp Web/Desktop/App.
-      // Remove caracteres que costumam travar o app desktop em alguns computadores.
       const textoSeguro = texto
         .replace(/[•]/g, '-')
         .replace(/[—–]/g, '-')
         .replace(/[ºª]/g, '')
-        .replace(/ /g, ' ')
+        .replace(/ /g, ' ')
         .trim();
       const url = `https://api.whatsapp.com/send?phone=${servicePhone}&text=${encodeURIComponent(textoSeguro)}`;
       const win = window.open(url, '_blank', 'noopener,noreferrer');
