@@ -40,7 +40,7 @@ if(suggestionForm){
 ${name?`Meu nome é ${name}.
 `:''}Minha dúvida/sugestão:
 ${message}`;
-    window.open(`https://wa.me/5511967073038?text=${encodeURIComponent(text)}`,'_blank','noopener');
+    window.location.href=`mailto:contato@barbeariadoju.com.br?subject=Dúvida ou sugestão - Barbearia do Ju&body=${encodeURIComponent(text)}`;
   });
 }
 
