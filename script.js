@@ -43,3 +43,16 @@ ${message}`;
     window.open(`https://wa.me/5511967073038?text=${encodeURIComponent(text)}`,'_blank','noopener');
   });
 }
+
+
+// Rastreamento GA4/GTM - botão Agendar pelo Fresha
+document.addEventListener('click', function(e) {
+  const botaoFresha = e.target.closest('#agendamento-fresha');
+  if (botaoFresha && window.dataLayer) {
+    window.dataLayer.push({
+      event: 'clique_agendamento_fresha',
+      click_id: 'agendamento-fresha',
+      destino: botaoFresha.href
+    });
+  }
+});
