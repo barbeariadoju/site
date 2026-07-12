@@ -28,7 +28,7 @@ begin
  if p_booking_date < current_date then raise exception 'A data escolhida já passou.'; end if;
  if extract(dow from p_booking_date) in (0,1) then raise exception 'A barbearia não abre neste dia.'; end if;
  v_end := p_start_time + make_interval(mins=>p_duration_minutes);
- if (extract(dow from p_booking_date)=6 and (p_start_time<'08:30' or v_end>'14:00')) or (extract(dow from p_booking_date) between 2 and 5 and (p_start_time<'08:30' or v_end>'18:00')) then raise exception 'Horário fora do atendimento.'; end if;
+ if (extract(dow from p_booking_date)=6 and (p_start_time<'08:30' or p_start_time>'15:00')) or (extract(dow from p_booking_date) between 2 and 5 and (p_start_time<'08:30' or p_start_time>'19:00')) then raise exception 'Horário fora do atendimento.'; end if;
  if exists(select 1 from public.bookings b where b.booking_date=p_booking_date and b.status in ('pending','confirmed') and p_start_time < b.end_time and v_end > b.start_time) then raise exception 'Este horário ficou indisponível. Escolha outro.'; end if;
  insert into public.bookings(customer_name,customer_phone,service_name,service_price,duration_minutes,booking_date,start_time,notes) values(trim(p_customer_name),regexp_replace(p_customer_phone,'\\D','','g'),p_service_name,p_service_price,p_duration_minutes,p_booking_date,p_start_time,nullif(trim(p_notes),'')) returning id into v_id;
  return v_id;
@@ -40,12 +40,16 @@ returns table(slot_time time) language plpgsql security definer set search_path=
 declare open_m integer; close_m integer; m integer; s time; e time;
 begin
  if extract(dow from p_date) in (0,1) then return; end if;
- open_m:=8*60+30; close_m:=case when extract(dow from p_date)=6 then 14*60 else 18*60 end;
+ open_m:=8*60+30; close_m:=case when extract(dow from p_date)=6 then 15*60 else 19*60 end;
  m:=open_m;
- while m+p_duration_minutes<=close_m loop
+ while m<=close_m loop
   s:=make_time(m/60,m%60,0); e:=s+make_interval(mins=>p_duration_minutes);
   if not exists(select 1 from public.bookings b where b.booking_date=p_date and b.status in ('pending','confirmed') and s<b.end_time and e>b.start_time) then slot_time:=s; return next; end if;
   m:=m+15;
  end loop;
 end $$;
 grant execute on function public.get_available_slots(date,integer) to anon, authenticated;
+
+-- Permissões necessárias para o painel administrativo autenticado
+grant usage on schema public to authenticated;
+grant select, update on table public.bookings to authenticated;
