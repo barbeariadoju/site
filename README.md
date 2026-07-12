@@ -1,5 +1,1 @@
-# Barbearia do Ju — Barbearia OS V15.3
-
-Atualização do CRM com data de nascimento opcional, idade calculada, indicadores de aniversários e preparação para campanhas segmentadas e IA.
-
-Execute `atualizacao-barbearia-os-v15-3.sql` no Supabase após publicar os arquivos.
+Barbearia OS V15.4 — exclusão definitiva de clientes de teste, com opção separada de arquivamento.
