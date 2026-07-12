@@ -1,0 +1,12 @@
+AGENDA V9 — CATEGORIAS, HORÁRIO ÀS 08H E REGISTRO DE AUSÊNCIA
+
+Esta versão reúne a V8 e acrescenta no painel administrativo o botão AUSÊNCIA.
+
+Fluxo recomendado:
+1. Confirmar — pedido aprovado e cliente avisado.
+2. Concluir — atendimento realizado; futuramente alimentará histórico, faturamento e fidelidade.
+3. Ausência — cliente não compareceu; futuramente alimentará taxa de faltas e histórico do cliente.
+4. Cancelar — agendamento cancelado; o horário volta a ficar disponível.
+
+Não é necessário executar SQL adicional para o botão Ausência, pois o banco já aceita o status no_show.
+Para liberar o primeiro horário às 08h, execute uma vez o arquivo horario-inicial-08h-v8.sql no Supabase, caso ainda não tenha feito.

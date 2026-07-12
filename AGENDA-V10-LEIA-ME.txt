@@ -1,0 +1,15 @@
+AGENDA V10 — REMARCAÇÃO, AGENDAMENTO MANUAL E LEMBRETES
+
+1. Publique todos os arquivos deste pacote no GitHub.
+2. Execute o arquivo atualizacao-agenda-v10.sql no SQL Editor do Supabase.
+3. Atualize admin.html com Ctrl+F5.
+
+Novidades:
+- Remarcar um agendamento sem cancelar o registro original.
+- Criar agendamento pelo painel para clientes que já deixaram retorno combinado.
+- Lista reaproveitada de clientes já atendidos/agendados.
+- Seleção de um ou vários serviços no painel.
+- Verificação de conflito e bloqueios antes de salvar.
+- Painel de clientes de amanhã com botão de lembrete pelo WhatsApp.
+
+O lembrete nesta versão é manual: o botão abre o WhatsApp com a mensagem pronta. A automação automática virá na fase de integração com a API oficial do WhatsApp.
