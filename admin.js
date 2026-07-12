@@ -1,0 +1,12 @@
+(() => {
+const cfg=window.BDJ_AGENDA_CONFIG||{}; const ok=cfg.supabaseUrl&&cfg.supabaseAnonKey; const $=id=>document.getElementById(id); const sb=ok?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
+const date=$('admin-date'); const now=new Date(); date.value=now.toISOString().slice(0,10);
+async function session(){if(!ok){$('admin-message').textContent='Preencha agenda-config.js com as chaves do Supabase.';return}const {data}=await sb.auth.getSession();renderAuth(data.session)}
+function renderAuth(s){$('admin-login').hidden=!!s;$('admin-panel').hidden=!s;if(s)load()}
+$('admin-signin').onclick=async()=>{if(!ok)return session();const {error}=await sb.auth.signInWithPassword({email:$('admin-email').value,password:$('admin-password').value});$('admin-message').textContent=error?error.message:'';if(!error)renderAuth(true)};
+$('admin-signout').onclick=async()=>{await sb.auth.signOut();renderAuth(false)};date.onchange=load;
+async function load(){const ds=date.value;$('admin-date-title').textContent=new Date(ds+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});const {data,error}=await sb.from('bookings').select('*').eq('booking_date',ds).order('start_time');const list=$('admin-list');if(error){list.innerHTML='<div class="panel">Erro ao carregar agenda.</div>';return}if(!data.length){list.innerHTML='<div class="panel">Nenhum agendamento neste dia.</div>';return}list.innerHTML=data.map(x=>`<article class="panel admin-booking"><div><strong>${x.start_time.slice(0,5)} — ${escapeHtml(x.customer_name)}</strong><span>${escapeHtml(x.service_name)} • ${x.duration_minutes} min</span><small>${escapeHtml(x.customer_phone)} • ${x.status}</small></div><div class="admin-actions"><button data-id="${x.id}" data-status="confirmed">Confirmar</button><button data-id="${x.id}" data-status="cancelled">Cancelar</button><a href="https://wa.me/55${x.customer_phone.replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a></div></article>`).join('');list.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status));}
+async function setStatus(id,status){const {error}=await sb.from('bookings').update({status}).eq('id',id);if(error)alert(error.message);else load()}
+function escapeHtml(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+sb?.auth.onAuthStateChange((_e,s)=>renderAuth(s));session();
+})();

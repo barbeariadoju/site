@@ -19,3 +19,12 @@
   Content-Type: text/vcard; charset=utf-8
   Content-Disposition: attachment; filename="barbearia-do-ju.vcf"
   Cache-Control: public, max-age=86400
+
+/agendar.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/admin.html
+  Cache-Control: no-store
+
+/agenda-config.js
+  Cache-Control: no-store

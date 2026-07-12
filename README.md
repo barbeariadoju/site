@@ -23,4 +23,4 @@ Envie todos os arquivos e pastas deste pacote para a raiz do repositório `barbe
 
 
 ## vCard
-O arquivo principal `barbearia-do-ju.vcf` usa vCard 3.0 com a logo incorporada como JPEG Base64. Também foi incluído `barbearia-do-ju-alternativo.vcf` em vCard 4.0 para testes de compatibilidade.
+O arquivo principal `barbearia-do-ju.vcf` usa vCard 3.0 com a logo incorporada como JPEG Base64. A versão alternativa foi removida; o site oferece somente o arquivo principal com foto incorporada.
