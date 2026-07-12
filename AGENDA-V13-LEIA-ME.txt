@@ -1,0 +1,8 @@
+AGENDA V13
+
+1. Publique todos os arquivos no GitHub.
+2. No Supabase, execute o arquivo atualizacao-horario-08h-v13.sql.
+3. Abra https://www.barbeariadoju.com.br/agendar.html?v=13 em janela anônima.
+
+A página agora mostra cada categoria em uma faixa horizontal própria, com cartões mais largos e legíveis.
+O SQL garante horários a partir das 08:00, salvo quando 08:00 estiver ocupado ou bloqueado.
