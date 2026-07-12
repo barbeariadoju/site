@@ -1,4 +1,4 @@
-const CACHE='barbearia-do-ju-v15-contato-vcard';
+const CACHE='barbearia-do-ju-v16-agenda-v5';
 const CORE=['./','index.html','produtos.html','servicos.html','style.css','script.js','manifest.webmanifest','assets/icon-192.png','assets/icon-512.png','assets/fachada.webp','assets/logo-topo-wide.webp'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))));self.clients.claim();});
