@@ -1,26 +1,5 @@
-# Barbearia do Ju — Site Oficial
+# Barbearia do Ju — Barbearia OS V15.3
 
-Versão 3.0 Final com SEO técnico, PWA, Open Graph, robots.txt, sitemap.xml e dados estruturados para publicação no domínio oficial.
+Atualização do CRM com data de nascimento opcional, idade calculada, indicadores de aniversários e preparação para campanhas segmentadas e IA.
 
-## Domínio oficial
-
-https://www.barbeariadoju.com.br
-
-## Arquivos principais
-
-- `index.html` — página inicial
-- `servicos.html` — catálogo de serviços e agendamento via WhatsApp
-- `produtos.html` — catálogo de produtos e bebidas
-- `style.css` — estilos do site
-- `script.js` — interações, carrinho e envio para WhatsApp
-- `manifest.webmanifest` e `sw.js` — PWA
-- `robots.txt` e `sitemap.xml` — SEO técnico
-- `CNAME` — domínio personalizado do GitHub Pages
-
-## Publicação
-
-Envie todos os arquivos e pastas deste pacote para a raiz do repositório `barbeariadoju/site` no GitHub.
-
-
-## vCard
-O arquivo principal `barbearia-do-ju.vcf` usa vCard 3.0 com a logo incorporada como JPEG Base64. A versão alternativa foi removida; o site oferece somente o arquivo principal com foto incorporada.
+Execute `atualizacao-barbearia-os-v15-3.sql` no Supabase após publicar os arquivos.
