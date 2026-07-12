@@ -1,0 +1,14 @@
+AGENDA V7 — SERVIÇOS SINCRONIZADOS E ENCAIXE INTELIGENTE
+
+1. Publique todos os arquivos deste pacote no GitHub.
+2. Não é necessário executar novo SQL.
+3. Teste em: https://www.barbeariadoju.com.br/agendar.html?v=7
+
+O que mudou:
+- 19 serviços, preços e tempos iguais aos da página Serviços.
+- Seleção de vários serviços.
+- Soma automática de tempo e valor.
+- O banco bloqueia todo o intervalo ocupado.
+- Horários que comportam apenas um serviço aparecem sinalizados.
+- Ao clicar neles, o sistema sugere o próximo horário que comporta todos os serviços.
+- O resumo mostra o término previsto.

@@ -1,0 +1,21 @@
+window.BDJ_SERVICES = [
+  {name:'Corte + Lavagem',description:'Corte masculino personalizado com lavagem profissional para maior conforto, sensação de limpeza e acabamento caprichado.',price:50,duration:40},
+  {name:'Corte de cabelo',description:'Corte de cabelo masculino realizado com técnica, precisão e atenção aos detalhes para valorizar seu estilo.',price:40,duration:30},
+  {name:'Corte + Barboterapia',description:'Corte de cabelo aliado à barboterapia completa com toalha quente, navalha e acabamento premium.',price:80,duration:60},
+  {name:'Corte + Barba Express',description:'Corte masculino + alinhamento de barba em versão rápida, ideal para manutenção do visual no dia a dia.',price:65,duration:50},
+  {name:'Barboterapia com vaporizador de ozônio',description:'Ritual de cuidado com vaporizador de ozônio, toalha quente, espuma e acabamento com navalha.',price:50,duration:40},
+  {name:'Barboterapia',description:'Barboterapia completa com toalha quente, espuma, acabamento na navalha e produtos profissionais.',price:40,duration:30},
+  {name:'Barba Express',description:'Alinhamento rápido da barba com acabamento realizado na máquina.',price:25,duration:20},
+  {name:'Pezinho (acabamento)',description:'Acabamento preciso do contorno do cabelo, nuca e laterais.',price:15,duration:10},
+  {name:'Sobrancelha Masculina',description:'Alinhamento e limpeza da sobrancelha masculina de forma discreta e natural.',price:15,duration:10},
+  {name:'Depilação nasal (cera quente)',description:'Remoção dos pelos nasais com cera quente.',price:25,duration:20},
+  {name:'Depilação orelhas',description:'Remoção dos pelos das orelhas com cera quente.',price:25,duration:20},
+  {name:'Freestyle (risquinho)',description:'Desenhos e detalhes personalizados feitos no corte.',price:15,duration:10},
+  {name:'Nevou / Platinado',description:'Descoloração capilar completa para efeito platinado.',price:150,duration:120},
+  {name:'Luzes',description:'Aplicação de luzes para criar pontos de destaque e iluminar o cabelo.',price:120,duration:90},
+  {name:'Alisamento / Relaxamento',description:'Redução de volume e alinhamento dos fios através de técnica profissional.',price:70,duration:45},
+  {name:'Pigmentação Capilar (Tintura)',description:'Coloração capilar para cobertura de fios brancos ou realce do visual.',price:50,duration:30},
+  {name:'Hidratação / Reconstrução Capilar',description:'Tratamento capilar focado em hidratação, reconstrução e melhora do aspecto dos fios.',price:40,duration:20},
+  {name:'Pigmentação de Barba',description:'Pigmentação da barba para correção de falhas e aparência uniforme.',price:35,duration:20},
+  {name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,duration:20}
+];
