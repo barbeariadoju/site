@@ -51,15 +51,15 @@
 <a class="back-link" href="index.html">← Voltar ao site</a>
 <p class="eyebrow">Catálogo Barbearia do Ju</p>
 <h1>Serviços e agendamento.</h1>
-<p>Escolha seus serviços, informe a melhor data e horário, e envie sua solicitação pelo WhatsApp sem sair da identidade da Barbearia do Ju.</p>
+<p>Escolha os serviços desejados, monte seu atendimento e continue para selecionar uma data e um horário realmente disponíveis.</p>
 <div class="hero-actions">
 <a class="btn primary" href="#servicos">Ver serviços</a>
 <a class="btn ghost" data-event="clique_agendamento_fresha" href="https://www.fresha.com/book-now/barbearia-do-ju-ygd5xbjq/all-offer?share=true&amp;pId=2840182" id="agendamento-fresha" rel="noopener" target="_blank">Agendar pelo Fresha</a>
 </div>
-<div class="schedule-warning"><strong>Importante:</strong> ao solicitar pelo WhatsApp, aguarde até 1 hora para confirmação do seu agendamento. A confirmação final depende da disponibilidade da agenda.</div>
+<div class="schedule-warning"><strong>Agenda própria:</strong> depois de montar seu atendimento, você escolherá uma data e um horário disponíveis sem precisar repetir os serviços.</div>
 </section>
 <section class="section booking-box reveal" id="servicos">
-<div class="section-head"><p class="eyebrow">Agendamento pelo WhatsApp</p><h2>Monte sua solicitação.</h2></div>
+<div class="section-head"><p class="eyebrow">Seu atendimento</p><h2>Escolha os serviços.</h2></div>
 <div class="booking-form">
 <label>Seu nome<input autocomplete="name" id="booking-name" placeholder="Digite seu nome" type="text"/></label>
 <label>Data desejada<input id="booking-date" type="date"/></label>
@@ -124,14 +124,14 @@
 <div class="cart-head"><strong>Meu pedido</strong><button id="clear-services" type="button">Limpar</button></div>
 <div class="cart-items" id="service-items"><span class="empty-cart">Nenhum serviço selecionado ainda.</span></div>
 <div class="cart-total"><span>Total estimado</span><strong id="service-total">R$ 0,00</strong></div>
-<p class="cart-note">Seu pedido será enviado pelo WhatsApp. Aguarde até 1h para confirmação da agenda.</p>
-<button class="send-cart secondary-cart" id="continue-services" type="button">Continuar escolhendo serviços</button><button class="send-cart view-cart-action" id="view-service-cart" type="button">Ver meu carrinho</button><a class="send-cart product-suggest" href="produtos.html">Adicionar produtos ao pedido</a><button class="send-cart" id="send-services" type="button">Finalizar pedido e agendar pelo WhatsApp</button>
+<p class="cart-note">Na próxima etapa você escolherá a data, o horário e poderá adicionar produtos ao pedido.</p>
+<button class="send-cart secondary-cart" id="continue-services" type="button">Continuar escolhendo serviços</button><button class="send-cart view-cart-action" id="view-service-cart" type="button">Ver meu carrinho</button><a class="send-cart product-suggest" href="produtos.html">Adicionar produtos ao pedido</a><button class="send-cart" id="send-services" type="button">Escolher data e horário</button>
 </aside>
 <button class="open-cart-btn" id="open-service-cart" type="button">Ver meu carrinho</button>
 <a class="bottom-back-btn" href="index.html">← Voltar ao site</a>
 <a class="floating" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a>
 <footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="index.html">Site</a> • <a href="produtos.html">Produtos</a> • <a href="https://www.fresha.com/book-now/barbearia-do-ju-ygd5xbjq/all-offer?share=true&amp;pId=2840182" rel="noopener" target="_blank">Fresha</a></small></footer>
-<script defer="" src="script.js"></script>
+<script defer="" src="script.js?v=15.0"></script>
 <script>
     const servicePhone = '5511967073038';
     const serviceStorageKey = 'bdj_services_v1';
@@ -217,8 +217,7 @@
       const name = btn.dataset.name;
       const price = parseFloat(btn.dataset.price || '0');
       const time = btn.dataset.time || '';
-      const item = serviceCart.get(name) || {name, price, time, qty:0};
-      item.qty += 1;
+      const item = {name, price, time, qty:1};
       serviceCart.set(name, item);
       renderServices();
       const old = btn.textContent;
@@ -257,31 +256,16 @@
       if(!win) window.location.href = url;
     }
     sendServices?.addEventListener('click', () => {
-      if(serviceCart.size === 0 && productCart.size === 0){ alert('Selecione pelo menos um serviço ou produto.'); return; }
-      saveBookingData();
-      const {nome, data, hora, obs} = getBookingData();
-      let total = 0;
-      const lines = ['Olá Juliano! Vim pelo site da Barbearia do Ju e gostaria de solicitar um agendamento.', ''];
-      if(nome) lines.push(`Nome: ${nome}`);
-      if(data) lines.push(`Data desejada: ${data.split('-').reverse().join('/')}`);
-      if(hora) lines.push(`Horário desejado: ${hora}`);
-      if(obs) lines.push(`Observações: ${obs}`);
-      if(serviceCart.size > 0){
-        lines.push('', 'Serviços selecionados:');
-        serviceCart.forEach(item => {
-          total += item.price * item.qty;
-          lines.push(`• ${item.qty}x ${item.name}${item.time ? ' — ' + item.time : ''}${item.price > 0 ? ' — ' + fmt(item.price * item.qty) : ' — consultar'}`);
-        });
-      }
-      if(productCart.size > 0){
-        lines.push('', 'Produtos / bebidas selecionados:');
-        productCart.forEach(item => {
-          total += item.price * item.qty;
-          lines.push(`• ${item.qty}x ${item.name}${item.price > 0 ? ' — ' + fmt(item.price * item.qty) : ' — cortesia'}`);
-        });
-      }
-      lines.push('', `Total estimado: ${fmt(total)}`, '', 'Pedido enviado pelo site. Aguardo a confirmação da agenda em até 1 hora.');
-      abrirWhatsAppPedido(lines.join('\n'));
+      if(serviceCart.size === 0){ alert('Selecione pelo menos um serviço.'); return; }
+      const selected = [...serviceCart.values()].map(item => ({
+        name:item.name,
+        price:Number(item.price),
+        duration:(() => { const t=String(item.time||''); if(t.includes('h')){ const m=t.match(/(\d+)h(?:(\d+))?/); return m ? Number(m[1])*60 + Number(m[2]||0) : 30; } return Number((t.match(/\d+/)||['30'])[0]); })()
+      }));
+      sessionStorage.setItem('bdj_selected_services_v15', JSON.stringify(selected));
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({event:'begin_booking',items:selected.map(i=>i.name).join(' | '),value:selected.reduce((a,b)=>a+b.price,0)});
+      window.location.href='agendar.html?v=15';
     });
     renderServices();
   </script>

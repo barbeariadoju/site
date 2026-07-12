@@ -1,0 +1,19 @@
+# Barbearia OS — Sprint 1 / V15
+
+## O que mudou
+- O catálogo de serviços continua sendo a única vitrine completa.
+- O botão final do carrinho agora abre a agenda e leva os serviços selecionados.
+- A agenda começa pelo resumo do atendimento, sem repetir todo o catálogo.
+- Sugestões inteligentes de serviços adicionais e produtos.
+- Soma automática de duração, serviços e produtos.
+- Nome e WhatsApp obrigatórios; e-mail opcional.
+- Eventos de funil enviados ao Data Layer/GTM.
+- Entrada direta sem serviços mostra botão para voltar ao catálogo.
+
+## Ordem de instalação
+1. Publique todos os arquivos no GitHub.
+2. Execute `atualizacao-barbearia-os-v15.sql` no SQL Editor do Supabase.
+3. Teste em janela anônima: `https://www.barbeariadoju.com.br/servicos.html?v=15`.
+
+## Importante
+O e-mail e os produtos já ficam salvos no banco. O envio automático de e-mail e WhatsApp será ativado em módulo posterior com um serviço de e-mail transacional e a WhatsApp Business Platform oficial.
