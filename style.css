@@ -1083,3 +1083,10 @@ footer a:hover,
     align-self:stretch !important;
   }
 }
+
+/* v13 - formulário de contato acessível e otimizado para celular */
+.suggestion-form .field-help{display:block;margin:-2px 0 12px;color:var(--muted);font-size:.84rem}
+.suggestion-form .honeypot{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.suggestion-form .form-status{min-height:1.5em;margin:12px 0 0;color:var(--gold2);font-weight:700}
+.suggestion-form input:invalid:not(:placeholder-shown),.suggestion-form textarea:invalid:not(:placeholder-shown){border-color:#d36b6b}
+.suggestion-form button[disabled]{opacity:.72;cursor:wait;transform:none!important}

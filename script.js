@@ -28,22 +28,46 @@ document.querySelectorAll('a, button, .link-card, .product-card, .product-photo,
 });
 
 
-const suggestionForm=document.getElementById('suggestion-form');
-if(suggestionForm){
-  suggestionForm.addEventListener('submit',(event)=>{
-    event.preventDefault();
-    const name=document.getElementById('clientName')?.value.trim();
-    const message=document.getElementById('clientMessage')?.value.trim();
-    if(!message){alert('Escreva sua dúvida ou sugestão antes de enviar.');return;}
-    const text=`Olá Juliano! Vim pelo site da Barbearia do Ju.
 
-${name?`Meu nome é ${name}.
-`:''}Minha dúvida/sugestão:
-${message}`;
-    window.location.href=`mailto:contato@barbeariadoju.com.br?subject=Dúvida ou sugestão - Barbearia do Ju&body=${encodeURIComponent(text)}`;
-  });
+
+// Formulário de contato: máscara, validação e prevenção de cliques duplicados.
+const contactForm=document.getElementById('contact-form');
+const whatsappInput=document.getElementById('whatsapp');
+const contactSubmit=document.getElementById('contact-submit');
+const formStatus=document.getElementById('form-status');
+
+function formatPhone(value){
+  const digits=value.replace(/\D/g,'').slice(0,11);
+  if(digits.length<=2) return digits;
+  if(digits.length<=6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+  if(digits.length<=10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
 }
 
+whatsappInput?.addEventListener('input',()=>{
+  whatsappInput.value=formatPhone(whatsappInput.value);
+  whatsappInput.setCustomValidity('');
+});
+
+contactForm?.addEventListener('submit',(event)=>{
+  const digits=whatsappInput?.value.replace(/\D/g,'')||'';
+  if(digits.length<10||digits.length>11){
+    event.preventDefault();
+    whatsappInput?.setCustomValidity('Digite um WhatsApp válido com DDD.');
+    whatsappInput?.reportValidity();
+    whatsappInput?.focus();
+    return;
+  }
+  whatsappInput?.setCustomValidity('');
+  if(contactSubmit){
+    contactSubmit.disabled=true;
+    contactSubmit.textContent='Enviando…';
+  }
+  if(formStatus) formStatus.textContent='A página de confirmação será aberta em uma nova guia.';
+  window.setTimeout(()=>{
+    if(contactSubmit){contactSubmit.disabled=false;contactSubmit.textContent='📩 Enviar mensagem';}
+  },4000);
+});
 
 // Rastreamento GA4/GTM - botão Agendar pelo Fresha
 window.dataLayer = window.dataLayer || [];
