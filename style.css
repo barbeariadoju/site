@@ -1090,3 +1090,105 @@ footer a:hover,
 .suggestion-form .form-status{min-height:1.5em;margin:12px 0 0;color:var(--gold2);font-weight:700}
 .suggestion-form input:invalid:not(:placeholder-shown),.suggestion-form textarea:invalid:not(:placeholder-shown){border-color:#d36b6b}
 .suggestion-form button[disabled]{opacity:.72;cursor:wait;transform:none!important}
+
+
+/* v14 - bloco de contato premium integrado ao visual do site */
+.contact-premium{
+  display:grid;
+  grid-template-columns:.92fr 1.08fr;
+  gap:22px;
+  align-items:stretch;
+}
+.contact-intro,
+.premium-form{
+  position:relative;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:30px;
+  background:linear-gradient(180deg,rgba(24,24,24,.97),rgba(11,11,11,.98));
+  box-shadow:0 28px 80px rgba(0,0,0,.34);
+}
+.contact-intro{padding:34px}
+.contact-intro:before,
+.premium-form:before{
+  content:"";
+  position:absolute;
+  width:260px;
+  height:260px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(240,201,135,.17),transparent 68%);
+  pointer-events:none;
+}
+.contact-intro:before{right:-110px;top:-110px}
+.premium-form:before{left:-120px;bottom:-130px}
+.contact-intro h2{
+  font-size:clamp(2.7rem,5.8vw,5.4rem) !important;
+  max-width:620px;
+}
+.contact-intro>p:not(.eyebrow):not(.contact-hours){color:var(--muted);font-size:1.02rem;max-width:560px}
+.contact-channels{display:grid;gap:11px;margin:26px 0 20px}
+.contact-channel{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:48px 1fr;
+  gap:13px;
+  align-items:center;
+  padding:13px 14px;
+  border-radius:17px;
+  border:1px solid rgba(240,201,135,.17);
+  background:rgba(255,255,255,.025);
+  color:var(--text);
+  text-decoration:none;
+}
+.contact-channel>span{
+  display:grid;
+  place-items:center;
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  background:rgba(200,155,85,.12);
+  border:1px solid rgba(240,201,135,.25);
+  font-size:1.25rem;
+}
+.contact-channel strong{display:block;color:var(--gold2);font-size:.96rem}
+.contact-channel small{display:block;color:var(--muted);font-size:.84rem;line-height:1.35;overflow-wrap:anywhere}
+.contact-channel:hover{border-color:rgba(240,201,135,.45);background:rgba(200,155,85,.07)}
+.contact-hours{margin:18px 0 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:.9rem}
+.contact-hours strong{color:var(--gold2)}
+.premium-form{padding:34px;display:flex;flex-direction:column;justify-content:center}
+.form-heading{position:relative;z-index:1;display:flex;gap:13px;align-items:center;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.form-heading>span{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;font-weight:900}
+.form-heading strong{display:block;color:var(--text);font-size:1.12rem}
+.form-heading small{display:block;color:var(--muted)}
+.premium-form label{position:relative;z-index:1;margin:0 0 7px;color:var(--gold2);font-size:.83rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.premium-form input,
+.premium-form textarea{
+  position:relative;
+  z-index:1;
+  width:100%;
+  border:1px solid rgba(240,201,135,.2);
+  border-radius:15px;
+  background:#090909;
+  color:var(--text);
+  font:inherit;
+  padding:14px 15px;
+  outline:none;
+  margin-bottom:15px;
+  transition:border-color .22s ease,box-shadow .22s ease,background .22s ease;
+}
+.premium-form textarea{resize:vertical;min-height:132px}
+.premium-form input::placeholder,.premium-form textarea::placeholder{color:#7f776d}
+.premium-form input:focus,.premium-form textarea:focus{border-color:rgba(240,201,135,.65);box-shadow:0 0 0 4px rgba(200,155,85,.1);background:#0c0c0c}
+.premium-form .field-help{position:relative;z-index:1;margin:-8px 0 14px}
+.contact-submit{position:relative;z-index:1;width:100%;border-radius:15px !important;margin-top:2px;min-height:52px}
+@media(max-width:850px){
+  .contact-premium{grid-template-columns:1fr}
+  .contact-intro,.premium-form{padding:27px}
+}
+@media(max-width:520px){
+  .contact-intro,.premium-form{padding:22px;border-radius:24px}
+  .contact-channel{grid-template-columns:44px 1fr;padding:12px}
+  .contact-channel>span{width:44px;height:44px}
+  .contact-intro h2{font-size:clamp(2.55rem,13vw,4rem) !important}
+}
