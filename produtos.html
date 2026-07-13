@@ -260,6 +260,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         openProductCart.classList.toggle('show', count > 0 && productPanelHidden);
         openProductCart.textContent = `Ver meu carrinho (${count})`;
       }
+      if(sendCart) sendCart.textContent = selectedServices.size > 0 ? 'Escolher data e horário' : 'Finalizar produtos pelo WhatsApp';
       saveCart();
     }
     function addItem(name, price){
@@ -347,6 +348,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     }
     sendCart?.addEventListener('click',()=>{
       if(cart.size === 0 && selectedServices.size === 0) return;
+      if(selectedServices.size > 0){
+        const agendaServices=[];
+        selectedServices.forEach(item=>{
+          const durationText=String(item.time||'');
+          const h=Number((durationText.match(/(\d+)h/)||[0,0])[1]);
+          const m=Number((durationText.match(/(\d+)\s*min/)||[0,0])[1]);
+          const duration=h*60+m||30;
+          for(let i=0;i<Number(item.qty||1);i++) agendaServices.push({name:item.name,price:Number(item.price||0),duration});
+        });
+        const agendaProducts=[];
+        cart.forEach(item=>{for(let i=0;i<Number(item.qty||1);i++) agendaProducts.push({name:item.name,price:Number(item.price||0)});});
+        sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(agendaServices));
+        sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(agendaProducts));
+        window.location.href='agendar.html';
+        return;
+      }
       let totalServices = 0;
       let totalProducts = 0;
       const order = String(Date.now()).slice(-6);
