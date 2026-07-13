@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /admin.html
+Disallow: /admin-agenda.html
+Disallow: /admin-agendamento.html
+Disallow: /admin-atendimento.html
+Disallow: /admin-clientes.html
+Disallow: /admin-assistente.html
+Disallow: /admin-fidelidade.html
 
 Sitemap: https://www.barbeariadoju.com.br/sitemap.xml

@@ -7,9 +7,12 @@ if(backTop){
 }
 const welcome=document.getElementById('welcome-pop');
 if(welcome){
-  // Exibe o convite de agendamento sempre que a página é aberta.
-  // Assim ele continua ajudando na conversão, inclusive durante testes e divulgações.
-  setTimeout(()=>{welcome.classList.add('open');welcome.setAttribute('aria-hidden','false')},1200);
+  const popupKey='bdj_welcome_seen_at';
+  const lastSeen=Number(localStorage.getItem(popupKey)||0);
+  const thirtyDays=30*24*60*60*1000;
+  if(!lastSeen || Date.now()-lastSeen>thirtyDays){
+    setTimeout(()=>{welcome.classList.add('open');welcome.setAttribute('aria-hidden','false');localStorage.setItem(popupKey,String(Date.now()))},1200);
+  }
 }
 document.querySelector('.welcome-close')?.addEventListener('click',()=>{welcome?.classList.remove('open');welcome?.setAttribute('aria-hidden','true')});
 welcome?.addEventListener('click',(e)=>{if(e.target===welcome){welcome.classList.remove('open');welcome.setAttribute('aria-hidden','true')}});
@@ -69,17 +72,3 @@ contactForm?.addEventListener('submit',(event)=>{
   },4000);
 });
 
-// Rastreamento GA4/GTM - botão Agendar pelo Fresha
-window.dataLayer = window.dataLayer || [];
-
-document.addEventListener('click', function(e) {
-  const botaoFresha = e.target.closest('#agendamento-fresha');
-
-  if (botaoFresha) {
-    window.dataLayer.push({
-      event: 'clique_agendamento_fresha',
-      click_id: 'agendamento-fresha',
-      destino: botaoFresha.href
-    });
-  }
-}, true);

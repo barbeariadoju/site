@@ -1,0 +1,92 @@
+{
+  "name": "Barbearia OS",
+  "short_name": "Barbearia OS",
+  "description": "Painel da Barbearia do Ju para agenda, modo atendimento, CRM, fidelidade e JuIA.",
+  "start_url": "/admin.html?app=1",
+  "scope": "/",
+  "id": "/admin.html",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#080808",
+  "theme_color": "#0b0b0b",
+  "lang": "pt-BR",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "url": "/admin-agenda.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Modo Atendimento",
+      "short_name": "Atender",
+      "url": "/admin-atendimento.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "url": "/admin-clientes.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Novo agendamento",
+      "short_name": "Agendar",
+      "url": "/admin-agendamento.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Assistente IA",
+      "short_name": "JuIA",
+      "url": "/admin-assistente.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

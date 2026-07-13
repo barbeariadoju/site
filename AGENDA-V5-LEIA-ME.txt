@@ -1,5 +1,0 @@
-1. Envie todos os arquivos desta pasta para o GitHub, substituindo os existentes.
-2. No Supabase > SQL Editor > New query, abra atualizacao-agenda-v5.sql, Ctrl+A, Ctrl+C, cole e clique em Run.
-3. Deve aparecer: Success. No rows returned.
-4. Abra agendar.html em uma janela anônima ou use Ctrl+F5.
-5. A agenda contém 19 serviços, horários até 19:00 de terça a sexta e até 15:00 no sábado.

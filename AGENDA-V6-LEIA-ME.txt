@@ -1,9 +1,0 @@
-AGENDA V6 — CORREÇÃO DE CACHE
-
-Esta versão usa arquivos novos (agenda-v6.js e agenda-config-v6.js) para impedir que o navegador ou Cloudflare carreguem a agenda antiga.
-
-Após publicar, abra:
-https://www.barbeariadoju.com.br/agendar.html?v=6
-
-A página deve mostrar “19 serviços disponíveis — você pode selecionar mais de um”.
-Não é necessário executar novo SQL para esta correção.
