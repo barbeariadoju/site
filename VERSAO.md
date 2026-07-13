@@ -1,1 +1,3 @@
-V22.6 — CRM, contato e remoção individual no carrinho
+# Barbearia do Ju — V23.0
+
+Área do Cliente Inteligente e CRM Premium.

@@ -1,3 +1,8 @@
+## V23.0 — Cliente Inteligente + CRM Premium
+- Nova página Minha Área com próximo horário, última visita, fidelidade e repetir serviço.
+- CRM com VIP, etiquetas, preferências técnicas, serviços/produtos favoritos, pagamento e intervalo de retorno.
+- Novo SQL 015 e contexto comercial ampliado para a JuIA.
+
 # Changelog
 ## 22.4 — Security & UX Release
 - Adicionados Content-Security-Policy e X-Frame-Options.
