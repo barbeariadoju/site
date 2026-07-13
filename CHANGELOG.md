@@ -47,3 +47,11 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Corrige quebra visual do WhatsApp no bloco de contato desktop.
 - Adiciona botão × para remover um serviço individualmente do carrinho.
 - Melhora a mensagem de confirmação da JuIA no código-fonte da Edge Function.
+
+## V24.2 — Revisão geral e estabilização
+- Remove o link “Privacidade” inserido acidentalmente no card Corte + Barboterapia.
+- Atualiza o identificador do cache do PWA e os parâmetros de versão dos arquivos estáticos.
+- Adiciona `cliente.html` ao sitemap e ajusta sua atualização dinâmica no Service Worker.
+- Sincroniza o código-fonte da Edge Function `ju-ia-site` com a V24 CRM Inteligente já implantada.
+- Valida links internos e sintaxe dos arquivos JavaScript.
+- Nenhuma alteração de banco de dados.

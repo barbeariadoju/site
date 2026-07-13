@@ -1,17 +1,18 @@
-const CACHE = 'barbearia-os-v22-4';
+const CACHE = 'barbearia-os-v24-2';
 const CORE = [
   './',
   'index.html',
   'servicos.html',
   'produtos.html',
+  'cliente.html',
   '404.html',
   'privacidade.html',
-  'style.css?v=22',
-  'script.js?v=22',
-  'privacy-consent-v22-4.js?v=22.4',
+  'style.css?v=24.2',
+  'script.js?v=24.2',
+  'privacy-consent-v22-4.js?v=24.2',
   'manifest.webmanifest',
   'admin-manifest.webmanifest',
-  'admin-pwa.js?v=22',
+  'admin-pwa.js?v=24.2',
   'assets/apple-touch-icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
@@ -21,6 +22,7 @@ const CORE = [
 
 const NEVER_CACHE = [
   '/agendar.html',
+  '/cliente.html',
   '/admin.html',
   '/admin-agenda.html',
   '/admin-atendimento.html',
@@ -29,6 +31,9 @@ const NEVER_CACHE = [
   '/admin-assistente.html',
   '/agenda-config-v6.js',
   '/agenda-v15.js',
+  '/cliente-v23.js',
+  '/juia-chat.js',
+  '/service-cart-v22-5.js',
   '/services-catalog-v7.js',
   '/admin-v15-4.js',
   '/admin-assistente-v16.js',
