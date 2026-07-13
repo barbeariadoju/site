@@ -43,7 +43,7 @@
       total += Number(item.price || 0) * Number(item.qty || 1);
       const row = document.createElement('div');
       row.className = 'cart-row';
-      row.innerHTML = `<span>${item.qty}x ${item.name}<small>${item.time || ''}</small></span><div><button type="button" data-dec-service="${key}" aria-label="Diminuir ${item.name}">−</button><button type="button" data-inc-service="${key}" aria-label="Aumentar ${item.name}">+</button></div>`;
+      row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-service="${key}" aria-label="Remover ${item.name}" title="Remover serviço">×</button><span>${item.qty}x ${item.name}<small>${item.time || ''}</small></span></div><div class="cart-qty-actions"><button type="button" data-dec-service="${key}" aria-label="Diminuir ${item.name}">−</button><button type="button" data-inc-service="${key}" aria-label="Aumentar ${item.name}">+</button></div>`;
       items.appendChild(row);
     });
 
@@ -109,6 +109,9 @@
   document.addEventListener('click', event => {
     const add = event.target.closest('.service-btn');
     if(add){ addService(add); return; }
+
+    const remove = event.target.closest('[data-remove-service]');
+    if(remove){ selectedServices.delete(remove.dataset.removeService); render(); return; }
 
     const inc = event.target.closest('[data-inc-service]');
     if(inc){ const item=selectedServices.get(inc.dataset.incService); if(item){item.qty+=1; render();} return; }

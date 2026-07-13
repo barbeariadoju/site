@@ -36,3 +36,9 @@
 - Nenhuma alteração visual, de banco, agenda, CRM ou Edge Functions.
 
 V22.5 — Correção do carrinho de serviços, integração serviços/produtos/agenda e ordem de carregamento do Supabase.
+
+## V22.6
+- Sincroniza automaticamente clientes de agendamentos com o CRM para habilitar edição, arquivamento e exclusão.
+- Corrige quebra visual do WhatsApp no bloco de contato desktop.
+- Adiciona botão × para remover um serviço individualmente do carrinho.
+- Melhora a mensagem de confirmação da JuIA no código-fonte da Edge Function.

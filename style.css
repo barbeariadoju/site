@@ -1357,3 +1357,16 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
 html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-index:11000;display:grid;place-items:center;background:rgba(8,8,8,.88);color:#e3c65d;font-weight:800;letter-spacing:.04em}.is-loading{opacity:.72;cursor:wait!important}
 .privacy-page{width:min(920px,calc(100% - 32px));margin:42px auto 80px}.privacy-card{background:rgba(14,14,14,.94);border:1px solid rgba(212,175,55,.28);border-radius:26px;padding:clamp(24px,5vw,52px);box-shadow:0 22px 70px rgba(0,0,0,.35)}.privacy-card h1{margin:.15em 0 .35em}.privacy-card h2{margin:1.7em 0 .45em;color:#e3c65d}.privacy-card p,.privacy-card li{color:#d4d4d4;line-height:1.7}.privacy-card ul{padding-left:1.2rem}.privacy-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
 @media(max-width:680px){.cookie-banner{left:10px;right:10px;bottom:10px;display:block;padding:16px}.cookie-actions{margin-top:13px}.cookie-actions button{flex:1}.admin-toast-region{top:10px;right:10px;width:calc(100vw - 20px)}}
+
+
+/* V22.6 — ajustes de CRM, contato e carrinho */
+.contact-channel{min-width:0}
+.contact-channel>div{min-width:0}
+.contact-channel .contact-phone{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-variant-numeric:tabular-nums}
+.cart-row-main{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+.cart-row-main>span{min-width:0;line-height:1.25}
+.cart-row-main>span small{display:block;margin:3px 0 0}
+.cart-row .cart-remove{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border-color:rgba(255,105,105,.35);background:rgba(255,70,70,.09);color:#ff9c9c;font-size:1.15rem;line-height:1}
+.cart-row .cart-remove:hover{background:rgba(255,70,70,.18);border-color:rgba(255,125,125,.62);color:#fff}
+.cart-qty-actions{display:flex;gap:7px;flex:0 0 auto}
+@media(max-width:520px){.contact-channel .contact-phone{font-size:.82rem}.cart-row{align-items:flex-start}.cart-row-main{align-items:flex-start}.cart-qty-actions{padding-top:1px}}

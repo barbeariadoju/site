@@ -29,7 +29,42 @@
   async function signIn(){const msg=$('admin-message');msg.textContent='Entrando...';const {error}=await sb.auth.signInWithPassword({email:$('admin-email').value,password:$('admin-password').value});msg.textContent=error?(error.message.includes('Invalid login')?'E-mail ou senha incorretos.':error.message):''}
   function showLogin(msg=''){$('admin-login').hidden=false;$('admin-app').hidden=true;if($('admin-message'))$('admin-message').textContent=msg}
   async function renderAuth(){if(!session){showLogin();return}$('admin-login').hidden=true;$('admin-app').hidden=false;await loadBaseData();if(page==='dashboard')renderDashboard();if(page==='agenda')initAgenda();if(page==='clientes')initCRM();if(page==='agendamento')initBookingForm();if(page==='atendimento')initServiceMode()}
-  async function loadBaseData(){const [{data:b,error:be},{data:p,error:pe}]=await Promise.all([sb.from('bookings').select('*').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),sb.from('customer_profiles').select('*').order('name',{ascending:true})]);if(be){console.error(be);allBookings=[]}else allBookings=b||[];if(pe){console.error(pe);customerProfiles=[]}else customerProfiles=p||[];customers=aggregateCustomers(allBookings,customerProfiles)}
+  async function loadBaseData(){
+    const [{data:b,error:be},{data:p,error:pe}]=await Promise.all([
+      sb.from('bookings').select('*').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),
+      sb.from('customer_profiles').select('*').order('name',{ascending:true})
+    ]);
+    if(be){console.error(be);allBookings=[]}else allBookings=b||[];
+    if(pe){console.error(pe);customerProfiles=[]}else customerProfiles=p||[];
+
+    // Garante que clientes vindos somente de agendamentos também tenham perfil no CRM.
+    // Sem isso, o botão de exclusão ficava desativado por falta do id do perfil.
+    if(!pe && allBookings.length){
+      const existing=new Set(customerProfiles.map(x=>phoneDigits(x.phone)));
+      const latestByPhone=new Map();
+      allBookings.forEach(x=>{
+        const ph=phoneDigits(x.customer_phone);
+        if(!ph || existing.has(ph) || latestByPhone.has(ph))return;
+        latestByPhone.set(ph,{
+          name:String(x.customer_name||'Cliente').trim(),
+          phone:ph,
+          email:x.customer_email?String(x.customer_email).trim().toLowerCase():null,
+          archived:false,
+          updated_at:new Date().toISOString()
+        });
+      });
+      const missing=[...latestByPhone.values()];
+      if(missing.length){
+        const {error:syncError}=await sb.from('customer_profiles').upsert(missing,{onConflict:'phone'});
+        if(syncError)console.error('Falha ao sincronizar clientes do CRM:',syncError);
+        else{
+          const {data:refreshed,error:refreshError}=await sb.from('customer_profiles').select('*').order('name',{ascending:true});
+          if(!refreshError)customerProfiles=refreshed||[];
+        }
+      }
+    }
+    customers=aggregateCustomers(allBookings,customerProfiles)
+  }
   function aggregateCustomers(rows,profiles){const profileByPhone=new Map(profiles.map(p=>[phoneDigits(p.phone),p]));const map=new Map();profiles.filter(p=>!p.archived).forEach(p=>map.set(phoneDigits(p.phone),{id:p.id,phone:phoneDigits(p.phone),name:p.name,email:p.email||'',notes:p.notes||'',birthDate:p.birth_date||null,visits:0,completed:0,noShows:0,total:0,lastDate:null,lastServices:'',history:[]}));rows.forEach(x=>{const ph=phoneDigits(x.customer_phone);if(!ph)return;const profile=profileByPhone.get(ph);if(profile?.archived)return;if(!map.has(ph))map.set(ph,{id:profile?.id||null,phone:ph,name:profile?.name||x.customer_name,email:profile?.email||x.customer_email||'',notes:profile?.notes||'',birthDate:profile?.birth_date||null,visits:0,completed:0,noShows:0,total:0,lastDate:x.booking_date,lastServices:x.service_name,history:[]});const c=map.get(ph);c.history.push(x);c.visits++;if(x.status==='completed'){c.completed++;c.total+=Number(x.service_price||0)+Number(x.products_price||0)}if(x.status==='no_show')c.noShows++;if(!c.lastDate||x.booking_date>c.lastDate){c.lastDate=x.booking_date;c.lastServices=x.service_name;if(!profile)c.name=x.customer_name;if(!c.email)c.email=x.customer_email||''}});return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))}
   function renderDashboard(){const today=isoLocal(new Date()),tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);const tmr=isoLocal(tomorrow),todayRows=allBookings.filter(x=>x.booking_date===today),tomorrowRows=allBookings.filter(x=>x.booking_date===tmr&&['pending','confirmed'].includes(x.status)),completed=todayRows.filter(x=>x.status==='completed');setText('metric-today',todayRows.filter(x=>x.status!=='cancelled').length);setText('metric-pending',todayRows.filter(x=>x.status==='pending').length);setText('metric-confirmed',todayRows.filter(x=>x.status==='confirmed').length);setText('metric-revenue',money(completed.reduce((a,x)=>a+Number(x.service_price||0)+Number(x.products_price||0),0)));setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);const list=$('dashboard-today-list'),active=todayRows.filter(x=>x.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time));list.innerHTML=active.length?active.map(miniBooking).join(''):'<div class="admin-empty">Nenhum atendimento para hoje.</div>';const alerts=$('dashboard-alerts'),noShows=customers.filter(c=>c.noShows>0).sort((a,b)=>b.noShows-a.noShows).slice(0,5);alerts.innerHTML=noShows.length?noShows.map(c=>`<div class="admin-alert-row"><span>${esc(c.name)}</span><strong>${c.noShows} ausência${c.noShows>1?'s':''}</strong></div>`).join(''):'<div class="admin-empty">Nenhuma ausência registrada.</div>'}
   function miniBooking(x){return `<div class="admin-mini-booking"><time>${x.start_time.slice(0,5)}</time><div><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)}${parseProducts(x).length?` • 🛍 ${parseProducts(x).length} produto(s)`:''}</small></div><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span></div>`}
