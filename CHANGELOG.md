@@ -1,3 +1,8 @@
+# V24.3.1
+- Corrige carrinho embaçado no desktop, Android e iPhone.
+- Move o overlay escuro para trás do carrinho.
+- Remove o backdrop-filter do overlay para compatibilidade entre navegadores.
+
 # V24.3 — Carrinho mobile responsivo
 
 - Corrige distorção e corte lateral do carrinho em Android e iOS.

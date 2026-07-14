@@ -1384,10 +1384,8 @@ body.cart-open::before{
   content:"";
   position:fixed;
   inset:0;
-  z-index:79;
-  background:rgba(0,0,0,.68);
-  backdrop-filter:blur(3px);
-  -webkit-backdrop-filter:blur(3px);
+  z-index:9990;
+  background:rgba(0,0,0,.72);
   pointer-events:none;
 }
 body.cart-open .juia-launcher,
@@ -1401,6 +1399,8 @@ body.cart-open .back-top{
   pointer-events:none !important;
 }
 .cart-panel{
+  position:fixed;
+  z-index:9991 !important;
   box-sizing:border-box;
   max-height:min(82dvh,760px);
   overflow:hidden;
