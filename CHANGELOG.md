@@ -1,3 +1,9 @@
+## V24.4.8
+- Corrige estouro horizontal da revisão do agendamento em celular, tablet e janela estreita.
+- JuIA abre em tela cheia no celular com cabeçalho e botão fechar sempre visíveis.
+- Bloqueia zoom causado por overflow e restaura a página ao fechar o chat.
+- Mantém o formulário FormSubmit para nova tentativa de ativação.
+
 ## V24.4.6
 - Corrige seleção de serviços no novo agendamento administrativo.
 - Cartões inteiros clicáveis e destaque visual de seleção.

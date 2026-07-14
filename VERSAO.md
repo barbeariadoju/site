@@ -1,1 +1,1 @@
-V24.4.6 — Correção do agendamento administrativo
+V24.4.8 — Layout mobile estabilizado
