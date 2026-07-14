@@ -1,3 +1,11 @@
+# V24.3.4
+
+- Agenda abre automaticamente no próximo dia útil reservável.
+- Domingo e segunda avançam para terça-feira.
+- Após o expediente, a seleção avança para o próximo dia de atendimento.
+- Datas sem vagas avançam automaticamente para o próximo dia com disponibilidade.
+- Mantida a margem mínima de 15 minutos para agendamentos no mesmo dia.
+
 # V24.3.3
 
 - Oculta horários passados na agenda do mesmo dia.

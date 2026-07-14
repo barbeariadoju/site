@@ -18,6 +18,19 @@
   const total=()=>({duration:services.reduce((a,b)=>a+Number(b.duration||0),0),servicePrice:services.reduce((a,b)=>a+Number(b.price||0),0),productPrice:products.reduce((a,b)=>a+Number(b.price||0),0)});
   const fmtDuration=m=>m>=60?(m%60?`${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}`:`${m/60}h`):`${m} min`;
   const addMinutes=(time,mins)=>{const [h,m]=time.split(':').map(Number),d=new Date(2000,0,1,h,m+mins);return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+  const spNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
+  const addDaysISO=(iso,days)=>{const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)};
+  const dayOfWeek=iso=>new Date(`${iso}T12:00:00Z`).getUTCDay();
+  const isOpenDay=iso=>{const d=dayOfWeek(iso);return d>=2&&d<=6};
+  const closingMinutes=iso=>dayOfWeek(iso)===6?15*60:19*60;
+  const prettyDate=iso=>new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  function firstEligibleDate(){
+    const now=spNow(),today=`${now.year}-${now.month}-${now.day}`;
+    if(!isOpenDay(today))return nextOpenDay(today,1);
+    const current=Number(now.hour)*60+Number(now.minute),needed=current+15+total().duration;
+    return needed<=closingMinutes(today)?today:nextOpenDay(today,1);
+  }
+  function nextOpenDay(iso,step=1){let d=iso;for(let i=0;i<8;i++){d=addDaysISO(d,step);if(isOpenDay(d))return d}return d}
   function saveState(){sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(services));sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(products));}
   function fire(event,data={}){window.dataLayer=window.dataLayer||[];window.dataLayer.push({event,...data});}
   function serviceIndex(name){return allServices.findIndex(s=>s.name===name)}
@@ -56,24 +69,48 @@
     document.querySelector('[data-next-step="4"]').disabled=!($('agenda-name').value.trim().length>=2&&validPhone()&&(!$('agenda-email').value||$('agenda-email').checkValidity()));
     $('agenda-submit').disabled=!(configured&&services.length&&selectedTime&&$('agenda-name').value.trim().length>=2&&validPhone());
   }
-  function go(n){if(n===2&&!services.length)return;if(n===3&&!selectedTime)return;step=n;document.querySelectorAll('[data-step]').forEach(x=>x.hidden=Number(x.dataset.step)!==n);document.querySelectorAll('[data-progress-step]').forEach(x=>x.classList.toggle('is-active',Number(x.dataset.progressStep)<=n));window.scrollTo({top:0,behavior:'smooth'});updateSummary()}
-  async function loadSlots(){
-    selectedTime='';const date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='';if(!date||!services.length){$('agenda-day-message').textContent='Escolha uma data';updateSummary();return}
-    fire('date_selected',{booking_date:date});$('agenda-day-message').textContent='Consultando...';
+  async function go(n){if(n===2&&!services.length)return;if(n===3&&!selectedTime)return;step=n;document.querySelectorAll('[data-step]').forEach(x=>x.hidden=Number(x.dataset.step)!==n);document.querySelectorAll('[data-progress-step]').forEach(x=>x.classList.toggle('is-active',Number(x.dataset.progressStep)<=n));window.scrollTo({top:0,behavior:'smooth'});updateSummary();if(n===2&&!$('agenda-date').value){$('agenda-date').value=firstEligibleDate();await loadSlots({autoAdvance:true,reason:'initial'})}}
+  async function fetchAvailableSlots(date){
     const {data,error}=await sb.rpc('get_available_slots',{p_date:date,p_duration_minutes:total().duration});
-    if(error){box.innerHTML='<p>Não foi possível consultar os horários.</p>';$('agenda-day-message').textContent='Erro na consulta';console.error(error);return}
+    if(error)throw error;
     let slots=(data||[]).map(r=>String(r.slot_time).slice(0,5));
-    // Proteção adicional no navegador: no mesmo dia, exibe somente horários
-    // com pelo menos 15 minutos de antecedência, usando o fuso de São Paulo.
-    const nowParts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
-    const todaySp=`${nowParts.year}-${nowParts.month}-${nowParts.day}`;
-    if(date===todaySp){
-      const minMinutes=Number(nowParts.hour)*60+Number(nowParts.minute)+15;
-      slots=slots.filter(time=>{const [h,m]=time.split(':').map(Number);return h*60+m>=minMinutes});
+    const now=spNow(),todaySp=`${now.year}-${now.month}-${now.day}`;
+    if(date===todaySp){const minMinutes=Number(now.hour)*60+Number(now.minute)+15;slots=slots.filter(time=>{const [h,m]=time.split(':').map(Number);return h*60+m>=minMinutes})}
+    return slots;
+  }
+  async function findNextDateWithSlots(startDate,includeStart=false){
+    let date=includeStart?startDate:addDaysISO(startDate,1);
+    for(let i=0;i<30;i++){
+      if(isOpenDay(date)){
+        const slots=await fetchAvailableSlots(date);
+        if(slots.length)return {date,slots};
+      }
+      date=addDaysISO(date,1);
     }
-    if(!slots.length)box.innerHTML='<p class="booking-empty-note">Nenhum horário disponível para este atendimento.</p>';
+    return null;
+  }
+  async function loadSlots(options={}){
+    selectedTime='';let date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='';
+    if(!date||!services.length){$('agenda-day-message').textContent='Escolha uma data';updateSummary();return}
+    fire('date_selected',{booking_date:date});$('agenda-day-message').textContent='Consultando...';
+    try{
+      if(!isOpenDay(date)){
+        const next=await findNextDateWithSlots(date,false);
+        if(next){$('agenda-date').value=next.date;date=next.date;renderSlots(next.slots);$('agenda-day-message').textContent=`Fechado nessa data. Próximo dia disponível: ${prettyDate(date)}`;updateSummary();return}
+      }
+      let slots=await fetchAvailableSlots(date);
+      if(!slots.length&&options.autoAdvance!==false){
+        const next=await findNextDateWithSlots(date,false);
+        if(next){$('agenda-date').value=next.date;date=next.date;slots=next.slots;renderSlots(slots);const prefix=options.reason==='initial'?'Próximo dia disponível':'Sem horários nessa data. Próximo dia disponível';$('agenda-day-message').textContent=`${prefix}: ${prettyDate(date)}`;updateSummary();return}
+      }
+      renderSlots(slots);
+      $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';updateSummary();
+    }catch(error){box.innerHTML='<p>Não foi possível consultar os horários.</p>';$('agenda-day-message').textContent='Erro na consulta';console.error(error)}
+  }
+  function renderSlots(slots){
+    const box=$('agenda-slots');box.innerHTML='';
+    if(!slots.length){box.innerHTML='<p class="booking-empty-note">Nenhum horário disponível para este atendimento.</p>';return}
     slots.forEach(time=>{const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong><small>disponível</small>`;b.onclick=()=>{document.querySelectorAll('.agenda-slot').forEach(x=>x.classList.remove('is-selected'));b.classList.add('is-selected');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary()};box.appendChild(b)});
-    $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';updateSummary();
   }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
@@ -90,7 +127,7 @@
     const prod=e.target.closest('[data-product]');if(prod){const p=productCatalog.find(x=>x.name===prod.dataset.product);const i=products.findIndex(x=>x.name===p.name);if(i>=0)products.splice(i,1);else{products.push({name:p.name,price:p.price});fire('product_added_booking',{item_name:p.name,value:p.price})}renderProducts();updateSummary();saveState();return}
   });
   document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));
-  $('agenda-date').onchange=loadSlots;['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=updateSummary);$('agenda-submit').onclick=submit;
-  const today=new Date();$('agenda-date').min=today.toISOString().slice(0,10);
+  $('agenda-date').onchange=()=>loadSlots({autoAdvance:true,reason:'manual'});['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=updateSummary);$('agenda-submit').onclick=submit;
+  const now=spNow();$('agenda-date').min=`${now.year}-${now.month}-${now.day}`;
   renderSelected();$('agenda-status').innerHTML=configured?'<strong>Agenda online.</strong> Confira seu atendimento e escolha o melhor horário.':'<strong>Configuração pendente.</strong> O banco ainda precisa ser conectado.';go(1);
 })();

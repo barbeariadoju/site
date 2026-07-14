@@ -1,1 +1,1 @@
-Barbearia do Ju — V24.3.3
+Barbearia do Ju — V24.3.4
