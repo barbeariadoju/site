@@ -1,3 +1,11 @@
+# V24.3.3
+
+- Oculta horários passados na agenda do mesmo dia.
+- Exige antecedência mínima de 15 minutos para novos agendamentos.
+- Usa o fuso horário America/Sao_Paulo no banco.
+- Validação aplicada no SQL e também no navegador.
+- Impede gravação direta de horários fora da margem de segurança.
+
 # V24.3.2
 - Corrige carrinho embaçado no desktop, Android e iPhone.
 - Move o overlay escuro para trás do carrinho.

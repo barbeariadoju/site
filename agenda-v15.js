@@ -62,7 +62,15 @@
     fire('date_selected',{booking_date:date});$('agenda-day-message').textContent='Consultando...';
     const {data,error}=await sb.rpc('get_available_slots',{p_date:date,p_duration_minutes:total().duration});
     if(error){box.innerHTML='<p>Não foi possível consultar os horários.</p>';$('agenda-day-message').textContent='Erro na consulta';console.error(error);return}
-    const slots=(data||[]).map(r=>String(r.slot_time).slice(0,5));
+    let slots=(data||[]).map(r=>String(r.slot_time).slice(0,5));
+    // Proteção adicional no navegador: no mesmo dia, exibe somente horários
+    // com pelo menos 15 minutos de antecedência, usando o fuso de São Paulo.
+    const nowParts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
+    const todaySp=`${nowParts.year}-${nowParts.month}-${nowParts.day}`;
+    if(date===todaySp){
+      const minMinutes=Number(nowParts.hour)*60+Number(nowParts.minute)+15;
+      slots=slots.filter(time=>{const [h,m]=time.split(':').map(Number);return h*60+m>=minMinutes});
+    }
     if(!slots.length)box.innerHTML='<p class="booking-empty-note">Nenhum horário disponível para este atendimento.</p>';
     slots.forEach(time=>{const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong><small>disponível</small>`;b.onclick=()=>{document.querySelectorAll('.agenda-slot').forEach(x=>x.classList.remove('is-selected'));b.classList.add('is-selected');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary()};box.appendChild(b)});
     $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';updateSummary();
