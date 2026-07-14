@@ -1657,3 +1657,169 @@ body.cart-open .back-top{
   .booking-actions-v14{grid-template-columns:1fr}
   .booking-actions-v14 .booking-back-button{order:2;text-align:center}
 }
+
+/* V24.4.2 — etapa final responsiva: evita estouro horizontal/zoom automático no iOS */
+.booking-step-panel[data-step="4"],
+.booking-step-panel[data-step="4"] *{
+  box-sizing:border-box;
+  min-width:0;
+}
+.booking-step-panel[data-step="4"]{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+.booking-review-summary,
+.booking-review-client{
+  width:100%;
+  max-width:100%;
+  overflow:hidden;
+}
+.booking-review-summary .booking-summary-total,
+.booking-review-summary .booking-summary-time{
+  align-items:flex-start;
+}
+.booking-review-summary span,
+.booking-review-summary strong,
+.booking-review-client strong{
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:normal;
+}
+.booking-review-summary .booking-summary-total strong,
+.booking-review-summary .booking-summary-time strong{
+  text-align:right;
+  flex:0 1 auto;
+}
+.booking-review-client strong{
+  line-height:1.45;
+}
+@media(max-width:700px){
+  .booking-step-panel[data-step="4"]{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  .booking-step-panel[data-step="4"] .booking-step-heading h2{
+    font-size:clamp(2.15rem,12vw,3rem);
+  }
+  .booking-review-summary{
+    padding:14px;
+    border-radius:18px;
+  }
+  .booking-review-summary .booking-summary-total,
+  .booking-review-summary .booking-summary-time{
+    gap:10px;
+  }
+  .booking-review-summary .booking-summary-time strong{
+    max-width:62%;
+  }
+  .booking-review-client{
+    padding:14px;
+  }
+  .booking-review-client strong{
+    font-size:.98rem;
+  }
+}
+
+/* V24.4.3 — etapa final responsiva universal (iOS, Android, tablet e desktop estreito) */
+html,body{max-width:100%;overflow-x:hidden}
+.booking-page-v14,
+.booking-shell-v14,
+.booking-main-v14,
+.booking-step-panel,
+.booking-step-panel[data-step="4"],
+.booking-review-summary,
+.booking-review-client,
+.agenda-summary-services,
+.agenda-summary-services li{min-width:0;max-width:100%}
+
+.booking-step-panel[data-step="4"] .agenda-summary-services li{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(4.8rem,auto);
+  align-items:start;
+  gap:12px;
+}
+.booking-step-panel[data-step="4"] .agenda-summary-services span{
+  min-width:0;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  line-height:1.4;
+}
+.booking-step-panel[data-step="4"] .agenda-summary-services b{
+  min-width:0;
+  max-width:100%;
+  text-align:right;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.35;
+}
+.booking-step-panel[data-step="4"] .booking-summary-total,
+.booking-step-panel[data-step="4"] .booking-summary-time{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,46%);
+  align-items:start;
+  gap:12px;
+}
+.booking-step-panel[data-step="4"] .booking-summary-total strong,
+.booking-step-panel[data-step="4"] .booking-summary-time strong{
+  min-width:0;
+  max-width:100%;
+  text-align:right;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  font-size:clamp(.92rem,2.7vw,1.1rem);
+  line-height:1.35;
+}
+.booking-step-panel[data-step="4"] .booking-summary-date strong,
+.booking-step-panel[data-step="4"] .booking-review-client strong{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.booking-step-panel[data-step="4"] .booking-final-submit,
+.booking-step-panel[data-step="4"] .booking-back-button{
+  max-width:100%;
+}
+
+@media(max-width:900px){
+  .booking-step-panel[data-step="4"] .booking-review-summary,
+  .booking-step-panel[data-step="4"] .booking-review-client{
+    width:100%;
+  }
+}
+@media(max-width:520px){
+  .booking-step-panel[data-step="4"]{
+    padding-inline:12px;
+  }
+  .booking-step-panel[data-step="4"] .booking-review-summary{
+    padding:12px;
+  }
+  .booking-step-panel[data-step="4"] .agenda-summary-services li{
+    grid-template-columns:minmax(0,1fr) minmax(4.3rem,34%);
+    gap:9px;
+  }
+  .booking-step-panel[data-step="4"] .booking-summary-total,
+  .booking-step-panel[data-step="4"] .booking-summary-time{
+    grid-template-columns:minmax(0,1fr) minmax(0,48%);
+    gap:9px;
+  }
+  .booking-step-panel[data-step="4"] .booking-review-client{
+    padding:12px;
+  }
+}
+@media(max-width:360px){
+  .booking-step-panel[data-step="4"] .agenda-summary-services li,
+  .booking-step-panel[data-step="4"] .booking-summary-total,
+  .booking-step-panel[data-step="4"] .booking-summary-time{
+    grid-template-columns:1fr;
+  }
+  .booking-step-panel[data-step="4"] .agenda-summary-services b,
+  .booking-step-panel[data-step="4"] .booking-summary-total strong,
+  .booking-step-panel[data-step="4"] .booking-summary-time strong{
+    text-align:left;
+  }
+}

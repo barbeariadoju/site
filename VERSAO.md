@@ -1,1 +1,1 @@
-V24.4.1 — Correção de alinhamento do fluxo de agendamento
+V24.4.5 — JuIA com horários por período

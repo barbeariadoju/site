@@ -1,3 +1,15 @@
+## V24.4.4
+- JuIA vira aba lateral compacta no celular.
+- Evita sobreposição com botões principais e barra inferior.
+- Desktop mantém o botão completo.
+
+# V24.4.3 — etapa final responsiva
+
+- Corrige ampliação/estouro horizontal na tela Confira e envie no iPhone.
+- Permite quebra segura de nome, telefone, valores e horário.
+- Mantém o formulário limitado à largura real da tela.
+- Preserva zoom manual por acessibilidade.
+
 # V24.4.1 — alinhamento do fluxo de agendamento
 
 - Continuar e Voltar agora alinham no início útil do agendamento.
@@ -99,4 +111,16 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Adiciona `cliente.html` ao sitemap e ajusta sua atualização dinâmica no Service Worker.
 - Sincroniza o código-fonte da Edge Function `ju-ia-site` com a V24 CRM Inteligente já implantada.
 - Valida links internos e sintaxe dos arquivos JavaScript.
+- Nenhuma alteração de banco de dados.
+
+## V24.4.3 — Responsividade universal da etapa final
+- Corrige estouro horizontal em iOS, Android, tablets e janelas estreitas no desktop.
+- Permite quebra segura de nomes de serviços, produtos, valores, horários e dados do cliente.
+- Adapta a confirmação para telas muito estreitas sem ampliar a página automaticamente.
+
+## V24.4.5 — Horários inteligentes na JuIA
+- Quando há muitos horários, a JuIA pergunta se o cliente prefere manhã, tarde ou final do dia.
+- Mostra todos os horários disponíveis do período escolhido.
+- Responde diretamente quando o cliente pergunta por um horário exato.
+- Mantém no pacote as correções responsivas V24.4.3 e V24.4.4.
 - Nenhuma alteração de banco de dados.

@@ -30,6 +30,27 @@ const formatDateBR=(value:any)=>{
 const firstName=(value:any)=>String(value||'').trim().split(/\s+/)[0]||'cliente'
 const includesAny=(text:string,terms:string[])=>terms.some(term=>text.includes(term))
 
+const extractRequestedTime=(text='')=>{
+ const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH])([0-5]\d)(?:\D|$)/)
+ if(!match)return ''
+ return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`
+}
+const slotHour=(slot:string)=>Number(String(slot).slice(0,2))
+const detectPeriod=(text:string)=>{
+ if(includesAny(text,['manha','pela manha','de manha','cedo']))return 'morning'
+ if(includesAny(text,['tarde','pela tarde','de tarde']))return 'afternoon'
+ if(includesAny(text,['noite','final do dia','fim do dia','depois das 18','apos as 18']))return 'evening'
+ return ''
+}
+const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
+ const hour=slotHour(slot)
+ if(period==='morning')return hour<12
+ if(period==='afternoon')return hour>=12&&hour<18
+ if(period==='evening')return hour>=18
+ return true
+})
+const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':'final do dia'
+
 const services=[
  ['Corte + Lavagem',50,40,'corte'],['Corte de cabelo',40,30,'corte'],['Corte + Barboterapia',80,60,'combo'],['Corte + Barba Express',65,50,'combo'],
  ['Barboterapia com vaporizador de ozônio',50,40,'barba'],['Barboterapia',40,30,'barba'],['Barba Express',25,20,'barba'],['Pezinho (acabamento)',15,10,'adicional'],
@@ -239,13 +260,53 @@ Deno.serve(async req=>{
   reply='Posso deixar algum produto separado para você retirar no atendimento?';actions=sug.map(p=>({label:`${p.name} · ${money(p.price)}`,message:`Adicionar produto ${p.name}`}));actions.push({label:'Não, continuar',message:'Não quero produto'});next.sales_stage='upsell_products'
  }
  if(normalize(message).includes('nao quero produto')||normalize(message).includes('sem produto')){next.upsell_products_done=true;next.sales_stage='schedule'}
+ const requestedPeriod=detectPeriod(normalizedQuestion)
+ const requestedTime=extractRequestedTime(message)
+ if((requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
+
  if(intent==='availability'&&next.date&&chosen.length){
   const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
   const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
   if(error)return respond({error:error.message},500)
-  const slots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5)).slice(0,8)
-  if(slots.length){reply=`Para ${duration} minutos, tenho: ${slots.join(', ')}. Qual horário você prefere?`;actions=slots.slice(0,6).map((t:string)=>({label:t,message:t}))}
-  else reply='Não encontrei horário nessa data para todos os serviços. Quer verificar outro dia?'
+  const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+
+  if(!allSlots.length){
+   reply='Não encontrei horário nessa data para todos os serviços. Quer verificar outro dia?'
+  }else if(requestedTime){
+   if(allSlots.includes(requestedTime)){
+    reply=`Sim, ${requestedTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
+    actions=[{label:`Reservar ${requestedTime}`,message:`Quero reservar ${requestedTime}`}]
+    next.time=requestedTime
+   }else{
+    const samePeriod=slotsForPeriod(allSlots,slotHour(requestedTime)<12?'morning':slotHour(requestedTime)<18?'afternoon':'evening')
+    const alternatives=(samePeriod.length?samePeriod:allSlots)
+    reply=`${requestedTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
+    actions=alternatives.map((t:string)=>({label:t,message:t}))
+   }
+  }else if(requestedPeriod){
+   const periodSlots=slotsForPeriod(allSlots,requestedPeriod)
+   if(periodSlots.length){
+    reply=`No período da ${periodLabel(requestedPeriod)}, estes são todos os horários disponíveis para ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
+    actions=periodSlots.map((t:string)=>({label:t,message:t}))
+   }else{
+    reply=`Não há horários disponíveis no período da ${periodLabel(requestedPeriod)} nessa data. Posso mostrar outro período ou verificar outro dia.`
+    actions=[
+     {label:'Ver manhã',message:'Prefiro manhã'},
+     {label:'Ver tarde',message:'Prefiro tarde'},
+     {label:'Ver final do dia',message:'Prefiro final do dia'}
+    ]
+   }
+  }else if(allSlots.length>10){
+   reply=`Tenho ${allSlots.length} horários disponíveis para esse atendimento de ${duration} minutos. Você prefere manhã, tarde ou final do dia?`
+   actions=[
+    {label:'Manhã',message:'Prefiro manhã'},
+    {label:'Tarde',message:'Prefiro tarde'},
+    {label:'Final do dia',message:'Prefiro final do dia'}
+   ]
+  }else{
+   reply=`Para ${duration} minutos, estes são todos os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
+   actions=allSlots.map((t:string)=>({label:t,message:t}))
+  }
  }
  if(intent==='book'){
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
