@@ -1,4 +1,10 @@
-## V24.4 — Agendamento guiado
+# V24.4.1 — alinhamento do fluxo de agendamento
+
+- Continuar e Voltar agora alinham no início útil do agendamento.
+- A barra Atendimento, Horário, Seus dados e Confirmar permanece visível.
+- Evita retorno ao cabeçalho grande da página em desktop e celular.
+
+## V24.4.1 — Agendamento guiado
 - Remove mensagem contraditória de indisponibilidade.
 - Evita respostas antigas sobrepondo horários atuais.
 - Avança com rolagem automática para a etapa correta.

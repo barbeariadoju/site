@@ -1571,7 +1571,7 @@ body.cart-open .back-top{
   .cart-note{text-align:left;margin:7px 1px 5px}
   .cart-panel .send-cart{min-height:54px}
 }
-\n\n/* V24.4 — fluxo de agendamento guiado e mobile-first */
+\n\n/* V24.4.1 — fluxo de agendamento guiado e mobile-first */
 .booking-progress{
   grid-template-columns:repeat(4,minmax(0,1fr));
   position:sticky;

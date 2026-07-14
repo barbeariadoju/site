@@ -1,3 +1,1 @@
-# Barbearia do Ju — V24.4
-
-Fluxo de agendamento guiado, intuitivo e mobile-first.
+V24.4.1 — Correção de alinhamento do fluxo de agendamento

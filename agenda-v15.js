@@ -86,7 +86,13 @@
     if(n===2&&!$('agenda-date').value){$('agenda-date').value=firstEligibleDate();await loadSlots({autoAdvance:true,reason:'initial'})}
     requestAnimationFrame(()=>{
       const panel=document.querySelector(`[data-step="${n}"]`);
-      if(panel){panel.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>panel.focus({preventScroll:true}),420)}
+      const flowStart=document.querySelector('.booking-progress');
+      const target=flowStart||panel;
+      if(target){
+        const top=target.getBoundingClientRect().top+window.scrollY-(window.innerWidth<=700?6:12);
+        window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+      }
+      if(panel)setTimeout(()=>panel.focus({preventScroll:true}),420);
       if(n===3)setTimeout(()=>$('agenda-name').focus({preventScroll:true}),520);
     });
   }
