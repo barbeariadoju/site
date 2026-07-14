@@ -6,7 +6,7 @@
   const allServices=window.BDJ_SERVICES||[];
   let services=JSON.parse(sessionStorage.getItem('bdj_selected_services_v15')||'[]');
   let products=JSON.parse(sessionStorage.getItem('bdj_selected_products_v15')||'[]');
-  let selectedTime='', step=1;
+  let selectedTime='', step=1, slotsRequestId=0;
   const productCatalog=[
     {name:'Pasta Matte 150g',price:34,for:['Corte','Lavagem','Luzes','Platinado']},
     {name:'Gel Cola Black Shark Barber',price:16,for:['Corte','Freestyle']},
@@ -69,7 +69,27 @@
     document.querySelector('[data-next-step="4"]').disabled=!($('agenda-name').value.trim().length>=2&&validPhone()&&(!$('agenda-email').value||$('agenda-email').checkValidity()));
     $('agenda-submit').disabled=!(configured&&services.length&&selectedTime&&$('agenda-name').value.trim().length>=2&&validPhone());
   }
-  async function go(n){if(n===2&&!services.length)return;if(n===3&&!selectedTime)return;step=n;document.querySelectorAll('[data-step]').forEach(x=>x.hidden=Number(x.dataset.step)!==n);document.querySelectorAll('[data-progress-step]').forEach(x=>x.classList.toggle('is-active',Number(x.dataset.progressStep)<=n));window.scrollTo({top:0,behavior:'smooth'});updateSummary();if(n===2&&!$('agenda-date').value){$('agenda-date').value=firstEligibleDate();await loadSlots({autoAdvance:true,reason:'initial'})}}
+  async function go(n){
+    if(n===2&&!services.length)return;
+    if(n===3&&!selectedTime)return;
+    step=n;
+    const panels=[...document.querySelectorAll('[data-step]')];
+    panels.forEach(x=>x.hidden=Number(x.dataset.step)!==n);
+    document.querySelectorAll('[data-progress-step]').forEach(x=>{
+      const p=Number(x.dataset.progressStep);
+      x.classList.toggle('is-active',p===n);
+      x.classList.toggle('is-complete',p<n);
+      x.disabled=p>n;
+      x.setAttribute('aria-current',p===n?'step':'false');
+    });
+    updateSummary();
+    if(n===2&&!$('agenda-date').value){$('agenda-date').value=firstEligibleDate();await loadSlots({autoAdvance:true,reason:'initial'})}
+    requestAnimationFrame(()=>{
+      const panel=document.querySelector(`[data-step="${n}"]`);
+      if(panel){panel.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>panel.focus({preventScroll:true}),420)}
+      if(n===3)setTimeout(()=>$('agenda-name').focus({preventScroll:true}),520);
+    });
+  }
   async function fetchAvailableSlots(date){
     const {data,error}=await sb.rpc('get_available_slots',{p_date:date,p_duration_minutes:total().duration});
     if(error)throw error;
@@ -90,27 +110,43 @@
     return null;
   }
   async function loadSlots(options={}){
-    selectedTime='';let date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='';
+    const requestId=++slotsRequestId;
+    selectedTime='';let date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='<div class="booking-slots-loading">Consultando os melhores horários…</div>';
     if(!date||!services.length){$('agenda-day-message').textContent='Escolha uma data';updateSummary();return}
     fire('date_selected',{booking_date:date});$('agenda-day-message').textContent='Consultando...';
     try{
       if(!isOpenDay(date)){
         const next=await findNextDateWithSlots(date,false);
+        if(requestId!==slotsRequestId)return;
         if(next){$('agenda-date').value=next.date;date=next.date;renderSlots(next.slots);$('agenda-day-message').textContent=`Fechado nessa data. Próximo dia disponível: ${prettyDate(date)}`;updateSummary();return}
       }
       let slots=await fetchAvailableSlots(date);
       if(!slots.length&&options.autoAdvance!==false){
         const next=await findNextDateWithSlots(date,false);
+        if(requestId!==slotsRequestId)return;
         if(next){$('agenda-date').value=next.date;date=next.date;slots=next.slots;renderSlots(slots);const prefix=options.reason==='initial'?'Próximo dia disponível':'Sem horários nessa data. Próximo dia disponível';$('agenda-day-message').textContent=`${prefix}: ${prettyDate(date)}`;updateSummary();return}
       }
+      if(requestId!==slotsRequestId)return;
       renderSlots(slots);
       $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';updateSummary();
-    }catch(error){box.innerHTML='<p>Não foi possível consultar os horários.</p>';$('agenda-day-message').textContent='Erro na consulta';console.error(error)}
+    }catch(error){if(requestId!==slotsRequestId)return;box.innerHTML='<div class="booking-empty-note"><strong>Não foi possível consultar agora.</strong><small>Tente novamente em alguns instantes.</small></div>';$('agenda-day-message').textContent='Erro na consulta';console.error(error)}
   }
   function renderSlots(slots){
-    const box=$('agenda-slots');box.innerHTML='';
-    if(!slots.length){box.innerHTML='<p class="booking-empty-note">Nenhum horário disponível para este atendimento.</p>';return}
-    slots.forEach(time=>{const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong><small>disponível</small>`;b.onclick=()=>{document.querySelectorAll('.agenda-slot').forEach(x=>x.classList.remove('is-selected'));b.classList.add('is-selected');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary()};box.appendChild(b)});
+    const box=$('agenda-slots');box.replaceChildren();
+    if(!slots.length){
+      box.innerHTML='<div class="booking-empty-note"><strong>Essa data ficou sem vagas.</strong><small>Escolha outra data no calendário para consultar novos horários.</small></div>';
+      return;
+    }
+    slots.forEach(time=>{
+      const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong><small>disponível</small>`;
+      b.onclick=()=>{
+        document.querySelectorAll('.agenda-slot').forEach(x=>x.classList.remove('is-selected'));
+        b.classList.add('is-selected');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary();
+        const action=document.querySelector('[data-step="2"] .booking-actions-v14');
+        if(action&&window.innerWidth<=700)setTimeout(()=>action.scrollIntoView({behavior:'smooth',block:'end'}),120);
+      };
+      box.appendChild(b)
+    });
   }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
@@ -126,7 +162,7 @@
     const add=e.target.closest('[data-add-service]');if(add){const s=allServices[Number(add.dataset.addService)];services.push({name:s.name,price:s.price,duration:s.duration});selectedTime='';fire('upsell_service_added',{item_name:s.name,value:s.price});renderSelected();return}
     const prod=e.target.closest('[data-product]');if(prod){const p=productCatalog.find(x=>x.name===prod.dataset.product);const i=products.findIndex(x=>x.name===p.name);if(i>=0)products.splice(i,1);else{products.push({name:p.name,price:p.price});fire('product_added_booking',{item_name:p.name,value:p.price})}renderProducts();updateSummary();saveState();return}
   });
-  document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));
+  document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));document.querySelectorAll('[data-progress-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.progressStep);if(n<=step)go(n)});
   $('agenda-date').onchange=()=>loadSlots({autoAdvance:true,reason:'manual'});['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=updateSummary);$('agenda-submit').onclick=submit;
   const now=spNow();$('agenda-date').min=`${now.year}-${now.month}-${now.day}`;
   renderSelected();$('agenda-status').innerHTML=configured?'<strong>Agenda online.</strong> Confira seu atendimento e escolha o melhor horário.':'<strong>Configuração pendente.</strong> O banco ainda precisa ser conectado.';go(1);

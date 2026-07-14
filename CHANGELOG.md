@@ -1,3 +1,12 @@
+## V24.4 — Agendamento guiado
+- Remove mensagem contraditória de indisponibilidade.
+- Evita respostas antigas sobrepondo horários atuais.
+- Avança com rolagem automática para a etapa correta.
+- Barra de progresso fixa e clicável nas etapas concluídas.
+- Ações principais sempre visíveis no celular.
+- Resumo lateral oculto no mobile para reduzir rolagem.
+- Layout de horários otimizado para telas pequenas.
+
 # V24.3.4
 
 - Agenda abre automaticamente no próximo dia útil reservável.
