@@ -53,7 +53,10 @@
 
     totalEl.textContent = money(total);
     const qty = count();
-    panel?.classList.toggle('active', qty > 0 && !panelHidden);
+    const isOpen = qty > 0 && !panelHidden;
+    panel?.classList.toggle('active', isOpen);
+    document.body.classList.toggle('cart-open', isOpen);
+    panel?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
     openBtn?.classList.toggle('show', qty > 0 && panelHidden);
     if(openBtn) openBtn.textContent = `Ver meu carrinho (${qty})`;
     if(scheduleBtn) scheduleBtn.disabled = qty === 0;
@@ -120,6 +123,14 @@
     if(dec){ const item=selectedServices.get(dec.dataset.decService); if(item){item.qty-=1; if(item.qty<=0) selectedServices.delete(dec.dataset.decService); render();} return; }
 
     if(panel?.classList.contains('active') && !event.target.closest('.service-cart') && !event.target.closest('#open-service-cart')){
+      panelHidden = true;
+      render();
+    }
+  });
+
+
+  document.addEventListener('keydown', event => {
+    if(event.key === 'Escape' && panel?.classList.contains('active')){
       panelHidden = true;
       render();
     }

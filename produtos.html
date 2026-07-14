@@ -39,9 +39,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="style.css?v=24.2" rel="stylesheet"/>
+<link href="style.css?v=24.3" rel="stylesheet"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Produtos e bebidas | Barbearia do Ju","url":"https://www.barbeariadoju.com.br/produtos.html","description":"Catálogo de produtos masculinos, finalizadores, cuidados para barba e bebidas disponíveis na Barbearia do Ju em Bragança Paulista.","isPartOf":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"breadcrumb":{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Início","item":"https://www.barbeariadoju.com.br/"},{"@type":"ListItem","position":2,"name":"Produtos","item":"https://www.barbeariadoju.com.br/produtos.html"}]}}</script>
-<link href="juia-chat.css?v=24.2" rel="stylesheet"/>
+<link href="juia-chat.css?v=24.3" rel="stylesheet"/>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -185,7 +185,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div>
 </div>
 </div>
-<aside aria-live="polite" class="cart-panel product-cart-panel">
+<aside aria-live="polite" aria-hidden="true" class="cart-panel product-cart-panel">
 <div class="cart-head"><strong>Meu pedido</strong><button id="clear-cart" type="button">Limpar</button></div>
 <div class="cart-items" id="cart-items"><span class="empty-cart">Nenhum item selecionado ainda.</span></div>
 <div class="cart-total"><span>Total estimado</span><strong id="cart-total">R$ 0,00</strong></div>
@@ -200,7 +200,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <a class="bottom-back-btn" href="index.html">← Voltar ao site</a>
 <a class="floating" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a>
 <footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="privacidade.html">Privacidade</a></small></footer>
-<script defer="" src="script.js?v=24.2"></script>
+<script defer="" src="script.js?v=24.3"></script>
 <script>
     const phone = '5511967073038';
     const storageKey = 'bdj_cart_v1';
@@ -255,7 +255,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       });
       if(count === 0) cartItems.innerHTML = '<span class="empty-cart">Nenhum item selecionado ainda.</span>';
       cartTotal.textContent = money(total);
-      cartPanel?.classList.toggle('active', count > 0 && !productPanelHidden);
+      const productCartOpen = count > 0 && !productPanelHidden;
+      cartPanel?.classList.toggle('active', productCartOpen);
+      document.body.classList.toggle('cart-open', productCartOpen);
+      cartPanel?.setAttribute('aria-hidden', productCartOpen ? 'false' : 'true');
       if(openProductCart){
         openProductCart.classList.toggle('show', count > 0 && productPanelHidden);
         openProductCart.textContent = `Ver meu carrinho (${count})`;
@@ -397,8 +400,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=24.2"></script>
-<script src="juia-chat.js?v=24.2" defer></script>
-<script src="privacy-consent-v22-4.js?v=24.2" defer></script>
+<script src="agenda-config-v6.js?v=24.3"></script>
+<script src="juia-chat.js?v=24.3" defer></script>
+<script src="privacy-consent-v22-4.js?v=24.3" defer></script>
 </body>
 </html>

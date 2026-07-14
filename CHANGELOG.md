@@ -1,3 +1,12 @@
+# V24.3 — Carrinho mobile responsivo
+
+- Corrige distorção e corte lateral do carrinho em Android e iOS.
+- Carrinho abre como bottom sheet, limitado à viewport.
+- Adiciona rolagem interna, safe area do iPhone e botões maiores.
+- Oculta JuIA e botões flutuantes enquanto o carrinho está aberto.
+- Bloqueia rolagem da página ao fundo.
+- Mantém o funcionamento desktop.
+
 ## V23.0 — Cliente Inteligente + CRM Premium
 - Nova página Minha Área com próximo horário, última visita, fidelidade e repetir serviço.
 - CRM com VIP, etiquetas, preferências técnicas, serviços/produtos favoritos, pagamento e intervalo de retorno.
