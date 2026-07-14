@@ -1,3 +1,11 @@
+# V24.5.1 — Estabilização do formulário próprio
+
+- Reescreve a Edge Function `contact-form` sem dependência externa do cliente Supabase.
+- Compatibilidade com `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_SECRET_KEYS`.
+- Tratamento global de erros e `request_id` para diagnóstico.
+- Logs claros para contagem, gravação e envio opcional por e-mail.
+- Mensagem permanece salva mesmo quando o Resend não está configurado ou falha.
+
 # Changelog
 
 ## V24.5.0
