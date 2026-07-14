@@ -1,3 +1,8 @@
+## V24.4.6
+- Corrige seleção de serviços no novo agendamento administrativo.
+- Cartões inteiros clicáveis e destaque visual de seleção.
+- Resumo de quantidade, duração e valor dos serviços selecionados.
+
 ## V24.4.4
 - JuIA vira aba lateral compacta no celular.
 - Evita sobreposição com botões principais e barra inferior.
@@ -118,7 +123,7 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Permite quebra segura de nomes de serviços, produtos, valores, horários e dados do cliente.
 - Adapta a confirmação para telas muito estreitas sem ampliar a página automaticamente.
 
-## V24.4.5 — Horários inteligentes na JuIA
+## V24.4.6 — Horários inteligentes na JuIA
 - Quando há muitos horários, a JuIA pergunta se o cliente prefere manhã, tarde ou final do dia.
 - Mostra todos os horários disponíveis do período escolhido.
 - Responde diretamente quando o cliente pergunta por um horário exato.

@@ -115,11 +115,42 @@
 Isso apagará o cadastro e TODOS os agendamentos vinculados ao telefone.
 
 Digite EXCLUIR para confirmar.`);if(typed!=='EXCLUIR')return;const {error}=await sb.rpc('admin_delete_customer_permanently',{p_customer_id:id});if(error){alert(error.message);return}await loadBaseData();renderBirthdaySummary();renderCRM();alert('Cliente e agendamentos vinculados foram excluídos definitivamente.')}
-  function initBookingForm(){$('booking-services').innerHTML=renderServicePicker();const dl=$('booking-customer-list');dl.innerHTML=customers.map(c=>`<option value="${esc(c.name)}" data-phone="${c.phone}"></option>`).join('');$('booking-name').oninput=fillKnownCustomer;$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='08:00';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else loadPrefillForm()}
-  function renderServicePicker(){const groups={};catalog.forEach(s=>(groups[s.category]??=[]).push(s));return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" name="booking-service" value="${esc(s.id)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')}
+  function initBookingForm(){$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();const dl=$('booking-customer-list');dl.innerHTML=customers.map(c=>`<option value="${esc(c.name)}" data-phone="${c.phone}"></option>`).join('');$('booking-name').oninput=fillKnownCustomer;$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='08:00';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else loadPrefillForm()}
+
+  function bindBookingServicePicker(){
+    const box=$('booking-services');
+    if(!box)return;
+    const update=()=>{
+      box.querySelectorAll('.booking-service-option').forEach(label=>{
+        const input=label.querySelector('input[name="booking-service"]');
+        label.classList.toggle('is-selected',Boolean(input?.checked));
+      });
+      const chosen=selectedServices();
+      let summary=$('booking-service-summary');
+      if(!summary){
+        summary=document.createElement('div');
+        summary.id='booking-service-summary';
+        summary.className='booking-service-summary';
+        box.parentNode.insertBefore(summary,box.nextSibling);
+      }
+      if(!chosen.length){summary.innerHTML='<span>Nenhum serviço selecionado.</span>';return}
+      const duration=chosen.reduce((a,s)=>a+Number(s.duration||0),0);
+      const total=chosen.reduce((a,s)=>a+Number(s.price||0),0);
+      summary.innerHTML=`<strong>${chosen.length} serviço${chosen.length>1?'s':''} selecionado${chosen.length>1?'s':''}</strong><span>${duration} min • ${money(total)}</span>`;
+    };
+    box.addEventListener('change',update);
+    box.querySelectorAll('.booking-service-option').forEach(label=>label.addEventListener('click',e=>{
+      if(e.target.matches('input'))return;
+      const input=label.querySelector('input[name="booking-service"]');
+      if(input){input.checked=!input.checked;input.dispatchEvent(new Event('change',{bubbles:true}));e.preventDefault()}
+    }));
+    update();
+  }
+
+  function renderServicePicker(){const groups={};catalog.forEach(s=>(groups[s.category]??=[]).push(s));return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" name="booking-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')}
   function fillKnownCustomer(){const n=$('booking-name').value.trim().toLowerCase(),p=phoneDigits($('booking-phone').value),c=customers.find(x=>x.phone===p||x.name.toLowerCase()===n);if(c){$('booking-name').value=c.name;$('booking-phone').value=c.phone}}
-  function selectedServices(){return [...document.querySelectorAll('input[name="booking-service"]:checked')].map(i=>catalog.find(s=>s.id===i.value)).filter(Boolean)}
-  function selectServicesByNames(text=''){const names=text.split(' + ').map(s=>s.trim());document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.id===i.value);i.checked=!!s&&names.includes(s.name)})}
+  function selectedServices(){return [...document.querySelectorAll('input[name="booking-service"]:checked')].map(i=>catalog.find(s=>s.name===i.value)).filter(Boolean)}
+  function selectServicesByNames(text=''){const names=text.split(' + ').map(s=>s.trim());document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.name===i.value);i.checked=!!s&&names.includes(s.name);i.dispatchEvent(new Event('change',{bubbles:true}))})}
   function prefillReturnStorage(x){if(!x)return;const d=new Date(x.booking_date+'T12:00:00');d.setDate(d.getDate()+15);sessionStorage.setItem('bdj-prefill-booking',JSON.stringify({name:x.customer_name,phone:x.customer_phone,date:isoLocal(d),time:x.start_time.slice(0,5),services:x.service_name,notes:'Retorno'}))}
   function loadPrefillForm(){const raw=sessionStorage.getItem('bdj-prefill-booking'),cRaw=sessionStorage.getItem('bdj-prefill-customer');if(raw){const x=JSON.parse(raw);fillForm(x);sessionStorage.removeItem('bdj-prefill-booking')}else if(cRaw){const c=JSON.parse(cRaw);fillForm({name:c.name,phone:c.phone,date:isoLocal(new Date()),time:'08:00',services:c.lastServices,notes:'Retorno'});sessionStorage.removeItem('bdj-prefill-customer')}}
   function fillForm(x){$('booking-name').value=x.name||'';$('booking-phone').value=x.phone||'';$('booking-date').value=x.date||isoLocal(new Date());$('booking-time').value=x.time||'08:00';$('booking-notes').value=x.notes||'';selectServicesByNames(x.services||'')}

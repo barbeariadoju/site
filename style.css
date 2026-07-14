@@ -1823,3 +1823,11 @@ html,body{max-width:100%;overflow-x:hidden}
     text-align:left;
   }
 }
+
+/* V24.4.6 — seleção de serviços no admin */
+.booking-service-option{cursor:pointer}
+.booking-service-option.is-selected>span{border-color:#d9a84e;background:linear-gradient(135deg,rgba(217,168,78,.18),rgba(217,168,78,.06));box-shadow:0 0 0 1px rgba(217,168,78,.28) inset}
+.booking-service-option.is-selected i{opacity:1;transform:scale(1)}
+.booking-service-summary{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:14px 0 20px;padding:14px 16px;border:1px solid rgba(217,168,78,.3);border-radius:14px;background:rgba(217,168,78,.08)}
+.booking-service-summary span{color:#cfc6b7}
+@media(max-width:640px){.booking-service-summary{align-items:flex-start;flex-direction:column;gap:4px}}
