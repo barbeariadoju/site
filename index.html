@@ -249,7 +249,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div>
 <p class="contact-hours"><strong>Atendimento:</strong> terça a sexta, 08h–19h • sábado, 08h–15h</p>
 </div>
-<form class="suggestion-form premium-form" id="contact-form" action="https://formsubmit.co/contato@barbeariadoju.com.br" method="POST" target="_blank">
+<form class="suggestion-form premium-form" id="contact-form" novalidate>
 <div class="form-heading"><span>✦</span><div><strong>Envie uma mensagem</strong><small>Responderemos assim que possível.</small></div></div>
 <label for="nome">Seu nome</label>
 <input autocomplete="name" id="nome" name="nome" placeholder="Digite seu nome" required minlength="2" maxlength="80" type="text"/>
@@ -258,10 +258,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <small id="whatsapp-help" class="field-help">Digite o DDD e o número do seu WhatsApp.</small>
 <label for="mensagem">Mensagem</label>
 <textarea autocomplete="off" id="mensagem" name="mensagem" placeholder="Como podemos ajudar?" required minlength="10" maxlength="1000" rows="5"></textarea>
-<input name="_subject" type="hidden" value="Nova mensagem pelo site — Barbearia do Ju"/>
-<input name="_captcha" type="hidden" value="false"/>
-<input name="_template" type="hidden" value="table"/>
-<input aria-hidden="true" autocomplete="off" class="honeypot" name="_honey" tabindex="-1" type="text"/>
+
+<input aria-hidden="true" autocomplete="off" class="honeypot" name="website" tabindex="-1" type="text"/>
 <button class="btn primary contact-submit" id="contact-submit" type="submit">📩 Enviar mensagem</button>
 <p aria-live="polite" class="form-status" id="form-status"></p>
 </form>
@@ -294,7 +292,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <script defer="" src="script.js?v=24.3"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=24.3"></script>
+<script src="agenda-config-v6.js?v=24.5.0"></script>
+<script src="contact-form-v24-5.js?v=24.5.0" defer></script>
 <script src="juia-chat.js?v=24.4.4.4" defer></script>
 <script src="privacy-consent-v22-4.js?v=24.3" defer></script>
 </body>

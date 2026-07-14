@@ -1,3 +1,13 @@
+# Changelog
+
+## V24.5.0
+- Remove dependência do FormSubmit.
+- Salva dúvidas no Supabase.
+- Nova tela Mensagens no painel.
+- Resposta pelo WhatsApp, status, arquivo e exclusão.
+- Envio opcional ao Zoho por Resend.
+- Proteção antispam e limite por telefone.
+
 ## V24.4.8
 - Corrige estouro horizontal da revisão do agendamento em celular, tablet e janela estreita.
 - JuIA abre em tela cheia no celular com cabeçalho e botão fechar sempre visíveis.
