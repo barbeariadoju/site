@@ -1540,3 +1540,34 @@ body.cart-open .back-top{
   .cart-row button{width:38px !important;height:38px !important;min-width:38px}
   .cart-qty-actions{gap:5px !important}
 }
+
+
+/* V24.3.2 — Carrinho simplificado e ações profissionais */
+.cart-head .cart-clear{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  width:auto;height:auto;min-height:38px;padding:7px 12px;
+  border-radius:999px;font-size:.82rem;font-weight:800;white-space:nowrap;
+}
+.cart-note{margin:8px 0 4px;text-align:center}
+.cart-primary-action{
+  position:relative;
+  box-shadow:0 16px 38px rgba(214,169,94,.24)!important;
+}
+.secondary-cart{
+  background:rgba(255,255,255,.045)!important;
+  color:var(--gold2)!important;
+  border:1px solid rgba(240,201,135,.28)!important;
+  box-shadow:none!important;
+}
+.product-suggest,.service-suggest{
+  display:flex;align-items:center;justify-content:center;text-decoration:none;
+  background:rgba(200,155,85,.12)!important;color:var(--gold2)!important;
+  border:1px solid rgba(240,201,135,.24)!important;box-shadow:none!important;
+}
+.cart-panel .send-cart{min-height:50px}
+.cart-panel .cart-row button{min-width:36px;min-height:36px}
+@media(max-width:700px){
+  .cart-head .cart-clear{min-height:40px!important;padding:8px 12px!important}
+  .cart-note{text-align:left;margin:7px 1px 5px}
+  .cart-panel .send-cart{min-height:54px}
+}

@@ -1,4 +1,4 @@
-# V24.3.1
+# V24.3.2
 - Corrige carrinho embaçado no desktop, Android e iPhone.
 - Move o overlay escuro para trás do carrinho.
 - Remove o backdrop-filter do overlay para compatibilidade entre navegadores.

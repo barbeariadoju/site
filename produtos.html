@@ -39,9 +39,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="style.css?v=24.3.1" rel="stylesheet"/>
+<link href="style.css?v=24.3.2" rel="stylesheet"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Produtos e bebidas | Barbearia do Ju","url":"https://www.barbeariadoju.com.br/produtos.html","description":"Catálogo de produtos masculinos, finalizadores, cuidados para barba e bebidas disponíveis na Barbearia do Ju em Bragança Paulista.","isPartOf":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"breadcrumb":{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Início","item":"https://www.barbeariadoju.com.br/"},{"@type":"ListItem","position":2,"name":"Produtos","item":"https://www.barbeariadoju.com.br/produtos.html"}]}}</script>
-<link href="juia-chat.css?v=24.3.1" rel="stylesheet"/>
+<link href="juia-chat.css?v=24.3.2" rel="stylesheet"/>
 </head>
 <body>
 <!-- Google Tag Manager (noscript) -->
@@ -186,21 +186,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </div>
 </div>
 <aside aria-live="polite" aria-hidden="true" class="cart-panel product-cart-panel">
-<div class="cart-head"><strong>Meu pedido</strong><button id="clear-cart" type="button">Limpar</button></div>
+<div class="cart-head"><strong>Meu pedido</strong><button class="cart-clear" id="clear-cart" type="button" aria-label="Limpar todo o pedido"><span aria-hidden="true">🗑</span> Limpar tudo</button></div>
 <div class="cart-items" id="cart-items"><span class="empty-cart">Nenhum item selecionado ainda.</span></div>
 <div class="cart-total"><span>Total estimado</span><strong id="cart-total">R$ 0,00</strong></div>
-<p class="cart-note">Você pode combinar produtos com serviços no mesmo pedido.</p>
+<p class="cart-note">Produtos são opcionais e podem ser reservados junto com o atendimento.</p>
 <div class="mini-suggest"><strong>Sugestão:</strong> produtos de barba combinam muito com barboterapia; pomadas e pastas combinam com corte.</div>
-<button class="send-cart secondary-cart" id="continue-products" type="button">Continuar escolhendo produtos</button>
-<button class="send-cart view-cart-action" id="view-product-cart" type="button">Ver meu carrinho</button>
+<button class="send-cart secondary-cart" id="continue-products" type="button">← Adicionar mais produtos</button>
 <a class="send-cart service-suggest" href="servicos.html">Adicionar serviços ao pedido</a>
-<button class="send-cart" id="send-cart" type="button">Finalizar pedido pelo WhatsApp</button>
+<button class="send-cart cart-primary-action" id="send-cart" type="button">Finalizar pedido pelo WhatsApp →</button>
 </aside>
 <button class="open-cart-btn" id="open-product-cart" type="button">Ver meu carrinho</button>
 <a class="bottom-back-btn" href="index.html">← Voltar ao site</a>
 <a class="floating" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a>
 <footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="privacidade.html">Privacidade</a></small></footer>
-<script defer="" src="script.js?v=24.3.1"></script>
+<script defer="" src="script.js?v=24.3.2"></script>
 <script>
     const phone = '5511967073038';
     const storageKey = 'bdj_cart_v1';
@@ -243,14 +242,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         total += item.price * item.qty; count += item.qty;
         const row = document.createElement('div');
         row.className = 'cart-row cart-row-muted';
-        row.innerHTML = `<span>${item.qty}x ${item.name} <small>serviço</small></span><div></div>`;
+        row.innerHTML = `<div class="cart-row-main"><span>${item.qty}x ${item.name}<small>serviço selecionado</small></span></div><div></div>`;
         cartItems.appendChild(row);
       });
       cart.forEach((item,key)=>{
         total += item.price * item.qty; count += item.qty;
         const row = document.createElement('div');
         row.className = 'cart-row';
-        row.innerHTML = `<span>${item.qty}x ${item.name}</span><div><button type="button" data-dec="${key}">−</button><button type="button" data-inc="${key}">+</button></div>`;
+        row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-product="${key}" aria-label="Remover ${item.name}" title="Remover produto">×</button><span>${item.qty}x ${item.name}<small>produto</small></span></div><div class="cart-qty-actions"><button type="button" data-dec="${key}" aria-label="Diminuir ${item.name}">−</button><button type="button" data-inc="${key}" aria-label="Aumentar ${item.name}">+</button></div>`;
         cartItems.appendChild(row);
       });
       if(count === 0) cartItems.innerHTML = '<span class="empty-cart">Nenhum item selecionado ainda.</span>';
@@ -263,7 +262,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         openProductCart.classList.toggle('show', count > 0 && productPanelHidden);
         openProductCart.textContent = `Ver meu carrinho (${count})`;
       }
-      if(sendCart) sendCart.textContent = selectedServices.size > 0 ? 'Escolher data e horário' : 'Finalizar produtos pelo WhatsApp';
+      if(sendCart) sendCart.textContent = selectedServices.size > 0 ? 'Continuar para data e horário →' : 'Finalizar produtos pelo WhatsApp →';
       saveCart();
     }
     function addItem(name, price){
@@ -301,6 +300,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       if(e.target.closest('[data-close-modal]')){ closeProductModal(); return; }
       const btn = e.target.closest('.cart-btn');
       if(btn){ addItem(btn.dataset.name, parseFloat(btn.dataset.price || '0')); feedback(btn); closeProductModal(); return; }
+      const removeProduct = e.target.closest('[data-remove-product]');
+      if(removeProduct){ cart.delete(removeProduct.dataset.removeProduct); renderCart(); return; }
       const inc = e.target.dataset.inc, dec = e.target.dataset.dec;
       if(inc && cart.has(inc)){ cart.get(inc).qty += 1; renderCart(); return; }
       if(dec && cart.has(dec)){ const it = cart.get(dec); it.qty -= 1; if(it.qty <= 0) cart.delete(dec); renderCart(); return; }
@@ -314,7 +315,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     continueProducts?.addEventListener('click',()=>{ productPanelHidden = true; cartPanel?.classList.remove('active'); renderCart(); });
     function showProductCart(){ productPanelHidden = false; renderCart(); }
     openProductCart?.addEventListener('click', showProductCart);
-    document.getElementById('view-product-cart')?.addEventListener('click', showProductCart);
     function abrirWhatsAppPedido(texto){
       // Link mais leve e estável para WhatsApp Web/Desktop/App.
       // Remove caracteres que costumam travar o app desktop em alguns computadores.
@@ -400,8 +400,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=24.3.1"></script>
-<script src="juia-chat.js?v=24.3.1" defer></script>
-<script src="privacy-consent-v22-4.js?v=24.3.1" defer></script>
+<script src="agenda-config-v6.js?v=24.3.2"></script>
+<script src="juia-chat.js?v=24.3.2" defer></script>
+<script src="privacy-consent-v22-4.js?v=24.3.2" defer></script>
 </body>
 </html>

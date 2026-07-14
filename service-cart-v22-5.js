@@ -12,7 +12,6 @@
   const openBtn = document.getElementById('open-service-cart');
   const clearBtn = document.getElementById('clear-services');
   const continueBtn = document.getElementById('continue-services');
-  const viewBtn = document.getElementById('view-service-cart');
   const scheduleBtn = document.getElementById('send-services');
   let panelHidden = true;
 
@@ -144,7 +143,6 @@
     render();
   });
   continueBtn?.addEventListener('click', () => { panelHidden = true; render(); });
-  viewBtn?.addEventListener('click', showCart);
   openBtn?.addEventListener('click', showCart);
   scheduleBtn?.addEventListener('click', prepareAgenda);
   render();

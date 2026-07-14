@@ -1,1 +1,2 @@
-V24.3.1 — Hotfix do carrinho: camada escura atrás do modal, sem desfoque sobre o conteúdo.
+Barbearia do Ju — V24.3.2
+Carrinho simplificado, ações claras e controles aprimorados.
