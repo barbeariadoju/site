@@ -1,4 +1,4 @@
 window.BDJ_PUSH_CONFIG = {
-  vapidPublicKey: 'BAS3g6YMfUiI6JKf4laO8xhridGTuAOdy978fnmQU9EgJu2BjoU5DSqQYWUevFIjWMkyjGUkVZpWS5nk4YvhO2Y',
+  vapidPublicKey: 'BGnkzM1MnRbsNRFMzs7s8ECRrcgNQMYDYRC7guoPgzY_qkmMZfxBJ8ju6TBuI_C6PP48p_g-ney0aeXJEkdoIn0',
   sendPushFunction: 'send-push'
 };

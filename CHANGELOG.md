@@ -1,3 +1,8 @@
+# V24.6.2
+- Rotação completa das chaves VAPID.
+- Novo segredo do webhook.
+- Chave pública sincronizada com o site.
+
 # V24.6.1 — Push multicliente e alerta sonoro no PC
 
 - Notificações Web Push em Android, iPhone/iPad instalados e Chrome/Edge no computador.
