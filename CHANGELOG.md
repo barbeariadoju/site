@@ -1,3 +1,10 @@
+# V24.6.3 — Push sincronizado e autorreparo
+- Novo par VAPID sincronizado entre site e Supabase.
+- Detecta automaticamente assinatura criada com chave antiga.
+- Cancela assinatura antiga antes de criar a nova.
+- Exibe entregas e falhas no teste de notificação.
+- Atualiza Service Worker e cache para evitar versão antiga.
+
 # V24.6.2
 - Rotação completa das chaves VAPID.
 - Novo segredo do webhook.

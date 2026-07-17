@@ -1,4 +1,4 @@
-const CACHE = 'barbearia-os-v24-6-1';
+const CACHE = 'barbearia-os-v24-6-3';
 const CORE = [
   './',
   'index.html',
@@ -12,9 +12,9 @@ const CORE = [
   'privacy-consent-v22-4.js?v=24.3',
   'manifest.webmanifest',
   'admin-manifest.webmanifest',
-  'admin-pwa.js?v=24.6.1',
-  'push-config-v24-6.js?v=24.6.1',
-  'admin-push-runtime-v24-6.js?v=24.6.1',
+  'admin-pwa.js?v=24.6.3',
+  'push-config-v24-6.js?v=24.6.3',
+  'admin-push-runtime-v24-6.js?v=24.6.3',
   'assets/apple-touch-icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
