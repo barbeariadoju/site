@@ -6,7 +6,7 @@
   let deferredInstallPrompt=null;
 
   if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=19.1').catch(()=>{}));
+    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=24.6.0').catch(()=>{}));
   }
 
   // Navegação inferior compacta para iPhone e Android.
@@ -18,7 +18,8 @@
       ['agenda','admin-agenda.html','▦','Agenda'],
       ['agendamento','admin-agendamento.html','＋','Agendar'],
       ['clientes','admin-clientes.html','👥','Clientes'],
-      ['assistente','admin-assistente.html','✦','JuIA']
+      ['assistente','admin-assistente.html','✦','JuIA'],
+      ['notificacoes','admin-notificacoes.html','🔔','Alertas']
     ];
     const nav=document.createElement('nav');
     nav.className='admin-mobile-nav';

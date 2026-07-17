@@ -1,7 +1,7 @@
 {
   "name": "Barbearia OS",
   "short_name": "Barbearia OS",
-  "description": "Painel da Barbearia do Ju para agenda, modo atendimento, CRM, fidelidade e JuIA.",
+  "description": "Painel da Barbearia do Ju para agenda, notificações, modo atendimento, CRM, fidelidade e JuIA.",
   "start_url": "/admin.html?app=1",
   "scope": "/",
   "id": "/admin.html",

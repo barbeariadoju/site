@@ -153,3 +153,9 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Responde diretamente quando o cliente pergunta por um horário exato.
 - Mantém no pacote as correções responsivas V24.4.3 e V24.4.4.
 - Nenhuma alteração de banco de dados.
+
+## V24.6.0 — Notificações do painel
+- Ativação separada no iPhone e Android.
+- Web Push para novos agendamentos.
+- Notificação de teste e abertura direta da agenda.
+- Service Worker preparado para alertas em segundo plano.
