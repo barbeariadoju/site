@@ -1,3 +1,12 @@
+# V24.6.1 — Push multicliente e alerta sonoro no PC
+
+- Notificações Web Push em Android, iPhone/iPad instalados e Chrome/Edge no computador.
+- Notificação persistente no PC (`requireInteraction`) com som padrão do sistema.
+- Campainha interna adicional quando o painel administrativo está aberto no computador.
+- Vibração reforçada em dispositivos compatíveis.
+- Tela administrativa para ativar, testar e desativar cada aparelho.
+- Toque na notificação abre a agenda administrativa.
+
 # V24.5.1 — Estabilização do formulário próprio
 
 - Reescreve a Edge Function `contact-form` sem dependência externa do cliente Supabase.

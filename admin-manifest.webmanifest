@@ -87,6 +87,17 @@
           "sizes": "192x192"
         }
       ]
+    },
+    {
+      "name": "Notificações",
+      "short_name": "Alertas",
+      "url": "/admin-notificacoes.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

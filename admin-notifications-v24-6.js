@@ -83,6 +83,7 @@
 
   async function enable(){
     try{
+      window.BDJPushSound?.unlock?.();
       setStatus('Solicitando permissão…');
       const permission=await Notification.requestPermission();
       if(permission!=='granted')throw new Error('A permissão de notificações não foi concedida.');
@@ -119,6 +120,7 @@
 
   async function testPush(){
     try{
+      window.BDJPushSound?.unlock?.();
       setStatus('Enviando notificação de teste…');
       const sess=await session();
       if(!sess)throw new Error('Sessão administrativa expirada.');
@@ -133,7 +135,7 @@
       });
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||'Falha ao enviar o teste.');
-      setStatus(`Teste enviado para ${data.sent||0} aparelho(s).`,'success');
+      setStatus(`Teste enviado para ${data.sent||0} aparelho(s). No computador, o painel também toca uma campainha quando estiver aberto.`,'success');
     }catch(error){
       setStatus(error?.message||'Não foi possível enviar o teste.','error');
     }
