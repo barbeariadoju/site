@@ -18,14 +18,18 @@ Deno.serve(async(req:Request)=>{
   try{
     const body=await req.json()
     const required=['customer_name','customer_phone','service_name','service_price','duration_minutes','booking_date','start_time']
-    for(const key of required){if(body?.[key]===undefined||body?.[key]===null||body?.[key]==='')return json({error:`Campo obrigatório ausente: ${key}`},400)}
+    for(const key of required){
+      if(body?.[key]===undefined||body?.[key]===null||body?.[key]===''){
+        return json({error:`Campo obrigatório ausente: ${key}`},400)
+      }
+    }
 
     const url=Deno.env.get('SUPABASE_URL')!
     const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
     const admin=createClient(url,service)
 
-    const {data:id,error}=await admin.rpc('create_public_booking_v15',{
+    const {data:id,error:createError}=await admin.rpc('create_public_booking_v15',{
       p_customer_name:String(body.customer_name).trim(),
       p_customer_phone:String(body.customer_phone).replace(/\D/g,''),
       p_customer_email:body.customer_email?String(body.customer_email).trim().toLowerCase():null,
@@ -37,24 +41,37 @@ Deno.serve(async(req:Request)=>{
       p_notes:body.notes?String(body.notes).trim():null,
       p_selected_products:Array.isArray(body.selected_products)?body.selected_products:[]
     })
-    if(error)return json({error:error.message},400)
+    if(createError)return json({error:createError.message},400)
 
     const managementToken=token()
-    let bookingCode=code()
+    const tokenHash=await hash(managementToken)
+    let bookingCode=''
     let record:any=null
-    for(let attempt=0;attempt<4;attempt++){
-      const {data,error:updateError}=await admin.from('bookings').update({booking_code:bookingCode,management_token_hash:await hash(managementToken)}).eq('id',id).select('*').single()
-      if(!updateError){record=data;break}
+    let lastError:any=null
+
+    for(let attempt=0;attempt<5;attempt++){
       bookingCode=code()
+      const {data,error}=await admin.rpc('attach_booking_management_v25',{
+        p_booking_id:id,
+        p_booking_code:bookingCode,
+        p_management_token_hash:tokenHash
+      })
+      if(!error&&data){record=data;break}
+      lastError=error
+      console.error('[create-public-booking] attach attempt',attempt+1,error)
+      if(!String(error?.message||'').toLowerCase().includes('duplicate'))break
     }
+
     if(!record){
-      const fallback=await admin.from('bookings').select('*').eq('id',id).single()
-      record=fallback.data
-    }else{
-      await admin.from('booking_customer_actions').insert({booking_id:id,action:'created_link'})
+      console.error('[create-public-booking] management link not persisted',lastError)
+      return json({error:'O agendamento foi criado, mas não foi possível gerar o link de gerenciamento. Entre em contato com a Barbearia do Ju.',booking_id:id},500)
     }
+
+    const {error:actionError}=await admin.from('booking_customer_actions').insert({booking_id:id,action:'created_link'})
+    if(actionError)console.error('[create-public-booking] action log',actionError)
+
     let push={sent:0,failed:0}
-    if(record&&pushSecret){
+    if(pushSecret){
       try{
         const response=await fetch(`${url}/functions/v1/send-push`,{
           method:'POST',
@@ -67,7 +84,15 @@ Deno.serve(async(req:Request)=>{
       }catch(error){console.error('[create-public-booking] push exception',error)}
     }
 
-    return json({ok:true,id,record,push,booking_code:record?.booking_code||bookingCode,management_token:managementToken,manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record?.booking_code||bookingCode)}&token=${encodeURIComponent(managementToken)}`})
+    return json({
+      ok:true,
+      id,
+      record,
+      push,
+      booking_code:record.booking_code,
+      management_token:managementToken,
+      manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record.booking_code)}&token=${encodeURIComponent(managementToken)}`
+    })
   }catch(error){
     console.error('[create-public-booking]',error)
     return json({error:'Não foi possível concluir o agendamento.'},500)

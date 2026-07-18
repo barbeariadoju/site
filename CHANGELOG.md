@@ -205,3 +205,9 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Liberação automática do horário cancelado ou anterior.
 - Push administrativo em cancelamentos e reagendamentos.
 - Google Agenda, arquivo de calendário e convite para instalar o PWA.
+
+## V25.1.1 — Hotfix do link de gerenciamento
+- Corrige a gravação do `booking_code` e do `management_token_hash`.
+- Impede a entrega de links inválidos quando a gravação falhar.
+- Adiciona função SQL atômica para vincular o gerenciamento ao agendamento.
+- Melhora os logs da Edge Function `create-public-booking`.
