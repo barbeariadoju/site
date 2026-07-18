@@ -41,7 +41,9 @@ Deno.serve(async(req:Request)=>{
   if(!subs?.length)return json({ok:true,sent:0,failed:0})
 
   let payload:any
-  if(body.mode==='test'){
+  if(body.custom?.title){
+    payload={title:String(body.custom.title),body:String(body.custom.body||''),url:String(body.custom.url||'/admin-agenda.html?app=1'),tag:String(body.custom.tag||`custom-${Date.now()}`)}
+  }else if(body.mode==='test'){
     payload={title:'🔔 Teste da Barbearia do Ju',body:'As notificações estão funcionando neste aparelho.',url:'/admin-notificacoes.html?app=1',tag:`push-test-${Date.now()}`}
   }else{
     const record=body.record||body?.payload?.record||{}

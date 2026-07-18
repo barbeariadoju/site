@@ -1,4 +1,4 @@
-const CACHE = 'barbearia-os-v24-6-3';
+const CACHE = 'barbearia-os-v25-1-0';
 const CORE = [
   './',
   'index.html',
@@ -24,6 +24,7 @@ const CORE = [
 
 const NEVER_CACHE = [
   '/agendar.html',
+  '/meu-agendamento.html',
   '/cliente.html',
   '/admin.html',
   '/admin-agenda.html',
@@ -35,6 +36,7 @@ const NEVER_CACHE = [
   '/admin-notificacoes.html',
   '/agenda-config-v6.js',
   '/agenda-v15.js',
+  '/meu-agendamento-v25.js',
   '/cliente-v23.js',
   '/juia-chat.js',
   '/service-cart-v22-5.js',

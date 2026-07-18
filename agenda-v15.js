@@ -162,7 +162,9 @@
     if(error||!result?.ok){alert(bookingError.includes('indisponível')||bookingError.includes('bloqueado')||bookingError.includes('antecedência')?bookingError:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Confirmar agendamento';$('agenda-submit').disabled=false;await loadSlots();return}
     fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
     sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
-    $('agenda-status').innerHTML='<strong>Agendamento confirmado com sucesso!</strong> Seu horário já está reservado na Barbearia do Ju. Aguardamos você no dia e horário escolhidos.';$('agenda-status').classList.add('is-success');$('agenda-status').scrollIntoView({behavior:'smooth'});$('agenda-submit').textContent='Agendamento confirmado';
+    const manageUrl=result.manage_url||'';
+    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}`;
+    $('agenda-status').classList.add('is-success');$('agenda-status').scrollIntoView({behavior:'smooth'});$('agenda-submit').textContent='Agendamento confirmado';
   }
   document.addEventListener('click',e=>{
     const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();return}

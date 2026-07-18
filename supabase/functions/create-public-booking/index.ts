@@ -7,6 +7,9 @@ const corsHeaders={
   'Content-Type':'application/json; charset=utf-8'
 }
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:corsHeaders})
+const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('')
+const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b=>b.toString(16).padStart(2,'0')).join('')
+const code=()=>`BJ-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,7).toUpperCase()}`
 
 Deno.serve(async(req:Request)=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders})
@@ -36,7 +39,20 @@ Deno.serve(async(req:Request)=>{
     })
     if(error)return json({error:error.message},400)
 
-    const {data:record}=await admin.from('bookings').select('*').eq('id',id).single()
+    const managementToken=token()
+    let bookingCode=code()
+    let record:any=null
+    for(let attempt=0;attempt<4;attempt++){
+      const {data,error:updateError}=await admin.from('bookings').update({booking_code:bookingCode,management_token_hash:await hash(managementToken)}).eq('id',id).select('*').single()
+      if(!updateError){record=data;break}
+      bookingCode=code()
+    }
+    if(!record){
+      const fallback=await admin.from('bookings').select('*').eq('id',id).single()
+      record=fallback.data
+    }else{
+      await admin.from('booking_customer_actions').insert({booking_id:id,action:'created_link'})
+    }
     let push={sent:0,failed:0}
     if(record&&pushSecret){
       try{
@@ -51,7 +67,7 @@ Deno.serve(async(req:Request)=>{
       }catch(error){console.error('[create-public-booking] push exception',error)}
     }
 
-    return json({ok:true,id,record,push})
+    return json({ok:true,id,record,push,booking_code:record?.booking_code||bookingCode,management_token:managementToken,manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record?.booking_code||bookingCode)}&token=${encodeURIComponent(managementToken)}`})
   }catch(error){
     console.error('[create-public-booking]',error)
     return json({error:'Não foi possível concluir o agendamento.'},500)

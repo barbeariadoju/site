@@ -197,3 +197,11 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Web Push para novos agendamentos.
 - Notificação de teste e abertura direta da agenda.
 - Service Worker preparado para alertas em segundo plano.
+
+
+## V25.1.0 — Meu Agendamento
+- Link seguro após a confirmação.
+- Consulta, cancelamento e reagendamento pelo cliente.
+- Liberação automática do horário cancelado ou anterior.
+- Push administrativo em cancelamentos e reagendamentos.
+- Google Agenda, arquivo de calendário e convite para instalar o PWA.
