@@ -156,12 +156,12 @@
   }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
-    $('agenda-submit').disabled=true;$('agenda-submit').textContent='Enviando...';
+    $('agenda-submit').disabled=true;$('agenda-submit').textContent='Confirmando...';
     const {error}=await sb.rpc('create_public_booking_v15',{p_customer_name:$('agenda-name').value.trim(),p_customer_phone:$('agenda-phone').value.replace(/\D/g,''),p_customer_email:email,p_service_name:names.join(' + '),p_service_price:t.servicePrice,p_duration_minutes:t.duration,p_booking_date:$('agenda-date').value,p_start_time:selectedTime,p_notes:$('agenda-notes').value.trim()||null,p_selected_products:products});
-    if(error){alert(error.message.includes('indisponível')||error.message.includes('bloqueado')?error.message:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Enviar solicitação';$('agenda-submit').disabled=false;await loadSlots();return}
-    fire('booking_submitted',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
+    if(error){alert(error.message.includes('indisponível')||error.message.includes('bloqueado')?error.message:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Confirmar agendamento';$('agenda-submit').disabled=false;await loadSlots();return}
+    fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
     sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
-    $('agenda-status').innerHTML='<strong>Solicitação recebida!</strong> Seu horário está aguardando confirmação. Você poderá receber o retorno pelo WhatsApp e, futuramente, também pelo e-mail informado.';$('agenda-status').classList.add('is-success');$('agenda-status').scrollIntoView({behavior:'smooth'});$('agenda-submit').textContent='Solicitação enviada';
+    $('agenda-status').innerHTML='<strong>Agendamento confirmado com sucesso!</strong> Seu horário já está reservado na Barbearia do Ju. Aguardamos você no dia e horário escolhidos.';$('agenda-status').classList.add('is-success');$('agenda-status').scrollIntoView({behavior:'smooth'});$('agenda-submit').textContent='Agendamento confirmado';
   }
   document.addEventListener('click',e=>{
     const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();return}

@@ -1,3 +1,11 @@
+# V25.0.1 — Confirmação automática e CRM
+
+- Agendamentos públicos passam a ser gravados como confirmados.
+- JuIA confirma o horário imediatamente após a reserva bem-sucedida.
+- Tela pública não informa mais que o cliente deve aguardar confirmação.
+- Busca do CRM continua instantânea e agora também responde à tecla Enter.
+- Mantidos bloqueios de horário, margem mínima de 15 minutos e prevenção de conflitos.
+
 # V24.6.3 — Push sincronizado e autorreparo
 - Novo par VAPID sincronizado entre site e Supabase.
 - Detecta automaticamente assinatura criada com chave antiga.

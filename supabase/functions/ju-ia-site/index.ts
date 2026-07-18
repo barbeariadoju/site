@@ -321,8 +321,8 @@ Deno.serve(async req=>{
     if(error){reply=error.message.includes('indisponível')?'Esse horário acabou de ficar indisponível. Posso consultar outro para você.':error.message;intent='availability';next.time=null}
     else{
       const prodText=selectedProducts.length?` Produtos reservados: ${selectedProducts.map((p:any)=>p.name).join(', ')}.`:''
-      reply=`✅ Horário reservado! ${next.name}, sua solicitação de ${chosen.map((s:any)=>s.name).join(' + ')} foi registrada para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Ela está aguardando a confirmação final do Juliano. 😊`
-      actions=[{label:'Falar com o Juliano',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Fiz uma solicitação pela JuIA para ${next.date} às ${next.time}.`),primary:true}]
+      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊`
+      actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
     }
    }
