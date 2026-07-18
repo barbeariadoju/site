@@ -1,3 +1,12 @@
+# V25.0.2 — Correções da confirmação automática
+
+- Corrigido o envio de Push ao criar agendamentos pelo site.
+- Corrigido o envio de Push ao criar agendamentos pela JuIA.
+- Nova Edge Function `create-public-booking` mantém o segredo do Push fora do navegador.
+- Busca do CRM refeita com pesquisa por nome, telefone e e-mail.
+- Busca ignora acentos e diferenças entre maiúsculas e minúsculas.
+- Adicionados botões Buscar e Limpar, Enter e filtro automático com pequena espera.
+
 # V25.0.1 — Confirmação automática e CRM
 
 - Agendamentos públicos passam a ser gravados como confirmados.
