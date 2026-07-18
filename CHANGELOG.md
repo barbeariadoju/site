@@ -1,3 +1,9 @@
+
+## V25.1.2 — Hotfix do cancelamento
+- Corrigida a comparação de data e hora no cancelamento feito pelo cliente.
+- O sistema agora interpreta o horário da barbearia explicitamente no fuso de São Paulo.
+- A página Meu Agendamento passa a exibir a mensagem real devolvida pela Edge Function.
+
 # V25.0.2 — Correções da confirmação automática
 
 - Corrigido o envio de Push ao criar agendamentos pelo site.

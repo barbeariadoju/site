@@ -43,9 +43,10 @@ Deno.serve(async(req:Request)=>{
 
     if(action==='cancel'){
       if(!['pending','confirmed'].includes(booking.status))return json({error:'Este agendamento não pode mais ser cancelado.'},400)
-      const nowSp=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}))
-      const start=new Date(`${booking.booking_date}T${String(booking.start_time).slice(0,8)}`)
-      if(start<=nowSp)return json({error:'Não é possível cancelar um horário que já começou.'},400)
+      const startTime=String(booking.start_time||'').slice(0,8)
+      const startMs=Date.parse(`${booking.booking_date}T${startTime}-03:00`)
+      if(!Number.isFinite(startMs))return json({error:'Não foi possível validar a data deste agendamento.'},400)
+      if(startMs<=Date.now())return json({error:'Não é possível cancelar um horário que já começou.'},400)
       const {data:updated,error:updateError}=await admin.from('bookings').update({status:'cancelled',customer_cancelled_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',booking.id).select('*').single()
       if(updateError)return json({error:updateError.message},400)
       await admin.from('booking_customer_actions').insert({booking_id:booking.id,action:'cancelled',old_booking_date:booking.booking_date,old_start_time:booking.start_time})
