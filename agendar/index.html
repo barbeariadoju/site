@@ -56,7 +56,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <h1>Serviços e agendamento.</h1>
 <p>Escolha os serviços desejados, monte seu atendimento e continue para selecionar uma data e um horário realmente disponíveis.</p>
 <div class="hero-actions">
-<a class="btn primary" href="/agendar/#servicos">Ver serviços</a>
+<button class="btn primary" id="scroll-to-services" type="button">Ver serviços</button>
 <a class="btn ghost" href="/agendar.html">Ir direto à agenda</a>
 </div>
 <div class="schedule-warning"><strong>Agenda própria:</strong> depois de montar seu atendimento, você escolherá uma data e um horário disponíveis sem precisar repetir os serviços.</div>
@@ -125,7 +125,31 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <a class="bottom-back-btn" href="index.html">← Voltar ao site</a>
 <a class="floating" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a>
 <footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="index.html">Site</a> • <a href="produtos.html">Produtos</a></small></footer>
-<script defer="" src="script.js?v=24.3.2"></script>
+
+<script>
+(() => {
+  const scrollToServices = (smooth = true) => {
+    const target = document.getElementById('servicos');
+    if (!target) return;
+    target.classList.add('visible');
+    target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    if (location.hash !== '#servicos') {
+      history.replaceState(null, '', location.pathname + location.search + '#servicos');
+    }
+  };
+
+  document.getElementById('scroll-to-services')?.addEventListener('click', () => {
+    scrollToServices(true);
+  });
+
+  if (location.hash === '#servicos') {
+    window.addEventListener('load', () => {
+      setTimeout(() => scrollToServices(false), 80);
+    });
+  }
+})();
+</script>
+<script defer="" src="script.js?v=24.3.3"></script>
 <script>
     const servicePhone = '5511967073038';
     const serviceStorageKey = 'bdj_services_v1';
