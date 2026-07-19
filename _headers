@@ -65,3 +65,9 @@
   Cache-Control: no-cache, must-revalidate
 /admin-ux-v22-4.js
   Cache-Control: no-store
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/agendar/
+  Cache-Control: no-cache, no-store, must-revalidate

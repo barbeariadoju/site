@@ -6,7 +6,7 @@
   let deferredInstallPrompt=null;
 
   if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=24.6.3').catch(()=>{}));
+    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.0.2',{updateViaCache:'none'}).catch(()=>{}));
   }
 
   // Navegação inferior compacta para iPhone e Android.

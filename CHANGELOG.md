@@ -1,3 +1,11 @@
+## 28.0.2 — Correção de carregamento visual e cache
+
+- Corrige abertura ocasional da página de serviços sem CSS ao chegar pelo Google.
+- Folhas de estilo agora usam caminho absoluto e mecanismo automático de nova tentativa.
+- Adicionado estilo crítico mínimo para impedir página HTML sem formatação.
+- Service Worker revisado: navegação e CSS/JS usam prioridade de rede e caches antigos são removidos.
+- Registro do Service Worker passa a ignorar cache de atualização.
+
 # V28.0.1 — Navegação do catálogo
 
 - Adicionado link **Voltar aos serviços** no topo de `produtos.html`.

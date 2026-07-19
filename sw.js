@@ -1,21 +1,11 @@
-const CACHE = 'barbearia-os-v28-0-0';
+const CACHE = 'barbearia-os-v28-0-2';
+const OFFLINE = 'index.html';
 const CORE = [
   './',
   'index.html',
-  'agendar/',
-  'servicos.html',
-  'produtos.html',
-  'cliente.html',
   '404.html',
-  'privacidade.html',
-  'style.css?v=28.0.0',
-  'script.js?v=28.0.0',
-  'privacy-consent-v22-4.js?v=28.0.0',
   'manifest.webmanifest',
   'admin-manifest.webmanifest',
-  'admin-pwa.js?v=28.0.0',
-  'push-config-v24-6.js?v=28.0.0',
-  'admin-push-runtime-v24-6.js?v=28.0.0',
   'assets/apple-touch-icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
@@ -23,88 +13,67 @@ const CORE = [
   'assets/logo-topo-wide.webp'
 ];
 
-const NEVER_CACHE = [
-  '/agendar/',
-  '/agendar.html',
-  '/meu-agendamento.html',
-  '/cliente.html',
-  '/admin.html',
-  '/admin-agenda.html',
-  '/admin-atendimento.html',
-  '/admin-agendamento.html',
-  '/admin-clientes.html',
-  '/admin-assistente.html',
-  '/admin-mensagens.html',
-  '/admin-notificacoes.html',
-  '/agenda-config-v6.js',
-  '/agenda-v15.js',
-  '/meu-agendamento-v25.js',
-  '/cliente-v23.js',
-  '/juia-chat.js',
-  '/service-cart-v22-5.js',
-  '/services-catalog-v7.js',
-  '/admin-v15-4.js',
-  '/admin-assistente-v16.js',
-  '/admin-messages-v24-5.js',
-  '/admin-notifications-v24-6.js',
-  '/admin-push-runtime-v24-6.js?v=28.0.0',
-  '/push-config-v24-6.js?v=28.0.0',
-  '/contact-form-v24-5.js',
-  '/admin-ux-v22-4.js'
-];
-
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
+  event.waitUntil(
+    caches.open(CACHE).then(async cache => {
+      for (const asset of CORE) {
+        try { await cache.add(new Request(asset, { cache: 'reload' })); } catch (_) {}
+      }
+    })
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))
-    )
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key !== CACHE).map(key => caches.delete(key))
+    )).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  if (NEVER_CACHE.some(path => url.pathname.endsWith(path))) {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
-    return;
-  }
-
-  if (event.request.mode === 'navigate') {
+  // HTML sempre tenta a rede primeiro. Cache só serve como contingência offline.
+  if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request, { cache: 'no-cache' })
-        .then(response => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() =>
-          caches.match(event.request).then(cached => cached || caches.match('index.html'))
-        )
+      fetch(req, { cache: 'no-store', redirect: 'follow' })
+        .then(response => response)
+        .catch(async () => (await caches.match(req)) || (await caches.match(OFFLINE)))
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      const network = fetch(event.request)
-        .then(response => {
+  // CSS e JavaScript nunca devem ficar presos em versão antiga ou resposta inválida.
+  if (req.destination === 'style' || req.destination === 'script' || /\.(css|js)$/i.test(url.pathname)) {
+    event.respondWith(
+      fetch(req, { cache: 'no-cache', redirect: 'follow' })
+        .then(async response => {
           if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(event.request, copy));
+            const cache = await caches.open(CACHE);
+            await cache.put(req, response.clone());
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Imagens e fontes: cache primeiro, com atualização em segundo plano.
+  event.respondWith(
+    caches.match(req).then(cached => {
+      const network = fetch(req).then(async response => {
+        if (response.ok) {
+          const cache = await caches.open(CACHE);
+          await cache.put(req, response.clone());
+        }
+        return response;
+      }).catch(() => cached);
       return cached || network;
     })
   );
@@ -112,12 +81,8 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('push', event => {
   let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch {
-    data = { body: event.data?.text() || 'Novo agendamento.' };
-  }
-
+  try { data = event.data ? event.data.json() : {}; }
+  catch { data = { body: event.data?.text() || 'Novo agendamento.' }; }
   const title = data.title || 'Barbearia do Ju';
   const options = {
     body: data.body || 'Novo agendamento aguardando confirmação.',
@@ -129,36 +94,14 @@ self.addEventListener('push', event => {
     silent: false,
     vibrate: [220, 100, 220],
     timestamp: Date.now(),
-    data: {
-      url: data.url || '/admin-agenda.html?app=1',
-      type: data.type || 'booking'
-    }
+    data: { url: data.url || '/admin-agenda.html?app=1', type: data.type || 'booking' }
   };
-
-  event.waitUntil(
-    Promise.all([
-      self.registration.showNotification(title, options),
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list =>
-        Promise.all(
-          list.map(client =>
-            client.postMessage({
-              type: 'BDJ_PUSH_RECEIVED',
-              payload: { title, ...options }
-            })
-          )
-        )
-      )
-    ])
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const target = new URL(
-    event.notification.data?.url || '/admin-agenda.html?app=1',
-    self.location.origin
-  ).href;
-
+  const target = new URL(event.notification.data?.url || '/admin-agenda.html?app=1', self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
