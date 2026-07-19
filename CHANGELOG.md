@@ -1,3 +1,8 @@
+# V27.1.4
+
+- Adicionado botão **Ver produtos** no topo da página de serviços e agendamento.
+- O catálogo de produtos abre em nova aba para preservar a seleção de serviços do cliente.
+
 
 ## V25.1.2 — Hotfix do cancelamento
 - Corrigida a comparação de data e hora no cancelamento feito pelo cliente.
