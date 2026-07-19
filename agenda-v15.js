@@ -164,7 +164,13 @@
     sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
     const manageUrl=result.manage_url||'';
     $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}`;
-    $('agenda-status').classList.add('is-success');$('agenda-status').scrollIntoView({behavior:'smooth'});$('agenda-submit').textContent='Agendamento confirmado';
+    const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
+    document.body.classList.add('booking-complete');
+    $('agenda-status').classList.add('is-success');
+    const viewport=document.querySelector('meta[name="viewport"]');
+    if(viewport){viewport.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1');setTimeout(()=>viewport.setAttribute('content','width=device-width,initial-scale=1'),450)}
+    requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'smooth'}));
+    $('agenda-submit').textContent='Agendamento confirmado';
   }
   document.addEventListener('click',e=>{
     const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();return}
