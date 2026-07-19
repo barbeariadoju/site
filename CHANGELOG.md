@@ -225,3 +225,11 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Fila/histórico `email_queue` com status e erros.
 - Integração não bloqueante com `create-public-booking` e `manage-booking`.
 - Mantida a correção segura de cancelamento por RPC.
+
+## V26.4.0 — 19/07/2026
+- Novo CTA de reagendamento no e-mail de cancelamento.
+- Edge Function de lembrete automático 24 horas antes.
+- Bloqueio de lembretes duplicados na fila de e-mails.
+- Histórico de e-mails automáticos dentro da Central de Comunicação.
+- Melhor adaptação do painel administrativo para celulares e telas pequenas.
+- Botões administrativos com estado de carregamento e mensagens mais amigáveis.

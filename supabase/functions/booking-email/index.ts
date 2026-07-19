@@ -54,7 +54,7 @@ Deno.serve(async (request: Request) => {
     const notifyAdmin = body?.notify_admin !== false
 
     if (!bookingId) return json({ error: 'booking_id ausente.' }, 400)
-    if (!['booking_confirmed', 'booking_rescheduled', 'booking_cancelled'].includes(eventType)) {
+    if (!['booking_confirmed', 'booking_rescheduled', 'booking_cancelled', 'booking_reminder_24h'].includes(eventType)) {
       return json({ error: 'event_type inválido.' }, 400)
     }
 
@@ -101,6 +101,13 @@ Deno.serve(async (request: Request) => {
       customerSubjectIcon = '🔄'
     }
 
+    if (eventType === 'booking_reminder_24h') {
+      customerTitle = 'Lembrete do seu horário'
+      customerLead = `Olá, ${booking.customer_name}! Passando para lembrar que seu atendimento está marcado para amanhã.`
+      adminSubject = '⏰ Lembrete de 24h enviado'
+      customerSubjectIcon = '⏰'
+    }
+
     if (eventType === 'booking_cancelled') {
       customerTitle = 'Agendamento cancelado'
       customerLead = cancelledBy === 'admin'
@@ -110,9 +117,17 @@ Deno.serve(async (request: Request) => {
       customerSubjectIcon = '❌'
     }
 
-    const customerButtons =
-      (eventType !== 'booking_cancelled' && managementUrl ? button(managementUrl, 'Gerenciar agendamento') : '') +
-      button(routeUrl, 'Como chegar')
+    const bookingUrl = 'https://www.barbeariadoju.com.br/#agendamento'
+    const whatsappUrl = `https://wa.me/5511967073038?text=${encodeURIComponent(`Olá! Gostaria de falar sobre meu agendamento de ${dateBR(booking.booking_date)} às ${timeBR(booking.start_time)}.`)}`
+
+    let customerButtons = ''
+    if (eventType === 'booking_cancelled') {
+      customerButtons = button(bookingUrl, 'Escolher nova data e horário') +
+        `<br><a href="${escapeHtml(whatsappUrl)}" style="display:inline-block;color:#7a6114;text-decoration:underline;font-weight:700;margin-top:10px">Falar com a Barbearia do Ju</a>`
+    } else {
+      customerButtons = (managementUrl ? button(managementUrl, 'Gerenciar agendamento') : button(bookingUrl, 'Abrir agendamento')) +
+        button(routeUrl, 'Como chegar')
+    }
 
     const customerHtml = layout(
       customerTitle,
