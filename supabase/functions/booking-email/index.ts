@@ -120,7 +120,7 @@ Deno.serve(async (request: Request) => {
 
     const bookingUrl = rebookingToken && booking.booking_code
       ? `https://www.barbeariadoju.com.br/reagendar.html?code=${encodeURIComponent(booking.booking_code)}&token=${encodeURIComponent(rebookingToken)}`
-      : 'https://www.barbeariadoju.com.br/agendar.html'
+      : 'https://www.barbeariadoju.com.br/agendar/'
     const whatsappUrl = `https://wa.me/5511967073038?text=${encodeURIComponent(`Olá! Gostaria de falar sobre meu agendamento de ${dateBR(booking.booking_date)} às ${timeBR(booking.start_time)}.`)}`
 
     let customerButtons = ''

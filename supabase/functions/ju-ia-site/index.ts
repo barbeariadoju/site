@@ -162,13 +162,13 @@ Deno.serve(async req=>{
    reply=`${customerFirstName}, seu último atendimento foi ${lastService.name}${lastVisitBR?` em ${lastVisitBR}`:''}. Quer repetir esse serviço?`
    actions=[
     {label:'Sim, repetir',message:'Sim, quero repetir meu último atendimento'},
-    {label:'Escolher outro',url:'https://www.barbeariadoju.com.br/servicos.html'}
+    {label:'Escolher outro',url:'https://www.barbeariadoju.com.br/agendar/'}
    ]
    intent='other'
    handoff=false
   }else{
    reply=`${customerFirstName}, encontrei seu cadastro, mas ainda não há um atendimento concluído para repetir. Posso mostrar os serviços disponíveis.`
-   actions=[{label:'Ver serviços',url:'https://www.barbeariadoju.com.br/servicos.html'}]
+   actions=[{label:'Ver serviços',url:'https://www.barbeariadoju.com.br/agendar/'}]
    intent='services'
   }
  }
@@ -196,7 +196,7 @@ Deno.serve(async req=>{
    reply=`${customerFirstName}, pelo seu histórico eu recomendo ${recommended.name} (${money(recommended.price)}). É a opção mais próxima do atendimento que você já costuma fazer.`
    actions=[
     {label:`Escolher ${recommended.name}`,message:`Quero agendar ${recommended.name}`},
-    {label:'Ver outras opções',url:'https://www.barbeariadoju.com.br/servicos.html'}
+    {label:'Ver outras opções',url:'https://www.barbeariadoju.com.br/agendar/'}
    ]
    intent='other'
    handoff=false
@@ -236,7 +236,7 @@ Deno.serve(async req=>{
 
  if(intent==='services'){
   reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
-  actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/servicos.html'}]
+  actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
  }
  if(intent==='loyalty'){
   if(!knownPhone){reply='Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}

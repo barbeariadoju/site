@@ -233,3 +233,12 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Histórico de e-mails automáticos dentro da Central de Comunicação.
 - Melhor adaptação do painel administrativo para celulares e telas pequenas.
 - Botões administrativos com estado de carregamento e mensagens mais amigáveis.
+
+
+## V27.0 — Endereço profissional de agendamento
+- Criada a rota pública `/agendar/` mantendo o endereço amigável no navegador.
+- Atualizados botões do site, área do cliente, página 404, produtos e Ju IA.
+- Atualizados canonical, Open Graph, Schema e sitemap.
+- `servicos.html` permanece compatível e troca visualmente para `/agendar/`.
+- E-mails passam a utilizar `/agendar/` como destino padrão.
+- Service Worker atualizado para a nova rota.

@@ -1,1 +1,3 @@
-V26.5 — Reagendamento inteligente após cancelamento administrativo
+# Barbearia do Ju — V27.0
+
+URL oficial de serviços e agendamento: `/agendar/`.

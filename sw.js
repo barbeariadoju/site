@@ -1,7 +1,8 @@
-const CACHE = 'barbearia-os-v25-1-0';
+const CACHE = 'barbearia-os-v27-0-0';
 const CORE = [
   './',
   'index.html',
+  'agendar/',
   'servicos.html',
   'produtos.html',
   'cliente.html',
@@ -23,6 +24,7 @@ const CORE = [
 ];
 
 const NEVER_CACHE = [
+  '/agendar/',
   '/agendar.html',
   '/meu-agendamento.html',
   '/cliente.html',
