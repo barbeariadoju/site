@@ -2009,3 +2009,9 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 @media(max-width:800px){.rebooking-page{width:min(100% - 18px,680px);padding-top:20px}.rebooking-shell{display:block}.rebooking-summary{position:static;margin-top:14px}.rebooking-progress{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:#0b0b0b;padding:8px 0}.rebooking-progress button{font-size:0;padding:9px 4px}.rebooking-progress button span{font-size:14px;margin:0}.rebooking-options{grid-template-columns:1fr}.rebooking-option{min-height:66px}.rebooking-step,.rebooking-context,.rebooking-summary{padding:18px}.rebooking-hero h1{font-size:3.5rem}.rebooking-page input,.rebooking-page textarea{font-size:16px!important}}
 /* V27.1 CRM e experiência */
 .crm-v27-note{margin-bottom:18px;border-color:rgba(212,175,55,.25)}.crm-v27-note strong{color:#f1d675}.crm-v27-note p{margin:7px 0 0;color:#9e998e;line-height:1.55}.crm-score-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.crm-score-row>span{padding:7px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.76rem;color:#aaa}.crm-score-row .crm-score{color:#f1d675}.crm-score-row .crm-level{color:#7ee2aa}.crm-private-feedback{padding:11px 13px;border-left:3px solid #d4af37;background:rgba(212,175,55,.07);border-radius:8px;color:#ddd!important}
+
+/* V28.0.1 — navegação do catálogo */
+.products-nav{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-bottom:26px}
+.products-nav .back-link{margin-bottom:0}
+.products-nav .back-link+ .back-link{color:var(--muted)}
+@media(max-width:520px){.products-nav{gap:10px 16px}.products-nav .back-link{font-size:.92rem}}

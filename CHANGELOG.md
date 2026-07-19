@@ -1,3 +1,10 @@
+# V28.0.1 — Navegação do catálogo
+
+- Adicionado link **Voltar aos serviços** no topo de `produtos.html`.
+- Mantido acesso direto à página inicial.
+- Botão flutuante inferior agora retorna aos serviços.
+- Cache busting dos arquivos usados em `produtos.html` atualizado para `28.0.1`.
+
 # V28.0.0 — Fundação técnica e conversão
 
 - Adicionado botão “Ver produtos” diretamente no hero da página inicial.
