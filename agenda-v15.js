@@ -36,8 +36,17 @@
   function serviceIndex(name){return allServices.findIndex(s=>s.name===name)}
   function renderSelected(){
     const box=$('selected-services-v15'), empty=$('empty-services-v15'); box.innerHTML='';
-    if(!services.length){empty.hidden=false;$('service-upsell-v15').hidden=true;document.querySelector('[data-next-step="2"]').disabled=true;return}
-    empty.hidden=true;$('service-upsell-v15').hidden=false;document.querySelector('[data-next-step="2"]').disabled=false;
+    if(!services.length){
+      empty.hidden=false;
+      $('service-upsell-v15').hidden=true;
+      const nextButton=document.querySelector('[data-next-step="2"]');
+      if(nextButton){nextButton.disabled=true;nextButton.setAttribute('aria-disabled','true');}
+      return;
+    }
+    empty.hidden=true;
+    $('service-upsell-v15').hidden=false;
+    const nextButton=document.querySelector('[data-next-step="2"]');
+    if(nextButton){nextButton.disabled=false;nextButton.setAttribute('aria-disabled','false');}
     box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
     const names=services.map(s=>s.name).join(' ');
     const suggestions=[];

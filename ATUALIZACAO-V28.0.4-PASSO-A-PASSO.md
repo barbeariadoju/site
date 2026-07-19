@@ -1,4 +1,4 @@
-# Atualização V28.0.5
+# Atualização V28.0.6
 
 1. Substitua todos os arquivos do repositório pelos desta pasta.
 2. Faça commit e push.
