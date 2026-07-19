@@ -105,7 +105,7 @@
     });
     sessionStorage.setItem(agendaServicesKey, JSON.stringify(services));
     sessionStorage.setItem(agendaProductsKey, JSON.stringify(products));
-    window.location.href = 'agendar.html';
+    window.location.href = '/agendar.html';
   }
 
   document.addEventListener('click', event => {

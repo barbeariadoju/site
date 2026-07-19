@@ -195,7 +195,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p class="cart-note">Produtos são opcionais e podem ser reservados junto com o atendimento.</p>
 <div class="mini-suggest"><strong>Sugestão:</strong> produtos de barba combinam muito com barboterapia; pomadas e pastas combinam com corte.</div>
 <button class="send-cart secondary-cart" id="continue-products" type="button">← Adicionar mais produtos</button>
-<a class="send-cart service-suggest" href="/agendar/#servicos">Adicionar serviços ao pedido</a>
+<a id="add-services-from-products" class="send-cart service-suggest" href="https://www.barbeariadoju.com.br/agendar/#servicos">Adicionar serviços ao pedido</a>
 <button class="send-cart cart-primary-action" id="send-cart" type="button">Finalizar pedido pelo WhatsApp →</button>
 </aside>
 <button class="open-cart-btn" id="open-product-cart" type="button">Ver meu carrinho</button>
@@ -367,7 +367,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         cart.forEach(item=>{for(let i=0;i<Number(item.qty||1);i++) agendaProducts.push({name:item.name,price:Number(item.price||0)});});
         sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(agendaServices));
         sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(agendaProducts));
-        window.location.href='agendar.html';
+        window.location.href='/agendar.html';
         return;
       }
       let totalServices = 0;
@@ -403,8 +403,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=28.0.6"></script>
-<script src="juia-chat.js?v=28.0.6" defer></script>
-<script src="privacy-consent-v22-4.js?v=28.0.6" defer></script>
+<script src="agenda-config-v6.js?v=28.0.7"></script>
+<script src="juia-chat.js?v=28.0.7" defer></script>
+<script src="privacy-consent-v22-4.js?v=28.0.7" defer></script>
+<script>
+// V28.0.7: navegação absoluta e resistente a cache antigo para o catálogo de serviços.
+(function(){
+  const link=document.getElementById('add-services-from-products');
+  if(!link) return;
+  link.addEventListener('click',function(event){
+    event.preventDefault();
+    window.location.assign('https://www.barbeariadoju.com.br/agendar/#servicos');
+  });
+})();
+</script>
 </body>
 </html>
