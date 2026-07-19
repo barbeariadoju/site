@@ -1,1 +1,1 @@
-V26.4.1 — Correção de enquadramento móvel na confirmação do agendamento
+V26.5 — Reagendamento inteligente após cancelamento administrativo

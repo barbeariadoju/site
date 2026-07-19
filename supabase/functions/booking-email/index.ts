@@ -52,6 +52,7 @@ Deno.serve(async (request: Request) => {
     const managementToken = String(body?.management_token || '')
     const cancelledBy = String(body?.cancelled_by || 'customer')
     const notifyAdmin = body?.notify_admin !== false
+    const rebookingToken = String(body?.rebooking_token || '')
 
     if (!bookingId) return json({ error: 'booking_id ausente.' }, 400)
     if (!['booking_confirmed', 'booking_rescheduled', 'booking_cancelled', 'booking_reminder_24h'].includes(eventType)) {
@@ -117,7 +118,9 @@ Deno.serve(async (request: Request) => {
       customerSubjectIcon = '❌'
     }
 
-    const bookingUrl = 'https://www.barbeariadoju.com.br/#agendamento'
+    const bookingUrl = rebookingToken && booking.booking_code
+      ? `https://www.barbeariadoju.com.br/reagendar.html?code=${encodeURIComponent(booking.booking_code)}&token=${encodeURIComponent(rebookingToken)}`
+      : 'https://www.barbeariadoju.com.br/agendar.html'
     const whatsappUrl = `https://wa.me/5511967073038?text=${encodeURIComponent(`Olá! Gostaria de falar sobre meu agendamento de ${dateBR(booking.booking_date)} às ${timeBR(booking.start_time)}.`)}`
 
     let customerButtons = ''

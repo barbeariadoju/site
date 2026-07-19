@@ -10,6 +10,9 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders })
 
+const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))).map(b => b.toString(16).padStart(2, '0')).join('')
+const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('')
+
 const log = (stage: string, details: Record<string, unknown> = {}) =>
   console.log(`[admin-booking-status] ${stage}`, JSON.stringify(details))
 
@@ -108,9 +111,17 @@ Deno.serve(async (request: Request) => {
       })
     }
 
+    let rebookingToken = ''
+    const updatePayload: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
+    if (status === 'cancelled') {
+      rebookingToken = newToken()
+      updatePayload.rebooking_token_hash = await hash(rebookingToken)
+      updatePayload.rebooking_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    }
+
     const { data: updated, error: updateError } = await admin
       .from('bookings')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', bookingId)
       .select('*')
       .maybeSingle()
@@ -154,6 +165,7 @@ Deno.serve(async (request: Request) => {
               event_type: 'booking_cancelled',
               cancelled_by: 'admin',
               notify_admin: false,
+              rebooking_token: rebookingToken,
             }),
           })
 
