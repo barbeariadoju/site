@@ -50,6 +50,8 @@ Deno.serve(async (request: Request) => {
     const bookingId = String(body?.booking_id || '')
     const eventType = String(body?.event_type || 'booking_confirmed')
     const managementToken = String(body?.management_token || '')
+    const cancelledBy = String(body?.cancelled_by || 'customer')
+    const notifyAdmin = body?.notify_admin !== false
 
     if (!bookingId) return json({ error: 'booking_id ausente.' }, 400)
     if (!['booking_confirmed', 'booking_rescheduled', 'booking_cancelled'].includes(eventType)) {
@@ -101,7 +103,9 @@ Deno.serve(async (request: Request) => {
 
     if (eventType === 'booking_cancelled') {
       customerTitle = 'Agendamento cancelado'
-      customerLead = `Olá, ${booking.customer_name}. Seu agendamento foi cancelado conforme solicitado.`
+      customerLead = cancelledBy === 'admin'
+        ? `Olá, ${booking.customer_name}. Informamos que seu agendamento foi cancelado pela Barbearia do Ju.`
+        : `Olá, ${booking.customer_name}. Seu agendamento foi cancelado conforme solicitado.`
       adminSubject = '❌ Agendamento cancelado'
       customerSubjectIcon = '❌'
     }
@@ -157,7 +161,7 @@ Deno.serve(async (request: Request) => {
       }))
     }
 
-    results.push(await send({
+    if (notifyAdmin) results.push(await send({
       booking_id: booking.id,
       event_type: eventType,
       recipient_type: 'barbershop',
