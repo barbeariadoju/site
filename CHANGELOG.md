@@ -1,3 +1,13 @@
+# V28.0.0 — Fundação técnica e conversão
+
+- Adicionado botão “Ver produtos” diretamente no hero da página inicial.
+- Mantido o botão “Ver produtos” na página `/agendar/`.
+- Padronizado o cache busting de arquivos CSS e JavaScript para `v=28.0.0`.
+- Atualizado o Service Worker para um novo cache, evitando arquivos antigos após o deploy.
+- Corrigida a geração do arquivo `.ics`, que continha uma quebra inválida no JavaScript.
+- Mantidos a galeria existente com quatro imagens e o vídeo com `preload="none"`, pois ambos já estavam implementados corretamente.
+- Nenhuma alteração de banco de dados, RLS ou Edge Functions nesta etapa.
+
 # V27.1.4
 
 - Adicionado botão **Ver produtos** no topo da página de serviços e agendamento.

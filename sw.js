@@ -1,4 +1,4 @@
-const CACHE = 'barbearia-os-v27-1-3';
+const CACHE = 'barbearia-os-v28-0-0';
 const CORE = [
   './',
   'index.html',
@@ -8,14 +8,14 @@ const CORE = [
   'cliente.html',
   '404.html',
   'privacidade.html',
-  'style.css?v=24.3',
-  'script.js?v=24.3',
-  'privacy-consent-v22-4.js?v=24.3',
+  'style.css?v=28.0.0',
+  'script.js?v=28.0.0',
+  'privacy-consent-v22-4.js?v=28.0.0',
   'manifest.webmanifest',
   'admin-manifest.webmanifest',
-  'admin-pwa.js?v=24.6.3',
-  'push-config-v24-6.js?v=24.6.3',
-  'admin-push-runtime-v24-6.js?v=24.6.3',
+  'admin-pwa.js?v=28.0.0',
+  'push-config-v24-6.js?v=28.0.0',
+  'admin-push-runtime-v24-6.js?v=28.0.0',
   'assets/apple-touch-icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
@@ -47,8 +47,8 @@ const NEVER_CACHE = [
   '/admin-assistente-v16.js',
   '/admin-messages-v24-5.js',
   '/admin-notifications-v24-6.js',
-  '/admin-push-runtime-v24-6.js',
-  '/push-config-v24-6.js',
+  '/admin-push-runtime-v24-6.js?v=28.0.0',
+  '/push-config-v24-6.js?v=28.0.0',
   '/contact-form-v24-5.js',
   '/admin-ux-v22-4.js'
 ];
