@@ -1,11 +1,17 @@
-## 28.0.3 — Correção definitiva do link direto para Serviços
+## 28.0.4 — correção definitiva do link “Ir direto à agenda”
+
+- O botão em `/agendar/` agora usa URL absoluta para `/agendar.html`.
+- Criada rota de compatibilidade `/agendar/agendar.html`, que redireciona automaticamente para a agenda correta.
+- Atualizado o cache do Service Worker para impedir reaproveitamento da navegação antiga.
+
+## 28.0.4 — Correção definitiva do link direto para Serviços
 
 - Serviços não dependem mais da animação `reveal` para aparecer.
 - Link `/agendar/#servicos` agora reposiciona após DOM, carregamento e fontes.
 - Evita tela vazia ao abrir o sitelink “Produtos e serviços” do Google.
-- Cache e assets atualizados para 28.0.3.
+- Cache e assets atualizados para 28.0.4.
 
-## 28.0.3 — Correção de carregamento visual e cache
+## 28.0.4 — Correção de carregamento visual e cache
 
 - Corrige abertura ocasional da página de serviços sem CSS ao chegar pelo Google.
 - Folhas de estilo agora usam caminho absoluto e mecanismo automático de nova tentativa.
