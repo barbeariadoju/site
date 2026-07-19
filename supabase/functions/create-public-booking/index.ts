@@ -27,6 +27,7 @@ Deno.serve(async(req:Request)=>{
     const url=Deno.env.get('SUPABASE_URL')!
     const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+    const emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET')
     const admin=createClient(url,service)
 
     const {data:id,error:createError}=await admin.rpc('create_public_booking_v15',{
@@ -84,11 +85,26 @@ Deno.serve(async(req:Request)=>{
       }catch(error){console.error('[create-public-booking] push exception',error)}
     }
 
+    let email={requested:false,ok:false}
+    if(emailSecret){
+      email.requested=true
+      try{
+        const response=await fetch(`${url}/functions/v1/booking-email`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-webhook-secret':emailSecret},
+          body:JSON.stringify({booking_id:id,event_type:'booking_confirmed',management_token:managementToken})
+        })
+        email.ok=response.ok
+        if(!response.ok)console.error('[create-public-booking] email',response.status,await response.text())
+      }catch(error){console.error('[create-public-booking] email exception',error)}
+    }
+
     return json({
       ok:true,
       id,
       record,
       push,
+      email,
       booking_code:record.booking_code,
       management_token:managementToken,
       manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record.booking_code)}&token=${encodeURIComponent(managementToken)}`

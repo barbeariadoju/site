@@ -217,3 +217,11 @@ V22.5 — Correção do carrinho de serviços, integração serviços/produtos/a
 - Impede a entrega de links inválidos quando a gravação falhar.
 - Adiciona função SQL atômica para vincular o gerenciamento ao agendamento.
 - Melhora os logs da Edge Function `create-public-booking`.
+
+## V26.0.0 — Central de Comunicação
+- OAuth oficial do Zoho Mail.
+- Envio HTML de confirmação, reagendamento e cancelamento.
+- Avisos para cliente e barbearia.
+- Fila/histórico `email_queue` com status e erros.
+- Integração não bloqueante com `create-public-booking` e `manage-booking`.
+- Mantida a correção segura de cancelamento por RPC.

@@ -31,6 +31,7 @@ Deno.serve(async(req:Request)=>{
     const url=Deno.env.get('SUPABASE_URL')!
     const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+    const emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET')
     const admin=createClient(url,service)
     const {data:booking,error}=await admin.from('bookings').select('*').eq('booking_code',code).maybeSingle()
     if(error||!booking)return json({error:'Agendamento não encontrado.'},404)
@@ -43,14 +44,13 @@ Deno.serve(async(req:Request)=>{
 
     if(action==='cancel'){
       if(!['pending','confirmed'].includes(booking.status))return json({error:'Este agendamento não pode mais ser cancelado.'},400)
-      const startTime=String(booking.start_time||'').slice(0,8)
-      const startMs=Date.parse(`${booking.booking_date}T${startTime}-03:00`)
-      if(!Number.isFinite(startMs))return json({error:'Não foi possível validar a data deste agendamento.'},400)
-      if(startMs<=Date.now())return json({error:'Não é possível cancelar um horário que já começou.'},400)
-      const {data:updated,error:updateError}=await admin.from('bookings').update({status:'cancelled',customer_cancelled_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',booking.id).select('*').single()
+      const tokenHash=await hash(token)
+      const {data:cancelledRows,error:updateError}=await admin.rpc('customer_cancel_booking_v25',{p_booking_id:booking.id,p_management_token_hash:tokenHash})
       if(updateError)return json({error:updateError.message},400)
-      await admin.from('booking_customer_actions').insert({booking_id:booking.id,action:'cancelled',old_booking_date:booking.booking_date,old_start_time:booking.start_time})
+      const updated=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
+      if(!updated)return json({error:'Não foi possível localizar o agendamento cancelado.'},400)
       if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado',body:`${booking.customer_name} cancelou ${booking.booking_date.split('-').reverse().join('/')} às ${String(booking.start_time).slice(0,5)}\n${booking.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${booking.id}`}})}).catch(()=>{})
+      if(emailSecret)await fetch(`${url}/functions/v1/booking-email`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':emailSecret},body:JSON.stringify({booking_id:booking.id,event_type:'booking_cancelled',management_token:token})}).catch(error=>console.error('[manage-booking] email cancel',error))
       return json({ok:true,booking:safe(updated)})
     }
 
@@ -62,6 +62,7 @@ Deno.serve(async(req:Request)=>{
       const {data:updated,error:updateError}=await admin.rpc('customer_reschedule_booking_v25',{p_booking_id:booking.id,p_new_booking_date:newDate,p_new_start_time:newTime})
       if(updateError)return json({error:updateError.message},400)
       if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔄 Agendamento reagendado',body:`${booking.customer_name}\nDe ${oldDate.split('-').reverse().join('/')} às ${oldTime} para ${newDate.split('-').reverse().join('/')} às ${newTime.slice(0,5)}`,url:'/admin-agenda.html?app=1',tag:`booking-rescheduled-${booking.id}`}})}).catch(()=>{})
+      if(emailSecret)await fetch(`${url}/functions/v1/booking-email`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':emailSecret},body:JSON.stringify({booking_id:booking.id,event_type:'booking_rescheduled',management_token:token})}).catch(error=>console.error('[manage-booking] email reschedule',error))
       return json({ok:true,booking:safe(updated)})
     }
 
