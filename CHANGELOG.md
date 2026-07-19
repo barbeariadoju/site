@@ -1,4 +1,11 @@
-## 28.0.2 — Correção de carregamento visual e cache
+## 28.0.3 — Correção definitiva do link direto para Serviços
+
+- Serviços não dependem mais da animação `reveal` para aparecer.
+- Link `/agendar/#servicos` agora reposiciona após DOM, carregamento e fontes.
+- Evita tela vazia ao abrir o sitelink “Produtos e serviços” do Google.
+- Cache e assets atualizados para 28.0.3.
+
+## 28.0.3 — Correção de carregamento visual e cache
 
 - Corrige abertura ocasional da página de serviços sem CSS ao chegar pelo Google.
 - Folhas de estilo agora usam caminho absoluto e mecanismo automático de nova tentativa.
