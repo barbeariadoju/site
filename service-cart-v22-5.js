@@ -5,11 +5,22 @@
   const agendaProductsKey = 'bdj_selected_products_v15';
 
   const readStoredMap = key => {
-    const raw = sessionStorage.getItem(key) || localStorage.getItem(key) || '[]';
-    try { return new Map(JSON.parse(raw)); } catch { return new Map(); }
+    const merged = new Map();
+    for (const storage of [localStorage, sessionStorage]) {
+      try {
+        const parsed = JSON.parse(storage.getItem(key) || '[]');
+        if (Array.isArray(parsed)) parsed.forEach(([itemKey, value]) => merged.set(itemKey, value));
+      } catch (_) {}
+    }
+    return merged;
   };
   const selectedServices = readStoredMap(serviceStorageKey);
   const selectedProducts = readStoredMap(productStorageKey);
+  // Sincroniza imediatamente os dois storages para eliminar estados vazios antigos.
+  sessionStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
+  localStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
+  sessionStorage.setItem(productStorageKey, JSON.stringify([...selectedProducts]));
+  localStorage.setItem(productStorageKey, JSON.stringify([...selectedProducts]));
   const panel = document.querySelector('.service-cart');
   const items = document.getElementById('service-items');
   const totalEl = document.getElementById('service-total');
