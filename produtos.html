@@ -403,11 +403,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=28.0.8"></script>
-<script src="juia-chat.js?v=28.0.8" defer></script>
-<script src="privacy-consent-v22-4.js?v=28.0.8" defer></script>
+<script src="agenda-config-v6.js?v=28.0.9"></script>
+<script src="juia-chat.js?v=28.0.9" defer></script>
+<script src="privacy-consent-v22-4.js?v=28.0.9" defer></script>
 <script>
-// V28.0.8: navegação absoluta e resistente a cache antigo para o catálogo de serviços.
+// V28.0.9: navegação absoluta e resistente a cache antigo para o catálogo de serviços.
 (function(){
   const link=document.getElementById('add-services-from-products');
   if(!link) return;
@@ -415,6 +415,21 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     event.preventDefault();
     window.location.assign('https://www.barbeariadoju.com.br/agendar/#servicos');
   });
+})();
+</script>
+<script id="bdj-internal-navigation-v2809">
+(() => {
+  // Navegação interna sempre na mesma aba. Isso também preserva o sessionStorage
+  // usado pelo carrinho unificado de serviços e produtos.
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    let url;
+    try { url = new URL(link.getAttribute('href'), window.location.href); } catch { return; }
+    if (url.origin !== window.location.origin) return;
+    link.removeAttribute('target');
+    link.removeAttribute('rel');
+  }, true);
 })();
 </script>
 </body>

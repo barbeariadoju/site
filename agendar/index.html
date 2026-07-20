@@ -44,7 +44,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 html{background:#0b0b0b;color:#f7f1e8}body{margin:0;background:#0b0b0b;color:#f7f1e8;font-family:Inter,Arial,sans-serif}main{display:block}.products-hero{padding:48px 20px;text-align:center}.products-hero h1{font-family:"Bebas Neue",Arial,sans-serif;font-size:clamp(3rem,10vw,6rem);line-height:.95;margin:18px 0}.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.btn,.back-link{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:999px;text-decoration:none}.btn.primary{background:#e5b45f;color:#111}.btn.ghost,.back-link{border:1px solid #7d6336;color:#f7f1e8}.section{padding:40px 20px}.service-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.service-card{border:1px solid #3a3125;border-radius:20px;padding:20px;background:#151412}.service-btn{padding:10px 16px;border:0;border-radius:999px}.cart-panel{background:#151412;color:#f7f1e8}footer{padding:36px 20px;text-align:center}
 </style>
 <style id="bdj-services-visibility-guard">
-/* V28.0.8: catálogo nunca pode ficar invisível ao abrir por link externo/hash */
+/* V28.0.9: catálogo nunca pode ficar invisível ao abrir por link externo/hash */
 #servicos,.service-section,.service-section .section-head,.service-grid,.service-card{
   opacity:1 !important;
   visibility:visible !important;
@@ -54,12 +54,12 @@ html{background:#0b0b0b;color:#f7f1e8}body{margin:0;background:#0b0b0b;color:#f7
 .service-grid{display:grid !important;}
 .service-card{display:flex !important;}
 </style>
-<link id="bdj-main-style" href="/style.css?v=28.0.8" rel="stylesheet" onerror="this.onerror=null;this.href='/style.css?v=28.0.8&retry='+Date.now()"/>
-<script>window.addEventListener('load',()=>{const l=document.getElementById('bdj-main-style');const probe=document.querySelector('.service-card');if(l&&probe&&getComputedStyle(probe).borderRadius==='0px'){l.href='/style.css?v=28.0.8&repair='+Date.now();}});</script>
+<link id="bdj-main-style" href="/style.css?v=28.0.9" rel="stylesheet" onerror="this.onerror=null;this.href='/style.css?v=28.0.9&retry='+Date.now()"/>
+<script>window.addEventListener('load',()=>{const l=document.getElementById('bdj-main-style');const probe=document.querySelector('.service-card');if(l&&probe&&getComputedStyle(probe).borderRadius==='0px'){l.href='/style.css?v=28.0.9&repair='+Date.now();}});</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Serviços e agendamento | Barbearia do Ju","url":"https://www.barbeariadoju.com.br/agendar/","description":"Catálogo de serviços da Barbearia do Ju com corte masculino, barba, barboterapia, sobrancelha, luzes, pigmentação e estética masculina em Bragança Paulista.","isPartOf":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"breadcrumb":{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Início","item":"https://www.barbeariadoju.com.br/"},{"@type":"ListItem","position":2,"name":"Serviços","item":"https://www.barbeariadoju.com.br/agendar/"}]}}</script>
-<link href="/juia-chat.css?v=28.0.8" rel="stylesheet"/>
+<link href="/juia-chat.css?v=28.0.9" rel="stylesheet"/>
 <script>
-// V28.0.8: /agendar/ permanece funcional; links para #servicos rolam sem ocultar o catálogo.
+// V28.0.9: /agendar/ permanece funcional; links para #servicos rolam sem ocultar o catálogo.
 window.addEventListener('load', function(){
   if(location.hash === '#servicos'){
     const alvo=document.getElementById('servicos');
@@ -137,9 +137,9 @@ window.addEventListener('load', function(){
 <section class="section smart-products" id="produtos-sugeridos">
 <div class="section-head"><p class="eyebrow">Combine com seu atendimento</p><h2>Produtos sugeridos.</h2><p>Finalize seu corte ou barba com produtos que ajudam a manter o resultado em casa.</p></div>
 <div class="smart-product-grid">
-<a class="smart-product-card" href="produtos.html"><strong>Barboterapia ou barba</strong><span>Óleo para barba, balm e shampoo para barba.</span></a>
-<a class="smart-product-card" href="produtos.html"><strong>Corte e finalização</strong><span>Pomada, pasta modeladora, gel extra forte ou pomada em pó.</span></a>
-<a class="smart-product-card" href="produtos.html"><strong>Durante o atendimento</strong><span>Café cortesia, água, refrigerante, energético ou bebida gelada.</span></a>
+<a class="smart-product-card" href="/produtos.html"><strong>Barboterapia ou barba</strong><span>Óleo para barba, balm e shampoo para barba.</span></a>
+<a class="smart-product-card" href="/produtos.html"><strong>Corte e finalização</strong><span>Pomada, pasta modeladora, gel extra forte ou pomada em pó.</span></a>
+<a class="smart-product-card" href="/produtos.html"><strong>Durante o atendimento</strong><span>Café cortesia, água, refrigerante, energético ou bebida gelada.</span></a>
 </div>
 </section>
 </main>
@@ -153,7 +153,7 @@ window.addEventListener('load', function(){
 <button class="open-cart-btn" id="open-service-cart" type="button">Ver meu carrinho</button>
 <a class="bottom-back-btn" href="/">← Voltar ao site</a>
 <a class="floating" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a>
-<footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="index.html">Site</a> • <a href="produtos.html">Produtos</a></small></footer>
+<footer><strong>Barbearia do Ju</strong><br/>Estilo • Cuidado • Confiança<br/><small>© 2026 Barbearia do Ju • <a href="index.html">Site</a> • <a href="/produtos.html">Produtos</a></small></footer>
 
 <script>
 (() => {
@@ -172,17 +172,32 @@ window.addEventListener('load', function(){
   }
 })();
 </script>
-<script defer="" src="script.js?v=28.0.8"></script>
+<script defer="" src="script.js?v=28.0.9"></script>
 <script>
     const servicePhone = '5511967073038';
     const serviceStorageKey = 'bdj_services_v1';
     const productStorageKey = 'bdj_cart_v1';
   </script>
-<script src="service-cart-v22-5.js?v=28.0.8" defer></script>
+<script src="service-cart-v22-5.js?v=28.0.9" defer></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=28.0.8"></script>
-<script src="juia-chat.js?v=28.0.8" defer></script>
-<script src="privacy-consent-v22-4.js?v=28.0.8" defer></script>
+<script src="agenda-config-v6.js?v=28.0.9"></script>
+<script src="juia-chat.js?v=28.0.9" defer></script>
+<script src="privacy-consent-v22-4.js?v=28.0.9" defer></script>
+<script id="bdj-internal-navigation-v2809">
+(() => {
+  // Navegação interna sempre na mesma aba. Isso também preserva o sessionStorage
+  // usado pelo carrinho unificado de serviços e produtos.
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    let url;
+    try { url = new URL(link.getAttribute('href'), window.location.href); } catch { return; }
+    if (url.origin !== window.location.origin) return;
+    link.removeAttribute('target');
+    link.removeAttribute('rel');
+  }, true);
+})();
+</script>
 </body>
 </html>

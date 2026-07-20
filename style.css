@@ -2017,7 +2017,7 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 @media(max-width:520px){.products-nav{gap:10px 16px}.products-nav .back-link{font-size:.92rem}}
 
 
-/* V28.0.8 — botão de avanço bloqueado até existir serviço selecionado */
+/* V28.0.9 — botão de avanço bloqueado até existir serviço selecionado */
 .booking-actions-v14 .btn:disabled,
 .booking-actions-v14 .btn[aria-disabled="true"]{
   opacity:.42 !important;
