@@ -1,18 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 
-const corsHeaders={
-  'Access-Control-Allow-Origin':'*',
+// Chamado tanto por webhook server-to-server (x-webhook-secret, CORS irrelevante) quanto pelo
+// painel administrativo autenticado (Bearer token) — nesse segundo caso restringimos a origem
+// em vez de aceitar qualquer site, seguindo o mesmo padrão de contact-form/admin-booking-status.
+const ALLOWED_ORIGINS=new Set(['https://www.barbeariadoju.com.br','https://barbeariadoju.com.br'])
+let requestOrigin:string|null=null
+const corsHeaders=()=>({
+  'Access-Control-Allow-Origin':requestOrigin&&ALLOWED_ORIGINS.has(requestOrigin)?requestOrigin:'https://www.barbeariadoju.com.br',
   'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type, x-webhook-secret',
   'Access-Control-Allow-Methods':'POST, OPTIONS',
-  'Content-Type':'application/json; charset=utf-8'
-}
-const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:corsHeaders})
+  'Content-Type':'application/json; charset=utf-8',
+  'Vary':'Origin'
+})
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:corsHeaders()})
 const money=(value:unknown)=>Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 const dateLabel=(iso:string)=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit'}).format(new Date(`${iso}T12:00:00-03:00`))
 
 Deno.serve(async(req:Request)=>{
-  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders})
+  requestOrigin=req.headers.get('Origin')
+  if(req.method==='OPTIONS')return new Response('ok',{headers:corsHeaders()})
   if(req.method!=='POST')return json({error:'Método não permitido.'},405)
 
   const url=Deno.env.get('SUPABASE_URL')!

@@ -1,14 +1,27 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+// Endpoint administrativo (exige Bearer token de sessão) — CORS restrito à mesma allowlist
+// usada em contact-form/ju-ia-site, em vez de aceitar qualquer origem.
+const ALLOWED_ORIGINS = new Set([
+  'https://www.barbeariadoju.com.br',
+  'https://barbeariadoju.com.br',
+])
+
+// Guardado por requisição (Deno.serve roda um handler por request, então uma variável de módulo
+// reatribuída no início de cada chamada é segura aqui e evita ter que passar "origin" em toda
+// chamada de json()/fail() já existente no arquivo).
+let requestOrigin: string | null = null
+
+const corsHeaders = (): Record<string, string> => ({
+  'Access-Control-Allow-Origin': requestOrigin && ALLOWED_ORIGINS.has(requestOrigin) ? requestOrigin : 'https://www.barbeariadoju.com.br',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json; charset=utf-8',
-}
+  'Vary': 'Origin',
+})
 
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: corsHeaders })
+  new Response(JSON.stringify(body), { status, headers: corsHeaders() })
 
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))).map(b => b.toString(16).padStart(2, '0')).join('')
 const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2, '0')).join('')
@@ -17,12 +30,16 @@ const log = (stage: string, details: Record<string, unknown> = {}) =>
   console.log(`[admin-booking-status] ${stage}`, JSON.stringify(details))
 
 const fail = (stage: string, message: string, status: number, details: Record<string, unknown> = {}) => {
+  // Detalhes completos (incluindo stack traces e erros do Postgres) só vão para o log do servidor.
+  // O cliente recebe apenas a mensagem genérica, o estágio e o request_id, para não vazar
+  // informação interna que poderia ajudar um invasor a mapear o schema/lógica do banco.
   console.error(`[admin-booking-status] ${stage}`, JSON.stringify({ message, ...details }))
-  return json({ error: message, stage, details }, status)
+  return json({ error: message, stage, request_id: details.requestId ?? null }, status)
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  requestOrigin = request.headers.get('Origin')
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders() })
   if (request.method !== 'POST') return fail('method', 'Método não permitido.', 405)
 
   const requestId = crypto.randomUUID()

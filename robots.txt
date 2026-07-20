@@ -7,5 +7,7 @@ Disallow: /admin-atendimento.html
 Disallow: /admin-clientes.html
 Disallow: /admin-assistente.html
 Disallow: /admin-fidelidade.html
+Disallow: /admin-mensagens.html
+Disallow: /admin-notificacoes.html
 
 Sitemap: https://www.barbeariadoju.com.br/sitemap.xml
