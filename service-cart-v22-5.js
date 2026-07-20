@@ -27,10 +27,20 @@
     sessionStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
   }
 
-  function count(){
+  function serviceCount(){
     let value = 0;
     selectedServices.forEach(item => value += Number(item.qty || 0));
     return value;
+  }
+
+  function productCount(){
+    let value = 0;
+    selectedProducts.forEach(item => value += Number(item.qty || 0));
+    return value;
+  }
+
+  function count(){
+    return serviceCount() + productCount();
   }
 
   function render(){
@@ -46,8 +56,21 @@
       items.appendChild(row);
     });
 
-    if(!selectedServices.size){
-      items.innerHTML = '<span class="empty-cart">Nenhum serviço selecionado ainda.</span>';
+    selectedProducts.forEach((item) => {
+      total += Number(item.price || 0) * Number(item.qty || 1);
+      const row = document.createElement('div');
+      row.className = 'cart-row cart-row-muted';
+      row.innerHTML = `<div class="cart-row-main"><span>${item.qty}x ${item.name}<small>produto reservado</small></span></div><div></div>`;
+      items.appendChild(row);
+    });
+
+    if(!selectedServices.size && !selectedProducts.size){
+      items.innerHTML = '<span class="empty-cart">Nenhum item selecionado ainda.</span>';
+    } else if(!selectedServices.size) {
+      const warning = document.createElement('div');
+      warning.className = 'empty-cart';
+      warning.textContent = 'Escolha pelo menos um serviço para continuar para a agenda.';
+      items.appendChild(warning);
     }
 
     totalEl.textContent = money(total);
@@ -58,7 +81,7 @@
     panel?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
     openBtn?.classList.toggle('show', qty > 0 && panelHidden);
     if(openBtn) openBtn.textContent = `Ver meu carrinho (${qty})`;
-    if(scheduleBtn) scheduleBtn.disabled = qty === 0;
+    if(scheduleBtn) scheduleBtn.disabled = serviceCount() === 0;
     save();
   }
 
@@ -86,7 +109,7 @@
   }
 
   function showCart(){
-    if(!selectedServices.size) return;
+    if(!selectedServices.size && !selectedProducts.size) return;
     panelHidden = false;
     render();
   }
