@@ -208,10 +208,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     const storageKey = 'bdj_cart_v1';
     const serviceStorageKey = 'bdj_services_v1';
     const bookingStorageKey = 'bdj_booking_v1';
-    localStorage.removeItem(storageKey);
-    localStorage.removeItem(serviceStorageKey);
-    const cart = new Map(JSON.parse(sessionStorage.getItem(storageKey) || '[]'));
-    const selectedServices = new Map(JSON.parse(sessionStorage.getItem(serviceStorageKey) || '[]'));
+    // V28.0.10: sessionStorage é o principal; localStorage é um backup para
+    // preservar o pedido mesmo se um navegador antigo/cache abrir outra aba.
+    const readStoredMap = (key) => {
+      const raw = sessionStorage.getItem(key) || localStorage.getItem(key) || '[]';
+      try { return new Map(JSON.parse(raw)); } catch { return new Map(); }
+    };
+    const cart = readStoredMap(storageKey);
+    const selectedServices = readStoredMap(serviceStorageKey);
     let productPanelHidden = true;
     const money = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const cartPanel = document.querySelector('.cart-panel');
@@ -228,7 +232,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     const modalPrice = document.getElementById('modal-price');
     const modalAdd = document.getElementById('modal-add');
 
-    function saveCart(){ sessionStorage.setItem(storageKey, JSON.stringify([...cart])); }
+    function saveCart(){
+      const value = JSON.stringify([...cart]);
+      sessionStorage.setItem(storageKey, value);
+      localStorage.setItem(storageKey, value);
+    }
+    function saveSelectedServices(){
+      const value = JSON.stringify([...selectedServices]);
+      sessionStorage.setItem(serviceStorageKey, value);
+      localStorage.setItem(serviceStorageKey, value);
+    }
     function clearAllCarts(){
       cart.clear();
       selectedServices.clear();
@@ -403,17 +416,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="agenda-config-v6.js?v=28.0.9"></script>
-<script src="juia-chat.js?v=28.0.9" defer></script>
-<script src="privacy-consent-v22-4.js?v=28.0.9" defer></script>
+<script src="agenda-config-v6.js?v=28.0.10"></script>
+<script src="juia-chat.js?v=28.0.10" defer></script>
+<script src="privacy-consent-v22-4.js?v=28.0.10" defer></script>
 <script>
-// V28.0.9: navegação absoluta e resistente a cache antigo para o catálogo de serviços.
+// V28.0.10: navegação absoluta e resistente a cache antigo para o catálogo de serviços.
 (function(){
   const link=document.getElementById('add-services-from-products');
   if(!link) return;
   link.addEventListener('click',function(event){
     event.preventDefault();
-    window.location.assign('https://www.barbeariadoju.com.br/agendar/#servicos');
+    saveCart();
+    saveSelectedServices();
+    window.location.assign('/agendar/#servicos');
   });
 })();
 </script>

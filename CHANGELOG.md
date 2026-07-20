@@ -1,4 +1,11 @@
-## 28.0.9 — Navegação interna em uma única aba
+## 28.0.10 — Navegação na mesma aba e carrinho persistente
+
+- Links internos entre Serviços e Produtos agora interceptam o clique normal e navegam explicitamente na mesma aba.
+- Produtos e serviços são preservados em `sessionStorage`, com backup em `localStorage` para resistir a abas/cache antigos.
+- Ao retornar de Produtos para Serviços, o produto permanece no carrinho unificado.
+- Cache do Service Worker atualizado.
+
+## 28.0.10 — Navegação interna em uma única aba
 
 - Links internos entre Serviços, Produtos e Agenda passam a navegar sempre na mesma aba.
 - Removido `target="_blank"` de rotas internas.
@@ -6,7 +13,7 @@
 - Preservado o `sessionStorage` do carrinho unificado durante todo o fluxo.
 - Links de produtos dentro de `/agendar/` padronizados para `/produtos.html`.
 
-## 28.0.9 — Fluxo contínuo entre serviços e produtos
+## 28.0.10 — Fluxo contínuo entre serviços e produtos
 
 - “Ver produtos” agora abre na mesma aba.
 - Links para produtos usam caminho absoluto `/produtos.html`.
@@ -14,33 +21,33 @@
 - O carrinho de serviços soma e exibe produtos reservados.
 - O avanço para escolher horário continua bloqueado até existir pelo menos um serviço.
 
-## 28.0.9 — Navegação de produtos para serviços
+## 28.0.10 — Navegação de produtos para serviços
 
 - Corrige o botão **Adicionar serviços ao pedido** para abrir sempre `/agendar/#servicos`.
 - Usa URL absoluta e interceptação segura para evitar links antigos em cache.
 - Remove o redirecionamento automático de `/agendar/`; a página passa a ser utilizável diretamente, evitando tela preta ou loop.
 - Mantém o catálogo visível e posiciona corretamente `#servicos` após o carregamento.
 
-## V28.0.9 — Correção definitiva da tela preta em Serviços
+## V28.0.10 — Correção definitiva da tela preta em Serviços
 - Força visibilidade das seções e cards mesmo quando a página é aberta por link externo com `#servicos`.
 - Remove a rotina repetitiva de reposicionamento que podia causar estado inconsistente no carregamento.
 - Mantém um único reposicionamento após o carregamento completo.
 - Atualiza o cache do Service Worker.
 
-## 28.0.9 — correção definitiva do link “Ir direto à agenda”
+## 28.0.10 — correção definitiva do link “Ir direto à agenda”
 
 - O botão em `/agendar/` agora usa URL absoluta para `/agendar.html`.
 - Criada rota de compatibilidade `/agendar/agendar.html`, que redireciona automaticamente para a agenda correta.
 - Atualizado o cache do Service Worker para impedir reaproveitamento da navegação antiga.
 
-## 28.0.9 — Correção definitiva do link direto para Serviços
+## 28.0.10 — Correção definitiva do link direto para Serviços
 
 - Serviços não dependem mais da animação `reveal` para aparecer.
 - Link `/agendar/#servicos` agora reposiciona após DOM, carregamento e fontes.
 - Evita tela vazia ao abrir o sitelink “Produtos e serviços” do Google.
-- Cache e assets atualizados para 28.0.9.
+- Cache e assets atualizados para 28.0.10.
 
-## 28.0.9 — Correção de carregamento visual e cache
+## 28.0.10 — Correção de carregamento visual e cache
 
 - Corrige abertura ocasional da página de serviços sem CSS ao chegar pelo Google.
 - Folhas de estilo agora usam caminho absoluto e mecanismo automático de nova tentativa.

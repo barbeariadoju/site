@@ -4,8 +4,12 @@
   const agendaServicesKey = 'bdj_selected_services_v15';
   const agendaProductsKey = 'bdj_selected_products_v15';
 
-  const selectedServices = new Map(JSON.parse(sessionStorage.getItem(serviceStorageKey) || '[]'));
-  const selectedProducts = new Map(JSON.parse(sessionStorage.getItem(productStorageKey) || '[]'));
+  const readStoredMap = key => {
+    const raw = sessionStorage.getItem(key) || localStorage.getItem(key) || '[]';
+    try { return new Map(JSON.parse(raw)); } catch { return new Map(); }
+  };
+  const selectedServices = readStoredMap(serviceStorageKey);
+  const selectedProducts = readStoredMap(productStorageKey);
   const panel = document.querySelector('.service-cart');
   const items = document.getElementById('service-items');
   const totalEl = document.getElementById('service-total');
@@ -24,7 +28,12 @@
   };
 
   function save(){
-    sessionStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
+    const servicesValue = JSON.stringify([...selectedServices]);
+    const productsValue = JSON.stringify([...selectedProducts]);
+    sessionStorage.setItem(serviceStorageKey, servicesValue);
+    localStorage.setItem(serviceStorageKey, servicesValue);
+    sessionStorage.setItem(productStorageKey, productsValue);
+    localStorage.setItem(productStorageKey, productsValue);
   }
 
   function serviceCount(){
@@ -161,6 +170,7 @@
   clearBtn?.addEventListener('click', () => {
     selectedServices.clear();
     sessionStorage.removeItem(serviceStorageKey);
+    localStorage.removeItem(serviceStorageKey);
     sessionStorage.removeItem(agendaServicesKey);
     panelHidden = true;
     render();

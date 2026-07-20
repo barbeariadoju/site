@@ -1,4 +1,4 @@
-# Atualização V28.0.9
+# Atualização V28.0.10
 
 1. Substitua todos os arquivos do repositório pelos arquivos desta versão.
 2. Faça Commit e Push no GitHub Desktop.
