@@ -6,7 +6,13 @@
   let deferredInstallPrompt=null;
 
   if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.0.11',{updateViaCache:'none'}).catch(()=>{}));
+    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.0.12',{updateViaCache:'none'}).catch(()=>{}));
+    let bdjSwReloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(bdjSwReloaded) return;
+      bdjSwReloaded=true;
+      window.location.reload();
+    });
   }
 
   // Navegação inferior compacta para iPhone e Android.
