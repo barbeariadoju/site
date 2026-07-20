@@ -59,6 +59,10 @@ Use o `CHECKLIST-PUBLICACAO.md` como roteiro. Os pontos mais importantes:
 3. No GitHub Desktop: **Commit to main** → **Push origin**.
 4. Se você já publicou as Edge Functions no Passo 5 e quer reverter só elas, me avise nessa conversa — te devolvo o código anterior das duas funções para reimplantar.
 
-## Sobre a "Fase 2"
+## Sobre a "Fase 2" (já concluída nesta versão 28.0.14)
 
-Este ZIP resolve tudo que dava para verificar e corrigir com segurança olhando só o código. Alguns itens (detalhados no `RELATORIO-AUDITORIA.md`, seção 9) dependem de eu ver dados reais do seu Supabase — nada disso foi alterado agora. Quando quiser seguir para a Fase 2, me avise; vou te pedir para rodar algumas consultas de leitura no SQL Editor do Supabase e colar o resultado aqui, sem que eu precise de nenhuma senha sua.
+A Fase 2 já foi feita: com sua autorização, verifiquei dados reais do seu Supabase (pelo navegador, com sua sessão já logada, sem nenhuma senha) e corrigi o que encontrei — detalhes completos na seção 10 do `RELATORIO-AUDITORIA.md`. Resumo:
+
+- **Já corrigido direto no Supabase (não depende deste ZIP):** desativei o cadastro público de novos usuários, que estava aberto e, combinado com as políticas de segurança de várias tabelas, permitia que qualquer visitante criasse conta e acessasse dados de clientes. Confirmei que só existe 1 conta no sistema (a sua) — nada indica que alguém usou essa brecha.
+- **Corrigido neste ZIP:** a página `experiencia.html` (pesquisa de satisfação) estava com um bug que fazia ela mostrar erro para todo mundo. Corrigida para funcionar como `avaliacao.html`, que já estava certa.
+- **Ainda pendente (não urgente agora que o cadastro está fechado):** reforçar as políticas de segurança do banco para checar de verdade quem é admin, em vez de confiar só em "só existe uma conta". Prefiro fazer isso com calma, testando junto com você, para não arriscar travar seu próprio painel administrativo.

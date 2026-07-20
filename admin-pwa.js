@@ -6,7 +6,7 @@
   let deferredInstallPrompt=null;
 
   if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.0.13',{updateViaCache:'none'}).catch(()=>{}));
+    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.0.14',{updateViaCache:'none'}).catch(()=>{}));
     let bdjSwReloaded=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(bdjSwReloaded) return;

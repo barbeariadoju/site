@@ -1,3 +1,9 @@
+## 28.0.14 — Fase 2: fechamento de brecha de acesso e correção da pesquisa de satisfação
+
+- **Segurança (crítico, corrigido ao vivo no Supabase, sem necessidade de novo deploy do site):** a opção "Allow new users to sign up" do Supabase Auth foi desativada. Ela estava ativada por padrão e, combinada com políticas de segurança (RLS) de várias tabelas (`bookings`, `customer_profiles`, `contact_messages`, `loyalty_accounts`, `loyalty_events`, `schedule_blocks`, `booking_customer_actions`) que liberavam acesso para qualquer usuário autenticado (não checavam se era realmente admin), permitia que qualquer visitante criasse uma conta grátis e lesse/editasse dados de clientes. Confirmado por consulta ao banco que existia apenas 1 conta (a do próprio dono) — não há indício de que a brecha tenha sido explorada. Correção completa das políticas RLS (fazer o check real de admin) fica para uma próxima etapa, feita com mais calma e testes.
+- **Bug corrigido:** `experiencia.html` (página de pesquisa de satisfação) estava com a função de salvar resposta totalmente quebrada — o código enviava parâmetros (`p_answer`) e conferia campos de retorno (`data.ok`, `data.answered`, `data.answer`) que não existem na função/dados reais do Supabase (`p_response`, `data.valid`, `data.status`). Isso fazia a página mostrar erro para 100% dos visitantes. Corrigido para usar exatamente o mesmo contrato já comprovado funcionando em `avaliacao.html`. A página `avaliacao.html` já funcionava corretamente e não foi alterada.
+- **Cache:** versão de todos os arquivos versionados subida para `28.0.14`.
+
 ## 28.0.13 — Auditoria de segurança, SEO e acessibilidade (Fase 1)
 
 - **Segurança (crítico):** corrigida vulnerabilidade de XSS no painel de Fidelidade (`loyalty-admin-v21.js`) — nome/telefone/e-mail do cliente agora são exibidos com escape correto.

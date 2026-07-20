@@ -1,4 +1,4 @@
-const CACHE = 'barbearia-os-v28-0-13';
+const CACHE = 'barbearia-os-v28-0-14';
 const OFFLINE = 'index.html';
 const CORE = [
   './',
