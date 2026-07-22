@@ -1,3 +1,9 @@
+## 28.1.1 — Corrige falha ao marcar agendamento como concluído
+
+- **Bug corrigido (crítico, aplicado ao vivo no Supabase):** clicar em "Concluir" num agendamento de cliente com e-mail cadastrado falhava sempre, com erro genérico "Não foi possível concluir esta ação. Atualize a página e tente novamente." Causa: as migrations `027-v27-1-crm-premium-experiencia.sql` e `027-v27-1-experiencia-crm-real.sql` descrevem duas versões incompatíveis de `experience_requests`, e as duas acabaram sendo executadas no banco em momentos diferentes — a tabela ficou com colunas `customer_name`/`customer_email` obrigatórias (da primeira), mas o trigger que roda ao concluir (`v27_queue_experience_after_completion`, da segunda) nunca preenchia essas colunas, violando a restrição not-null e cancelando a atualização inteira.
+- O contrato realmente usado em produção (`avaliacao-v27.js`, `get_experience_context`, `submit_experience_response`) já segue a segunda versão, então a tabela foi ajustada para combinar com o código já publicado, em vez de mudar o código: `customer_name`/`customer_email` deixaram de ser obrigatórias e a lista de status permitidos passou a incluir `opened`/`satisfied`/`feedback`/`review_clicked`/`expired` — valores que o código já grava, mas que a restrição antiga bloqueava (esse segundo problema ainda não tinha sido notado porque nenhuma linha chegava a ser criada em `experience_requests`).
+- Nova migration `029-v28.1.1-fix-conclusao-atendimento.sql`.
+
 ## 28.1.0 — Fallback de SMS para clientes sem e-mail
 
 - **Nova função `send-sms`:** envia SMS via API da SMSDev (`api.smsdev.com.br/v1/send`), com fila e histórico em `sms_queue` (mesmo padrão de `email_queue`/Zoho).
