@@ -36,7 +36,6 @@ Deno.serve(async (request: Request) => {
     const { data: bookings, error } = await admin.from('bookings').select('*')
       .in('status', ['pending','confirmed'])
       .gte('booking_date', minDate).lte('booking_date', maxDate)
-      .not('customer_email', 'is', null)
     if (error) throw error
 
     const candidates = (bookings || []).filter((b:any) => {
@@ -46,9 +45,13 @@ Deno.serve(async (request: Request) => {
 
     const results:any[] = []
     for (const booking of candidates) {
-      const { data: previous } = await admin.from('email_queue').select('id,status')
+      const { data: previousEmail } = await admin.from('email_queue').select('id,status')
         .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
         .eq('recipient_type', 'customer').maybeSingle()
+      const { data: previousSms } = await admin.from('sms_queue').select('id,status')
+        .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
+        .eq('recipient_type', 'customer').maybeSingle()
+      const previous = previousEmail || previousSms
       if (previous?.id) { results.push({ booking_id: booking.id, skipped: 'duplicate', status: previous.status }); continue }
 
       const response = await fetch(`${url}/functions/v1/booking-email`, {

@@ -1,3 +1,10 @@
+## 28.1.0 — Fallback de SMS para clientes sem e-mail
+
+- **Nova função `send-sms`:** envia SMS via API da SMSDev (`api.smsdev.com.br/v1/send`), com fila e histórico em `sms_queue` (mesmo padrão de `email_queue`/Zoho).
+- **`booking-email` atualizada:** quando o cliente não informou e-mail, mas informou telefone (campo sempre obrigatório), a confirmação/reagendamento/cancelamento/lembrete é enviado por SMS em vez de ser simplesmente ignorado. Retorno da função passa a incluir `customer_channel` (`email`, `sms` ou `none`).
+- **`booking-reminder-24h` corrigida:** antes, a busca de agendamentos para o lembrete de 24h excluía quem não tinha e-mail (`.not('customer_email','is',null)`), então nenhum cliente sem e-mail jamais recebia lembrete. Esse filtro foi removido. A checagem de duplicidade (que evita reenviar o mesmo lembrete) agora olha tanto `email_queue` quanto `sms_queue`, evitando reenvio repetido para quem só recebe SMS.
+- Nova migration `028-v28-1-0-sms-fallback.sql` cria a tabela `sms_queue` com RLS e índice único anti-duplicidade de lembrete, no mesmo padrão da fila de e-mail.
+
 ## 28.0.14 — Fase 2: fechamento de brecha de acesso e correção da pesquisa de satisfação
 
 - **Segurança (crítico, corrigido ao vivo no Supabase, sem necessidade de novo deploy do site):** a opção "Allow new users to sign up" do Supabase Auth foi desativada. Ela estava ativada por padrão e, combinada com políticas de segurança (RLS) de várias tabelas (`bookings`, `customer_profiles`, `contact_messages`, `loyalty_accounts`, `loyalty_events`, `schedule_blocks`, `booking_customer_actions`) que liberavam acesso para qualquer usuário autenticado (não checavam se era realmente admin), permitia que qualquer visitante criasse uma conta grátis e lesse/editasse dados de clientes. Confirmado por consulta ao banco que existia apenas 1 conta (a do próprio dono) — não há indício de que a brecha tenha sido explorada. Correção completa das políticas RLS (fazer o check real de admin) fica para uma próxima etapa, feita com mais calma e testes.

@@ -123,6 +123,20 @@ Deno.serve(async (request: Request) => {
       : 'https://www.barbeariadoju.com.br/agendar/'
     const whatsappUrl = `https://wa.me/5511967073038?text=${encodeURIComponent(`Olá! Gostaria de falar sobre meu agendamento de ${dateBR(booking.booking_date)} às ${timeBR(booking.start_time)}.`)}`
 
+    const smsDetails = `${dateBR(booking.booking_date)} às ${timeBR(booking.start_time)} - ${booking.service_name}`
+    const smsAddress = 'Rua Dr. Antônio da Cruz, 482, Centro - Bragança Paulista'
+
+    let smsText = `Barbearia do Ju: ${customerLead}`
+    if (eventType === 'booking_confirmed') {
+      smsText = `Barbearia do Ju: horário confirmado! ${smsDetails}. ${smsAddress}. Dúvidas: (11) 96707-3038`
+    } else if (eventType === 'booking_rescheduled') {
+      smsText = `Barbearia do Ju: horário alterado! Novo horário: ${smsDetails}. Dúvidas: (11) 96707-3038`
+    } else if (eventType === 'booking_reminder_24h') {
+      smsText = `Barbearia do Ju: lembrete do seu horário amanhã, ${smsDetails}. ${smsAddress}`
+    } else if (eventType === 'booking_cancelled') {
+      smsText = `Barbearia do Ju: agendamento de ${smsDetails} foi cancelado. Para remarcar: ${bookingUrl} ou (11) 96707-3038`
+    }
+
     let customerButtons = ''
     if (eventType === 'booking_cancelled') {
       customerButtons = button(bookingUrl, 'Escolher nova data e horário') +
@@ -164,9 +178,28 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    const sendSms = async (payload: Record<string, unknown>) => {
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': secret,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: await response.json().catch(() => ({})),
+      }
+    }
+
     const results: unknown[] = []
+    let customerChannel = 'none'
 
     if (booking.customer_email) {
+      customerChannel = 'email'
       results.push(await send({
         booking_id: booking.id,
         event_type: eventType,
@@ -176,6 +209,16 @@ Deno.serve(async (request: Request) => {
         to: booking.customer_email,
         subject: `${customerSubjectIcon} ${customerTitle} | Barbearia do Ju`,
         html: customerHtml,
+      }))
+    } else if (booking.customer_phone) {
+      customerChannel = 'sms'
+      results.push(await sendSms({
+        booking_id: booking.id,
+        event_type: eventType,
+        recipient_type: 'customer',
+        recipient_name: booking.customer_name,
+        to: booking.customer_phone,
+        text: smsText,
       }))
     }
 
@@ -192,7 +235,8 @@ Deno.serve(async (request: Request) => {
 
     return json({
       ok: results.every((result: any) => result.ok),
-      customer_skipped: !booking.customer_email,
+      customer_channel: customerChannel,
+      customer_skipped: customerChannel === 'none',
       results,
     })
   } catch (error) {
