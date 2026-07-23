@@ -301,6 +301,10 @@ Deno.serve(async (request: Request) => {
       results.push(emailResult)
     }
 
+    if (customerChannel !== 'none') {
+      await admin.from('notification_log').insert({ booking_id: booking.id, event_type: eventType, channel: customerChannel })
+    }
+
     if (notifyAdmin) results.push(await send({
       booking_id: booking.id,
       event_type: eventType,

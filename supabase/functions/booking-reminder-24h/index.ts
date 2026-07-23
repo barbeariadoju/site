@@ -45,21 +45,29 @@ Deno.serve(async (request: Request) => {
 
     const results:any[] = []
     for (const booking of candidates) {
-      const { data: previousEmail } = await admin.from('email_queue').select('id,status')
-        .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
-        .eq('recipient_type', 'customer').maybeSingle()
-      const { data: previousSms } = await admin.from('sms_queue').select('id,status')
-        .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
-        .eq('recipient_type', 'customer').maybeSingle()
-      const previous = previousEmail || previousSms
-      if (previous?.id) { results.push({ booking_id: booking.id, skipped: 'duplicate', status: previous.status }); continue }
+      try {
+        const { data: previousLog } = await admin.from('notification_log').select('id')
+          .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h').maybeSingle()
+        const { data: previousEmail } = await admin.from('email_queue').select('id,status')
+          .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
+          .eq('recipient_type', 'customer').maybeSingle()
+        const { data: previousSms } = await admin.from('sms_queue').select('id,status')
+          .eq('booking_id', booking.id).eq('event_type', 'booking_reminder_24h')
+          .eq('recipient_type', 'customer').maybeSingle()
+        if (previousLog?.id) { results.push({ booking_id: booking.id, skipped: 'duplicate', channel: 'notification_log' }); continue }
+        const previous = previousEmail || previousSms
+        if (previous?.id) { results.push({ booking_id: booking.id, skipped: 'duplicate', status: previous.status }); continue }
 
-      const response = await fetch(`${url}/functions/v1/booking-email`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': secret },
-        body: JSON.stringify({ booking_id: booking.id, event_type: 'booking_reminder_24h', notify_admin: false }),
-      })
-      const body = await response.json().catch(() => ({}))
-      results.push({ booking_id: booking.id, ok: response.ok, status: response.status, body })
+        const response = await fetch(`${url}/functions/v1/booking-email`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': secret },
+          body: JSON.stringify({ booking_id: booking.id, event_type: 'booking_reminder_24h', notify_admin: false }),
+        })
+        const body = await response.json().catch(() => ({}))
+        results.push({ booking_id: booking.id, ok: response.ok, status: response.status, body })
+      } catch (bookingError) {
+        console.error('[booking-reminder-24h] booking', booking.id, bookingError)
+        results.push({ booking_id: booking.id, ok: false, error: bookingError instanceof Error ? bookingError.message : String(bookingError) })
+      }
     }
 
     return json({ ok: true, checked: bookings?.length || 0, candidates: candidates.length, results })

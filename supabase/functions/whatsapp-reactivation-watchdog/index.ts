@@ -45,13 +45,27 @@ Deno.serve(async (request: Request) => {
     return json({ error: error.message }, 500)
   }
 
-  const phones = (stale || []).map((row) => row.phone as string)
-  if (!phones.length) return json({ ok: true, reactivated: 0 })
+  const staleCandidates = (stale || []).map((row) => row.phone as string)
+  if (!staleCandidates.length) return json({ ok: true, reactivated: 0 })
 
-  await admin
+  // Reconfirma human_takeover=true e last_message_at < cutoff no próprio UPDATE
+  // (não só no SELECT de cima), pra evitar reativar uma conversa que o cliente
+  // acabou de mandar mensagem enquanto este watchdog rodava.
+  const { data: updated, error: updateError } = await admin
     .from('whatsapp_conversations')
     .update({ human_takeover: false, updated_at: new Date().toISOString() })
-    .in('phone', phones)
+    .in('phone', staleCandidates)
+    .eq('human_takeover', true)
+    .lt('last_message_at', cutoff)
+    .select('phone')
+
+  if (updateError) {
+    console.error('[whatsapp-reactivation-watchdog] update', updateError)
+    return json({ error: updateError.message }, 500)
+  }
+
+  const phones = (updated || []).map((row) => row.phone as string)
+  if (!phones.length) return json({ ok: true, reactivated: 0 })
 
   const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
   const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')

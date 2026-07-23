@@ -19,7 +19,7 @@ const canonicalPhone=(value='')=>{
   const digits=String(value).replace(/\D/g,'')
   if((digits.length===12||digits.length===13)&&digits.startsWith('55'))return digits
   if(digits.length===10||digits.length===11)return `55${digits}`
-  return digits
+  return ''
 }
 
 Deno.serve(async(req:Request)=>{
@@ -30,9 +30,8 @@ Deno.serve(async(req:Request)=>{
   const serviceRole=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()||''
   const emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET')?.trim()||''
   const provided=req.headers.get('x-webhook-secret')||''
-  const auth=req.headers.get('authorization')||''
   if(!supabaseUrl||!serviceRole||!emailSecret) return json({error:'Secrets obrigatórios ausentes.'},500)
-  if(provided!==emailSecret && !auth) return json({error:'Não autorizado.'},401)
+  if(provided!==emailSecret) return json({error:'Não autorizado.'},401)
 
   const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
   const evolutionApiUrl=Deno.env.get('EVOLUTION_API_URL')?.trim()||''
