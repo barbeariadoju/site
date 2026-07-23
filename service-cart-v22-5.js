@@ -178,6 +178,23 @@
     }
   });
 
+  function findServiceButton(name){
+    return [...document.querySelectorAll('.service-btn')].find(b => b.dataset.name === name);
+  }
+
+  function applyRepeatParam(){
+    const repeat = (new URLSearchParams(location.search).get('repeat') || '').trim();
+    if(!repeat) return;
+    const wholeBtn = findServiceButton(repeat);
+    const names = wholeBtn ? [repeat] : repeat.split(' + ').map(n => n.trim());
+    let added = false;
+    names.forEach(name => {
+      const btn = findServiceButton(name);
+      if(btn){ addService(btn); added = true; }
+    });
+    if(added) showCart();
+  }
+
   clearBtn?.addEventListener('click', () => {
     selectedServices.clear();
     sessionStorage.removeItem(serviceStorageKey);
@@ -189,5 +206,6 @@
   continueBtn?.addEventListener('click', () => { panelHidden = true; render(); });
   openBtn?.addEventListener('click', showCart);
   scheduleBtn?.addEventListener('click', prepareAgenda);
+  applyRepeatParam();
   render();
 })();
