@@ -159,6 +159,41 @@ Deno.serve(async (request: Request) => {
 
     log('booking_updated', { requestId, bookingId, newStatus: updated.status })
 
+    // Trilha de auditoria: registra a mudança de status no histórico do cliente,
+    // para o dono ter rastreabilidade de quem/quando alterou o agendamento.
+    // Não bloqueia a resposta se falhar.
+    if (current.status !== status) {
+      try {
+        const statusLabels: Record<string, string> = {
+          pending: 'aguardando confirmação',
+          confirmed: 'confirmado',
+          completed: 'concluído',
+          no_show: 'não compareceu',
+          cancelled: 'cancelado',
+        }
+        const { data: customer } = await admin
+          .from('customer_profiles')
+          .select('id')
+          .eq('phone', String(current.customer_phone || '').replace(/\D/g, ''))
+          .maybeSingle()
+        await admin.from('customer_timeline').insert({
+          customer_id: customer?.id ?? null,
+          booking_id: bookingId,
+          event_type: 'booking_status_changed',
+          title: `Agendamento marcado como ${statusLabels[status] || status}`,
+          details: {
+            from: current.status,
+            to: status,
+            changed_by: authData.user.id,
+            booking_date: current.booking_date,
+            start_time: current.start_time,
+          },
+        })
+      } catch (timelineError) {
+        console.error('[admin-booking-status] timeline_log_failed', JSON.stringify({ requestId, bookingId, error: timelineError instanceof Error ? timelineError.message : String(timelineError) }))
+      }
+    }
+
     let email = { attempted: false, sent: false, skipped: false, error: '' }
 
     if (status === 'cancelled') {

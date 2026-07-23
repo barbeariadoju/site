@@ -10,6 +10,16 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders })
 
+const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs = 15000) => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 const escapeHtml = (value: unknown) =>
   String(value ?? '').replace(/[&<>"']/g, (char) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!,
@@ -173,7 +183,7 @@ Deno.serve(async (request: Request) => {
     )
 
     const send = async (payload: Record<string, unknown>) => {
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +200,7 @@ Deno.serve(async (request: Request) => {
     }
 
     const sendSms = async (payload: Record<string, unknown>) => {
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+      const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-sms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +232,7 @@ Deno.serve(async (request: Request) => {
         return { ok: false, status: 0, data: { error: 'WhatsApp indisponível.' } }
       }
       try {
-        const response = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+        const response = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
           body: JSON.stringify({ number: waPhone, text }),
