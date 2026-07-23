@@ -124,7 +124,7 @@ Deno.serve(async (request: Request) => {
 
     const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
       body: JSON.stringify({
         message: text,
         state: conversation?.state || {},

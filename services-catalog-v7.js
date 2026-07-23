@@ -17,5 +17,6 @@ window.BDJ_SERVICES = [
   {category:'Química e tratamentos',name:'Pigmentação Capilar (Tintura)',description:'Coloração capilar para cobertura de fios brancos ou realce do visual.',price:50,duration:30},
   {category:'Química e tratamentos',name:'Hidratação / Reconstrução Capilar',description:'Tratamento capilar focado em hidratação, reconstrução e melhora do aspecto dos fios.',price:40,duration:20},
   {category:'Pigmentações',name:'Pigmentação de Barba',description:'Pigmentação da barba para correção de falhas e aparência uniforme.',price:35,duration:20},
-  {category:'Pigmentações',name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,duration:20}
+  {category:'Pigmentações',name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,duration:20},
+  {category:'Estética corporal',name:'Aparação Corporal Masculina',description:'Redução uniforme dos pelos corporais (peito, abdômen, costas, ombros, braços, pernas, axilas e virilha externa) com máquina profissional, sem cera e sem arrancar os fios pela raiz. Atendimento reservado, com horário exclusivo e total discrição. Não inclui região íntima.',price:120,duration:60}
 ];

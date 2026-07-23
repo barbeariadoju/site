@@ -56,7 +56,8 @@ const services=[
  ['Barboterapia com vaporizador de ozônio',50,40,'barba'],['Barboterapia',40,30,'barba'],['Barba Express',25,20,'barba'],['Pezinho (acabamento)',15,10,'adicional'],
  ['Sobrancelha Masculina',15,10,'adicional'],['Depilação nasal (cera quente)',25,20,'adicional'],['Depilação orelhas',25,20,'adicional'],['Freestyle (risquinho)',15,10,'adicional'],
  ['Nevou / Platinado',150,120,'quimica'],['Luzes',120,90,'quimica'],['Alisamento / Relaxamento',70,45,'quimica'],['Pigmentação Capilar (Tintura)',50,30,'quimica'],
- ['Hidratação / Reconstrução Capilar',40,20,'tratamento'],['Pigmentação de Barba',35,20,'pigmentacao'],['Pigmentação de Sobrancelha',20,20,'pigmentacao']
+ ['Hidratação / Reconstrução Capilar',40,20,'tratamento'],['Pigmentação de Barba',35,20,'pigmentacao'],['Pigmentação de Sobrancelha',20,20,'pigmentacao'],
+ ['Aparação Corporal Masculina',120,60,'estetica']
 ].map(([name,price,duration,category])=>({name:String(name),price:Number(price),duration:Number(duration),category:String(category)}))
 
 const products=[
