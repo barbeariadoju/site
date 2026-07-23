@@ -195,31 +195,51 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    const emailPayload = {
+      booking_id: booking.id,
+      event_type: eventType,
+      recipient_type: 'customer',
+      recipient_email: booking.customer_email,
+      recipient_name: booking.customer_name,
+      to: booking.customer_email,
+      subject: `${customerSubjectIcon} ${customerTitle} | Barbearia do Ju`,
+      html: customerHtml,
+    }
+
+    const smsPayload = {
+      booking_id: booking.id,
+      event_type: eventType,
+      recipient_type: 'customer',
+      recipient_name: booking.customer_name,
+      to: booking.customer_phone,
+      text: smsText,
+    }
+
+    const requestedChannel = String(body?.channel || '')
+    const forcedChannel = requestedChannel === 'email' || requestedChannel === 'sms' ? requestedChannel : null
+
     const results: unknown[] = []
     let customerChannel = 'none'
+    let customerChannelFallbackUsed = false
 
-    if (booking.customer_email) {
+    if (forcedChannel === 'email' && booking.customer_email) {
       customerChannel = 'email'
-      results.push(await send({
-        booking_id: booking.id,
-        event_type: eventType,
-        recipient_type: 'customer',
-        recipient_email: booking.customer_email,
-        recipient_name: booking.customer_name,
-        to: booking.customer_email,
-        subject: `${customerSubjectIcon} ${customerTitle} | Barbearia do Ju`,
-        html: customerHtml,
-      }))
-    } else if (booking.customer_phone) {
+      results.push(await send(emailPayload))
+    } else if (forcedChannel === 'sms' && booking.customer_phone) {
       customerChannel = 'sms'
-      results.push(await sendSms({
-        booking_id: booking.id,
-        event_type: eventType,
-        recipient_type: 'customer',
-        recipient_name: booking.customer_name,
-        to: booking.customer_phone,
-        text: smsText,
-      }))
+      results.push(await sendSms(smsPayload))
+    } else if (!forcedChannel && booking.customer_email) {
+      customerChannel = 'email'
+      const emailResult: any = await send(emailPayload)
+      results.push(emailResult)
+      if (!emailResult.ok && booking.customer_phone) {
+        results.push(await sendSms(smsPayload))
+        customerChannelFallbackUsed = true
+        customerChannel = 'email+sms_fallback'
+      }
+    } else if (!forcedChannel && booking.customer_phone) {
+      customerChannel = 'sms'
+      results.push(await sendSms(smsPayload))
     }
 
     if (notifyAdmin) results.push(await send({
@@ -237,6 +257,7 @@ Deno.serve(async (request: Request) => {
       ok: results.every((result: any) => result.ok),
       customer_channel: customerChannel,
       customer_skipped: customerChannel === 'none',
+      customer_channel_fallback_used: customerChannelFallbackUsed,
       results,
     })
   } catch (error) {

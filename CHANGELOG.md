@@ -1,3 +1,13 @@
+## 28.2.0 — Status real de entrega, alerta de saldo SMSDev e fallback cruzado
+
+- **Confirmação de entrega do SMS (DLR):** o status `sent` da `sms_queue` só indicava que a SMSDev aceitou o envio, não que o SMS chegou de fato no celular. Nova coluna `delivery_status` (`unknown`/`delivered`/`failed`) é preenchida consultando `api.smsdev.com.br/v1/dlr` periodicamente.
+- **Alerta de saldo baixo:** nova tabela `integration_alerts` guarda o último saldo lido da SMSDev. Quando o saldo fica abaixo de 100 créditos, um e-mail de aviso é enviado para `contato@barbeariadoju.com.br` (com cooldown de 24h entre alertas repetidos).
+- **Fallback cruzado SMS ↔ e-mail:** se a entrega do SMS for confirmada como falha (cliente tem e-mail cadastrado), a confirmação é reenviada automaticamente por e-mail. Se o envio de e-mail falhar na hora (erro do Zoho), tenta SMS imediatamente, quando o cliente tiver telefone — o que é sempre, já que o campo é obrigatório. Deduplicação usa o mesmo padrão já existente em `booking-reminder-24h` (verifica as duas filas antes de reenviar), evitando reenvio duplicado ou loop entre os dois canais.
+- **Nova Edge Function `notifications-watchdog`:** roda a cada 15 minutos (cron), fazendo a checagem de DLR, o disparo do fallback e a checagem de saldo.
+- **`booking-email` atualizada:** aceita `channel` opcional para forçar um canal específico (usado pelo fallback). Resposta passa a incluir `customer_channel_fallback_used`.
+- **Painel administrativo:** nova aba "SMS automáticos" na Central de Comunicação (`admin-mensagens.html`), com cartão de saldo SMSDev, métricas e histórico de envios — mesmo padrão já usado para e-mails.
+- Nova migration `030-v28.2.0-status-fallback.sql`.
+
 ## 28.1.1 — Corrige falha ao marcar agendamento como concluído
 
 - **Bug corrigido (crítico, aplicado ao vivo no Supabase):** clicar em "Concluir" num agendamento de cliente com e-mail cadastrado falhava sempre, com erro genérico "Não foi possível concluir esta ação. Atualize a página e tente novamente." Causa: as migrations `027-v27-1-crm-premium-experiencia.sql` e `027-v27-1-experiencia-crm-real.sql` descrevem duas versões incompatíveis de `experience_requests`, e as duas acabaram sendo executadas no banco em momentos diferentes — a tabela ficou com colunas `customer_name`/`customer_email` obrigatórias (da primeira), mas o trigger que roda ao concluir (`v27_queue_experience_after_completion`, da segunda) nunca preenchia essas colunas, violando a restrição not-null e cancelando a atualização inteira.
