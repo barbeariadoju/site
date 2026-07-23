@@ -18,6 +18,7 @@
   }
   $('experience-satisfied')?.addEventListener('click',async()=>{if(await respond('satisfied'))show('experience-review')});
   $('experience-feedback')?.addEventListener('click',()=>show('experience-feedback-form'));
+  $('experience-review-feedback-link')?.addEventListener('click',()=>show('experience-feedback-form'));
   $('experience-feedback-send')?.addEventListener('click',async()=>{const text=$('experience-feedback-text').value.trim();if(await respond('feedback',text))show('experience-thanks-feedback')});
   $('experience-review-link')?.addEventListener('click',()=>{respond('review_clicked')});
   load();

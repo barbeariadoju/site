@@ -137,6 +137,17 @@ Deno.serve(async (request: Request) => {
       smsText = `Barbearia do Ju: agendamento de ${smsDetails} foi cancelado. Para remarcar: ${bookingUrl} ou (11) 96707-3038`
     }
 
+    let waText = `💈 *Barbearia do Ju*\n${customerLead}`
+    if (eventType === 'booking_confirmed') {
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu horário foi confirmado:\n📅 ${smsDetails}\n📍 ${smsAddress}\n\nQualquer dúvida, é só chamar por aqui!`
+    } else if (eventType === 'booking_rescheduled') {
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu agendamento foi alterado:\n📅 Novo horário: ${smsDetails}\n\nQualquer dúvida, é só chamar por aqui!`
+    } else if (eventType === 'booking_reminder_24h') {
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Passando pra lembrar do seu atendimento amanhã:\n📅 ${smsDetails}\n📍 ${smsAddress}\n\nAté lá!`
+    } else if (eventType === 'booking_cancelled') {
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}. Seu agendamento de ${smsDetails} foi cancelado.\nPra remarcar: ${bookingUrl}\nQualquer dúvida, é só chamar por aqui!`
+    }
+
     let customerButtons = ''
     if (eventType === 'booking_cancelled') {
       customerButtons = button(bookingUrl, 'Escolher nova data e horário') +
@@ -195,6 +206,39 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    const canonicalWhatsappPhone = (value: string) => {
+      const digits = value.replace(/\D/g, '')
+      if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return digits
+      if (digits.length === 10 || digits.length === 11) return `55${digits}`
+      return ''
+    }
+
+    const sendWhatsapp = async (phone: string, text: string) => {
+      const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL')?.trim() || ''
+      const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY')?.trim() || ''
+      const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim() || ''
+      const waPhone = canonicalWhatsappPhone(phone)
+      if (!waPhone || !evolutionApiUrl || !evolutionApiKey || !evolutionInstance) {
+        return { ok: false, status: 0, data: { error: 'WhatsApp indisponível.' } }
+      }
+      try {
+        const response = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+          body: JSON.stringify({ number: waPhone, text }),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (response.ok) {
+          const sentMessageId = String(data?.key?.id || '') || null
+          await admin.from('whatsapp_messages').insert({ phone: waPhone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+          await admin.from('whatsapp_conversations').upsert({ phone: waPhone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+        }
+        return { ok: response.ok, status: response.status, data }
+      } catch (error) {
+        return { ok: false, status: 0, data: { error: error instanceof Error ? error.message : String(error) } }
+      }
+    }
+
     const emailPayload = {
       booking_id: booking.id,
       event_type: eventType,
@@ -216,7 +260,7 @@ Deno.serve(async (request: Request) => {
     }
 
     const requestedChannel = String(body?.channel || '')
-    const forcedChannel = requestedChannel === 'email' || requestedChannel === 'sms' ? requestedChannel : null
+    const forcedChannel = ['email', 'sms', 'whatsapp'].includes(requestedChannel) ? requestedChannel : null
 
     const results: unknown[] = []
     let customerChannel = 'none'
@@ -228,18 +272,33 @@ Deno.serve(async (request: Request) => {
     } else if (forcedChannel === 'sms' && booking.customer_phone) {
       customerChannel = 'sms'
       results.push(await sendSms(smsPayload))
+    } else if (forcedChannel === 'whatsapp' && booking.customer_phone) {
+      customerChannel = 'whatsapp'
+      results.push(await sendWhatsapp(booking.customer_phone, waText))
+    } else if (!forcedChannel && booking.customer_phone) {
+      customerChannel = 'whatsapp'
+      const whatsappResult: any = await sendWhatsapp(booking.customer_phone, waText)
+      results.push(whatsappResult)
+      if (!whatsappResult.ok) {
+        customerChannelFallbackUsed = true
+        if (booking.customer_email) {
+          const emailResult: any = await send(emailPayload)
+          results.push(emailResult)
+          if (emailResult.ok) {
+            customerChannel = 'whatsapp_fallback_email'
+          } else {
+            results.push(await sendSms(smsPayload))
+            customerChannel = 'whatsapp_fallback_sms'
+          }
+        } else {
+          results.push(await sendSms(smsPayload))
+          customerChannel = 'whatsapp_fallback_sms'
+        }
+      }
     } else if (!forcedChannel && booking.customer_email) {
       customerChannel = 'email'
       const emailResult: any = await send(emailPayload)
       results.push(emailResult)
-      if (!emailResult.ok && booking.customer_phone) {
-        results.push(await sendSms(smsPayload))
-        customerChannelFallbackUsed = true
-        customerChannel = 'email+sms_fallback'
-      }
-    } else if (!forcedChannel && booking.customer_phone) {
-      customerChannel = 'sms'
-      results.push(await sendSms(smsPayload))
     }
 
     if (notifyAdmin) results.push(await send({

@@ -19,6 +19,8 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
+const normalize = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
 const HISTORY_LIMIT = 10
 
 Deno.serve(async (request: Request) => {
@@ -85,6 +87,90 @@ Deno.serve(async (request: Request) => {
       })
 
       return json({ ok: true, human_takeover: true })
+    }
+
+    const sendWhatsapp = async (to: string, body: string) => {
+      const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+        body: JSON.stringify({ number: to, text: body }),
+      })
+      const sendData = await sendResponse.json().catch(() => ({}))
+      const sentMessageId = String(sendData?.key?.id || '') || null
+      await admin.from('whatsapp_messages').insert({ phone: to, direction: 'out', body, sent_by: 'bot', evolution_message_id: sentMessageId })
+      return sendResponse.ok
+    }
+
+    const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
+    const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
+
+    if (pending) {
+      const normalizedReply = normalize(text)
+      const isSatisfied = /satisfeit|otimo|otima|bom|boa|👍/.test(normalizedReply) || text.includes('😊')
+      const isUnsatisfied = /insatisfeit|ruim|nao gostei|👎/.test(normalizedReply) || text.includes('🙁') || text.includes('😕')
+
+      if (pending.status === 'feedback') {
+        await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
+        const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
+        await sendWhatsapp(phone, reply)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+        if (pushSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({
+              custom: {
+                title: '📝 Sugestão de cliente insatisfeito',
+                body: `${pending.customer_name || phone}: ${text}`.slice(0, 180),
+                url: 'https://wa.me/' + phone,
+                tag: `whatsapp-feedback-${phone}`,
+              },
+            }),
+          }).catch((error) => console.error('[whatsapp-webhook] push feedback', error))
+        }
+        return json({ ok: true, satisfaction: 'feedback_received' })
+      }
+
+      if (isSatisfied) {
+        await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: null })
+        const { data: alreadyReviewed } = await admin.rpc('customer_already_reviewed', { p_customer_id: pending.customer_id })
+        const reply = alreadyReviewed
+          ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
+          : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
+        await sendWhatsapp(phone, reply)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+        return json({ ok: true, satisfaction: 'satisfied' })
+      }
+
+      if (isUnsatisfied) {
+        await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: null })
+        const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
+        await sendWhatsapp(phone, reply)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+        await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+        if (pushSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({
+              custom: {
+                title: '😕 Cliente insatisfeito',
+                body: `${pending.customer_name || phone} ficou insatisfeito. Combine o retoque sem custo pelo WhatsApp.`,
+                url: 'https://wa.me/' + phone,
+                tag: `whatsapp-unsatisfied-${phone}`,
+              },
+            }),
+          }).catch((error) => console.error('[whatsapp-webhook] push unsatisfied', error))
+        }
+        return json({ ok: true, satisfaction: 'unsatisfied' })
+      }
+
+      const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
+      await sendWhatsapp(phone, reply)
+      await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+      return json({ ok: true, satisfaction: 'unclear' })
     }
 
     if (!text) {
