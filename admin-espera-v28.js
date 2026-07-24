@@ -199,6 +199,7 @@
         <label>Data<input data-fit-field="booking_date" type="date" value="${row.preferred_date || ''}"></label>
         <label>Horário<input data-fit-field="start_time" type="time"></label>
       </div>
+      <label class="admin-checkbox-row"><input data-fit-field="allow_outside_hours" type="checkbox"> Permitir fora do horário de funcionamento</label>
       <p class="field-help" data-fit-message></p>
       <div class="espera-fit-actions">
         <button type="button" class="btn primary" data-fit-confirm="${row.id}">Confirmar encaixe</button>
@@ -227,6 +228,7 @@
     const duration = Number(field('duration_minutes'));
     const bookingDate = field('booking_date');
     const startTime = field('start_time');
+    const allowOutsideHours = Boolean(card.querySelector('[data-fit-field="allow_outside_hours"]')?.checked);
 
     if (!serviceName) { msg.textContent = 'Informe o serviço.'; return; }
     if (!Number.isFinite(servicePrice) || servicePrice < 0) { msg.textContent = 'Informe um valor válido.'; return; }
@@ -243,6 +245,7 @@
       p_booking_date: bookingDate,
       p_start_time: startTime,
       p_notes: 'Encaixe da lista de espera',
+      p_allow_outside_hours: allowOutsideHours,
     });
     if (error) {
       msg.textContent = error.message || 'Não foi possível criar o agendamento.';

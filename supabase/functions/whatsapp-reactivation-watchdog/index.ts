@@ -21,6 +21,31 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 
 const INACTIVITY_MINUTES = 2
 
+// Evita mandar o "cochicho" de reativação quando a conversa já terminou naturalmente
+// (o cliente só reagiu com figurinha/emoji, ou mandou um agradecimento/despedida).
+// Sem isso, um cliente que já foi atendido recebia um "vim te lembrar de agendar"
+// logo depois de ter respondido com uma figurinha de "toca aqui" — soa robótico e
+// fora de contexto, especialmente se o atendimento já foi concluído no mesmo dia.
+const CLOSING_TEXT = /^(obrigad[oa]s?|valeu|vlw|blz|beleza|ok(ay)?|tranquilo|falou|ate (mais|logo|breve)|tchau|flw|show|top|jo[ií]a|de nada|por nada|combinado|fechado)[\s!.,]*$/
+function looksLikeClosingOrReaction(rawBody: string): boolean {
+  const body = String(rawBody || '').trim()
+  if (!body || body === '[mídia ou mensagem sem texto]') return true
+  if (!/[a-zA-ZÀ-ÿ]/.test(body)) return true // só emoji/figurinha/pontuação, sem nenhuma letra
+  const normalized = body.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+  return CLOSING_TEXT.test(normalized)
+}
+async function shouldSkipNudge(admin: any, phone: string): Promise<boolean> {
+  const { data: last } = await admin
+    .from('whatsapp_messages')
+    .select('direction, body')
+    .eq('phone', phone)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!last || last.direction !== 'in') return false
+  return looksLikeClosingOrReaction(last.body)
+}
+
 Deno.serve(async (request: Request) => {
   const expected = Deno.env.get('WHATSAPP_WEBHOOK_SECRET')?.trim() || ''
   const provided = request.headers.get('x-webhook-secret') || ''
@@ -70,10 +95,15 @@ Deno.serve(async (request: Request) => {
   const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
   const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
   const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
-  const nudgeText = 'Oi! 😊 Ainda estou por aqui se precisar de algo — é só me chamar que te ajudo a ver horários ou agendar!'
+  const nudgeText = 'Oi! 😊 Ainda estou por aqui se precisar de algo.'
+  let skippedCount = 0
 
   for (const phone of phones) {
     try {
+      if (await shouldSkipNudge(admin, phone)) {
+        skippedCount++
+        continue
+      }
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
@@ -116,5 +146,5 @@ Deno.serve(async (request: Request) => {
     }).catch((error) => console.error('[whatsapp-reactivation-watchdog] push', error))
   }
 
-  return json({ ok: true, reactivated: phones.length, phones })
+  return json({ ok: true, reactivated: phones.length, nudged: phones.length - skippedCount, skipped_nudge: skippedCount, phones })
 })
