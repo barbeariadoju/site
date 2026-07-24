@@ -51,6 +51,18 @@ Deno.serve(async(req:Request)=>{
       if(!updated)return json({error:'Não foi possível localizar o agendamento cancelado.'},400)
       if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado',body:`${booking.customer_name} cancelou ${booking.booking_date.split('-').reverse().join('/')} às ${String(booking.start_time).slice(0,5)}\n${booking.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${booking.id}`}})}).catch(()=>{})
       if(emailSecret)await fetch(`${url}/functions/v1/booking-email`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':emailSecret},body:JSON.stringify({booking_id:booking.id,event_type:'booking_cancelled',management_token:token})}).catch(error=>console.error('[manage-booking] email cancel',error))
+      // Aviso de vaga aberta: cliente cancelou por conta própria — se alguém está na lista
+      // de espera esperando esse dia/turno, avisa o dono para oferecer o encaixe.
+      if(pushSecret){
+        try{
+          const {data:waiting}=await admin.rpc('waitlist_matches_for_slot',{p_date:booking.booking_date,p_start_time:booking.start_time})
+          if(Array.isArray(waiting)&&waiting.length){
+            const names=waiting.slice(0,3).map((w:any)=>w.customer_name).join(', ')
+            const extra=waiting.length>3?` +${waiting.length-3}`:''
+            await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🎉 Vaga aberta — tem gente esperando!',body:`${booking.booking_date.split('-').reverse().join('/')} às ${String(booking.start_time).slice(0,5)} abriu. ${names}${extra} está(ão) na lista de espera para esse dia.`,url:'/admin-espera.html?app=1',tag:`waitlist-slot-${booking.id}`}})}).catch((pushError)=>console.error('[manage-booking] waitlist_push',pushError))
+          }
+        }catch(waitlistError){console.error('[manage-booking] waitlist_check',waitlistError)}
+      }
       return json({ok:true,booking:safe(updated)})
     }
 

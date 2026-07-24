@@ -197,6 +197,119 @@ Deno.serve(async (request: Request) => {
     balanceResult = { error: error instanceof Error ? error.message : String(error) }
   }
 
+  // 4. Conexão do WhatsApp (Evolution) — avisa o dono se a JuIA caiu/desconectou,
+  //    para ele poder desligar com segurança as automações do WhatsApp Business.
+  let whatsappResult: unknown = null
+  try {
+    const evoUrl = Deno.env.get('EVOLUTION_API_URL')?.trim()
+    const evoKey = Deno.env.get('EVOLUTION_API_KEY')?.trim()
+    const evoInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim()
+
+    if (evoUrl && evoKey && evoInstance) {
+      let state = 'unreachable'
+      try {
+        const resp = await fetchWithTimeout(`${evoUrl}/instance/connectionState/${evoInstance}`, {
+          method: 'GET',
+          headers: { apikey: evoKey, Accept: 'application/json' },
+        })
+        const data = await resp.json().catch(() => ({}))
+        state = String(data?.instance?.state || data?.state || (resp.ok ? 'unknown' : 'error'))
+      } catch (stateError) {
+        console.error('[notifications-watchdog] whatsapp state', stateError)
+        state = 'unreachable'
+      }
+      const connected = state === 'open'
+      // Só consideramos "queda" estados claramente ruins — nunca 'unknown'/'connecting' —
+      // para não acordar o dono por um blip transitório ou por um formato de resposta inesperado.
+      const DOWN_STATES = ['close', 'closed', 'unreachable', 'error']
+      const isDown = DOWN_STATES.includes(state)
+      console.log('[notifications-watchdog] whatsapp_state', JSON.stringify({ state, connected, isDown }))
+
+      const { data: existingAlert } = await admin
+        .from('integration_alerts')
+        .select('id, last_value, last_alerted_at')
+        .eq('alert_key', 'whatsapp_connection')
+        .maybeSingle()
+
+      const now = new Date()
+      const prevState = String((existingAlert?.last_value as Record<string, unknown> | null)?.state || '')
+      const wasDown = DOWN_STATES.includes(prevState)
+      const cooldownOk = !existingAlert?.last_alerted_at ||
+        now.getTime() - new Date(existingAlert.last_alerted_at).getTime() > ALERT_COOLDOWN_MS
+      let alertedAt = existingAlert?.last_alerted_at || null
+
+      const emailSecret = Deno.env.get('EMAIL_WEBHOOK_SECRET') || ''
+      const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET') || ''
+
+      const notify = async (title: string, pushBody: string, tag: string, subject: string, html: string) => {
+        if (pushSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({ custom: { title, body: pushBody, url: '/admin-mensagens.html?app=1', tag } }),
+          }).catch((e) => console.error('[notifications-watchdog] whatsapp push', e))
+        }
+        if (emailSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': emailSecret },
+            body: JSON.stringify({
+              event_type: 'test',
+              recipient_type: 'barbershop',
+              recipient_email: 'contato@barbeariadoju.com.br',
+              recipient_name: 'Barbearia do Ju',
+              to: 'contato@barbeariadoju.com.br',
+              subject,
+              html,
+            }),
+          }).catch((e) => console.error('[notifications-watchdog] whatsapp email', e))
+        }
+      }
+
+      let alerted = false
+      // Só alerta queda se já observamos o estado alguma vez (existingAlert). Na primeira
+      // leitura apenas registramos — evita alarme falso caso o endpoint responda inesperado.
+      if (isDown && cooldownOk && existingAlert) {
+        await notify(
+          '⚠️ WhatsApp desconectado',
+          'A JuIA parou de responder no WhatsApp. Reconecte o aparelho para não perder clientes.',
+          'whatsapp-down',
+          '⚠️ WhatsApp da Barbearia desconectado',
+          `<p>O WhatsApp conectado à JuIA está <strong>${state}</strong> (fora do ar).</p><p>Os clientes que mandarem mensagem agora <strong>não recebem resposta automática</strong>. Reabra o WhatsApp no celular ou reconecte a instância no Evolution.</p>`,
+        )
+        alertedAt = now.toISOString()
+        alerted = true
+      } else if (connected && wasDown) {
+        await notify(
+          '✅ WhatsApp reconectado',
+          'A JuIA voltou a responder no WhatsApp normalmente.',
+          'whatsapp-up',
+          '✅ WhatsApp da Barbearia reconectado',
+          '<p>O WhatsApp voltou a ficar online e a JuIA já responde os clientes normalmente.</p>',
+        )
+        alertedAt = null // zera o cooldown para que uma próxima queda avise na hora
+        alerted = true
+      }
+
+      await admin
+        .from('integration_alerts')
+        .upsert({
+          alert_key: 'whatsapp_connection',
+          last_value: { state },
+          last_checked_at: now.toISOString(),
+          last_alerted_at: alertedAt,
+          updated_at: now.toISOString(),
+        }, { onConflict: 'alert_key' })
+
+      whatsappResult = { state, connected, alerted }
+    } else {
+      whatsappResult = { skipped: 'EVOLUTION_API_URL/KEY/INSTANCE_NAME não configurados' }
+    }
+  } catch (error) {
+    console.error('[notifications-watchdog] whatsapp', error)
+    whatsappResult = { error: error instanceof Error ? error.message : String(error) }
+  }
+
   return json({
     ok: true,
     dlr_checked: dlrResults.length,
@@ -204,5 +317,6 @@ Deno.serve(async (request: Request) => {
     fallback_dispatched: fallbackResults.length,
     fallback_results: fallbackResults,
     balance: balanceResult,
+    whatsapp: whatsappResult,
   })
 })

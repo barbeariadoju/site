@@ -6,7 +6,7 @@
   const allServices=window.BDJ_SERVICES||[];
   let services=JSON.parse(sessionStorage.getItem('bdj_selected_services_v15')||'[]');
   let products=JSON.parse(sessionStorage.getItem('bdj_selected_products_v15')||'[]');
-  let selectedTime='', step=1, slotsRequestId=0;
+  let selectedTime='', step=1, slotsRequestId=0, waitlistOfferDate='';
   const productCatalog=[
     {name:'Pasta Matte 150g',price:34,for:['Corte','Lavagem','Luzes','Platinado']},
     {name:'Gel Cola Black Shark Barber',price:16,for:['Corte','Freestyle']},
@@ -124,9 +124,42 @@
     }
     return null;
   }
+  function showWaitlistOffer(date){
+    waitlistOfferDate=date;
+    const box=$('agenda-waitlist-offer');if(!box)return;
+    $('waitlist-date-label').textContent=prettyDate(date);
+    box.hidden=false;
+    const form=$('agenda-waitlist-form');if(form)form.hidden=true;
+    if($('waitlist-message'))$('waitlist-message').textContent='';
+  }
+  function hideWaitlistOffer(){
+    waitlistOfferDate='';
+    const box=$('agenda-waitlist-offer');if(box)box.hidden=true;
+  }
+  async function submitWaitlist(){
+    const msg=$('waitlist-message'),name=$('waitlist-name').value.trim(),phone=$('waitlist-phone').value.replace(/\D/g,'');
+    if(name.length<2||phone.length<10){msg.textContent='Informe nome e WhatsApp válidos.';return}
+    const email=$('waitlist-email').value.trim()||null;
+    const period=document.querySelector('input[name="waitlist-period"]:checked')?.value||'qualquer';
+    const t=total(),btn=$('waitlist-submit');
+    btn.disabled=true;btn.textContent='Enviando...';msg.textContent='';
+    const {data,error}=await sb.functions.invoke('join-waitlist',{body:{
+      customer_name:name,customer_phone:phone,customer_email:email,
+      preferred_date:waitlistOfferDate,preferred_period:period,
+      service_name:services.map(s=>s.name).join(' + ')||null,
+      service_price:t.servicePrice||null,duration_minutes:t.duration||null
+    }});
+    btn.disabled=false;btn.textContent='Entrar na lista de espera';
+    if(error||!data?.ok){msg.textContent='Não foi possível registrar agora. Tente novamente em instantes.';return}
+    fire('waitlist_joined',{booking_date:waitlistOfferDate});
+    const box=$('agenda-waitlist-offer');
+    box.innerHTML=`<strong>Prontinho! Você está na lista para ${prettyDate(waitlistOfferDate)}.</strong><small>Se abrir uma vaga, chamamos você no WhatsApp.</small>`;
+  }
   async function loadSlots(options={}){
     const requestId=++slotsRequestId;
     selectedTime='';let date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='<div class="booking-slots-loading">Consultando os melhores horários…</div>';
+    const requestedDate=date;
+    hideWaitlistOffer();
     if(!date||!services.length){$('agenda-day-message').textContent='Escolha uma data';updateSummary();return}
     fire('date_selected',{booking_date:date});$('agenda-day-message').textContent='Consultando...';
     try{
@@ -139,11 +172,19 @@
       if(!slots.length&&options.autoAdvance!==false){
         const next=await findNextDateWithSlots(date,false);
         if(requestId!==slotsRequestId)return;
-        if(next){$('agenda-date').value=next.date;date=next.date;slots=next.slots;renderSlots(slots);const prefix=options.reason==='initial'?'Próximo dia disponível':'Sem horários nessa data. Próximo dia disponível';$('agenda-day-message').textContent=`${prefix}: ${prettyDate(date)}`;updateSummary();return}
+        if(next){
+          $('agenda-date').value=next.date;date=next.date;slots=next.slots;renderSlots(slots);
+          const prefix=options.reason==='initial'?'Próximo dia disponível':'Sem horários nessa data. Próximo dia disponível';
+          $('agenda-day-message').textContent=`${prefix}: ${prettyDate(date)}`;
+          if(options.reason==='manual'&&isOpenDay(requestedDate))showWaitlistOffer(requestedDate);
+          updateSummary();return
+        }
       }
       if(requestId!==slotsRequestId)return;
       renderSlots(slots);
-      $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';updateSummary();
+      $('agenda-day-message').textContent=slots.length?`${slots.length} horários disponíveis`:'Sem horários disponíveis';
+      if(!slots.length&&isOpenDay(requestedDate))showWaitlistOffer(requestedDate);
+      updateSummary();
     }catch(error){if(requestId!==slotsRequestId)return;box.innerHTML='<div class="booking-empty-note"><strong>Não foi possível consultar agora.</strong><small>Tente novamente em alguns instantes.</small></div>';$('agenda-day-message').textContent='Erro na consulta';console.error(error)}
   }
   function renderSlots(slots){
@@ -188,6 +229,8 @@
   });
   document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));document.querySelectorAll('[data-progress-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.progressStep);if(n<=step)go(n)});
   $('agenda-date').onchange=()=>loadSlots({autoAdvance:true,reason:'manual'});['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=updateSummary);$('agenda-submit').onclick=submit;
+  $('waitlist-open-form')?.addEventListener('click',()=>{$('agenda-waitlist-form').hidden=false;$('waitlist-name')?.focus()});
+  $('waitlist-submit')?.addEventListener('click',submitWaitlist);
   const now=spNow();$('agenda-date').min=`${now.year}-${now.month}-${now.day}`;
   renderSelected();$('agenda-status').innerHTML=configured?'<strong>Agenda online.</strong> Confira seu atendimento e escolha o melhor horário.':'<strong>Configuração pendente.</strong> O banco ainda precisa ser conectado.';go(1);
 })();

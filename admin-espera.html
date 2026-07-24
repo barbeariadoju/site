@@ -1,0 +1,93 @@
+<!doctype html><html lang="pt-BR"><head><title>Lista de espera | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=28.8.0"><link rel="manifest" href="admin-manifest.webmanifest?v=24.6.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<style>
+.espera-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.espera-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.espera-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.espera-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
+.espera-modes{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.espera-modes button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.espera-modes button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
+.espera-rangenav{display:flex;align-items:center;gap:.5rem}
+.espera-rangenav strong{min-width:8.5rem;text-align:center;font-size:.95rem;color:var(--text)}
+.espera-rangenav .btn{padding:.25rem .7rem;font-size:1.1rem;line-height:1}
+.espera-rangenav .btn[disabled]{opacity:.35;cursor:not-allowed}
+.espera-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.espera-chip-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:14px;background:rgba(240,201,135,.03)}
+.espera-chip-group span{color:var(--muted);font-size:.78rem;margin-right:4px}
+.espera-chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:.8rem;font-weight:600;padding:.3rem .7rem;border-radius:999px;cursor:pointer}
+.espera-chip.is-selected{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
+.espera-card{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px}
+.espera-card-main{display:flex;flex-direction:column;gap:6px}
+.espera-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.espera-card-head h3{margin:0;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.3px;color:var(--text)}
+.espera-source{font-size:.75rem;color:var(--muted)}
+.espera-contact{margin:0;color:var(--muted);font-size:.88rem}
+.espera-tags{display:flex;flex-wrap:wrap;gap:6px}
+.espera-tag{font-size:.78rem;color:var(--gold2);background:rgba(240,201,135,.08);padding:.25rem .6rem;border-radius:999px}
+.espera-notes{margin:2px 0 0;color:var(--muted);font-size:.85rem;font-style:italic}
+.espera-waiting{color:var(--muted);font-size:.76rem}
+.espera-card-actions{display:flex;flex-wrap:wrap;gap:8px}
+.espera-card-actions a,.espera-card-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.4rem .8rem;border-radius:10px;cursor:pointer;text-decoration:none}
+.espera-card-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
+.espera-card-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
+.espera-fit-form{padding:14px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:10px}
+.espera-fit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.espera-fit-grid label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted)}
+.espera-fit-grid input{padding:.5rem .6rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.espera-fit-actions{display:flex;gap:8px}
+.espera-datemode-row{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0}
+.espera-radio-inline{display:inline-flex!important;gap:6px;align-items:center;font-weight:400!important;color:var(--text)}
+.espera-weekday-picker{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+@media(max-width:700px){.espera-toolbar{flex-direction:column;align-items:stretch}.espera-card-actions{flex-direction:column}.espera-card-actions a,.espera-card-actions button{width:100%;text-align:center}}
+</style>
+</head><body data-admin-page="espera"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="espera" class="is-active" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><p class="eyebrow">Lista de espera</p><h1>Quem está esperando vaga.</h1><p>Quando alguém cancela, veja aqui quem pode aproveitar — e encaixe com um clique.</p></div><div class="admin-header-actions"><button id="espera-add" class="btn primary" type="button">＋ Adicionar à lista</button></div></header>
+
+<section class="admin-metrics"><article><span>Esperando</span><strong id="espera-metric-waiting">0</strong><small>pedidos ativos</small></article><article><span>Encaixados</span><strong id="espera-metric-fitted">0</strong><small>este mês</small></article></section>
+
+<section class="admin-surface">
+  <div class="espera-toolbar">
+    <div class="espera-tabs"><button data-espera-tab="esperando" class="is-active" type="button">Esperando</button><button data-espera-tab="avisado" type="button">Avisados</button><button data-espera-tab="encaixado" type="button">Encaixados</button><button data-espera-tab="cancelado" type="button">Cancelados</button></div>
+    <div class="espera-modes"><button id="espera-mode-month" class="is-active" type="button">Mês</button><button id="espera-mode-week" type="button">Semana</button></div>
+    <div class="espera-rangenav"><button id="espera-prev" class="btn ghost" type="button" aria-label="Período anterior">‹</button><strong id="espera-range-label">—</strong><button id="espera-next" class="btn ghost" type="button" aria-label="Próximo período">›</button></div>
+  </div>
+  <div class="espera-chips">
+    <div class="espera-chip-group"><span>Dia da semana</span><button class="espera-chip is-selected" data-weekday-chip="2" type="button">Ter</button><button class="espera-chip is-selected" data-weekday-chip="3" type="button">Qua</button><button class="espera-chip is-selected" data-weekday-chip="4" type="button">Qui</button><button class="espera-chip is-selected" data-weekday-chip="5" type="button">Sex</button><button class="espera-chip is-selected" data-weekday-chip="6" type="button">Sáb</button></div>
+    <div class="espera-chip-group"><span>Turno</span><button class="espera-chip is-selected" data-period-chip="manha" type="button">Manhã</button><button class="espera-chip is-selected" data-period-chip="tarde" type="button">Tarde</button></div>
+  </div>
+  <div id="espera-list"></div>
+</section>
+
+</main></div>
+
+<div id="espera-modal" class="admin-modal" hidden><div class="admin-modal-backdrop" data-close-espera-modal></div><section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="espera-modal-title"><button class="admin-modal-close" type="button" data-close-espera-modal aria-label="Fechar">×</button><p class="eyebrow">Lista de espera</p><h2 id="espera-modal-title">Adicionar à lista de espera</h2><input id="espera-entry-id" type="hidden">
+<div class="admin-inline-fields">
+<label>Nome completo<input id="espera-entry-name" type="text" autocomplete="name"></label>
+<label>WhatsApp<input id="espera-entry-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
+<label>E-mail <small>opcional</small><input id="espera-entry-email" type="email" autocomplete="email"></label>
+<label>Serviço desejado <small>opcional</small><input id="espera-entry-service" type="text" placeholder="Ex: Corte de cabelo"></label>
+<label>Valor (R$) <small>opcional</small><input id="espera-entry-price" type="number" min="0" step="0.5"></label>
+<label>Duração (min) <small>opcional</small><input id="espera-entry-duration" type="number" min="10" max="240"></label>
+</div>
+<p class="eyebrow" style="margin-top:18px">Quando prefere?</p>
+<div class="espera-datemode-row">
+<label class="espera-radio-inline"><input type="radio" name="espera-entry-date-mode" value="any" checked> Qualquer dia</label>
+<label class="espera-radio-inline"><input type="radio" name="espera-entry-date-mode" value="date"> Dia específico</label>
+<label class="espera-radio-inline"><input type="radio" name="espera-entry-date-mode" value="weekdays"> Dias da semana</label>
+</div>
+<div id="espera-entry-date-field" hidden class="admin-inline-fields"><label>Data<input id="espera-entry-date" type="date"></label></div>
+<div id="espera-entry-weekdays-field" hidden class="espera-weekday-picker">
+<button type="button" class="espera-chip" data-entry-weekday="2">Ter</button>
+<button type="button" class="espera-chip" data-entry-weekday="3">Qua</button>
+<button type="button" class="espera-chip" data-entry-weekday="4">Qui</button>
+<button type="button" class="espera-chip" data-entry-weekday="5">Sex</button>
+<button type="button" class="espera-chip" data-entry-weekday="6">Sáb</button>
+</div>
+<div class="admin-inline-fields"><label>Turno<select id="espera-entry-period"><option value="qualquer">Tanto faz</option><option value="manha">Manhã</option><option value="tarde">Tarde</option></select></label></div>
+<label class="admin-modal-notes">Observações <small>opcional</small><textarea id="espera-entry-notes" rows="2"></textarea></label>
+<p id="espera-entry-message" class="field-help"></p>
+<div class="admin-modal-actions"><button type="button" data-close-espera-modal>Cancelar</button><button id="espera-form-save" class="btn primary" type="button">Salvar</button></div>
+</section></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.0.14"></script><script src="services-catalog-v7.js?v=28.0.14"></script><script src="admin-espera-v28.js?v=28.8.0"></script><script src="admin-pwa.js?v=28.0.14"></script><script src="admin-push-runtime-v24-6.js?v=28.0.14"></script></body></html>

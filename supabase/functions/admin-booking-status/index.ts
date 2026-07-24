@@ -55,6 +55,7 @@ Deno.serve(async (request: Request) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     const emailSecret = Deno.env.get('EMAIL_WEBHOOK_SECRET') || ''
+    const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET') || ''
 
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {
       return fail('environment', 'Configuração interna do Supabase incompleta.', 500, {
@@ -241,6 +242,37 @@ Deno.serve(async (request: Request) => {
           email.error = error instanceof Error ? error.message : 'Falha ao chamar booking-email.'
           console.error('[admin-booking-status] booking_email_exception', JSON.stringify({ requestId, bookingId, error: email.error }))
         }
+      }
+    }
+
+    // Aviso de vaga aberta: se alguém está na lista de espera esperando exatamente
+    // este dia/turno, avisa o dono para poder oferecer o encaixe. Não bloqueia a resposta.
+    if (status === 'cancelled' && pushSecret) {
+      try {
+        const { data: waiting } = await admin.rpc('waitlist_matches_for_slot', {
+          p_date: current.booking_date,
+          p_start_time: current.start_time,
+        })
+        if (Array.isArray(waiting) && waiting.length) {
+          const names = waiting.slice(0, 3).map((w: any) => w.customer_name).join(', ')
+          const extra = waiting.length > 3 ? ` +${waiting.length - 3}` : ''
+          const dateLabel = String(current.booking_date).split('-').reverse().join('/')
+          const timeLabel = String(current.start_time).slice(0, 5)
+          await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({
+              custom: {
+                title: '🎉 Vaga aberta — tem gente esperando!',
+                body: `${dateLabel} às ${timeLabel} abriu. ${names}${extra} está(ão) na lista de espera para esse dia.`,
+                url: '/admin-espera.html?app=1',
+                tag: `waitlist-slot-${bookingId}`,
+              },
+            }),
+          }).catch((pushError) => console.error('[admin-booking-status] waitlist_push', pushError))
+        }
+      } catch (waitlistError) {
+        console.error('[admin-booking-status] waitlist_check', waitlistError)
       }
     }
 
