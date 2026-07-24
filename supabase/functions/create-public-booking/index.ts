@@ -71,6 +71,14 @@ Deno.serve(async(req:Request)=>{
     const {error:actionError}=await admin.from('booking_customer_actions').insert({booking_id:id,action:'created_link'})
     if(actionError)console.error('[create-public-booking] action log',actionError)
 
+    // Coleta opcional da data de nascimento para a mensagem de aniversário.
+    const birthDate=String(body.birth_date||'').trim()
+    if(/^\d{4}-\d{2}-\d{2}$/.test(birthDate)){
+      try{
+        await admin.rpc('upsert_customer_birthday',{p_phone:String(body.customer_phone).replace(/\D/g,''),p_name:String(body.customer_name).trim(),p_birth_date:birthDate})
+      }catch(birthError){console.error('[create-public-booking] birthday',birthError)}
+    }
+
     let push={sent:0,failed:0}
     if(pushSecret){
       try{
