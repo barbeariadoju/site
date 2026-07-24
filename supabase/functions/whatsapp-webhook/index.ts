@@ -23,6 +23,31 @@ const normalize = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLower
 
 const HISTORY_LIMIT = 10
 
+// Trava de processamento por telefone (lease com expiração): evita que duas mensagens
+// do mesmo cliente, chegando quase ao mesmo tempo, sejam respondidas em paralelo com
+// estado desatualizado (uma delas via ver o resultado da outra antes de responder).
+// Se a trava expirar (função anterior travou/caiu), libera sozinha depois de leaseMs.
+async function acquireLock(admin: any, phone: string, leaseMs = 20000, maxWaitMs = 18000, pollMs = 400): Promise<boolean> {
+  const deadline = Date.now() + maxWaitMs
+  while (true) {
+    const now = new Date()
+    const lockUntil = new Date(now.getTime() + leaseMs).toISOString()
+    const { data } = await admin
+      .from('whatsapp_conversations')
+      .update({ processing_locked_until: lockUntil })
+      .eq('phone', phone)
+      .or(`processing_locked_until.is.null,processing_locked_until.lt.${now.toISOString()}`)
+      .select('phone')
+      .maybeSingle()
+    if (data) return true
+    if (Date.now() >= deadline) return false
+    await new Promise((r) => setTimeout(r, pollMs))
+  }
+}
+async function releaseLock(admin: any, phone: string) {
+  await admin.from('whatsapp_conversations').update({ processing_locked_until: null }).eq('phone', phone)
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
   if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
@@ -200,79 +225,97 @@ Deno.serve(async (request: Request) => {
 
     if (conversation?.human_takeover) return json({ ok: true, skipped: 'human_takeover' })
 
-    const { data: recentMessages } = await admin
-      .from('whatsapp_messages')
-      .select('direction, body, created_at')
-      .eq('phone', phone)
-      .order('created_at', { ascending: false })
-      .limit(HISTORY_LIMIT)
+    // A partir daqui a resposta é gerada e enviada — trava por telefone para não
+    // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).
+    const locked = await acquireLock(admin, phone)
+    try {
+      // Relê o estado mais recente: se esperamos pela trava, outra mensagem pode
+      // ter atualizado o estado (ex.: um agendamento concluído) enquanto esperávamos.
+      const { data: freshConversation } = await admin
+        .from('whatsapp_conversations')
+        .select('state, human_takeover')
+        .eq('phone', phone)
+        .maybeSingle()
+      if (freshConversation?.human_takeover) return json({ ok: true, skipped: 'human_takeover_after_lock' })
+      const activeState = freshConversation?.state || conversation?.state || {}
 
-    const history = (recentMessages || [])
-      .reverse()
-      .slice(0, -1)
-      .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.body }))
+      const { data: recentMessages } = await admin
+        .from('whatsapp_messages')
+        .select('direction, body, created_at')
+        .eq('phone', phone)
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT)
 
-    const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
-      body: JSON.stringify({
-        message: text,
-        state: conversation?.state || {},
-        session_id: `whatsapp:${phone}`,
-        history,
-      }),
-    })
+      const history = (recentMessages || [])
+        .reverse()
+        .slice(0, -1)
+        .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.body }))
 
-    const ai = await aiResponse.json().catch(() => ({}))
-    if (!aiResponse.ok || !ai?.reply) {
-      console.error('[whatsapp-webhook] ju-ia-site falhou', aiResponse.status, ai)
-      return json({ ok: false, error: 'Falha ao consultar a JuIA.' }, 502)
-    }
+      const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
+        body: JSON.stringify({
+          message: text,
+          state: activeState,
+          session_id: `whatsapp:${phone}`,
+          history,
+          verified_phone: phone,
+        }),
+      })
 
-    const reply = String(ai.reply)
-    const handoff = Boolean(ai.handoff)
-
-    const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({ number: phone, text: reply }),
-    })
-    const sendData = await sendResponse.json().catch(() => ({}))
-    const sentMessageId = String(sendData?.key?.id || '') || null
-
-    await admin.from('whatsapp_messages').insert({
-      phone,
-      direction: 'out',
-      body: reply,
-      sent_by: 'bot',
-      evolution_message_id: sentMessageId,
-    })
-
-    await admin.from('whatsapp_conversations').update({
-      state: ai.state || conversation?.state || {},
-      human_takeover: handoff,
-      updated_at: new Date().toISOString(),
-    }).eq('phone', phone)
-
-    if (handoff) {
-      const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-      if (pushSecret) {
-        await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-          body: JSON.stringify({
-            custom: {
-              title: '💬 WhatsApp precisa de você',
-              body: `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`,
-              url: 'https://wa.me/' + phone,
-              tag: `whatsapp-handoff-${phone}`,
-            },
-          }),
-        }).catch((error) => console.error('[whatsapp-webhook] push handoff', error))
+      const ai = await aiResponse.json().catch(() => ({}))
+      if (!aiResponse.ok || !ai?.reply) {
+        console.error('[whatsapp-webhook] ju-ia-site falhou', aiResponse.status, ai)
+        return json({ ok: false, error: 'Falha ao consultar a JuIA.' }, 502)
       }
-    }
 
-    return json({ ok: true, sent: sendResponse.ok, handoff })
+      const reply = String(ai.reply)
+      const handoff = Boolean(ai.handoff)
+
+      const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+        body: JSON.stringify({ number: phone, text: reply }),
+      })
+      const sendData = await sendResponse.json().catch(() => ({}))
+      const sentMessageId = String(sendData?.key?.id || '') || null
+
+      await admin.from('whatsapp_messages').insert({
+        phone,
+        direction: 'out',
+        body: reply,
+        sent_by: 'bot',
+        evolution_message_id: sentMessageId,
+      })
+
+      await admin.from('whatsapp_conversations').update({
+        state: ai.state || activeState,
+        human_takeover: handoff,
+        updated_at: new Date().toISOString(),
+      }).eq('phone', phone)
+
+      if (handoff) {
+        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+        if (pushSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({
+              custom: {
+                title: '💬 WhatsApp precisa de você',
+                body: `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`,
+                url: 'https://wa.me/' + phone,
+                tag: `whatsapp-handoff-${phone}`,
+              },
+            }),
+          }).catch((error) => console.error('[whatsapp-webhook] push handoff', error))
+        }
+      }
+
+      return json({ ok: true, sent: sendResponse.ok, handoff })
+    } finally {
+      if (locked) await releaseLock(admin, phone)
+    }
   } catch (error) {
     console.error('[whatsapp-webhook]', error)
     return json({ error: error instanceof Error ? error.message : 'Erro interno.' }, 500)

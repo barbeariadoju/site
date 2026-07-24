@@ -1,6 +1,8 @@
 window.BDJ_SERVICES = [
   {category:'Cortes e combos',name:'Corte + Lavagem',description:'Corte masculino personalizado com lavagem profissional para maior conforto, sensação de limpeza e acabamento caprichado.',price:50,duration:40},
   {category:'Cortes e combos',name:'Corte de cabelo',description:'Corte de cabelo masculino realizado com técnica, precisão e atenção aos detalhes para valorizar seu estilo.',price:40,duration:30},
+  {category:'Cortes e combos',name:'Raspar a cabeça',description:'Raspagem completa da cabeça, com ou sem navalha, para um acabamento liso e impecável.',price:40,duration:30},
+  {category:'Cortes e combos',name:'Corte de cabelo infantil',description:'Corte infantil feito na tesoura ou na tesoura com máquina, com toda a paciência, cuidado e capricho para o seu filho sair sorrindo — e você, tranquilo.',price:40,duration:30},
   {category:'Cortes e combos',name:'Corte + Barboterapia',description:'Corte de cabelo aliado à barboterapia completa com toalha quente, navalha e acabamento premium.',price:80,duration:60},
   {category:'Cortes e combos',name:'Corte + Barba Express',description:'Corte masculino + alinhamento de barba em versão rápida, ideal para manutenção do visual no dia a dia.',price:65,duration:50},
   {category:'Barba',name:'Barboterapia com vaporizador de ozônio',description:'Ritual de cuidado com vaporizador de ozônio, toalha quente, espuma e acabamento com navalha.',price:50,duration:40},
