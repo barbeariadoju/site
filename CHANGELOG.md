@@ -1,3 +1,11 @@
+## 28.7.0 — Relatórios do negócio (novo painel de leitura)
+
+- **Nova tela "Relatórios" (`admin-relatorios.html` + `admin-relatorios-v28.js`):** painel só de leitura no admin que resume o mês — faturamento (atendimentos concluídos, somando serviços + produtos), atendimentos concluídos, ticket médio, clientes atendidos, taxa de satisfação e faltas (no-shows). Traz três blocos visuais: serviços mais vendidos (ranking por vezes vendidas + receita), clientes novos vs. recorrentes e detalhe do faturamento (serviços vs. produtos). Navegação por mês (‹ ›) para consultar meses anteriores; o botão de próximo mês fica desativado no mês atual.
+- **Sem envio de mensagens e sem alteração no banco:** a tela apenas consulta `bookings` e `experience_requests` (mesmo acesso autenticado que as demais telas do admin já usam). Não há migration nova nem deploy de Edge Function — basta publicar os arquivos estáticos.
+- **Definições usadas nos números:** faturamento e ticket médio contam apenas agendamentos com status `completed`; "cliente recorrente" = já teve um atendimento concluído antes do mês analisado (senão é "novo"), contando cada pessoa uma vez pelo telefone; a taxa de satisfação é sobre as pesquisas respondidas (satisfeitos ÷ respostas) das pesquisas criadas no mês.
+- **Menu:** item "Relatórios" (📈) adicionado à barra lateral de todas as telas do admin e atalho na Visão geral.
+- Validado com os dados reais de produção (julho/2026): R$ 1.025,00 faturados em 20 atendimentos, ticket R$ 51,25, 19 clientes atendidos, 100% de satisfação (2 de 2 respostas), 0 faltas — o próprio `admin-relatorios-v28.js` foi executado ponta a ponta contra esses dados e os números conferiram.
+
 ## 28.2.0 — Status real de entrega, alerta de saldo SMSDev e fallback cruzado
 
 - **Confirmação de entrega do SMS (DLR):** o status `sent` da `sms_queue` só indicava que a SMSDev aceitou o envio, não que o SMS chegou de fato no celular. Nova coluna `delivery_status` (`unknown`/`delivered`/`failed`) é preenchida consultando `api.smsdev.com.br/v1/dlr` periodicamente.
