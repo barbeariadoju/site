@@ -131,7 +131,11 @@ Deno.serve(async req=>{
   const d=await r.json();if(r.ok)ai=parseJSON(textFrom(d))
  }
  if(!ai){const q=normalize(message);ai={reply:q.includes('juliano')?'Claro! Vou direcionar você ao Juliano.':'Posso ajudar com serviços, preços, produtos, fidelidade e agendamento. O que você precisa?',intent:q.includes('juliano')?'handoff':'other',updates:state,handoff:q.includes('juliano')}}
- const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([,v])=>v!==null&&v!==''))}
+ // services/products são escolhas cumulativas: um array vazio no retorno do modelo
+ // normalmente significa "nada de novo nesta mensagem", não "esqueça o que já foi
+ // escolhido". Sem esse filtro, qualquer mensagem que não recite o serviço de novo
+ // (ex.: "tem horário agora?", "oi") apagava o serviço já selecionado no turno anterior.
+ const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([,v])=>v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  next.products=Array.isArray(next.products)?next.products.map((x:string)=>findProduct(x)?.name).filter(Boolean):[]
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
@@ -270,7 +274,25 @@ Deno.serve(async req=>{
  const requestedTime=extractRequestedTime(message)
  if((requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
 
- if(intent==='availability'&&next.date&&chosen.length){
+ // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
+ // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
+ // e/ou data, a resposta ficava só por conta do modelo, que às vezes preferia encaminhar
+ // pro Juliano em vez de perguntar o que faltava.
+ const availabilityAsk=includesAny(normalizedQuestion,['tem horario','tem vaga','horario livre','horario disponivel','algum horario','horario vago','agenda aberta','vaga agora','vaga hoje'])
+ if(availabilityAsk){
+  if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
+  intent='availability'
+  handoff=false
+ }
+
+ if(intent==='availability'&&!chosen.length){
+  reply=`Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos${next.date?` para ${formatDateBR(next.date)}`:''} pra você.`
+  actions=[{label:'Ver serviços',url:'https://www.barbeariadoju.com.br/agendar/'}]
+  handoff=false
+ }else if(intent==='availability'&&chosen.length&&!next.date){
+  reply=`Perfeito! Para qual dia você quer ver os horários?`
+  handoff=false
+ }else if(intent==='availability'&&next.date&&chosen.length){
   const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
   const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
   if(error)return respond({error:error.message},500)
