@@ -8,7 +8,7 @@ const cors={
 const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}})
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
-const normalize=(s='')=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
 
 const canonicalPhone=(value='')=>{
  const digits=String(value).replace(/\D/g,'')
@@ -107,6 +107,7 @@ Deno.serve(async req=>{
  if((count||0)>80)return respond({error:'Limite diário de mensagens atingido. Fale com o Juliano pelo WhatsApp.'},429)
 
  let context:any={}
+ let upcomingBookings:any[]=[]
  // verified_phone vem do canal WhatsApp (whatsapp-webhook), onde o número de quem
  // está escrevendo é o próprio remetente da mensagem — não precisa (e não deve)
  // ser perguntado de novo. No chat do site esse campo não é enviado.
@@ -118,13 +119,15 @@ Deno.serve(async req=>{
   const {data}=await supabase.rpc('get_customer_commercial_context',{p_phone:knownPhone})
   context=data||{}
   if(context?.customer_id&&context?.name&&!state.name)state.name=context.name
+  const {data:upcoming}=await supabase.rpc('phone_upcoming_bookings',{p_phone:knownPhone})
+  upcomingBookings=Array.isArray(upcoming)?upcoming:[]
  }
  const catalog=services.map(s=>`${s.name} — ${money(s.price)} — ${s.duration} min`).join('\n')
  const productCatalog=products.map(p=>`${p.name} — ${money(p.price)}`).join('\n')
  const phoneTrustNote=verifiedPhone
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
   :'O telefone informado no chat não é verificado como sendo de quem está digitando, então só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
- const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
+ const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
  let ai:any=null
  if(key){
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',reasoning:{effort:'low'},max_output_tokens:550,instructions:prompt,input:`Histórico recente: ${JSON.stringify(body.history||[])}\nMensagem: ${message}`})})
@@ -138,6 +141,7 @@ Deno.serve(async req=>{
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([,v])=>v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  next.products=Array.isArray(next.products)?next.products.map((x:string)=>findProduct(x)?.name).filter(Boolean):[]
+ const chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
 
  const normalizedQuestion=normalize(message)
@@ -164,6 +168,8 @@ Deno.serve(async req=>{
   'mesmo produto','repetir produto','produto da ultima vez','qual produto comprei','o que levei da ultima vez'
  ])
  const simpleYes=includesAny(normalizedQuestion,['sim','pode ser','isso','quero','confirmo']) && normalizedQuestion.length<35
+ const simpleNo=includesAny(normalizedQuestion,['nao','não','deixa assim','mantem','manter','deixa pra la']) && normalizedQuestion.length<35
+ const keepBothRequest=includesAny(normalizedQuestion,['manter os dois','manter ambos','deixa os dois','quero os dois'])
 
  if(hasCustomer && repeatRequest){
   if(lastService){
@@ -244,9 +250,14 @@ Deno.serve(async req=>{
   next.phone=knownPhone
  }
 
- if(intent==='services'){
+ if(intent==='services'&&!chosen.length){
   reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
   actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
+ }
+ // Cliente já citou o(s) serviço(s) exato(s) (ex.: "barba e pezinho") — não faz sentido
+ // mostrar a lista genérica de mais procurados. Segue direto pro fluxo de disponibilidade.
+ if(intent==='services'&&chosen.length){
+  intent='availability'
  }
  if(intent==='loyalty'){
   if(!knownPhone){reply='Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}
@@ -258,7 +269,6 @@ Deno.serve(async req=>{
    reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um corte gratuito. ${encouragement}`
   }
  }
- const chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  if(chosen.length && !next.upsell_services_done && (intent==='upsell_services'||next.sales_stage==='services_selected')){
   const sug=serviceSuggestions(chosen)
   if(sug.length){reply='Quer aproveitar o horário e incluir algum complemento?';actions=sug.map((s:any)=>({label:`${s.name} · +${money(s.price)}`,message:`Adicionar ${s.name}`}));actions.push({label:'Não, continuar',message:'Não quero serviço adicional'});next.sales_stage='upsell_services'}
@@ -270,30 +280,143 @@ Deno.serve(async req=>{
   reply='Posso deixar algum produto separado para você retirar no atendimento?';actions=sug.map(p=>({label:`${p.name} · ${money(p.price)}`,message:`Adicionar produto ${p.name}`}));actions.push({label:'Não, continuar',message:'Não quero produto'});next.sales_stage='upsell_products'
  }
  if(normalize(message).includes('nao quero produto')||normalize(message).includes('sem produto')){next.upsell_products_done=true;next.sales_stage='schedule'}
+
+ // Detecta cancelamento mesmo quando o modelo não classificou certo (ex.: "pode
+ // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver
+ // uma confirmação pendente (next.pending_cancel_booking_id), não importa o que o
+ // modelo tenha entendido da mensagem seguinte (ex.: um simples "sim").
+ const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir'])
+ if(next.pending_cancel_booking_id||cancelAsk)intent='cancel'
+
+ if(intent==='cancel'){
+  if(!verifiedPhone){
+   reply='Para cancelar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
+   handoff=true
+  }else if(next.pending_cancel_booking_id){
+   if(simpleYes&&!simpleNo){
+    const {data:cancelledRows,error:cancelError}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_cancel_booking_id})
+    const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
+    if(cancelError||!cancelled){
+     reply='Não consegui cancelar agora — pode já ter passado do horário ou já ter sido cancelado. Se precisar, o Juliano confirma direto com você.'
+     handoff=true
+    }else{
+     reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Se quiser marcar outro horário, é só me dizer.`
+     handoff=false
+     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+     const supabaseUrl=Deno.env.get('SUPABASE_URL')
+     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado pela JuIA',body:`${cancelled.customer_name||customerFirstName} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}\n${cancelled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${cancelled.id}`}})}).catch(()=>{})
+    }
+    next.pending_cancel_booking_id=null
+   }else if(simpleNo){
+    reply='Tudo bem, não cancelei nada. Seu agendamento continua confirmado.'
+    next.pending_cancel_booking_id=null
+    handoff=false
+   }else{
+    const pend=upcomingBookings.find((b:any)=>b.id===next.pending_cancel_booking_id)
+    reply=pend?`Só confirmando: quer mesmo cancelar o agendamento de ${formatDateBR(pend.booking_date)} às ${String(pend.start_time).slice(0,5)} (${pend.service_name})? Responda sim ou não.`:'Quer mesmo cancelar esse agendamento? Responda sim ou não.'
+    handoff=false
+   }
+  }else if(!upcomingBookings.length){
+   reply='Não encontrei nenhum agendamento futuro nesse número. Se já foi cancelado ou é outro número, me avise.'
+   handoff=false
+  }else if(upcomingBookings.length===1){
+   const b=upcomingBookings[0]
+   next.pending_cancel_booking_id=b.id
+   reply=`É o seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} para ${b.service_name} que você quer cancelar? Responda sim ou não.`
+   actions=[{label:'Sim, cancelar',message:'Sim, pode cancelar'},{label:'Não, manter',message:'Não, manter o agendamento'}]
+   handoff=false
+  }else{
+   reply='Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+   actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Cancelar o de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
+   handoff=false
+  }
+ }
+
+ // Agendamentos duplicados no mesmo dia (ex.: cliente já tinha um horário marcado
+ // em outro canal e acabou marcando outro sem querer pela JuIA) — pergunta qual
+ // manter e cancela o outro sozinha, em vez de deixar os dois ativos até um deles
+ // virar falta (foi exatamente o que aconteceu com um cliente: 13:30 e 14:15 no
+ // mesmo dia, os dois marcados como ausência).
+ const bookingsByDate:Record<string,any[]>={}
+ upcomingBookings.forEach((b:any)=>{(bookingsByDate[b.booking_date]=bookingsByDate[b.booking_date]||[]).push(b)})
+ const duplicateGroup=(Object.values(bookingsByDate) as any[][]).find(arr=>arr.length>1)
+
+ if(duplicateGroup&&verifiedPhone&&!next.keep_both_bookings&&intent!=='cancel'){
+  const timeA=String(duplicateGroup[0].start_time).slice(0,5),timeB=String(duplicateGroup[1].start_time).slice(0,5)
+  if(Array.isArray(next.pending_duplicate_ids)&&next.pending_duplicate_ids.length===2){
+   const [idA,idB]=next.pending_duplicate_ids
+   const bA=upcomingBookings.find((b:any)=>b.id===idA)||duplicateGroup[0]
+   const bB=upcomingBookings.find((b:any)=>b.id===idB)||duplicateGroup[1]
+   const keepsA=normalizedQuestion.includes(String(bA.start_time).slice(0,5))||normalizedQuestion.includes('primeiro')
+   const keepsB=normalizedQuestion.includes(String(bB.start_time).slice(0,5))||normalizedQuestion.includes('segundo')
+   if(keepBothRequest){
+    next.keep_both_bookings=true
+    next.pending_duplicate_ids=null
+    reply='Combinado, vou manter os dois agendamentos.'
+    intent='other';handoff=false
+   }else if(keepsA||keepsB){
+    const keep=keepsA?bA:bB,toCancel=keepsA?bB:bA
+    const {data:cancelledRows}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:toCancel.id})
+    const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
+    if(cancelled){
+     reply=`Prontinho! Cancelei o agendamento das ${String(toCancel.start_time).slice(0,5)} e mantive o das ${String(keep.start_time).slice(0,5)}.`
+     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrl=Deno.env.get('SUPABASE_URL')
+     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento duplicado cancelado pela JuIA',body:`${customerFirstName||'Cliente'} tinha 2 horários em ${formatDateBR(toCancel.booking_date)} — mantido ${String(keep.start_time).slice(0,5)}, cancelado ${String(toCancel.start_time).slice(0,5)}.`,url:'/admin-agenda.html?app=1',tag:`booking-dup-${toCancel.id}`}})}).catch(()=>{})
+    }else{
+     reply='Não consegui cancelar agora. O Juliano vai confirmar direto com você.'
+     handoff=true
+    }
+    next.pending_duplicate_ids=null
+    intent='other'
+   }else{
+    reply=`Só pra confirmar: você quer manter o horário das ${timeA} ou das ${timeB}?`
+    actions=[{label:`Manter ${timeA}`,message:`Quero manter o das ${timeA}`},{label:`Manter ${timeB}`,message:`Quero manter o das ${timeB}`}]
+    intent='other';handoff=false
+   }
+  }else{
+   next.pending_duplicate_ids=[duplicateGroup[0].id,duplicateGroup[1].id]
+   reply=`Notei que você tem dois agendamentos marcados para ${formatDateBR(duplicateGroup[0].booking_date)}: às ${timeA} (${duplicateGroup[0].service_name}) e às ${timeB} (${duplicateGroup[1].service_name}). Qual dos dois você quer manter? Vou cancelar o outro.`
+   actions=[{label:`Manter ${timeA}`,message:`Quero manter o das ${timeA}`},{label:`Manter ${timeB}`,message:`Quero manter o das ${timeB}`},{label:'Manter os dois',message:'Quero manter os dois agendamentos'}]
+   intent='other';handoff=false
+  }
+ }
+
  const requestedPeriod=detectPeriod(normalizedQuestion)
  const requestedTime=extractRequestedTime(message)
- if((requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
+ if(intent!=='cancel'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
  // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
  // e/ou data, a resposta ficava só por conta do modelo, que às vezes preferia encaminhar
  // pro Juliano em vez de perguntar o que faltava.
  const availabilityAsk=includesAny(normalizedQuestion,['tem horario','tem vaga','horario livre','horario disponivel','algum horario','horario vago','agenda aberta','vaga agora','vaga hoje'])
- if(availabilityAsk){
+ if(intent!=='cancel'&&availabilityAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
  }
+ if(keepBothRequest){next.keep_both_bookings=true}
 
  if(intent==='availability'&&!chosen.length){
   reply=`Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos${next.date?` para ${formatDateBR(next.date)}`:''} pra você.`
   actions=[{label:'Ver serviços',url:'https://www.barbeariadoju.com.br/agendar/'}]
   handoff=false
  }else if(intent==='availability'&&chosen.length&&!next.date){
-  reply=`Perfeito! Para qual dia você quer ver os horários?`
+  reply=`Perfeito! Anotei ${chosen.map((s:any)=>s.name).join(' + ')}. Para qual dia você quer ver os horários?`
   handoff=false
  }else if(intent==='availability'&&next.date&&chosen.length){
+  // Cliente já tem outro agendamento confirmado em dia diferente do que está pedindo
+  // agora — sem essa checagem, ele podia acabar com dois horários marcados sem querer
+  // (ou receber "esse horário ficou indisponível" tentando remarcar o próprio horário).
+  const conflicting=upcomingBookings.find((b:any)=>b.booking_date!==next.date)
+  if(conflicting&&!next.keep_both_bookings){
+   next.pending_cancel_booking_id=conflicting.id
+   reply=`Antes de continuar: você já tem um agendamento confirmado para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Quer que eu cancele esse já que vai escolher outro dia, ou prefere manter os dois?`
+   actions=[{label:'Cancelar o outro',message:'Sim, pode cancelar'},{label:'Manter os dois',message:'Quero manter os dois agendamentos'}]
+   handoff=false
+  }else{
   const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
+  const serviceNames=chosen.map((s:any)=>s.name).join(' + ')
   const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
   if(error)return respond({error:error.message},500)
   const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
@@ -325,18 +448,27 @@ Deno.serve(async req=>{
     ]
    }
   }else if(allSlots.length>10){
-   reply=`Tenho ${allSlots.length} horários disponíveis para esse atendimento de ${duration} minutos. Você prefere manhã, tarde ou final do dia?`
+   reply=`Tenho ${allSlots.length} horários disponíveis para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
    actions=[
     {label:'Manhã',message:'Prefiro manhã'},
     {label:'Tarde',message:'Prefiro tarde'},
     {label:'Final do dia',message:'Prefiro final do dia'}
    ]
   }else{
-   reply=`Para ${duration} minutos, estes são todos os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
+   reply=`Para ${serviceNames}, estes são todos os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
    actions=allSlots.map((t:string)=>({label:t,message:t}))
+  }
   }
  }
  if(intent==='book'){
+  const conflicting=upcomingBookings.find((b:any)=>b.booking_date===next.date)
+  if(conflicting&&!next.keep_both_bookings){
+   next.pending_cancel_booking_id=conflicting.id
+   reply=`Só confirmando: você já tem um agendamento para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). É esse mesmo que você quer, ou é um novo horário além desse? Se quiser, posso cancelar o antigo — é só dizer "pode cancelar".`
+   actions=[{label:'É o mesmo, manter',message:'Quero manter os dois agendamentos'},{label:'Cancelar o antigo',message:'Sim, pode cancelar'}]
+   intent='other'
+   handoff=false
+  }else{
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
   if(missing.length){reply=`Para concluir, preciso de ${missing.join(', ')}.`;intent='other'}
   else{
@@ -360,6 +492,7 @@ Deno.serve(async req=>{
       next.completed=true
     }
    }
+  }
   }
  }
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})
