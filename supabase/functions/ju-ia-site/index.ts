@@ -74,15 +74,22 @@ const products=[
 
 // Entre candidatos por substring (ex. "Barba" bate tanto em "Barba Express"
 // quanto em "Corte + Barba Express"), fica com o nome mais próximo em tamanho
-// do texto buscado — sem isso, o primeiro do array vencia sempre, que costuma
-// ser o combo mais caro em vez do serviço avulso que o cliente pediu.
+// do texto buscado — sem isso, o primeiro do array vencia sempre. Também
+// penaliza nomes de combo ("Corte + X") quando o texto buscado não sugere um
+// combo: sem isso, "Corte" sozinho batia em "Corte + Lavagem" (que por acaso
+// é 1 caractere mais curto que "Corte de cabelo" depois de normalizado) —
+// bug real, já existia antes desta função escolher por tamanho, porque
+// "Corte + Lavagem" também é o primeiro do array.
+const comboSignal=/\+| e |combo/i
 const findService=(name:string)=>{
  const n=normalize(name)
  const exact=services.find(s=>normalize(s.name)===n)
  if(exact)return exact
  const candidates=services.filter(s=>normalize(s.name).includes(n)||n.includes(normalize(s.name)))
  if(!candidates.length)return undefined
- return candidates.reduce((best,s)=>Math.abs(normalize(s.name).length-n.length)<Math.abs(normalize(best.name).length-n.length)?s:best)
+ const wantsCombo=comboSignal.test(name)
+ const score=(s:typeof services[number])=>Math.abs(normalize(s.name).length-n.length)+((s.name.includes('+')&&!wantsCombo)?4:0)
+ return candidates.reduce((best,s)=>score(s)<score(best)?s:best)
 }
 const findProduct=(name:string)=>products.find(p=>normalize(p.name)===normalize(name))||products.find(p=>normalize(p.name).includes(normalize(name))||normalize(name).includes(normalize(p.name)))
 const stripSpaces=(s:string)=>normalize(s).replace(/\s+/g,'')
@@ -348,7 +355,22 @@ Deno.serve(async req=>{
  const changeServiceAsk=includesAny(normalizedQuestion,['trocar o servico','trocar de servico','mudar o servico','mudar de servico','trocar meu servico','mudar meu servico','pode trocar o servico','pode mudar o servico'])||Boolean(swapTailService)
  const rescheduleAsk=includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])&&!changeServiceAsk
  const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir'])
- if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk)||cancelAsk)intent='cancel'
+ // Adicionar/remover produto de um agendamento JÁ CONFIRMADO — diferente do
+ // upsell de produto durante a criação de um agendamento novo (que não
+ // menciona "agendamento"/"horário marcado"). Exige as duas coisas juntas
+ // (verbo de produto + referência ao agendamento) pra não colidir com os
+ // botões do upsell (ex.: "Adicionar produto X"), que não citam agendamento.
+ const productBookingContext=/agendamento|horario marcado|\breserva\b/.test(normalizedQuestion)
+ const mentionsProduto=normalizedQuestion.includes('produto')
+ // Frases reais variam demais pra casar por substring exata ("adicionar UM
+ // produto", "quero incluir o produto" etc.) — usa presença do verbo em
+ // qualquer lugar da frase, não uma frase fixa.
+ const addProductVerb=/\b(adicionar|incluir|colocar)\b/.test(normalizedQuestion)
+ const removeProductVerb=/\b(tirar|remover|excluir)\b/.test(normalizedQuestion)
+ const addProductAsk=addProductVerb&&mentionsProduto&&productBookingContext
+ const removeProductAsk=removeProductVerb&&mentionsProduto&&productBookingContext
+ const updateProductsAsk=addProductAsk||removeProductAsk
+ if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||cancelAsk)intent='cancel'
 
  if(intent==='cancel'){
   if(!verifiedPhone){
@@ -394,15 +416,20 @@ Deno.serve(async req=>{
   }
  }
 
+ // Adiciona/remove produto de um agendamento já confirmado, sem tocar em
+ // serviço, dia ou horário. updateProductsAsk não tem chance de colidir com
+ // cancel/reschedule/change_service (exige "produto"+"agendamento" juntos).
+ if(intent!=='cancel'&&(next.pending_products_booking_id||updateProductsAsk))intent='update_products'
+
  // Troca só o serviço do agendamento (service_name/price/duration), preservando
  // dia e horário. Checado antes do reagendamento porque changeServiceAsk e
  // rescheduleAsk já são mutuamente exclusivos (ver comentário acima).
- if(intent!=='cancel'&&(next.pending_change_service_booking_id||changeServiceAsk))intent='change_service'
+ if(intent!=='cancel'&&intent!=='update_products'&&(next.pending_change_service_booking_id||changeServiceAsk))intent='change_service'
 
  // Reagenda de fato (muda booking_date/start_time do mesmo registro) em vez de
  // cancelar e criar de novo — preserva histórico e notas. rescheduleAsk já foi
  // calculado acima, antes do bloco de cancelamento.
- if(intent!=='cancel'&&intent!=='change_service'&&(next.pending_reschedule_booking_id||rescheduleAsk))intent='reschedule'
+ if(intent!=='cancel'&&intent!=='change_service'&&intent!=='update_products'&&(next.pending_reschedule_booking_id||rescheduleAsk))intent='reschedule'
 
  if(intent==='reschedule'){
   // Vem de um bloco de conflito (disponibilidade/agendamento) que já tinha
@@ -511,6 +538,116 @@ Deno.serve(async req=>{
   }
  }
 
+ // Adiciona/remove produto de um agendamento já confirmado (ex.: cliente
+ // esqueceu de pedir a pomada e quer incluir depois) — não mexe em serviço,
+ // dia ou horário, só na lista selected_products/products_price do registro.
+ if(intent==='update_products'){
+  // A ação (adicionar/remover) só é conhecida na mensagem que carrega
+  // "produto"+"agendamento" — no turno seguinte, o cliente normalmente só
+  // responde o nome do produto (sem repetir a ação), então precisa persistir
+  // em next.pending_products_action pra não perder a informação.
+  if(updateProductsAsk)next.pending_products_action=addProductAsk?'add':'remove'
+  if(!verifiedPhone){
+   reply='Para mexer no seu agendamento com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
+   handoff=true
+  }else if(next.pending_products_new_list){
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_products_booking_id)
+   if(simpleYes&&!simpleNo){
+    const {data:updatedRows,error:updateError}=await supabase.rpc('phone_update_booking_products',{p_phone:verifiedPhone,p_booking_id:next.pending_products_booking_id,p_selected_products:next.pending_products_new_list})
+    const updated=Array.isArray(updatedRows)?updatedRows[0]:updatedRows
+    if(updateError||!updated){
+     reply='Não consegui atualizar os produtos agora. Se precisar, o Juliano confirma direto com você.'
+     handoff=true
+     next.pending_products_new_list=null
+     next.pending_products_summary=null
+    }else{
+     reply=`Prontinho! Atualizei os produtos do seu agendamento de ${formatDateBR(updated.booking_date)} às ${String(updated.start_time).slice(0,5)}. ${next.pending_products_summary}`
+     handoff=false
+     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+     const supabaseUrl=Deno.env.get('SUPABASE_URL')
+     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🛍️ Produtos do agendamento alterados pela JuIA',body:`${updated.customer_name||customerFirstName}\n${formatDateBR(updated.booking_date)} às ${String(updated.start_time).slice(0,5)}\n${next.pending_products_summary}`,url:'/admin-agenda.html?app=1',tag:`booking-products-${updated.id}`}})}).catch(()=>{})
+     next.pending_products_booking_id=null
+     next.pending_products_new_list=null
+     next.pending_products_summary=null
+     next.pending_products_action=null
+    }
+   }else if(simpleNo){
+    reply='Tudo bem, não mudei nada nos produtos do seu agendamento.'
+    handoff=false
+    next.pending_products_booking_id=null
+    next.pending_products_new_list=null
+    next.pending_products_summary=null
+    next.pending_products_action=null
+   }else{
+    reply=`Só confirmando: você quer ${next.pending_products_summary} no seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}? Responda sim ou não.`
+    actions=[{label:'Sim, confirmar',message:'Sim, pode confirmar'},{label:'Não, deixar como está',message:'Não, deixar como está'}]
+    handoff=false
+   }
+  }else if(!next.pending_products_booking_id){
+   if(!upcomingBookings.length){
+    reply='Não encontrei nenhum agendamento futuro nesse número.'
+    handoff=false
+   }else if(upcomingBookings.length===1){
+    const b=upcomingBookings[0]
+    next.pending_products_booking_id=b.id
+    reply=`Sobre seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name}): qual produto você quer ${next.pending_products_action==='add'?'adicionar':'tirar'}?`
+    handoff=false
+   }else{
+    const matched=upcomingBookings.find((b:any)=>normalizedQuestion.includes(String(b.start_time).slice(0,5)))
+    if(matched){
+     next.pending_products_booking_id=matched.id
+     reply=`Sobre seu agendamento de ${formatDateBR(matched.booking_date)} às ${String(matched.start_time).slice(0,5)} (${matched.service_name}): qual produto você quer ${next.pending_products_action==='add'?'adicionar':'tirar'}?`
+     handoff=false
+    }else{
+     reply='Você tem mais de um agendamento futuro. Qual deles?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+     actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`É o de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
+     handoff=false
+    }
+   }
+  }else{
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_products_booking_id)
+   if(!target){
+    reply='Não encontrei mais esse agendamento — pode já ter sido cancelado.'
+    next.pending_products_booking_id=null
+    handoff=false
+   }else{
+    const wantsRemove=next.pending_products_action==='remove'
+    const productText=message
+     .replace(/adicionar|incluir|colocar|tirar|remover|excluir|produto|no meu agendamento|no agendamento|ao agendamento|do agendamento|do meu agendamento|no meu horario marcado|nesse agendamento|desse agendamento|no meu horario/gi,'')
+     .trim()
+    const product=findProduct(productText)||findProduct(message)
+    const current=Array.isArray(target.selected_products)?target.selected_products:[]
+    if(!product){
+     reply=`Qual produto você quer ${wantsRemove?'tirar':'adicionar'}?`
+     handoff=false
+    }else if(wantsRemove){
+     const stillThere=current.filter((p:any)=>normalize(String(p?.name))!==normalize(product.name))
+     if(stillThere.length===current.length){
+      reply=`Esse agendamento não tem "${product.name}" reservado. Quer tentar outro produto?`
+      handoff=false
+     }else{
+      next.pending_products_new_list=stillThere
+      next.pending_products_summary=`tirar ${product.name}`
+      reply=`Confirmando: tirar "${product.name}" do seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}? Responda sim ou não.`
+      actions=[{label:'Sim, tirar',message:'Sim, pode confirmar'},{label:'Não, manter',message:'Não, deixar como está'}]
+      handoff=false
+     }
+    }else{
+     if(current.some((p:any)=>normalize(String(p?.name))===normalize(product.name))){
+      reply=`"${product.name}" já está reservado nesse agendamento. Quer adicionar outro produto?`
+      handoff=false
+     }else{
+      next.pending_products_new_list=[...current,{name:product.name,price:product.price}]
+      next.pending_products_summary=`adicionar ${product.name} (${money(product.price)})`
+      reply=`Confirmando: adicionar "${product.name}" (${money(product.price)}) ao seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}? Responda sim ou não.`
+      actions=[{label:'Sim, adicionar',message:'Sim, pode confirmar'},{label:'Não, deixar como está',message:'Não, deixar como está'}]
+      handoff=false
+     }
+    }
+   }
+  }
+ }
+
  // Troca só o serviço do agendamento (service_name/price/duration_minutes),
  // preservando dia e horário — não mexe em booking_date/start_time. "desired"
  // só é lido de swapTailService (extraído direto desta mensagem via regex) ou
@@ -609,7 +746,7 @@ Deno.serve(async req=>{
  upcomingBookings.forEach((b:any)=>{(bookingsByDate[b.booking_date]=bookingsByDate[b.booking_date]||[]).push(b)})
  const duplicateGroup=(Object.values(bookingsByDate) as any[][]).find(arr=>arr.length>1)
 
- if(duplicateGroup&&verifiedPhone&&!next.keep_both_bookings&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+ if(duplicateGroup&&verifiedPhone&&!next.keep_both_bookings&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'){
   const timeA=String(duplicateGroup[0].start_time).slice(0,5),timeB=String(duplicateGroup[1].start_time).slice(0,5)
   if(Array.isArray(next.pending_duplicate_ids)&&next.pending_duplicate_ids.length===2){
    const [idA,idB]=next.pending_duplicate_ids
@@ -651,14 +788,14 @@ Deno.serve(async req=>{
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
  const requestedTime=extractRequestedTime(message)
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
  // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
  // e/ou data, a resposta ficava só por conta do modelo, que às vezes preferia encaminhar
  // pro Juliano em vez de perguntar o que faltava.
  const availabilityAsk=includesAny(normalizedQuestion,['tem horario','tem vaga','horario livre','horario disponivel','algum horario','horario vago','agenda aberta','vaga agora','vaga hoje'])
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&availabilityAsk){
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
