@@ -127,7 +127,7 @@ Deno.serve(async req=>{
  const phoneTrustNote=verifiedPhone
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
   :'O telefone informado no chat não é verificado como sendo de quem está digitando, então só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
- const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
+ const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho. Se o cliente pedir para mudar o dia/horário de um agendamento que já existe (ex.: "posso mudar pra sexta às 15h?", "quero remarcar", "dá pra trocar meu horário?"), use intent "reschedule" — não trate como um agendamento novo nem diga que vai cancelar e recriar, o sistema identifica o agendamento, confirma o novo horário disponível e reagenda sozinho, preservando o mesmo registro. Se o cliente pedir para trocar o SERVIÇO de um agendamento que já existe, sem mudar dia/horário (ex.: "pode trocar o serviço pra mim?", "marquei corte mas quero mudar pra barba", "muda esse agendamento pra Barba Express"), use intent "change_service" e preencha updates.services com o nome exato do novo serviço desejado — o sistema identifica o agendamento, confirma o serviço novo e troca sozinho, preservando dia, horário e o resto do registro.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|reschedule|change_service|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
  let ai:any=null
  if(key){
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',reasoning:{effort:'low'},max_output_tokens:550,instructions:prompt,input:`Histórico recente: ${JSON.stringify(body.history||[])}\nMensagem: ${message}`})})
@@ -285,8 +285,21 @@ Deno.serve(async req=>{
  // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver
  // uma confirmação pendente (next.pending_cancel_booking_id), não importa o que o
  // modelo tenha entendido da mensagem seguinte (ex.: um simples "sim").
+ // changeServiceAsk/rescheduleAsk são calculados aqui (antes do bloco de
+ // cancelamento) porque os blocos de conflito de disponibilidade/agendamento
+ // reaproveitam next.pending_cancel_booking_id pra marcar "o agendamento em
+ // conflito" — sem essa checagem, uma resposta como "quero remarcar" ficaria
+ // presa no fluxo de cancelamento (que também reage a esse campo) e nunca
+ // chegaria nos fluxos de reagendamento/troca de serviço.
+ // "trocar"/"mudar" sozinhos são ambíguos entre reagendar (dia/hora) e trocar
+ // serviço — desambigua olhando se o que vem depois de "pra/para" é um serviço
+ // conhecido do catálogo (ex.: "mudar pra barba" = serviço; "mudar pra sexta" não é).
+ const swapTailMatch=normalizedQuestion.match(/(?:trocar|mudar)\s+(?:o\s+|meu\s+|esse\s+)?(?:servico\s+)?(?:para|pra)\s+(.+)/)
+ const swapTailService=swapTailMatch?findService(swapTailMatch[1]):null
+ const changeServiceAsk=includesAny(normalizedQuestion,['trocar o servico','trocar de servico','mudar o servico','mudar de servico','trocar meu servico','mudar meu servico','pode trocar o servico','pode mudar o servico'])||Boolean(swapTailService)
+ const rescheduleAsk=includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])&&!changeServiceAsk
  const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir'])
- if(next.pending_cancel_booking_id||cancelAsk)intent='cancel'
+ if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk)||cancelAsk)intent='cancel'
 
  if(intent==='cancel'){
   if(!verifiedPhone){
@@ -332,6 +345,212 @@ Deno.serve(async req=>{
   }
  }
 
+ // Troca só o serviço do agendamento (service_name/price/duration), preservando
+ // dia e horário. Checado antes do reagendamento porque changeServiceAsk e
+ // rescheduleAsk já são mutuamente exclusivos (ver comentário acima).
+ if(intent!=='cancel'&&(next.pending_change_service_booking_id||changeServiceAsk))intent='change_service'
+
+ // Reagenda de fato (muda booking_date/start_time do mesmo registro) em vez de
+ // cancelar e criar de novo — preserva histórico e notas. rescheduleAsk já foi
+ // calculado acima, antes do bloco de cancelamento.
+ if(intent!=='cancel'&&intent!=='change_service'&&(next.pending_reschedule_booking_id||rescheduleAsk))intent='reschedule'
+
+ if(intent==='reschedule'){
+  // Vem de um bloco de conflito (disponibilidade/agendamento) que já tinha
+  // identificado esse agendamento como "o que está em conflito" e ofereceu
+  // reagendar como alternativa a cancelar — reaproveita a mesma identificação
+  // em vez de perguntar de novo qual agendamento é. next.date (e next.time, se
+  // já escolhido) continuam com o horário novo que o cliente estava pedindo,
+  // então cai direto na etapa de checar disponibilidade/confirmar abaixo.
+  if(!next.pending_reschedule_booking_id&&next.pending_cancel_booking_id&&upcomingBookings.some((b:any)=>b.id===next.pending_cancel_booking_id)){
+   next.pending_reschedule_booking_id=next.pending_cancel_booking_id
+   next.pending_cancel_booking_id=null
+  }
+  if(!verifiedPhone){
+   reply='Para remarcar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
+   handoff=true
+  }else if(next.pending_reschedule_new_date&&next.pending_reschedule_new_time){
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
+   if(simpleYes&&!simpleNo){
+    const {data:rescheduledRows,error:rescheduleError}=await supabase.rpc('phone_reschedule_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_reschedule_booking_id,p_new_booking_date:next.pending_reschedule_new_date,p_new_start_time:next.pending_reschedule_new_time})
+    const rescheduled=Array.isArray(rescheduledRows)?rescheduledRows[0]:rescheduledRows
+    if(rescheduleError||!rescheduled){
+     reply='Não consegui remarcar agora — esse horário pode ter ficado indisponível. Quer tentar outro horário?'
+     handoff=false
+     next.pending_reschedule_new_date=null
+     next.pending_reschedule_new_time=null
+    }else{
+     reply=`Prontinho! Mudei seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}.`
+     handoff=false
+     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+     const supabaseUrl=Deno.env.get('SUPABASE_URL')
+     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔄 Agendamento remarcado pela JuIA',body:`${rescheduled.customer_name||customerFirstName}\nDe ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}\n${rescheduled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-rescheduled-${rescheduled.id}`}})}).catch(()=>{})
+     next.pending_reschedule_booking_id=null
+     next.pending_reschedule_new_date=null
+     next.pending_reschedule_new_time=null
+     next.date=null
+     next.time=null
+    }
+   }else if(simpleNo){
+    reply='Tudo bem, não mudei nada. Seu agendamento continua como estava.'
+    next.pending_reschedule_new_date=null
+    next.pending_reschedule_new_time=null
+    handoff=false
+   }else{
+    reply=`Só confirmando: você quer mudar seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(next.pending_reschedule_new_date)} às ${next.pending_reschedule_new_time}? Responda sim ou não.`
+    actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
+    handoff=false
+   }
+  }else if(!next.pending_reschedule_booking_id){
+   if(!upcomingBookings.length){
+    reply='Não encontrei nenhum agendamento futuro nesse número para remarcar.'
+    handoff=false
+   }else if(upcomingBookings.length===1){
+    const b=upcomingBookings[0]
+    next.pending_reschedule_booking_id=b.id
+    reply=`Vamos remarcar seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name}). Para qual dia e horário você quer mudar?`
+    handoff=false
+   }else{
+    const matched=upcomingBookings.find((b:any)=>normalizedQuestion.includes(String(b.start_time).slice(0,5)))
+    if(matched){
+     next.pending_reschedule_booking_id=matched.id
+     reply=`Vamos remarcar seu agendamento de ${formatDateBR(matched.booking_date)} às ${String(matched.start_time).slice(0,5)} (${matched.service_name}). Para qual dia e horário você quer mudar?`
+     handoff=false
+    }else{
+     reply='Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+     actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Remarcar o de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
+     handoff=false
+    }
+   }
+  }else{
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
+   if(!target){
+    reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser remarcar outro, me avise.'
+    next.pending_reschedule_booking_id=null
+    handoff=false
+   }else if(!next.date){
+    reply=`Para qual dia você quer mudar o agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}?`
+    handoff=false
+   }else{
+    const duration=Number(target.duration_minutes)||30
+    const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
+    if(error)return respond({error:error.message},500)
+    const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+    const time=extractRequestedTime(message)||next.time
+    if(!time){
+     if(!allSlots.length){
+      reply=`Não encontrei horário disponível em ${formatDateBR(next.date)} para esse atendimento. Quer tentar outro dia?`
+      next.date=null
+     }else{
+      reply=`Estes são os horários disponíveis em ${formatDateBR(next.date)}: ${allSlots.join(', ')}. Qual você prefere?`
+      actions=allSlots.map((t:string)=>({label:t,message:t}))
+     }
+     handoff=false
+    }else if(allSlots.includes(time)){
+     next.pending_reschedule_new_date=next.date
+     next.pending_reschedule_new_time=time
+     reply=`Confirmando: mudar seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}? Responda sim ou não.`
+     actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
+     handoff=false
+    }else{
+     reply=allSlots.length?`${time} não está disponível em ${formatDateBR(next.date)}. Horários disponíveis: ${allSlots.join(', ')}.`:`Não encontrei horário disponível em ${formatDateBR(next.date)} para esse atendimento. Quer tentar outro dia?`
+     actions=allSlots.map((t:string)=>({label:t,message:t}))
+     next.time=null
+     handoff=false
+    }
+   }
+  }
+ }
+
+ // Troca só o serviço do agendamento (service_name/price/duration_minutes),
+ // preservando dia e horário — não mexe em booking_date/start_time. "desired"
+ // só é lido de swapTailService (extraído direto desta mensagem via regex) ou
+ // de chosen[0] quando o próprio modelo classificou esta mensagem como
+ // change_service (ai.intent, não o "intent" já reclassificado por regex) —
+ // nunca de chosen[0] "sobrando" de um fluxo de agendamento novo anterior na
+ // mesma conversa, que poderia estar desatualizado.
+ if(intent==='change_service'){
+  const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
+  if(!verifiedPhone){
+   reply='Para trocar o serviço com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
+   handoff=true
+  }else if(next.pending_change_service_new_name){
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_change_service_booking_id)
+   const desired=findService(next.pending_change_service_new_name)
+   if(simpleYes&&!simpleNo){
+    if(!desired){
+     reply='Não reconheci esse serviço. Qual serviço você quer no lugar?'
+     next.pending_change_service_new_name=null
+     handoff=false
+    }else{
+     const {data:changedRows,error:changeError}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:next.pending_change_service_booking_id,p_service_name:desired.name,p_service_price:desired.price,p_duration_minutes:desired.duration})
+     const changed=Array.isArray(changedRows)?changedRows[0]:changedRows
+     if(changeError||!changed){
+      reply='Não consegui trocar o serviço agora — esse serviço pode não caber mais nesse horário. Quer tentar outro serviço ou outro horário?'
+      handoff=false
+      next.pending_change_service_new_name=null
+     }else{
+      reply=`Prontinho! Troquei o serviço do seu agendamento de ${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)} para ${changed.service_name} (${money(changed.service_price)}).`
+      handoff=false
+      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+      const supabaseUrl=Deno.env.get('SUPABASE_URL')
+      if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔧 Serviço do agendamento trocado pela JuIA',body:`${changed.customer_name||customerFirstName}\n${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)}\nDe ${target?.service_name||'?'} para ${changed.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-service-changed-${changed.id}`}})}).catch(()=>{})
+      next.pending_change_service_booking_id=null
+      next.pending_change_service_new_name=null
+      next.services=[]
+     }
+    }
+   }else if(simpleNo){
+    reply='Tudo bem, não troquei nada. Seu agendamento continua como estava.'
+    next.pending_change_service_new_name=null
+    handoff=false
+   }else{
+    reply=`Só confirmando: você quer trocar o serviço do seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}, de "${target?.service_name}" para "${desired?.name||next.pending_change_service_new_name}"${desired?` (${money(desired.price)}, ${desired.duration} min)`:''}? Responda sim ou não.`
+    actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+    handoff=false
+   }
+  }else if(!next.pending_change_service_booking_id){
+   if(!upcomingBookings.length){
+    reply='Não encontrei nenhum agendamento futuro nesse número para trocar o serviço.'
+    handoff=false
+   }else if(upcomingBookings.length===1){
+    const b=upcomingBookings[0]
+    next.pending_change_service_booking_id=b.id
+    reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (atualmente ${b.service_name}). Qual serviço você quer no lugar?`
+    handoff=false
+   }else{
+    const matched=upcomingBookings.find((b:any)=>normalizedQuestion.includes(String(b.start_time).slice(0,5)))
+    if(matched){
+     next.pending_change_service_booking_id=matched.id
+     reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(matched.booking_date)} às ${String(matched.start_time).slice(0,5)} (atualmente ${matched.service_name}). Qual serviço você quer no lugar?`
+     handoff=false
+    }else{
+     reply='Você tem mais de um agendamento futuro. Qual deles quer trocar o serviço?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+     actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Trocar o serviço do de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
+     handoff=false
+    }
+   }
+  }else{
+   const target=upcomingBookings.find((b:any)=>b.id===next.pending_change_service_booking_id)
+   if(!target){
+    reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser trocar o serviço de outro, me avise.'
+    next.pending_change_service_booking_id=null
+    handoff=false
+   }else if(!desiredFresh){
+    reply=`Qual serviço você quer no lugar de "${target.service_name}"?`
+    handoff=false
+   }else if(normalize(desiredFresh.name)===normalize(target.service_name)){
+    reply=`Seu agendamento já é para ${target.service_name}. Se quiser outro serviço, me diga qual.`
+    handoff=false
+   }else{
+    next.pending_change_service_new_name=desiredFresh.name
+    reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}, de "${target.service_name}" para "${desiredFresh.name}" (${money(desiredFresh.price)}, ${desiredFresh.duration} min)? Responda sim ou não.`
+    actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+    handoff=false
+   }
+  }
+ }
+
  // Agendamentos duplicados no mesmo dia (ex.: cliente já tinha um horário marcado
  // em outro canal e acabou marcando outro sem querer pela JuIA) — pergunta qual
  // manter e cancela o outro sozinha, em vez de deixar os dois ativos até um deles
@@ -341,7 +560,7 @@ Deno.serve(async req=>{
  upcomingBookings.forEach((b:any)=>{(bookingsByDate[b.booking_date]=bookingsByDate[b.booking_date]||[]).push(b)})
  const duplicateGroup=(Object.values(bookingsByDate) as any[][]).find(arr=>arr.length>1)
 
- if(duplicateGroup&&verifiedPhone&&!next.keep_both_bookings&&intent!=='cancel'){
+ if(duplicateGroup&&verifiedPhone&&!next.keep_both_bookings&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
   const timeA=String(duplicateGroup[0].start_time).slice(0,5),timeB=String(duplicateGroup[1].start_time).slice(0,5)
   if(Array.isArray(next.pending_duplicate_ids)&&next.pending_duplicate_ids.length===2){
    const [idA,idB]=next.pending_duplicate_ids
@@ -383,14 +602,14 @@ Deno.serve(async req=>{
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
  const requestedTime=extractRequestedTime(message)
- if(intent!=='cancel'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
  // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
  // e/ou data, a resposta ficava só por conta do modelo, que às vezes preferia encaminhar
  // pro Juliano em vez de perguntar o que faltava.
  const availabilityAsk=includesAny(normalizedQuestion,['tem horario','tem vaga','horario livre','horario disponivel','algum horario','horario vago','agenda aberta','vaga agora','vaga hoje'])
- if(intent!=='cancel'&&availabilityAsk){
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&availabilityAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
@@ -411,8 +630,8 @@ Deno.serve(async req=>{
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date!==next.date)
   if(conflicting&&!next.keep_both_bookings){
    next.pending_cancel_booking_id=conflicting.id
-   reply=`Antes de continuar: você já tem um agendamento confirmado para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Quer que eu cancele esse já que vai escolher outro dia, ou prefere manter os dois?`
-   actions=[{label:'Cancelar o outro',message:'Sim, pode cancelar'},{label:'Manter os dois',message:'Quero manter os dois agendamentos'}]
+   reply=`Antes de continuar: você já tem um agendamento confirmado para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Quer que eu cancele esse já que vai escolher outro dia, quer que eu mude esse agendamento pro novo horário, ou prefere manter os dois?`
+   actions=[{label:'Mudar pro novo horário',message:'Sim, pode reagendar'},{label:'Cancelar o outro',message:'Sim, pode cancelar'},{label:'Manter os dois',message:'Quero manter os dois agendamentos'}]
    handoff=false
   }else{
   const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
@@ -464,8 +683,8 @@ Deno.serve(async req=>{
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date===next.date)
   if(conflicting&&!next.keep_both_bookings){
    next.pending_cancel_booking_id=conflicting.id
-   reply=`Só confirmando: você já tem um agendamento para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). É esse mesmo que você quer, ou é um novo horário além desse? Se quiser, posso cancelar o antigo — é só dizer "pode cancelar".`
-   actions=[{label:'É o mesmo, manter',message:'Quero manter os dois agendamentos'},{label:'Cancelar o antigo',message:'Sim, pode cancelar'}]
+   reply=`Só confirmando: você já tem um agendamento para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). É esse mesmo que você quer (mudar pro novo horário ${next.time?`de ${next.time}`:'que você pediu'}), é um novo horário além desse, ou quer cancelar o antigo?`
+   actions=[{label:'Mudar pro novo horário',message:'Sim, pode reagendar'},{label:'É outro, manter os dois',message:'Quero manter os dois agendamentos'},{label:'Cancelar o antigo',message:'Sim, pode cancelar'}]
    intent='other'
    handoff=false
   }else{
