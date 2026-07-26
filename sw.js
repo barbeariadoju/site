@@ -64,6 +64,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Vídeo e áudio usam Range requests (resposta 206), que a Cache API não
+  // suporta armazenar (cache.put lança erro em respostas parciais e o
+  // fetch acaba resolvendo como falho). Repassa direto para a rede.
+  if (req.destination === 'video' || req.destination === 'audio' || /\.(mp4|webm|mov|m4v|mp3)$/i.test(url.pathname)) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
   // Imagens e fontes: cache primeiro, com atualização em segundo plano.
   event.respondWith(
     caches.match(req).then(cached => {
