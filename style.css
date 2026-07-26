@@ -2040,3 +2040,15 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
   transform:none !important;
   pointer-events:none;
 }
+
+/* V28.13.0 — imagens nos artigos do blog */
+.privacy-card .blog-hero{margin:20px 0 28px;border-radius:20px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.privacy-card .blog-hero img{width:100%;height:clamp(200px,36vw,380px);object-fit:cover;display:block}
+.privacy-card figure{margin:24px 0}
+.privacy-card figure.blog-photo img{width:100%;border-radius:18px;border:1px solid var(--line);display:block}
+.privacy-card figcaption{color:var(--muted);font-size:.82rem;margin-top:8px;text-align:center}
+.blog-products-row{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}
+.blog-products-row figure{margin:0;width:140px;background:#fff;border-radius:16px;border:1px solid var(--line);padding:12px;text-align:center}
+.blog-products-row img{width:100%;height:auto;display:block;border-radius:8px}
+.blog-products-row figcaption{margin-top:8px;font-size:.76rem;font-weight:800;color:#2c1e0f;text-align:center}
+@media(max-width:480px){.blog-products-row figure{width:104px}}
