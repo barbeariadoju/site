@@ -1,3 +1,10 @@
+## 28.15.0 — Blog do site (SEO local)
+
+- **3 artigos novos no blog** (`blog.html` + `blog-barboterapia.html`, `blog-barba-encravada-ressecada.html`, `blog-produtos-profissionais-caseiros.html`), parte do plano de SEO local pra converter mais gente organicamente: Barboterapia, Barba encravada/ressecada, Produtos profissionais x caseiros. Textos revisados no `AUDITORIA-SEO-2026-07-24.md`, publicados como estão.
+- Cada artigo tem `Article` + `BreadcrumbList` em Schema.org, meta description e Open Graph próprios, link cruzado entre os 3 artigos e para `/agendar/#servicos` ou `produtos.html` conforme o assunto.
+- Blog linkado no rodapé de `index.html`, `produtos.html` e `servicos.html`, e as 4 novas páginas adicionadas ao `sitemap.xml` (agora com 10 URLs).
+- Testado localmente (servidor estático) antes de publicar: CSS, JuIA chat e scripts carregam sem erro em todas as páginas novas, JSON-LD validado.
+
 ## 28.14.0 — JuIA adiciona/remove produto de um agendamento já confirmado
 
 - **JuIA agora adiciona ou remove produto de um agendamento existente:** se o cliente esqueceu de pedir a pomada na hora de marcar, ou mudou de ideia sobre um produto reservado, ele pode pedir direto pelo WhatsApp ("posso adicionar um produto no meu agendamento?", "quero tirar o óleo do meu agendamento") — a JuIA identifica o agendamento, confirma o produto (com preço) e atualiza sozinha, sem mexer em serviço, dia ou horário. Mesmo padrão de segurança dos outros três recursos (telefone verificado, confirmação antes de executar, push depois).
