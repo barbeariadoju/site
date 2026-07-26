@@ -72,8 +72,45 @@ const products=[
  {name:'Energético Monster Zero Sugar 473ml',price:14,tags:['all']}
 ]
 
-const findService=(name:string)=>services.find(s=>normalize(s.name)===normalize(name))||services.find(s=>normalize(s.name).includes(normalize(name))||normalize(name).includes(normalize(s.name)))
+// Entre candidatos por substring (ex. "Barba" bate tanto em "Barba Express"
+// quanto em "Corte + Barba Express"), fica com o nome mais próximo em tamanho
+// do texto buscado — sem isso, o primeiro do array vencia sempre, que costuma
+// ser o combo mais caro em vez do serviço avulso que o cliente pediu.
+const findService=(name:string)=>{
+ const n=normalize(name)
+ const exact=services.find(s=>normalize(s.name)===n)
+ if(exact)return exact
+ const candidates=services.filter(s=>normalize(s.name).includes(n)||n.includes(normalize(s.name)))
+ if(!candidates.length)return undefined
+ return candidates.reduce((best,s)=>Math.abs(normalize(s.name).length-n.length)<Math.abs(normalize(best.name).length-n.length)?s:best)
+}
 const findProduct=(name:string)=>products.find(p=>normalize(p.name)===normalize(name))||products.find(p=>normalize(p.name).includes(normalize(name))||normalize(name).includes(normalize(p.name)))
+const stripSpaces=(s:string)=>normalize(s).replace(/\s+/g,'')
+// Fallback pra quando o modelo classifica intent "services" mas não extrai
+// nada em updates.services (mensagem curta com mais de um serviço junto, ex.
+// "barba e pezinho", ou erro de digitação, ex. "barbo terapia" por
+// "Barboterapia") — tenta casar o texto do cliente direto contra o catálogo
+// antes de cair na lista genérica de mais procurados.
+function findServicesLoose(text:string){
+ const n=normalize(text)
+ const exact=services.find(s=>normalize(s.name)===n)
+ if(exact)return [exact]
+ const found:any[]=[]
+ String(text).split(/,|\+|\/| e | ou /i).map(t=>t.trim()).filter(t=>t.length>=4).forEach(token=>{
+  const svc=findService(token)
+  if(svc&&!found.some(f=>f.name===svc.name))found.push(svc)
+ })
+ if(found.length)return found
+ const dense=stripSpaces(text)
+ if(dense.length>=4){
+  const candidates=services.filter(s=>{const sd=stripSpaces(s.name);return dense.includes(sd)||sd.includes(dense)})
+  if(candidates.length){
+   const best=candidates.reduce((b,s)=>Math.abs(stripSpaces(s.name).length-dense.length)<Math.abs(stripSpaces(b.name).length-dense.length)?s:b)
+   found.push(best)
+  }
+ }
+ return found
+}
 const textFrom=(d:any)=>typeof d?.output_text==='string'?d.output_text.trim():(d?.output||[]).flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('\n').trim()
 function parseJSON(text:string){try{return JSON.parse(text.replace(/^```json\s*|\s*```$/g,''))}catch{return null}}
 function serviceSuggestions(chosen:any[]){
@@ -251,8 +288,20 @@ Deno.serve(async req=>{
  }
 
  if(intent==='services'&&!chosen.length){
-  reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
-  actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
+  // O modelo às vezes classifica intent "services" mas não extrai nada em
+  // updates.services (mensagem com mais de um serviço junto ou com erro de
+  // digitação) — antes disso caía direto na lista genérica, que já gerou
+  // reclamação real de cliente confuso ("Barba e pezinho", "Barbo terapia").
+  // Tenta casar o texto do cliente contra o catálogo antes de desistir.
+  const loose=findServicesLoose(message)
+  if(loose.length){
+   next.services=loose.map((s:any)=>s.name)
+   chosen.push(...loose)
+   intent='availability'
+  }else{
+   reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
+   actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
+  }
  }
  // Cliente já citou o(s) serviço(s) exato(s) (ex.: "barba e pezinho") — não faz sentido
  // mostrar a lista genérica de mais procurados. Segue direto pro fluxo de disponibilidade.
