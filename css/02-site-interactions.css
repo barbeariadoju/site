@@ -1,0 +1,537 @@
+/* Ajuste final: botões principais padronizados */
+.hero-ctas{align-items:center}
+.hero-btn{min-width:280px;min-height:58px;padding:15px 24px;border-radius:999px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;border-color:transparent;box-shadow:0 14px 42px rgba(200,155,85,.22);font-size:.98rem}
+.hero-btn:hover{box-shadow:0 18px 52px rgba(200,155,85,.34)}
+.btn-icon{width:28px;height:28px;border-radius:999px;display:inline-grid;place-items:center;background:rgba(22,16,10,.13);border:1px solid rgba(22,16,10,.18);flex:0 0 auto}
+.btn-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:520px){.hero-btn{width:100%;min-width:0}}
+
+/* Refinamento final: animação homogênea em todos os botões e ações */
+a.btn,
+.btn,
+.hero-btn,
+.link-card,
+.text-link,
+.copy-line button,
+.product-card .cart-btn,
+.cart-btn,
+.modal-add,
+.send-cart,
+.cart-head button,
+.cart-row button,
+.rating-strip a,
+.welcome-box a,
+.floating,
+.back-top,
+.mobile-cta a,
+.info .btn,
+.info-card .btn,
+a[href*="maps.app.goo.gl"],
+a[href*="g.page"],
+button[data-copy] {
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease, background .24s ease, color .24s ease, opacity .24s ease !important;
+}
+
+a.btn:hover,
+.btn:hover,
+.hero-btn:hover,
+.copy-line button:hover,
+.product-card .cart-btn:hover,
+.cart-btn:hover,
+.modal-add:hover,
+.send-cart:hover,
+.rating-strip a:hover,
+.welcome-box a:hover,
+.floating:hover,
+.back-top:hover,
+.mobile-cta a:hover,
+.info .btn:hover,
+.info-card .btn:hover,
+a[href*="maps.app.goo.gl"]:hover,
+a[href*="g.page"]:hover,
+button[data-copy]:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 18px 46px rgba(200,155,85,.28) !important;
+}
+
+.copy-line button:hover,
+.product-card .cart-btn:hover,
+.cart-btn:hover,
+.modal-add:hover,
+.send-cart:hover,
+.rating-strip a:hover,
+.welcome-box a:hover,
+.info .btn:hover,
+.info-card .btn:hover,
+button[data-copy]:hover {
+  filter: brightness(1.06) saturate(1.04);
+}
+
+.copy-line button:active,
+.product-card .cart-btn:active,
+.cart-btn:active,
+.modal-add:active,
+.send-cart:active,
+.btn:active,
+.hero-btn:active,
+.info .btn:active,
+.info-card .btn:active,
+button[data-copy]:active {
+  transform: translateY(-1px) scale(.985) !important;
+}
+
+.copy-line button,
+.product-card .cart-btn,
+.cart-btn,
+.send-cart,
+.modal-add,
+button[data-copy] {
+  will-change: transform;
+}
+
+.info-card .btn.small {
+  background: linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#16100a;
+  border-color:transparent;
+  font-weight:900;
+  box-shadow:0 14px 35px rgba(200,155,85,.16);
+}
+
+/* Revisão final v3: todos os elementos clicáveis com animação premium */
+:where(a, button, .link-card, .product-photo, .product-card, .info-card a, .rating-strip a, .mobile-cta a, .floating, .back-top, .welcome-close, .product-modal-close, .cart-row button, .copy-line button, [data-copy]){
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease, background .24s ease, color .24s ease, opacity .24s ease, filter .24s ease !important;
+}
+:where(a, button, .link-card, .product-photo, .product-card, .info-card a, .rating-strip a, .mobile-cta a, .floating, .back-top, .welcome-close, .product-modal-close, .cart-row button, .copy-line button, [data-copy]):hover{
+  transform: translateY(-3px) !important;
+  filter: brightness(1.06) saturate(1.04);
+}
+:where(.btn, .hero-btn, .link-card, .text-link, .copy-line button, .cart-btn, .modal-add, .send-cart, .rating-strip a, .welcome-box a, .mobile-cta a, .floating, .back-top, .info-card a, .back-link, .hero-actions a, .cart-head button, .cart-row button):hover{
+  box-shadow: 0 18px 48px rgba(200,155,85,.30) !important;
+}
+:where(a, button, .link-card, .product-photo, .product-card, .info-card a, .rating-strip a, .mobile-cta a, .floating, .back-top, .welcome-close, .product-modal-close, .cart-row button, .copy-line button, [data-copy]):active{
+  transform: translateY(-1px) scale(.985) !important;
+}
+.hero-strip a,
+footer a,
+.text-link,
+.back-link{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.hero-strip a:hover,
+footer a:hover,
+.text-link:hover,
+.back-link:hover{
+  color:var(--gold2) !important;
+  text-shadow:0 0 18px rgba(240,201,135,.18);
+}
+.product-photo:hover{box-shadow:0 18px 46px rgba(0,0,0,.22) !important;}
+.welcome-pop{z-index:10000 !important;}
+.welcome-box{animation: welcomeIn .42s ease both;}
+@keyframes welcomeIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.welcome-box a:hover{transform:translateY(-3px) scale(1.015) !important;}
+.welcome-close:hover,.product-modal-close:hover{background:rgba(240,201,135,.16) !important;border-color:rgba(240,201,135,.42) !important;color:var(--gold2) !important;}
+
+/* Versão 1.0 definitiva: hover glow padronizado em todos os elementos clicáveis */
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .text-link,
+  .back-link,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .product-card .product-photo,
+  .info-card a,
+  footer a
+){
+  position:relative;
+  isolation:isolate;
+  transition:transform .24s ease, box-shadow .24s ease, border-color .24s ease, filter .24s ease, color .24s ease, background .24s ease, opacity .24s ease !important;
+}
+
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+){
+  overflow:hidden;
+}
+
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+)::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(240,201,135,.45), rgba(200,155,85,.18) 18%, transparent 46%);
+  transition:opacity .24s ease;
+}
+
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+):hover::after,
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+):focus-visible::after{
+  opacity:1;
+}
+
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+):hover,
+:where(
+  a.btn,
+  .btn,
+  .hero-btn,
+  .link-card,
+  .quick-card a,
+  .rating-strip a,
+  .welcome-box a,
+  .floating,
+  .mobile-cta a,
+  .back-top,
+  .copy-line button,
+  button[data-copy],
+  .cart-btn,
+  .modal-add,
+  .send-cart,
+  .cart-head button,
+  .cart-row button,
+  .welcome-close,
+  .product-modal-close,
+  .product-card,
+  .info-card a
+):focus-visible{
+  transform:translateY(-3px) !important;
+  box-shadow:0 18px 52px rgba(200,155,85,.32) !important;
+  border-color:rgba(240,201,135,.62) !important;
+  filter:brightness(1.06) saturate(1.04);
+}
+
+:where(.text-link,.back-link,footer a):hover,
+:where(.text-link,.back-link,footer a):focus-visible{
+  transform:translateY(-2px) !important;
+  text-shadow:0 0 18px rgba(240,201,135,.38), 0 0 34px rgba(200,155,85,.16);
+  outline:none;
+}
+
+.product-card:hover .product-photo,
+.product-card:focus-within .product-photo,
+.product-photo:hover{
+  transform:scale(1.045) !important;
+  box-shadow:0 18px 46px rgba(0,0,0,.30), 0 0 0 1px rgba(240,201,135,.20) !important;
+}
+
+:where(a,button,.link-card,.product-card,.product-photo):focus-visible{
+  outline:2px solid rgba(240,201,135,.72);
+  outline-offset:3px;
+}
+
+
+/* Seções finais: informações rápidas, FAQ e mensagem */
+.previsit-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.previsit-card{background:linear-gradient(180deg,var(--panel2),#0d0d0d);border:1px solid var(--line);border-radius:24px;padding:20px;position:relative;overflow:hidden;transition:.25s}
+.previsit-card span{display:inline-grid;width:52px;height:52px;place-items:center;border-radius:16px;background:rgba(200,155,85,.12);border:1px solid var(--line);font-size:1.55rem;margin-bottom:12px}
+.previsit-card strong{display:block;color:var(--gold2);font-size:1.04rem;margin-bottom:6px}
+.previsit-card p{color:var(--muted);margin:0;font-size:.94rem;line-height:1.45}
+.google-review-card{display:flex;align-items:center;justify-content:space-between;gap:22px;background:linear-gradient(135deg,rgba(200,155,85,.16),rgba(17,17,17,.94));border:1px solid var(--line);border-radius:30px;padding:28px;position:relative;overflow:hidden}
+.google-review-card h2{font-size:clamp(2.4rem,5.6vw,5rem)}
+.google-review-card p{color:var(--muted);max-width:650px;margin:8px 0 0}
+.faq-list{display:grid;gap:12px;max-width:920px;margin:0 auto}
+.faq-list details{background:linear-gradient(180deg,var(--panel2),#0d0d0d);border:1px solid var(--line);border-radius:20px;padding:0;overflow:hidden;transition:.25s;position:relative}
+.faq-list summary{cursor:pointer;list-style:none;padding:18px 20px;font-weight:900;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary::after{content:'+';color:var(--gold2);font-size:1.35rem;line-height:1;transition:.25s}
+.faq-list details[open] summary::after{transform:rotate(45deg)}
+.faq-list details p{color:var(--muted);margin:0;padding:0 20px 18px;line-height:1.55}
+.faq-list details .text-link{display:inline-flex;margin:0 20px 18px}
+.suggestion-section{display:grid;grid-template-columns:.85fr 1.15fr;gap:22px;align-items:stretch;background:linear-gradient(180deg,var(--panel2),#0c0c0c);border:1px solid var(--line);border-radius:30px;padding:28px;position:relative;overflow:hidden}
+.suggestion-copy h2{font-size:clamp(2.5rem,5.7vw,5rem)}
+.suggestion-copy p{color:var(--muted)}
+.suggestion-form{display:grid;gap:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:18px}
+.suggestion-form label{color:var(--gold2);font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.16em}
+.suggestion-form input,.suggestion-form textarea{width:100%;border:1px solid rgba(240,201,135,.22);background:#090909;color:var(--text);border-radius:16px;padding:13px 14px;font:inherit;outline:none;transition:.25s}
+.suggestion-form input:focus,.suggestion-form textarea:focus{border-color:rgba(240,201,135,.68);box-shadow:0 0 0 4px rgba(200,155,85,.10)}
+.suggestion-form textarea{resize:vertical;min-height:130px}
+:where(.previsit-card,.faq-list details,.google-review-card,.suggestion-section,.suggestion-form button):hover{border-color:rgba(240,201,135,.58);box-shadow:0 18px 52px rgba(200,155,85,.18)}
+@media(max-width:850px){.previsit-grid{grid-template-columns:1fr 1fr}.google-review-card,.suggestion-section{grid-template-columns:1fr;display:grid}.google-review-card .btn{width:100%}}
+@media(max-width:520px){.previsit-grid{grid-template-columns:1fr}.faq-list summary{padding:16px}.faq-list details p{padding:0 16px 16px}.suggestion-section{padding:20px}}
+
+
+/* Serviços / agendamento próprio */
+
+.review-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}.btn.ghost{background:rgba(255,255,255,.04)!important;color:var(--gold2)!important;border:1px solid rgba(240,201,135,.32)!important}.services-hero{min-height:auto}.schedule-warning{margin-top:18px;border:1px solid rgba(240,201,135,.22);background:rgba(200,155,85,.08);border-radius:18px;padding:14px 16px;color:var(--muted);max-width:860px}.booking-box{padding-top:30px}.booking-form{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.booking-form label{display:flex;flex-direction:column;gap:8px;color:var(--gold2);font-weight:900}.booking-form input,.booking-form textarea{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.055);color:var(--text);border-radius:16px;padding:13px 14px;font:inherit;outline:none}.booking-form textarea{resize:vertical}.booking-form label:last-child{grid-column:1/-1}.service-section .section-head p:last-child{max-width:780px;color:var(--muted);line-height:1.65}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.service-grid:not(.compact-services) .service-card{min-height:430px}.compact-services{grid-template-columns:repeat(3,1fr)}.compact-services .service-card{min-height:285px}.service-card{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border:1px solid var(--line);border-radius:24px;padding:0;box-shadow:0 22px 70px rgba(0,0,0,.26);display:flex;flex-direction:column;justify-content:space-between}.service-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at var(--mx,50%) var(--my,0%),rgba(240,201,135,.14),transparent 35%);opacity:0;transition:.25s;pointer-events:none}.service-card:hover:before{opacity:1}.service-card-photo img{width:100%;height:170px;object-fit:cover;filter:saturate(1.02) contrast(1.04);border-bottom:1px solid rgba(240,201,135,.12)}.service-content{position:relative;z-index:1;padding:22px;display:flex;flex-direction:column;gap:12px;flex:1}.service-top{display:block;padding-right:0}.service-top h3,.service-content h3{margin:0;font-size:1.28rem;line-height:1.22}.service-top small{display:block;color:var(--gold2);font-size:.8rem;margin-top:3px}.service-tag{align-self:flex-start;color:var(--gold2);font-weight:900;font-size:.78rem;border:1px solid rgba(240,201,135,.22);border-radius:999px;padding:6px 10px;background:rgba(200,155,85,.08)}.service-tag.hot,.service-tag.premium{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;border:0}.service-card p{color:var(--muted);line-height:1.62;margin:0;flex:1}.service-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}.service-meta span{white-space:nowrap;color:#cfc6b8;font-weight:800;font-size:.92rem}.service-meta strong{font-size:1.18rem;color:var(--gold2)}.service-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;border:0;border-radius:999px;padding:12px 14px;font-weight:900;cursor:pointer;width:100%;white-space:nowrap}.service-cart{z-index:42}.cart-note{margin:8px 0 12px;color:var(--muted);font-size:.86rem;line-height:1.45}.service-btn,.service-card,.booking-form input,.booking-form textarea,.review-actions a{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease,filter .25s ease}.service-btn:hover,.review-actions a:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(240,201,135,.24),0 16px 45px rgba(214,169,94,.23);filter:saturate(1.08)}.service-card:hover{transform:translateY(-4px);border-color:rgba(240,201,135,.36);box-shadow:0 0 0 1px rgba(240,201,135,.12),0 28px 80px rgba(0,0,0,.38)}.booking-form input:focus,.booking-form textarea:focus{border-color:rgba(240,201,135,.55);box-shadow:0 0 0 4px rgba(200,155,85,.12)}
+@media(max-width:950px){.service-grid,.compact-services{grid-template-columns:1fr 1fr}.booking-form{grid-template-columns:1fr 1fr}.review-actions{justify-content:flex-start}.service-grid:not(.compact-services) .service-card{min-height:410px}}
+@media(max-width:620px){.service-grid,.compact-services,.booking-form{grid-template-columns:1fr}.service-card,.compact-services .service-card,.service-grid:not(.compact-services) .service-card{min-height:auto}.service-card-photo img{height:190px}.service-meta{align-items:flex-start;flex-direction:column;gap:6px}.service-btn{width:100%}.review-actions{display:grid}.review-actions .btn{text-align:center}.service-cart{left:12px;right:12px;bottom:12px;width:auto}.floating{bottom:calc(16px + env(safe-area-inset-bottom))}}
+
+/* Ajustes finais solicitados - catálogo de serviços */
+.schedule-warning{
+  text-align:center;
+  margin-left:auto;
+  margin-right:auto;
+}
+.service-grid,
+.compact-services{
+  grid-template-columns:repeat(3,1fr);
+}
+.service-grid:not(.compact-services) .service-card,
+.compact-services .service-card{
+  min-height:285px;
+}
+.service-card img,
+.service-card-photo img{
+  display:none !important;
+}
+.service-content h3{
+  padding-left:0;
+}
+.service-cart .secondary-cart{
+  background:rgba(255,255,255,.04) !important;
+  color:var(--gold2) !important;
+  border:1px solid rgba(240,201,135,.32) !important;
+  margin-top:10px;
+}
+.service-cart .product-suggest{
+  display:block;
+  text-align:center;
+  text-decoration:none;
+  background:rgba(200,155,85,.12) !important;
+  color:var(--gold2) !important;
+  border:1px solid rgba(240,201,135,.32) !important;
+  margin-top:10px;
+  line-height:1.35;
+}
+@media(max-width:620px){
+  .service-grid,.compact-services{grid-template-columns:1fr}
+  .service-grid:not(.compact-services) .service-card,.compact-services .service-card{min-height:auto}
+  .schedule-warning{text-align:center}
+}
+
+
+/* Ajustes V2.0 - carrinho único serviços + produtos */
+.cart-row small{color:var(--gold2);font-size:.72rem;font-weight:900;margin-left:6px;text-transform:uppercase;letter-spacing:.05em}
+.cart-row-muted{background:rgba(200,155,85,.08);border-color:rgba(240,201,135,.18)}
+.product-cart-panel .secondary-cart,
+.product-cart-panel .service-suggest,
+.service-cart .secondary-cart,
+.service-cart .product-suggest{
+  display:block;
+  text-align:center;
+  text-decoration:none;
+  width:100%;
+  box-sizing:border-box;
+}
+.product-cart-panel .secondary-cart,
+.service-cart .secondary-cart{
+  background:rgba(255,255,255,.04) !important;
+  color:var(--gold2) !important;
+  border:1px solid rgba(240,201,135,.32) !important;
+}
+.product-cart-panel .service-suggest,
+.service-cart .product-suggest{
+  background:rgba(200,155,85,.12) !important;
+  color:var(--gold2) !important;
+  border:1px solid rgba(240,201,135,.32) !important;
+  line-height:1.35;
+}
+.service-tag{font-size:.82rem;letter-spacing:.02em}
+
+
+/* Botão Ver meu carrinho */
+.open-cart-btn{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%) translateY(16px);
+  z-index:79;
+  opacity:0;
+  pointer-events:none;
+  border:0;
+  border-radius:999px;
+  padding:14px 20px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#16100a;
+  font-weight:900;
+  font-family:inherit;
+  box-shadow:0 18px 50px rgba(0,0,0,.5);
+  cursor:pointer;
+  transition:.25s ease;
+}
+.open-cart-btn.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.view-cart-action{
+  background:linear-gradient(135deg,var(--gold),var(--gold2)) !important;
+  color:#16100a !important;
+  border:0 !important;
+}
+@media(max-width:620px){.open-cart-btn{bottom:calc(16px + env(safe-area-inset-bottom));width:calc(100% - 28px)}}
+
+
+/* Ajuste V2.1 - fluxo mais limpo e botões padronizados */
+.cart-panel .send-cart,
+.cart-panel a.send-cart,
+.cart-panel button.send-cart,
+.product-cart-panel .secondary-cart,
+.product-cart-panel .service-suggest,
+.product-cart-panel .view-cart-action,
+.service-cart .secondary-cart,
+.service-cart .product-suggest,
+.service-cart .view-cart-action{
+  display:block !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+  text-align:center !important;
+  text-decoration:none !important;
+  border:0 !important;
+  border-radius:16px !important;
+  padding:14px 16px !important;
+  margin-top:10px !important;
+  background:linear-gradient(135deg,var(--gold),var(--gold2)) !important;
+  color:#16100a !important;
+  font-weight:900 !important;
+  line-height:1.25 !important;
+  box-shadow:0 12px 28px rgba(0,0,0,.32) !important;
+}
+.cart-panel .send-cart:hover,
+.cart-panel a.send-cart:hover,
+.cart-panel button.send-cart:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.04);
+}
+.cart-panel .cart-note{
+  text-align:center !important;
+}
+
+/* Correção final: botão "Ver meu carrinho" não deslocar para o lado no hover */
+.open-cart-btn:hover,
+.open-cart-btn:focus-visible{
+  transform:translateX(-50%) translateY(-2px) !important;
+  filter:brightness(1.04) saturate(1.04);
+}
+.open-cart-btn:active{
+  transform:translateX(-50%) translateY(0) scale(.985) !important;
+}
+.open-cart-btn.show:hover,
+.open-cart-btn.show:focus-visible{
+  transform:translateX(-50%) translateY(-2px) !important;
+}
+
+

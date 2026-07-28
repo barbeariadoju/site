@@ -1,3 +1,8 @@
+## 28.16.3 — style.css dividido em partes menores
+
+- **`style.css` (~165KB, 2068 linhas num arquivo só) dividido em 5 arquivos** dentro de `css/` (`01-site-base.css` até `05-admin-mobile-refino.css`), cada um cobrindo um período de versões do site. `style.css` agora só tem 5 `@import` apontando pra esses arquivos, na mesma ordem exata do arquivo original — nenhuma das 30 páginas que carregam `/style.css` precisou mudar. Verificado por diff que a concatenação dos 5 arquivos é **byte a byte idêntica** ao `style.css` antigo (nenhuma regra reordenada, cascata preservada), e comparado o CSS computado de elementos-chave (site, catálogo, admin) entre local e produção antes de publicar.
+- Nomes dos arquivos são só pra navegação (achar mais rápido "os ajustes da era V24" em vez de rolar 2000 linhas) — não são módulos isolados por tema; uma classe pode ter regras em mais de um arquivo, igual já acontecia dentro do arquivo único.
+
 ## 28.16.2 — Módulo compartilhado + bug real de duração
 
 - **Bug corrigido: serviço "Luzes" (1h30) sendo tratado como 1h.** `parseDuration()` (usada ao adicionar um serviço pelo catálogo) só reconhecia minutos quando o texto tinha a palavra "min" — em "1h30" (sem "min"), os 30 minutos eram descartados silenciosamente, virando 60min. Isso afetava a duração salva no agendamento real (`duration_minutes`) e a checagem de horários disponíveis, não só a etiqueta mostrada na tela. Nenhum agendamento de "Luzes" existia ainda no banco quando o bug foi encontrado (achado por teste automatizado antes de causar problema real).
