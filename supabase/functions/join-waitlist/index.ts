@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Recebe pedidos de lista de espera vindos do site (agendar.html).
+// Recebe pedidos de lista de espera vindos do site (/agendar/horario/).
 // Mesmo padrão de CORS/validação do create-public-booking.
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

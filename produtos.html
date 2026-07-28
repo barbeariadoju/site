@@ -399,7 +399,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         cart.forEach(item=>{for(let i=0;i<Number(item.qty||1);i++) agendaProducts.push({name:item.name,price:Number(item.price||0)});});
         sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(agendaServices));
         sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(agendaProducts));
-        window.location.href='/agendar.html';
+        window.location.href='/agendar/horario/';
         return;
       }
       let totalServices = 0;

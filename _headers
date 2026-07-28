@@ -25,6 +25,9 @@
 /agendar.html
   Cache-Control: no-store
 
+/agendar/horario/
+  Cache-Control: no-store
+
 /admin.html
   Cache-Control: no-store
 /admin-agenda.html
