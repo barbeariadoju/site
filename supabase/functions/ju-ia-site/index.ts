@@ -29,6 +29,12 @@ const formatDateBR=(value:any)=>{
 }
 const firstName=(value:any)=>String(value||'').trim().split(/\s+/)[0]||'cliente'
 const includesAny=(text:string,terms:string[])=>terms.some(term=>text.includes(term))
+// Saudação correta pelo horário de Brasília — computada aqui (não pedida ao modelo) pra
+// garantir que "Bom dia/Boa tarde/Boa noite" nunca saia errado.
+const greetingNow=()=>{
+ const hour=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false}).format(new Date()))
+ return hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite'
+}
 
 const extractRequestedTime=(text='')=>{
  const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH])([0-5]\d)(?:\D|$)/)
@@ -150,6 +156,18 @@ Deno.serve(async req=>{
  const {count}=await supabase.from('site_chat_messages').select('*',{count:'exact',head:true}).eq('session_id',sessionId).gte('created_at',new Date(Date.now()-86400000).toISOString())
  if((count||0)>80)return respond({error:'Limite diário de mensagens atingido. Fale com o Juliano pelo WhatsApp.'},429)
 
+ // Cliente manda só um link (ex.: compartilhou uma imagem/post gerado em outro app) —
+ // a JuIA não enxerga conteúdo de link nenhum. Responde direto, sem gastar chamada de
+ // IA, e no canal WhatsApp aproveita pra indicar o site (onde dá pra ver serviços e
+ // agenda sozinho). Só dispara quando a mensagem é BASICAMENTE o link (pouco texto
+ // sobrando), pra não atrapalhar uma mensagem normal que só cita um link de passagem.
+ const isWhatsapp=Boolean(String(body.verified_phone||'').trim())
+ if(isWhatsapp&&/(?:https?:\/\/|www\.)\S+/i.test(message)&&message.replace(/https?:\/\/\S+|www\.\S+/gi,'').trim().length<15){
+  const reply=`${greetingNow()}! Não consigo ver o conteúdo de links por aqui — pode me mandar por escrito o que você precisa? Se preferir, acesse nosso site www.barbeariadoju.com.br e faça seu agendamento de forma simples e rápida: lá você confere todos os serviços e consulta os horários disponíveis na nossa agenda. 😊`
+  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state,intent:'other'}]).then(()=>{})
+  return respond({reply,intent:'other',state,actions:[],handoff:false})
+ }
+
  let context:any={}
  let upcomingBookings:any[]=[]
  // verified_phone vem do canal WhatsApp (whatsapp-webhook), onde o número de quem
@@ -162,7 +180,10 @@ Deno.serve(async req=>{
   state.phone=knownPhone
   const {data}=await supabase.rpc('get_customer_commercial_context',{p_phone:knownPhone})
   context=data||{}
-  if(context?.customer_id&&context?.name&&!state.name)state.name=context.name
+  // NÃO preenche state.name aqui: o telefone pode ser compartilhado (ex.: cliente que da
+  // última vez agendou pro primo usando o mesmo número) — assumir o nome do cadastro sem
+  // perguntar já causou agendamento no nome errado. O nome só entra em next.name depois de
+  // confirmado explicitamente (ver bloco de confirmação no intent 'book' mais abaixo).
   const {data:upcoming}=await supabase.rpc('phone_upcoming_bookings',{p_phone:knownPhone})
   upcomingBookings=Array.isArray(upcoming)?upcoming:[]
  }
@@ -171,7 +192,8 @@ Deno.serve(async req=>{
  const phoneTrustNote=verifiedPhone
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
   :'O telefone informado no chat não é verificado como sendo de quem está digitando, então só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
- const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho. Se o cliente pedir para mudar o dia/horário de um agendamento que já existe (ex.: "posso mudar pra sexta às 15h?", "quero remarcar", "dá pra trocar meu horário?"), use intent "reschedule" — não trate como um agendamento novo nem diga que vai cancelar e recriar, o sistema identifica o agendamento, confirma o novo horário disponível e reagenda sozinho, preservando o mesmo registro. Se o cliente pedir para trocar o SERVIÇO de um agendamento que já existe, sem mudar dia/horário (ex.: "pode trocar o serviço pra mim?", "marquei corte mas quero mudar pra barba", "muda esse agendamento pra Barba Express"), use intent "change_service" e preencha updates.services com o nome exato do novo serviço desejado — o sistema identifica o agendamento, confirma o serviço novo e troca sozinho, preservando dia, horário e o resto do registro.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|reschedule|change_service|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
+ const isFirstMessage=!Array.isArray(body.history)||body.history.length===0
+ const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Nunca reafirme um agendamento já existente (da lista de agendamentos futuros) como se fosse a resposta a um pedido novo — se o cliente pede um dia/horário/serviço diferente do que já está confirmado, trate como um pedido novo (agendar, remarcar, trocar serviço) e nunca copie os dados do agendamento antigo na resposta. Nunca assuma o serviço que o cliente quer com base no histórico dele (last_services) a não ser que ele peça explicitamente para repetir/manter o mesmo de sempre — se ele não disser o serviço, pergunte qual serviço antes de agendar ou remarcar. Se esta for a primeira mensagem desta conversa (indicado abaixo), comece sua resposta cumprimentando com a saudação correta informada abaixo (ex.: "Bom dia! ..."), e se fizer sentido, mencione que o cliente também pode ver todos os serviços, consultar horários disponíveis e agendar sozinho pelo nosso site https://www.barbeariadoju.com.br/agendar/ — sem repetir essa menção do site nas mensagens seguintes. Não confirme horário sem consultar o sistema. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho. Se o cliente pedir para mudar o dia/horário de um agendamento que já existe (ex.: "posso mudar pra sexta às 15h?", "quero remarcar", "dá pra trocar meu horário?"), use intent "reschedule" — não trate como um agendamento novo nem diga que vai cancelar e recriar, o sistema identifica o agendamento, confirma o novo horário disponível e reagenda sozinho, preservando o mesmo registro. Se o cliente pedir para trocar o SERVIÇO de um agendamento que já existe, sem mudar dia/horário (ex.: "pode trocar o serviço pra mim?", "marquei corte mas quero mudar pra barba", "muda esse agendamento pra Barba Express"), use intent "change_service" e preencha updates.services com o nome exato do novo serviço desejado — o sistema identifica o agendamento, confirma o serviço novo e troca sozinho, preservando dia, horário e o resto do registro.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito. Ambiente climatizado, café e Wi-Fi. Zona Azul nas proximidades.\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Saudação correta agora: ${greetingNow()}. Primeira mensagem desta conversa: ${isFirstMessage}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|reschedule|change_service|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Se ele perguntar fidelidade e houver telefone, use o contexto. Quando reconhecer um cliente, cumprimente pelo primeiro nome. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
  let ai:any=null
  if(key){
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',reasoning:{effort:'low'},max_output_tokens:550,instructions:prompt,input:`Histórico recente: ${JSON.stringify(body.history||[])}\nMensagem: ${message}`})})
@@ -191,6 +213,7 @@ Deno.serve(async req=>{
  const normalizedQuestion=normalize(message)
  const hasCustomer=Boolean(context?.customer_id)
  const customerFirstName=firstName(context?.name)
+ const contextFullName=hasCustomer?String(context?.name||'').trim():''
  const lastServiceName=String(context?.last_services||'').trim()
  const lastService=findService(lastServiceName)
  const lastVisitBR=formatDateBR(context?.last_visit)
@@ -287,10 +310,12 @@ Deno.serve(async req=>{
   // Não revelar VIP, histórico ou fidelidade aqui: telefone informado em texto livre
   // não é verificado como sendo de quem está digitando. Fidelidade só é detalhada
   // quando o próprio cliente pede explicitamente (intent==='loyalty' abaixo).
+  // NÃO crava next.name aqui pelo mesmo motivo do bloco de confirmação no intent
+  // 'book': telefone pode ser compartilhado, "reconhecer" o cadastro não significa
+  // que é essa pessoa quem está escrevendo agora.
   reply=`Olá, ${customerFirstName}! Encontrei seu cadastro. Como posso ajudar?`
   intent='other'
   handoff=false
-  next.name=context.name
   next.phone=knownPhone
  }
 
@@ -442,6 +467,13 @@ Deno.serve(async req=>{
    next.pending_reschedule_booking_id=next.pending_cancel_booking_id
    next.pending_cancel_booking_id=null
   }
+  // Se o cliente também citou um serviço diferente do atual nesta conversa (ex.: "cabelo
+  // e barba" enquanto remarca uma Barboterapia), aplica a troca de serviço JUNTO com a
+  // remarcação — sem isso, o serviço mencionado ficava perdido, porque este fluxo só
+  // mexe em data/hora, e o agendamento saía "confirmado" com o serviço antigo mesmo.
+  const rescheduleTarget=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
+  const desiredServiceName=chosen.length?chosen.map((s:any)=>s.name).join(' + '):''
+  const wantsServiceChange=Boolean(rescheduleTarget)&&Boolean(desiredServiceName)&&normalize(desiredServiceName)!==normalize(String(rescheduleTarget?.service_name||''))
   if(!verifiedPhone){
    reply='Para remarcar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
    handoff=true
@@ -456,7 +488,14 @@ Deno.serve(async req=>{
      next.pending_reschedule_new_date=null
      next.pending_reschedule_new_time=null
     }else{
-     reply=`Prontinho! Mudei seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}.`
+     let serviceNote=''
+     if(wantsServiceChange){
+      const svcPrice=chosen.reduce((a:number,s:any)=>a+s.price,0),svcDuration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
+      const {data:svcRows}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:next.pending_reschedule_booking_id,p_service_name:desiredServiceName,p_service_price:svcPrice,p_duration_minutes:svcDuration})
+      const svcChanged=Array.isArray(svcRows)?svcRows[0]:svcRows
+      serviceNote=svcChanged?` Também troquei o serviço para ${desiredServiceName}.`:' O horário mudou, mas não consegui trocar o serviço agora — se quiser, me diga de novo qual serviço você quer.'
+     }
+     reply=`Prontinho! Mudei seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}.${serviceNote}`
      handoff=false
      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
      const supabaseUrl=Deno.env.get('SUPABASE_URL')
@@ -508,7 +547,7 @@ Deno.serve(async req=>{
     reply=`Para qual dia você quer mudar o agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}?`
     handoff=false
    }else{
-    const duration=Number(target.duration_minutes)||30
+    const duration=wantsServiceChange?chosen.reduce((a:number,s:any)=>a+s.duration,0):(Number(target.duration_minutes)||30)
     const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
     if(error)return respond({error:error.message},500)
     const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
@@ -525,7 +564,7 @@ Deno.serve(async req=>{
     }else if(allSlots.includes(time)){
      next.pending_reschedule_new_date=next.date
      next.pending_reschedule_new_time=time
-     reply=`Confirmando: mudar seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}? Responda sim ou não.`
+     reply=`Confirmando: mudar seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}${wantsServiceChange?` e o serviço para ${desiredServiceName}`:''}? Responda sim ou não.`
      actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
      handoff=false
     }else{
@@ -873,7 +912,21 @@ Deno.serve(async req=>{
    actions=[{label:'Mudar pro novo horário',message:'Sim, pode reagendar'},{label:'É outro, manter os dois',message:'Quero manter os dois agendamentos'},{label:'Cancelar o antigo',message:'Sim, pode cancelar'}]
    intent='other'
    handoff=false
-  }else{
+  }else if(!next.name&&contextFullName){
+   // O telefone tem cadastro, mas isso não garante que o agendamento é pra quem está
+   // digitando agora — número pode ser compartilhado (ex.: da última vez agendou pro
+   // primo com esse mesmo WhatsApp). Confirma antes de assumir; assim que confirmado,
+   // next.name fica preenchido e este bloco não roda de novo nesta conversa.
+   if(simpleYes&&!simpleNo){
+    next.name=contextFullName
+   }else{
+    reply=`Posso confirmar esse agendamento no nome de ${firstName(contextFullName)}? Se for para outra pessoa, me diga o nome dela.`
+    actions=[{label:'Sim, é pra mim',message:'Sim'},{label:'É para outra pessoa',message:'É para outra pessoa'}]
+    intent='other'
+    handoff=false
+   }
+  }
+  if(intent==='book'){
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
   if(missing.length){reply=`Para concluir, preciso de ${missing.join(', ')}.`;intent='other'}
   else{
