@@ -33,7 +33,7 @@
       "name": "Agendar",
       "short_name": "Agendar",
       "description": "Ver serviços e solicitar agendamento",
-      "url": "/servicos.html",
+      "url": "/agendar/",
       "icons": [
         {
           "src": "assets/icon-192.png",
