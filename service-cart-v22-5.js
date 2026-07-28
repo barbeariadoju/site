@@ -1,3 +1,5 @@
+import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
+
 (() => {
   const serviceStorageKey = 'bdj_services_v1';
   const productStorageKey = 'bdj_cart_v1';
@@ -30,13 +32,6 @@
   const scheduleBtn = document.getElementById('send-services');
   let panelHidden = true;
 
-  const money = value => Number(value).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-  const parseDuration = value => {
-    const text = String(value || '').trim().toLowerCase();
-    const hours = Number((text.match(/(\d+)h/) || [0,0])[1]);
-    const minutes = Number((text.match(/(\d+)\s*min/) || [0,0])[1]);
-    return hours * 60 + minutes || 30;
-  };
 
   function save(){
     const servicesValue = JSON.stringify([...selectedServices]);

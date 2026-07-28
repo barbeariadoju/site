@@ -1,8 +1,10 @@
+import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, prettyDate, nextOpenDay } from './assets/js/booking-format.js?v=28.16.2';
+
 (() => {
   const cfg=window.BDJ_AGENDA_CONFIG||{};
   const configured=Boolean(cfg.supabaseUrl&&cfg.supabaseAnonKey);
   const sb=configured?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
-  const $=id=>document.getElementById(id), money=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const $=id=>document.getElementById(id);
   const allServices=window.BDJ_SERVICES||[];
   let services=JSON.parse(sessionStorage.getItem('bdj_selected_services_v15')||'[]');
   let products=JSON.parse(sessionStorage.getItem('bdj_selected_products_v15')||'[]');
@@ -16,21 +18,13 @@
     {name:'Pomada em pó',price:35,for:['Corte','Freestyle']}
   ];
   const total=()=>({duration:services.reduce((a,b)=>a+Number(b.duration||0),0),servicePrice:services.reduce((a,b)=>a+Number(b.price||0),0),productPrice:products.reduce((a,b)=>a+Number(b.price||0),0)});
-  const fmtDuration=m=>m>=60?(m%60?`${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}`:`${m/60}h`):`${m} min`;
-  const addMinutes=(time,mins)=>{const [h,m]=time.split(':').map(Number),d=new Date(2000,0,1,h,m+mins);return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
   const spNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
-  const addDaysISO=(iso,days)=>{const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)};
-  const dayOfWeek=iso=>new Date(`${iso}T12:00:00Z`).getUTCDay();
-  const isOpenDay=iso=>{const d=dayOfWeek(iso);return d>=2&&d<=6};
-  const closingMinutes=iso=>dayOfWeek(iso)===6?15*60:19*60;
-  const prettyDate=iso=>new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
   function firstEligibleDate(){
     const now=spNow(),today=`${now.year}-${now.month}-${now.day}`;
     if(!isOpenDay(today))return nextOpenDay(today,1);
     const current=Number(now.hour)*60+Number(now.minute),needed=current+15+total().duration;
     return needed<=closingMinutes(today)?today:nextOpenDay(today,1);
   }
-  function nextOpenDay(iso,step=1){let d=iso;for(let i=0;i<8;i++){d=addDaysISO(d,step);if(isOpenDay(d))return d}return d}
   function saveState(){sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(services));sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(products));}
   function fire(event,data={}){window.dataLayer=window.dataLayer||[];window.dataLayer.push({event,...data});}
   function serviceIndex(name){return allServices.findIndex(s=>s.name===name)}

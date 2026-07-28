@@ -1,0 +1,16 @@
+{
+  "name": "barbearia-do-ju-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:live": "cross-env RUN_LIVE_TESTS=1 playwright test tests/e2e/booking-live.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "cross-env": "^7.0.3",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,3 +1,9 @@
+## 28.16.2 — Módulo compartilhado + bug real de duração
+
+- **Bug corrigido: serviço "Luzes" (1h30) sendo tratado como 1h.** `parseDuration()` (usada ao adicionar um serviço pelo catálogo) só reconhecia minutos quando o texto tinha a palavra "min" — em "1h30" (sem "min"), os 30 minutos eram descartados silenciosamente, virando 60min. Isso afetava a duração salva no agendamento real (`duration_minutes`) e a checagem de horários disponíveis, não só a etiqueta mostrada na tela. Nenhum agendamento de "Luzes" existia ainda no banco quando o bug foi encontrado (achado por teste automatizado antes de causar problema real).
+- **Extraída lógica pura compartilhada** (`assets/js/booking-format.js`): `money`, `parseDuration`, `fmtDuration`, `addMinutes`, `addDaysISO`, `dayOfWeek`, `isOpenDay`, `closingMinutes`, `prettyDate`, `nextOpenDay` — antes duplicadas/embutidas em `service-cart-v22-5.js` e `agenda-v15.js`. Os dois arquivos agora importam desse módulo via `<script type="module">` (sem etapa de build; só as 2 páginas que carregam esses scripts precisaram do ajuste). Testado que a ordem de carregamento (Supabase/config/catálogo antes do módulo) continua correta.
+- **Suíte de testes automatizados criada** (`tests/`, ver `tests/README.md`): Playwright para fluxo real no navegador (rotas, carrinho, revisão de agendamento) e Vitest para a lógica pura extraída. `npm test` roda tudo com segurança (não grava nada em produção); um teste à parte (`npm run test:e2e:live`) cria/reagenda/cancela/apaga um agendamento de verdade, opt-in, com telefone fictício.
+
 ## 28.16.1 — 2 ajustes pendentes da revisão anterior
 
 - **Atalhos do app instalável (PWA) do admin completos:** faltavam Fidelidade, Mensagens, Relatórios e Lista de espera no `admin-manifest.webmanifest` — só as telas mais antigas tinham atalho. Adicionadas as 4 (nem todo celular mostra os 10 de uma vez, mas todas as seções agora estão disponíveis).
