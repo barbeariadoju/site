@@ -1,3 +1,8 @@
+## 28.16.6 — Lista de espera do admin sem permissão (achado testando manualmente)
+
+- **Bug real, achado pelo Juliano clicando na tela `admin-espera.html`:** "permission denied for table waitlist". Bug pré-existente desde a criação da lista de espera (v28.8.0), não relacionado à divisão do `admin-v15-4.js` (essa tela usa `admin-espera-v28.js`, arquivo separado que não foi tocado). Causa: a migration 039 criou a policy de RLS certa (`is_admin()`) mas esqueceu o `grant select, insert, update, delete` pro `authenticated` — só o `service_role` tinha. RLS só é avaliada depois do grant básico da tabela, então o admin logado nunca passava nem perto da policy.
+- Corrigido (migration 048): concedido `select, insert, update, delete` no `waitlist` pro `authenticated`. Aplicado direto em produção, efeito imediato (não precisa de deploy, é permissão de banco).
+
 ## 28.16.5 — JuIA perdia serviço adicional citado junto com um já escolhido
 
 - **Bug real corrigido, cliente Moisés (28/07/2026 20:50, WhatsApp):** pediu "Barba e sombrancelha" depois de já ter "Sobrancelha" selecionado na conversa — a JuIA descartava silenciosamente "Barba" e confirmou o agendamento só com Sobrancelha. Juliano teve que corrigir manualmente com o cliente pelo WhatsApp. Causa: o modelo às vezes classifica a mensagem certo mas não extrai TODOS os serviços citados em `updates.services`, e o sistema só tinha um plano B (`findServicesLoose`, cata serviços direto do texto contra o catálogo) para quando o cliente ainda não tinha NENHUM serviço escolhido — uma vez que já havia 1 selecionado, nada tentava mesclar um serviço adicional citado na mesma frase.
