@@ -319,21 +319,51 @@ Deno.serve(async req=>{
   next.phone=knownPhone
  }
 
- if(intent==='services'&&!chosen.length){
-  // O modelo às vezes classifica intent "services" mas não extrai nada em
-  // updates.services (mensagem com mais de um serviço junto ou com erro de
-  // digitação) — antes disso caía direto na lista genérica, que já gerou
-  // reclamação real de cliente confuso ("Barba e pezinho", "Barbo terapia").
-  // Tenta casar o texto do cliente contra o catálogo antes de desistir.
+ // O modelo às vezes não extrai TODOS os serviços citados em updates.services -
+ // tanto quando não extrai nada (mensagem com mais de um serviço junto ou erro de
+ // digitação, ex. "Barba e pezinho", "Barbo terapia") quanto quando o cliente JÁ
+ // tinha um serviço selecionado e cita um serviço A MAIS na mesma mensagem (ex.:
+ // já estava com "Sobrancelha Masculina" escolhido, manda "Barba e sombrancelha"
+ // de novo e só "Sobrancelha" segue adiante, "Barba" some silenciosamente - bug
+ // real, cliente Moisés em 28/07/2026, precisou de correção manual do Juliano).
+ // Tenta casar o texto da mensagem atual contra o catálogo e MESCLA com o que já
+ // estava selecionado (nunca troca/derruba serviço já escolhido).
+ // Não gated em intent==='services'/'availability': o modelo pode pular direto
+ // pra intent 'book' na mesma mensagem que adiciona o serviço (foi exatamente
+ // o caso do Moisés - 1a tentativa do fix só cobria services/availability e não
+ // pegou esse caso). Excluídos só os fluxos que já tratam serviço com lógica
+ // própria e específica (change_service usa swapTailService/chosen[0], não faz
+ // sentido essa mescla genérica competir com aquilo) ou onde um match espúrio
+ // de substring poderia interferir num fluxo sensível (cancelamento/reagendamento).
+ // "Barba" sozinho é ambíguo: Barba Express (R$25,20min), Barboterapia (R$40,30min)
+ // e Barboterapia com vaporizador de ozônio (R$50,40min) são bem diferentes em
+ // preço/duração. Sem isso, o find* daria sempre Barba Express (nome mais curto,
+ // ganha no desempate por tamanho) mesmo quando o cliente talvez preferisse (e
+ // pagasse mais por) a Barboterapia - pedido explícito do Juliano depois do caso
+ // do Moisés: não adivinhar, perguntar. Só dispara pra "barba" isolado (negative
+ // lookahead exclui "barba express", que já é específico) e só se nenhum serviço
+ // de categoria barba já estiver selecionado (não fica reperguntando à toa depois
+ // que o cliente já escolheu, inclusive quando ele mesmo responde clicando numa
+ // das opções, ex. "Quero Barba Express" - essa mensagem não bate mais no regex).
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!chosen.some((s:any)=>s.category==='barba')
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'){
   const loose=findServicesLoose(message)
-  if(loose.length){
-   next.services=loose.map((s:any)=>s.name)
-   chosen.push(...loose)
-   intent='availability'
-  }else{
-   reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
-   actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
+  const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name)&&!(bareBarbaAsk&&s.category==='barba'))
+  if(newOnes.length){
+   chosen.push(...newOnes)
+   next.services=chosen.map((s:any)=>s.name)
   }
+  if(bareBarbaAsk){
+   const barbaOptions=services.filter(s=>s.category==='barba')
+   reply=`Temos algumas opções de barba: ${barbaOptions.map(s=>`${s.name} (${money(s.price)}, ${s.duration} min)`).join(', ')}. Qual você prefere?`
+   actions=barbaOptions.map(s=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
+   intent='other'
+   handoff=false
+  }
+ }
+ if(intent==='services'&&!chosen.length){
+  reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barboterapia — R$ 80\n• Barboterapia — R$ 40\nQual combina com você?'
+  actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
  }
  // Cliente já citou o(s) serviço(s) exato(s) (ex.: "barba e pezinho") — não faz sentido
  // mostrar a lista genérica de mais procurados. Segue direto pro fluxo de disponibilidade.
