@@ -21,6 +21,13 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 
 const INACTIVITY_MINUTES = 2
 
+const greetingNow = (): string => {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date()),
+  )
+  return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
+}
+
 // Evita mandar o "cochicho" de reativação quando a conversa já terminou naturalmente
 // (o cliente só reagiu com figurinha/emoji, ou mandou um agradecimento/despedida).
 // Sem isso, um cliente que já foi atendido recebia um "vim te lembrar de agendar"
@@ -37,12 +44,17 @@ function looksLikeClosingOrReaction(rawBody: string): boolean {
 async function shouldSkipNudge(admin: any, phone: string): Promise<boolean> {
   const { data: last } = await admin
     .from('whatsapp_messages')
-    .select('direction, body')
+    .select('direction, body, sent_by')
     .eq('phone', phone)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!last || last.direction !== 'in') return false
+  if (!last) return false
+  // Se a última mensagem foi enviada por nós (Juliano respondeu pessoalmente, ou a própria
+  // JuIA já respondeu), o cliente não está "esperando" nada agora — mandar "ainda estou por
+  // aqui" logo depois de o Juliano ter acabado de escrever é redundante e chato. Só faz
+  // sentido reativar quando quem escreveu por último foi o CLIENTE e ainda não teve resposta.
+  if (last.direction !== 'in') return true
   return looksLikeClosingOrReaction(last.body)
 }
 
@@ -95,7 +107,7 @@ Deno.serve(async (request: Request) => {
   const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
   const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
   const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
-  const nudgeText = 'Oi! 😊 Ainda estou por aqui se precisar de algo.'
+  const nudgeText = `${greetingNow()}! 😊 Ainda estou por aqui se precisar de algo. Se preferir, também dá pra ver os serviços, consultar horários disponíveis e agendar direto pelo nosso site: www.barbeariadoju.com.br`
   let skippedCount = 0
 
   for (const phone of phones) {
