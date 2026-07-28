@@ -98,6 +98,50 @@
           "sizes": "192x192"
         }
       ]
+    },
+    {
+      "name": "Fidelidade",
+      "short_name": "Fidelidade",
+      "url": "/admin-fidelidade.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Mensagens",
+      "short_name": "Mensagens",
+      "url": "/admin-mensagens.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Relatórios",
+      "short_name": "Relatórios",
+      "url": "/admin-relatorios.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Lista de espera",
+      "short_name": "Espera",
+      "url": "/admin-espera.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

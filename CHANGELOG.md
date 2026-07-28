@@ -1,3 +1,8 @@
+## 28.16.1 — 2 ajustes pendentes da revisão anterior
+
+- **Atalhos do app instalável (PWA) do admin completos:** faltavam Fidelidade, Mensagens, Relatórios e Lista de espera no `admin-manifest.webmanifest` — só as telas mais antigas tinham atalho. Adicionadas as 4 (nem todo celular mostra os 10 de uma vez, mas todas as seções agora estão disponíveis).
+- **Últimas variações de dourado/preto quase idênticas ao oficial:** encontradas 4 cores a mais que não usavam `--gold`/`--gold2` por engano (`#e4bd55`, `#f2cf82`) e o texto sobre fundo dourado ainda tinha 3 tons de preto quase iguais espalhados (`#111`, `#090909`, além do `#17100a` já corrigido antes) em vez do padrão `#16100a`. Unificados. Deixadas de propósito as variações de dourado que fazem parte de um design específico (ex.: o degradê do card "selecionado" no agendamento, o card VIP do CRM) — essas são diferentes por decisão de design, não por engano.
+
 ## 28.16.0 — Revisão de referências quebradas e polimento visual
 
 - **Rota `/agendar/` consolidada:** existiam 3 páginas concorrentes para o mesmo fluxo — `servicos.html` (catálogo duplicado, órfão, sem link em lugar nenhum do site) e `agendar/agendar.html` (stub de redirect residual, também sem link). `servicos.html` virou um redirect real para `/agendar/` (mesmo padrão do redirect já usado em `agendar.html`→`agendar.html` da raiz) e `agendar/agendar.html` foi removido (não referenciado, `/agendar.html` continua a etapa 2 do agendamento). Corrigidos também um link com domínio completo hardcoded em `agendar/index.html` (deveria ser caminho absoluto, igual ao resto do site) e a mesma inconsistência em `produtos.html`.
