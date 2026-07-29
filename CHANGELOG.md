@@ -1,3 +1,7 @@
+## 28.21.2 — Link do Facebook no vCard
+
+- **`barbearia-do-ju.vcf`**: adicionado link do Facebook (`item6.URL`/`X-ABLabel`, mesmo padrão dos outros links sociais).
+
 ## 28.21.1 — Correção visual do chip de produto
 
 - **"🛍 Produtos reservados" virou "🛍 Produtos vendidos"** nos cards de agendamento/atendimento — o produto já foi vendido no momento em que é registrado (não existe conceito de "reserva" de produto no sistema), então o texto estava com a palavra errada. Padronizado com o texto já usado nos modais "Concluir"/"✎ Editar".
