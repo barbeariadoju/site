@@ -6,6 +6,7 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "test:admin": "playwright test tests/e2e/admin",
     "test:e2e:live": "cross-env RUN_LIVE_TESTS=1 playwright test tests/e2e/booking-live.spec.js"
   },
   "devDependencies": {
