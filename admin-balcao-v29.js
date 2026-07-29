@@ -10,20 +10,9 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const catalog = window.BDJ_SERVICES || [];
-  // Mesmo catálogo de produtos usado pela JuIA (ju-ia-site/index.ts) — repo ainda não tem
-  // fonte única de produtos (mesmo gotcha já documentado pros serviços antes da v7), então
-  // mantemos igual ao catálogo mais ativo/recente pra não divergir preço na hora da venda.
-  const productCatalog = [
-    { name: 'Pasta Matte 150g', price: 34 },
-    { name: 'Pasta Modeladora Brilho Extra Forte 150g', price: 38 },
-    { name: 'Pomada em pó', price: 35 },
-    { name: 'Óleo Para Barba 30mL', price: 36 },
-    { name: 'Balm Para Barba 150g', price: 35 },
-    { name: 'Shampoo Para Barba 240mL', price: 35 },
-    { name: 'Shampoo Caspbell Anticaspa', price: 42.99 },
-    { name: 'Energético Monster Energy 473ml', price: 14 },
-    { name: 'Energético Monster Zero Sugar 473ml', price: 14 },
-  ];
+  // Catálogo único em products-catalog-v1.js (window.BDJ_PRODUCTS) — catálogo completo
+  // (inclusive bebidas), igual ao real produtos.html, pra vender qualquer item no balcão.
+  const productCatalog = window.BDJ_PRODUCTS || [];
   const $ = (id) => document.getElementById(id);
   const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -76,7 +65,9 @@
   }
 
   function renderProductPicker() {
-    return `<div class="booking-service-group"><div>${productCatalog.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i></span></label>`).join('')}</div></div>`;
+    const groups = {};
+    productCatalog.forEach(p => (groups[p.category || 'Produtos'] ??= []).push(p));
+    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('');
   }
   function selectedProducts() { return [...document.querySelectorAll('input[name="balcao-product"]:checked')].map(i => productCatalog.find(p => p.name === i.value)).filter(Boolean); }
   function bindProductPicker() {

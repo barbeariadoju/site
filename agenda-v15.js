@@ -9,14 +9,12 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
   let services=JSON.parse(sessionStorage.getItem('bdj_selected_services_v15')||'[]');
   let products=JSON.parse(sessionStorage.getItem('bdj_selected_products_v15')||'[]');
   let selectedTime='', step=1, slotsRequestId=0, waitlistOfferDate='';
-  const productCatalog=[
-    {name:'Pasta Matte 150g',price:34,for:['Corte','Lavagem','Luzes','Platinado']},
-    {name:'Gel Cola Black Shark Barber',price:16,for:['Corte','Freestyle']},
-    {name:'Óleo Para Barba 30mL',price:36,for:['Barba','Barboterapia']},
-    {name:'Balm Para Barba 150g',price:35,for:['Barba','Barboterapia']},
-    {name:'Shampoo Para Barba 240mL',price:35,for:['Barba','Barboterapia']},
-    {name:'Pomada em pó',price:35,for:['Corte','Freestyle']}
-  ];
+  // Catálogo único em products-catalog-v1.js (mesmo padrão de allServices/BDJ_SERVICES) —
+  // antes era uma cópia local que já tinha ficado desatualizada (faltava Pasta Modeladora,
+  // Shampoo Caspbell e os energéticos Monster). Só entram aqui os produtos com `for` não-vazio
+  // (sugestão contextual durante o agendamento); o catálogo completo (bebidas etc.) fica só
+  // pro balcão/admin, que registra qualquer venda.
+  const productCatalog=(window.BDJ_PRODUCTS||[]).filter(p=>Array.isArray(p.for)&&p.for.length);
   const total=()=>({duration:services.reduce((a,b)=>a+Number(b.duration||0),0),servicePrice:services.reduce((a,b)=>a+Number(b.price||0),0),productPrice:products.reduce((a,b)=>a+Number(b.price||0),0)});
   const spNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
   function firstEligibleDate(){

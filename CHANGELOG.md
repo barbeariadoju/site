@@ -1,3 +1,9 @@
+## 28.19.0 — Catálogo único de produtos
+
+- **Novo `products-catalog-v1.js` (`window.BDJ_PRODUCTS`)**, mesmo padrão do `services-catalog-v7.js`: até aqui o catálogo de produtos existia duplicado (e já divergente) em 4 arquivos — `agenda-v15.js`/`reagendar-v26-5.js` estavam com apenas 6 itens desatualizados (faltava Pasta Modeladora, Shampoo Caspbell e os energéticos Monster), enquanto `admin-v15-4-core.js`/`admin-balcao-v29.js` (criados na sessão anterior) tinham 9. Agora os 4 leem do mesmo arquivo.
+- **Catálogo completo (27 produtos, igual ao `produtos.html` real)** disponível no balcão/atendimento (`admin-v15-4-core.js`, `admin-balcao-v29.js`) — inclusive bebidas, agora agrupado por categoria como o seletor de serviços. O agendamento do site/reagendamento (`agenda-v15.js`, `reagendar-v26-5.js`) continua mostrando só o recorte de sugestão contextual (produtos de cuidado, sem bebidas), usando o campo `for` do catálogo único.
+- **Limitação que continua existindo (documentada no próprio arquivo):** as Edge Functions `ju-ia-site` e `create-rebooking` rodam em Deno e não conseguem importar esse arquivo de front-end — mantêm sua própria cópia. Ao mudar preço/nome em `products-catalog-v1.js`, replicar manualmente nessas duas functions (mesma limitação que já existia pros serviços).
+
 ## 28.18.0 — JuIA: bug do "boa tarde/amanhã", produtos no balcão/CRM e no atendimento
 
 - **JuIA (WhatsApp/site) não confunde mais cumprimento com pedido de horário:** "boa tarde"/"boa noite" continham as palavras "tarde"/"noite" e, combinadas com data/serviço ainda guardados de uma conversa anterior já concluída, disparavam sozinhas uma checagem de disponibilidade sem sentido (caso real: áudio "Oi! Boa tarde!" respondido com "Não encontrei horário nessa data..."). Generalizado com `\b` (limite de palavra) pra também corrigir "amanhã" sendo lido como "de manhã" (`detectPeriod` em `ju-ia-site/index.ts`).

@@ -1,6 +1,9 @@
 (()=>{
 const cfg=window.BDJ_AGENDA_CONFIG||{},sb=(cfg.supabaseUrl&&cfg.supabaseAnonKey)?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null,$=id=>document.getElementById(id),money=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),params=new URLSearchParams(location.search),code=params.get('code')||'',token=params.get('token')||'';
-const all=window.BDJ_SERVICES||[],productCatalog=[{name:'Pasta Matte 150g',price:34},{name:'Gel Cola Black Shark Barber',price:16},{name:'Óleo Para Barba 30mL',price:36},{name:'Balm Para Barba 150g',price:35},{name:'Shampoo Para Barba 240mL',price:35},{name:'Pomada em pó',price:35}];let source,services=[],products=[],selectedTime='',step=1;
+// Catálogo único em products-catalog-v1.js — só entram aqui os produtos com `for`
+// não-vazio (mesmo recorte de agenda-v15.js), catálogo completo (bebidas etc.) fica
+// só pro balcão/admin.
+const all=window.BDJ_SERVICES||[],productCatalog=(window.BDJ_PRODUCTS||[]).filter(p=>Array.isArray(p.for)&&p.for.length);let source,services=[],products=[],selectedTime='',step=1;
 const total=()=>({duration:services.reduce((a,s)=>a+Number(s.duration),0),service:services.reduce((a,s)=>a+Number(s.price),0),products:products.reduce((a,s)=>a+Number(s.price),0)}),addMin=(t,m)=>{let[a,b]=t.split(':').map(Number),d=new Date(2000,0,1,a,b+m);return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
 function renderServices(){ $('rebook-services').innerHTML=all.map((s,i)=>`<button type="button" class="rebooking-option ${services.some(x=>x.name===s.name)?'is-selected':''}" data-service="${i}"><span>${services.some(x=>x.name===s.name)?'✓':'＋'}</span><div><strong>${s.name}</strong><small>${s.duration} min · ${money(s.price)}</small></div></button>`).join('');update() }
 function renderProducts(){ $('rebook-products').innerHTML=productCatalog.map((p,i)=>`<button type="button" class="rebooking-option ${products.some(x=>x.name===p.name)?'is-selected':''}" data-product="${i}"><span>${products.some(x=>x.name===p.name)?'✓':'＋'}</span><div><strong>${p.name}</strong><small>${money(p.price)}</small></div></button>`).join('') }
