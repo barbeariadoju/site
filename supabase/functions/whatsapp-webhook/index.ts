@@ -21,6 +21,57 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 
 const normalize = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
+// Saudação pelo horário de Brasília — mesmo cálculo do ju-ia-site, duplicado aqui (funções
+// não compartilham módulo neste projeto) só pro caso de fallback de áudio não transcrito.
+const greetingNow = () => {
+  const hour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date()))
+  return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
+}
+
+// Cliente manda áudio (mensagem de voz) em vez de texto — sem isso, a JuIA ficava em
+// silêncio total (bug real relatado pelo Juliano). Baixa o áudio via Evolution API
+// (getBase64FromMediaMessage, que já devolve descriptografado) e transcreve com o Whisper
+// da OpenAI (mesma chave já usada pela JuIA em ju-ia-site). Falha graciosamente (string
+// vazia) em qualquer etapa — quem chama decide o fallback educado pro cliente.
+const transcribeAudioMessage = async (
+  key: unknown,
+  evolutionApiUrl: string,
+  evolutionApiKey: string,
+  evolutionInstance: string,
+): Promise<string> => {
+  try {
+    const mediaResponse = await fetchWithTimeout(`${evolutionApiUrl}/chat/getBase64FromMediaMessage/${evolutionInstance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+      body: JSON.stringify({ message: { key } }),
+    }, 20000)
+    if (!mediaResponse.ok) return ''
+    const mediaData = await mediaResponse.json().catch(() => ({}))
+    const base64 = String(mediaData?.base64 || '')
+    if (!base64) return ''
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
+    if (!openaiKey) return ''
+
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+    const form = new FormData()
+    form.append('file', new Blob([bytes], { type: 'audio/ogg' }), 'audio.ogg')
+    form.append('model', 'whisper-1')
+
+    const transcriptionResponse = await fetchWithTimeout('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: form,
+    }, 30000)
+    if (!transcriptionResponse.ok) return ''
+    const transcriptionData = await transcriptionResponse.json().catch(() => ({}))
+    return String(transcriptionData?.text || '').trim()
+  } catch (error) {
+    console.error('[whatsapp-webhook] transcribe_audio', error instanceof Error ? error.message : error)
+    return ''
+  }
+}
+
 const HISTORY_LIMIT = 10
 
 // Trava de processamento por telefone (lease com expiração): evita que duas mensagens
@@ -78,7 +129,7 @@ Deno.serve(async (request: Request) => {
 
     const fromMe = data?.key?.fromMe === true
     const messageId = String(data?.key?.id || '')
-    const text = String(data?.message?.conversation || data?.message?.extendedTextMessage?.text || '').trim()
+    let text = String(data?.message?.conversation || data?.message?.extendedTextMessage?.text || '').trim()
 
     const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
@@ -126,6 +177,23 @@ Deno.serve(async (request: Request) => {
       return sendResponse.ok
     }
 
+    // Cliente mandou áudio em vez de texto — tenta transcrever (ver transcribeAudioMessage
+    // acima); se não der certo por qualquer motivo, avisa educadamente em vez de ficar em
+    // silêncio (bug real: cliente mandava áudio e nunca recebia resposta nenhuma).
+    let audioTranscribed = false
+    if (!text && data?.message?.audioMessage) {
+      const transcribed = await transcribeAudioMessage(data?.key, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+      if (transcribed) {
+        text = transcribed
+        audioTranscribed = true
+      } else {
+        const fallback = `${greetingNow()}! 😊 Recebi seu áudio, mas por aqui ainda não consigo ouvir mensagens de voz — poderia escrever, por gentileza? Como posso ajudar você hoje?`
+        await sendWhatsapp(phone, fallback)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[áudio recebido, não foi possível transcrever]' })
+        return json({ ok: true, skipped: 'audio_not_transcribed' })
+      }
+    }
+
     const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
     const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
@@ -140,7 +208,7 @@ Deno.serve(async (request: Request) => {
         if (submitResult?.ok) {
           const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
           if (pushSecret) {
             await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -166,7 +234,7 @@ Deno.serve(async (request: Request) => {
             ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
             : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           return json({ ok: true, satisfaction: 'satisfied' })
         }
       } else if (isUnsatisfied) {
@@ -174,7 +242,7 @@ Deno.serve(async (request: Request) => {
         if (submitResult?.ok) {
           const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
           const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
           if (pushSecret) {
@@ -196,7 +264,7 @@ Deno.serve(async (request: Request) => {
       } else {
         const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
         await sendWhatsapp(phone, reply)
-        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
         return json({ ok: true, satisfaction: 'unclear' })
       }
       // submitResult veio ok:false (ex: token expirado após 30 dias) — cai pro fluxo normal da JuIA abaixo
@@ -207,7 +275,7 @@ Deno.serve(async (request: Request) => {
       return json({ ok: true, skipped: 'no_text' })
     }
 
-    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text })
+    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
 
     const { data: conversation } = await admin
       .from('whatsapp_conversations')
