@@ -380,18 +380,6 @@ Deno.serve(async req=>{
    reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um corte gratuito. ${encouragement}`
   }
  }
- if(chosen.length && !next.upsell_services_done && (intent==='upsell_services'||next.sales_stage==='services_selected')){
-  const sug=serviceSuggestions(chosen)
-  if(sug.length){reply='Quer aproveitar o horário e incluir algum complemento?';actions=sug.map((s:any)=>({label:`${s.name} · +${money(s.price)}`,message:`Adicionar ${s.name}`}));actions.push({label:'Não, continuar',message:'Não quero serviço adicional'});next.sales_stage='upsell_services'}
-  else next.upsell_services_done=true
- }
- if(normalize(message).includes('nao quero servico adicional')||normalize(message).includes('sem adicional')){next.upsell_services_done=true;next.sales_stage='products'}
- if(chosen.length && next.upsell_services_done && !next.upsell_products_done && (intent==='upsell_products'||next.sales_stage==='products')){
-  const sug=productSuggestions(chosen,context)
-  reply='Posso deixar algum produto separado para você retirar no atendimento?';actions=sug.map(p=>({label:`${p.name} · ${money(p.price)}`,message:`Adicionar produto ${p.name}`}));actions.push({label:'Não, continuar',message:'Não quero produto'});next.sales_stage='upsell_products'
- }
- if(normalize(message).includes('nao quero produto')||normalize(message).includes('sem produto')){next.upsell_products_done=true;next.sales_stage='schedule'}
-
  // Detecta cancelamento mesmo quando o modelo não classificou certo (ex.: "pode
  // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver
  // uma confirmação pendente (next.pending_cancel_booking_id), não importa o que o
@@ -535,6 +523,7 @@ Deno.serve(async req=>{
      next.pending_reschedule_new_time=null
      next.date=null
      next.time=null
+     next.period=null
     }
    }else if(simpleNo){
     reply='Tudo bem, não mudei nada. Seu agendamento continua como estava.'
@@ -855,8 +844,88 @@ Deno.serve(async req=>{
   }
  }
 
+ // "activelyBooking" separa quem já está de fato agendando (escolheu serviço, pediu
+ // disponibilidade, ou já tem uma data em andamento) de quem só fez uma pergunta solta
+ // (ex.: "quanto custa o corte de cabelo?", que também casa serviço via findServicesLoose
+ // mas não deveria disparar as perguntas de upsell abaixo). Calculado só aqui (depois do
+ // cancelamento/reagendamento/troca de serviço/duplicados já estarem resolvidos) porque
+ // "intent" só fica definitivo depois desses blocos.
+ const activelyBooking=['services','availability','book'].includes(intent)||Boolean(next.date)
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&!next.completed
+
+ // Pedido do Juliano: "Corte de cabelo" sozinho (R$40) sempre oferece o upgrade pro
+ // "Corte + Lavagem" (R$50, lavagem profissional incluída) antes de seguir — melhora o
+ // ticket médio. Só pergunta uma vez por conversa (next.haircut_wash_asked) e não
+ // dispara se já for combo ou já tiver a lavagem escolhida.
+ let hairWashJustAsked=false
+ const hasPlainHaircut=chosen.some((s:any)=>s.name==='Corte de cabelo')
+ const hasWashOrCombo=chosen.some((s:any)=>['Corte + Lavagem','Corte + Barboterapia','Corte + Barba Express'].includes(s.name))
+ if(notSpecialFlow&&activelyBooking&&hasPlainHaircut&&!hasWashOrCombo&&!next.haircut_wash_asked){
+  if(includesAny(normalizedQuestion,['com lavagem','quero lavagem','pode ser com lavagem','corte e lavagem','corte com lavagem'])){
+   next.services=next.services.map((n:string)=>n==='Corte de cabelo'?'Corte + Lavagem':n)
+   const idx=chosen.findIndex((s:any)=>s.name==='Corte de cabelo')
+   if(idx>=0)chosen[idx]=findService('Corte + Lavagem')
+   next.haircut_wash_asked=true
+  }else if(includesAny(normalizedQuestion,['so o corte','só o corte','sem lavagem','so corte','apenas o corte','nao quero lavagem'])){
+   next.haircut_wash_asked=true
+  }else{
+   next.haircut_wash_asked=true
+   hairWashJustAsked=true
+   reply='Prefere só o corte ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?'
+   actions=[{label:'Só o corte · R$ 40',message:'Só o corte'},{label:'Corte + Lavagem · R$ 50',message:'Quero com lavagem'}]
+   intent='other';handoff=false
+  }
+ }
+
+ // Pedido do Juliano: sempre perguntar por complementos (barba, sobrancelha, depilação
+ // nasal etc.) antes de concluir o agendamento. Antes disso dependia do modelo escolher
+ // sozinho intent "upsell_services", ou de next.sales_stage==='services_selected' — que
+ // nunca era setado em lugar nenhum do código, então essa pergunta praticamente nunca
+ // aparecia de forma confiável. Agora dispara de forma determinística, uma única vez
+ // (next.upsell_services_done), sem repetir a pergunta do corte+lavagem no mesmo turno.
+ let servicesUpsellJustAsked=false
+ if(chosen.length&&!next.upsell_services_done&&!hairWashJustAsked&&activelyBooking&&notSpecialFlow){
+  const sug=serviceSuggestions(chosen)
+  next.upsell_services_done=true
+  if(sug.length){
+   reply=`Quer aproveitar e incluir algum complemento, como ${sug.map((s:any)=>s.name).join(', ')}?`
+   actions=sug.map((s:any)=>({label:`${s.name} · +${money(s.price)}`,message:`Adicionar ${s.name}`}))
+   actions.push({label:'Não, só isso',message:'Não quero serviço adicional'})
+   intent='other';handoff=false
+   servicesUpsellJustAsked=true
+  }
+ }
+ let productsUpsellJustAsked=false
+ if(chosen.length&&next.upsell_services_done&&!next.upsell_products_done&&!hairWashJustAsked&&!servicesUpsellJustAsked&&activelyBooking&&notSpecialFlow){
+  const sug=productSuggestions(chosen,context)
+  next.upsell_products_done=true
+  if(sug.length){
+   reply='Posso deixar algum produto separado para você retirar no atendimento?'
+   actions=sug.map(p=>({label:`${p.name} · ${money(p.price)}`,message:`Adicionar produto ${p.name}`}))
+   actions.push({label:'Não, continuar',message:'Não quero produto'})
+   intent='other';handoff=false
+   productsUpsellJustAsked=true
+  }
+ }
+ // Depois de resolvidas as perguntas de corte+lavagem/complementos/produtos (nenhuma
+ // delas perguntou nada neste turno), retoma o fluxo normal de agendamento sozinha —
+ // sem isso, a conversa ficava parada esperando o modelo "adivinhar" que devia seguir
+ // pra checar disponibilidade depois de um simples "não, só isso"/"não quero produto".
+ if(chosen.length&&next.upsell_services_done&&next.upsell_products_done&&!hairWashJustAsked&&!servicesUpsellJustAsked&&!productsUpsellJustAsked&&activelyBooking&&notSpecialFlow&&intent!=='book'){
+  intent='availability'
+ }
+
  const requestedPeriod=detectPeriod(normalizedQuestion)
+ // cliente pode dizer o período antes mesmo de ter escolhido o serviço (ex.: "tem
+ // horário hoje a tarde?" seguido de "corte de cabelo") — sem lembrar isso, a JuIA
+ // perguntava de novo "manhã, tarde ou final do dia?" ignorando o que já foi dito.
+ if(requestedPeriod)next.period=requestedPeriod
+ const effectivePeriod=requestedPeriod||next.period
  const requestedTime=extractRequestedTime(message)
+ // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
+ // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
+ // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
+ const effectiveTime=requestedTime||(next.completed?'':next.time||'')
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
@@ -897,24 +966,34 @@ Deno.serve(async req=>{
 
   if(!allSlots.length){
    reply='Não encontrei horário nessa data para todos os serviços. Quer verificar outro dia?'
-  }else if(requestedTime){
-   if(allSlots.includes(requestedTime)){
-    reply=`Sim, ${requestedTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
-    actions=[{label:`Reservar ${requestedTime}`,message:`Quero reservar ${requestedTime}`}]
-    next.time=requestedTime
+  }else if(effectiveTime){
+   // Antes de dizer "não está disponível", checa se o motivo é que o próprio cliente já
+   // tem um agendamento confirmado bem nesse dia/horário (ex.: o Juliano acabou de criar
+   // manualmente pelo admin enquanto a conversa seguia em paralelo) — sem isso, a JuIA
+   // rejeitava um horário que na verdade já era do próprio cliente, confundindo-o (caso
+   // real 29/07/2026, Juliano precisou apagar a resposta da JuIA e confirmar manualmente).
+   const ownExisting=upcomingBookings.find((b:any)=>b.booking_date===next.date&&String(b.start_time).slice(0,5)===effectiveTime)
+   if(ownExisting){
+    reply=`Você já está confirmado para ${formatDateBR(ownExisting.booking_date)} às ${effectiveTime} (${ownExisting.service_name}). Pode vir tranquilo, te esperamos!`
+    actions=[]
+    handoff=false
+   }else if(allSlots.includes(effectiveTime)){
+    reply=`Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
+    actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
+    next.time=effectiveTime
    }else{
-    const samePeriod=slotsForPeriod(allSlots,slotHour(requestedTime)<12?'morning':slotHour(requestedTime)<18?'afternoon':'evening')
+    const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')
     const alternatives=(samePeriod.length?samePeriod:allSlots)
-    reply=`${requestedTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
+    reply=`${effectiveTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
     actions=alternatives.map((t:string)=>({label:t,message:t}))
    }
-  }else if(requestedPeriod){
-   const periodSlots=slotsForPeriod(allSlots,requestedPeriod)
+  }else if(effectivePeriod){
+   const periodSlots=slotsForPeriod(allSlots,effectivePeriod)
    if(periodSlots.length){
-    reply=`No período da ${periodLabel(requestedPeriod)}, estes são todos os horários disponíveis para ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
+    reply=`No período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`Não há horários disponíveis no período da ${periodLabel(requestedPeriod)} nessa data. Posso mostrar outro período ou verificar outro dia.`
+    reply=`Não há horários disponíveis no período da ${periodLabel(effectivePeriod)} nessa data. Posso mostrar outro período ou verificar outro dia.`
     actions=[
      {label:'Ver manhã',message:'Prefiro manhã'},
      {label:'Ver tarde',message:'Prefiro tarde'},
