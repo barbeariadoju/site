@@ -43,9 +43,14 @@ const extractRequestedTime=(text='')=>{
 }
 const slotHour=(slot:string)=>Number(String(slot).slice(0,2))
 const detectPeriod=(text:string)=>{
- if(includesAny(text,['manha','pela manha','de manha','cedo']))return 'morning'
- if(includesAny(text,['tarde','pela tarde','de tarde']))return 'afternoon'
- if(includesAny(text,['noite','final do dia','fim do dia','depois das 18','apos as 18']))return 'evening'
+ // "boa tarde"/"boa noite" são cumprimentos, não pedido de período — sem isso, um simples
+ // "Oi, boa tarde" com data/serviço ainda na memória da conversa (ex.: agendamento
+ // anterior já concluído) disparava checagem de disponibilidade sozinho (caso real:
+ // áudio "Oi! Boa tarde!" virou "Não encontrei horário nessa data...").
+ const withoutGreeting=text.replace(/\bboa tarde\b/g,'').replace(/\bboa noite\b/g,'')
+ if(includesAny(withoutGreeting,['manha','pela manha','de manha','cedo']))return 'morning'
+ if(includesAny(withoutGreeting,['tarde','pela tarde','de tarde']))return 'afternoon'
+ if(includesAny(withoutGreeting,['noite','final do dia','fim do dia','depois das 18','apos as 18']))return 'evening'
  return ''
 }
 const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
