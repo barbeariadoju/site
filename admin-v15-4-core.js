@@ -19,6 +19,20 @@
 // admin-notificacoes.html, admin-mensagens.html).
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const catalog = window.BDJ_SERVICES || [];
+  // Mesmo catálogo de produtos usado pela JuIA (ju-ia-site/index.ts) e por admin-balcao-v29.js
+  // — repo ainda não tem fonte única de produtos (mesmo gotcha já documentado pros serviços
+  // antes da v7). Usado no modal de "Concluir atendimento"/"Produtos" (admin-v15-4-agenda.js).
+  const productCatalog = [
+    { name: 'Pasta Matte 150g', price: 34 },
+    { name: 'Pasta Modeladora Brilho Extra Forte 150g', price: 38 },
+    { name: 'Pomada em pó', price: 35 },
+    { name: 'Óleo Para Barba 30mL', price: 36 },
+    { name: 'Balm Para Barba 150g', price: 35 },
+    { name: 'Shampoo Para Barba 240mL', price: 35 },
+    { name: 'Shampoo Caspbell Anticaspa', price: 42.99 },
+    { name: 'Energético Monster Energy 473ml', price: 14 },
+    { name: 'Energético Monster Zero Sugar 473ml', price: 14 },
+  ];
   const page = document.body.dataset.adminPage || 'dashboard';
   const $ = (id) => document.getElementById(id);
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;

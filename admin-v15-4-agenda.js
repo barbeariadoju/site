@@ -19,27 +19,44 @@
    const flag=closed?'<i class="day-flag day-flag-closed" title="Não atende">🚫</i>':fullyBlocked?'<i class="day-flag day-flag-locked" title="Dia bloqueado">🔒</i>':partiallyBlocked?'<i class="day-flag day-flag-partial" title="Bloqueio parcial">⏰</i>':'';
    html+=`<button class="calendar-day ${ds===selectedDate?'is-selected':''} ${ds===isoLocal(new Date())?'is-today':''}" data-date="${ds}">${flag}<span>${d}</span>${count?`<small>${count}</small>`:''}</button>`}grid.innerHTML=html;grid.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;renderCalendar();loadAgendaDay()})}
   async function loadAgendaDay(){setText('agenda-date-title',formatDate(selectedDate));const rows=allBookings.filter(x=>x.booking_date===selectedDate).sort((a,b)=>a.start_time.localeCompare(b.start_time)),list=$('agenda-day-list');list.innerHTML=rows.length?rows.map(bookingCard).join(''):'<div class="admin-empty">Nenhum agendamento nesta data.</div>';bindBookingActions(list);await loadBlocks()}
-  function bookingCard(x){const email=x.customer_email?`<a class="admin-contact-link" href="${emailLink(x)}">✉ ${esc(x.customer_email)}</a>`:'';return `<article class="admin-booking-card ${statusClass(x.status)}"><div class="admin-booking-time"><strong>${x.start_time.slice(0,5)}</strong><small>até ${x.end_time?.slice(0,5)||''}</small></div><div class="admin-booking-main"><div class="admin-booking-title"><h3>${esc(x.customer_name)}</h3><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span></div><p>${esc(x.service_name)}</p><small>${formatPhone(x.customer_phone)} • ${money(Number(x.service_price||0)+Number(x.products_price||0))} • ${x.duration_minutes} min</small>${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}</div><div class="admin-booking-actions"><a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-return="${x.id}">Novo retorno</button></div></article>`}
-  function bindBookingActions(root){root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'})}
+  function bookingCard(x){const email=x.customer_email?`<a class="admin-contact-link" href="${emailLink(x)}">✉ ${esc(x.customer_email)}</a>`:'';return `<article class="admin-booking-card ${statusClass(x.status)}"><div class="admin-booking-time"><strong>${x.start_time.slice(0,5)}</strong><small>até ${x.end_time?.slice(0,5)||''}</small></div><div class="admin-booking-main"><div class="admin-booking-title"><h3>${esc(x.customer_name)}</h3><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span></div><p>${esc(x.service_name)}</p><small>${formatPhone(x.customer_phone)} • ${money(Number(x.service_price||0)+Number(x.products_price||0))} • ${x.duration_minutes} min</small>${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}</div><div class="admin-booking-actions"><a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-products="${x.id}">🛍 Produtos</button><button data-return="${x.id}">Novo retorno</button></div></article>`}
+  function bindBookingActions(root){root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-products]').forEach(b=>b.onclick=()=>updateBookingProducts(b.dataset.products,b))}
   function reviewWhatsAppLink(x){const msg=`Olá, ${x.customer_name}! Obrigado pela preferência. Foi um prazer atender você hoje na Barbearia do Ju. Se puder, deixe sua avaliação no Google: https://g.page/r/CaQfC5axIQQIEBM/review`;return whatsappBusinessUrl(x.customer_phone,msg)}
-  function choosePaymentMethod(){
+  // Grade de produtos reaproveitada tanto no modal de "Concluir" (produtos vendidos junto
+  // do fechamento) quanto no modal avulso "🛍 Produtos" (editar produtos de um atendimento
+  // já existente, site ou balcão, em qualquer status — pedido do Juliano pra não precisar
+  // reconstruir isso em cada tela separada).
+  function productChecklistHtml(existingProducts=[]){
+    const selectedNames=new Set(existingProducts.map(p=>p.name));
+    return `<div class="products-modal-grid">${productCatalog.map(p=>`<label class="products-modal-option"><input type="checkbox" data-product-name="${esc(p.name)}" data-product-price="${p.price}" ${selectedNames.has(p.name)?'checked':''}><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small></span></label>`).join('')}</div>`
+  }
+  function readChecklistProducts(modal){
+    return [...modal.querySelectorAll('[data-product-name]:checked')].map(i=>({name:i.dataset.productName,price:Number(i.dataset.productPrice)}))
+  }
+  function ensureModalStyles(){
+    if(document.getElementById('booking-modals-style'))return;
+    const style=document.createElement('style');
+    style.id='booking-modals-style';
+    style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"]{grid-column:1/-1}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;max-height:260px;overflow:auto}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:.88rem}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}';
+    document.head.appendChild(style);
+  }
+  function choosePaymentMethod(existingProducts=[]){
     return new Promise(resolve=>{
+      ensureModalStyles();
       let modal=document.getElementById('payment-method-modal');
       if(!modal){
-        const style=document.createElement('style');
-        style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"]{grid-column:1/-1}';
-        document.head.appendChild(style);
         modal=document.createElement('div');
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><div class="payment-method-grid"><button type="button" data-payment="pix">Pix</button><button type="button" data-payment="debito">Débito</button><button type="button" data-payment="credito">Crédito</button><button type="button" data-payment="dinheiro">Dinheiro</button><button type="button" data-payment="fidelidade">Bônus de fidelidade</button></div></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><div class="payment-method-grid"><button type="button" data-payment="pix">Pix</button><button type="button" data-payment="debito">Débito</button><button type="button" data-payment="credito">Crédito</button><button type="button" data-payment="dinheiro">Dinheiro</button><button type="button" data-payment="fidelidade">Bônus de fidelidade</button></div></section>';
         document.body.appendChild(modal);
       }
+      modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(existingProducts);
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);
-      const onPick=e=>finish(e.currentTarget.dataset.payment);
+      const onPick=e=>finish({payment:e.currentTarget.dataset.payment,products:readChecklistProducts(modal)});
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
       const pickEls=modal.querySelectorAll('[data-payment]');
       function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));pickEls.forEach(el=>el.removeEventListener('click',onPick))}
@@ -47,11 +64,53 @@
       pickEls.forEach(el=>el.addEventListener('click',onPick));
     })
   }
+  // Modal avulso — edita só os produtos de um atendimento que já existe (concluído ou não,
+  // vindo do site ou do balcão), sem mexer em status/pagamento. Resolve com o array de
+  // produtos escolhidos, ou null se cancelado.
+  function chooseProductsOnly(existingProducts=[]){
+    return new Promise(resolve=>{
+      ensureModalStyles();
+      let modal=document.getElementById('products-only-modal');
+      if(!modal){
+        modal=document.createElement('div');
+        modal.id='products-only-modal';
+        modal.className='admin-modal';
+        modal.hidden=true;
+        modal.innerHTML='<div class="admin-modal-backdrop" data-products-cancel></div><section class="admin-modal-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-products-cancel>&times;</button><h2>🛍 Produtos do atendimento</h2><p class="privacy-note">Marque os produtos vendidos neste atendimento. Funciona pra qualquer registro, do site ou do balcão.</p><div data-products-slot></div><button type="button" class="btn primary" data-products-save style="width:100%;margin-top:6px">Salvar produtos</button></section>';
+        document.body.appendChild(modal);
+      }
+      modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(existingProducts);
+      modal.hidden=false;
+      const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
+      const onCancel=()=>finish(null);
+      const onSave=()=>finish(readChecklistProducts(modal));
+      const cancelEls=modal.querySelectorAll('[data-products-cancel]');
+      const saveEl=modal.querySelector('[data-products-save]');
+      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));saveEl.removeEventListener('click',onSave)}
+      cancelEls.forEach(el=>el.addEventListener('click',onCancel));
+      saveEl.addEventListener('click',onSave);
+    })
+  }
+  async function updateBookingProducts(id,trigger=null){
+    const booking=allBookings.find(x=>x.id===id);
+    const products=await chooseProductsOnly(parseProducts(booking||{}));
+    if(!products)return;
+    const oldText=trigger?.textContent;
+    if(trigger){trigger.disabled=true;trigger.textContent='Salvando…'}
+    try{
+      const {data,error}=await sb.functions.invoke('admin-booking-status',{body:{booking_id:id,selected_products:products}});
+      if(error||data?.error){alert(data?.error||error?.message||'Não foi possível atualizar os produtos.');return}
+      await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+    }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
+  }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null;
+    let paymentMethod=null,completionProducts=null;
     if(status==='completed'){
-      paymentMethod=await choosePaymentMethod();
-      if(!paymentMethod)return;
+      const booking=allBookings.find(x=>x.id===id);
+      const choice=await choosePaymentMethod(parseProducts(booking||{}));
+      if(!choice)return;
+      paymentMethod=choice.payment;
+      completionProducts=choice.products;
     }else{
       const prompts={no_show:'Registrar ausência?',cancelled:'Cancelar e liberar o horário? O cliente receberá um e-mail de aviso caso tenha e-mail cadastrado.'};
       if(prompts[status]&&!confirm(prompts[status]))return;
@@ -61,6 +120,7 @@
     try{
       const body={booking_id:id,status};
       if(paymentMethod)body.payment_method=paymentMethod;
+      if(completionProducts)body.selected_products=completionProducts;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
       await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}

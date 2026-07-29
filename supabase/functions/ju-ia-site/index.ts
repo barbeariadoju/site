@@ -48,9 +48,12 @@ const detectPeriod=(text:string)=>{
  // anterior já concluído) disparava checagem de disponibilidade sozinho (caso real:
  // áudio "Oi! Boa tarde!" virou "Não encontrei horário nessa data...").
  const withoutGreeting=text.replace(/\bboa tarde\b/g,'').replace(/\bboa noite\b/g,'')
- if(includesAny(withoutGreeting,['manha','pela manha','de manha','cedo']))return 'morning'
- if(includesAny(withoutGreeting,['tarde','pela tarde','de tarde']))return 'afternoon'
- if(includesAny(withoutGreeting,['noite','final do dia','fim do dia','depois das 18','apos as 18']))return 'evening'
+ // Palavras soltas usam \b (limite de palavra) em vez de includes() puro: "manha" também
+ // aparece DENTRO de "amanha" (sem acento), então "tem horario amanha?" estava sendo lido
+ // como pedido de manhã. \b garante que só casa a palavra inteira, não um pedaço de outra.
+ if(/\bmanha\b|pela manha|de manha|\bcedo\b/.test(withoutGreeting))return 'morning'
+ if(/\btarde\b|pela tarde|de tarde/.test(withoutGreeting))return 'afternoon'
+ if(/\bnoite\b|final do dia|fim do dia|depois das 18|apos as 18/.test(withoutGreeting))return 'evening'
  return ''
 }
 const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{

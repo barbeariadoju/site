@@ -7,6 +7,15 @@
 .balcao-log-row small{color:#999}
 .balcao-log-tag{font-size:.72rem;font-weight:800;color:var(--gold2);background:rgba(240,201,135,.1);padding:.25rem .6rem;border-radius:999px;white-space:nowrap}
 @media(max-width:700px){.balcao-log-row{flex-direction:column;align-items:flex-start}}
+.balcao-customer-search{position:relative}
+.balcao-customer-results{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:#141414;border:1px solid rgba(240,201,135,.28);border-radius:14px;max-height:260px;overflow:auto;box-shadow:0 18px 40px rgba(0,0,0,.4)}
+.balcao-customer-results button{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;border:0;background:none;color:#f3f3f3;padding:10px 14px;font:inherit;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)}
+.balcao-customer-results button:last-child{border-bottom:none}
+.balcao-customer-results button:hover,.balcao-customer-results button:focus{background:rgba(240,201,135,.1)}
+.balcao-customer-results small{color:#999}
+.balcao-customer-results .is-empty{padding:12px 14px;color:#999;font-size:.9rem}
+.balcao-customer-tag{display:inline-flex;align-items:center;gap:8px;margin-top:8px;font-size:.82rem;color:var(--gold2);background:rgba(240,201,135,.1);border-radius:999px;padding:.3rem .7rem;width:fit-content}
+.balcao-customer-tag button{border:0;background:none;color:inherit;cursor:pointer;font-weight:800}
 </style>
 </head><body data-admin-page="balcao"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" class="is-active" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
 
@@ -14,12 +23,17 @@
 
 <section class="admin-surface" style="margin-bottom:24px">
 <div class="admin-inline-fields">
-<label>Nome do cliente<input id="balcao-name" type="text" autocomplete="off"></label>
+<label class="balcao-customer-search">Nome do cliente<input id="balcao-name" type="text" autocomplete="off" placeholder="Digite pra buscar no CRM ou cadastrar um novo"><div id="balcao-customer-results" class="balcao-customer-results" hidden></div></label>
 <label>Telefone (WhatsApp)<input id="balcao-phone" type="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
 </div>
+<div id="balcao-customer-tag"></div>
 
 <h3 style="margin:20px 0 10px">Serviços realizados</h3>
 <div id="balcao-services"></div>
+
+<h3 style="margin:20px 0 10px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3>
+<div id="balcao-products"></div>
+
 <div class="balcao-total"><span>Total do atendimento</span><strong id="balcao-total">R$ 0,00</strong></div>
 
 <div class="admin-inline-fields">

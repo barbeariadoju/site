@@ -90,19 +90,37 @@ Deno.serve(async (request: Request) => {
     }
 
     const bookingId = String(body?.booking_id || '').trim()
-    const status = String(body?.status || '').trim()
+    // status agora é opcional: a mesma function serve pra trocar status (fluxo original)
+    // e/ou só atualizar os produtos vendidos de um agendamento já existente (site ou
+    // balcão, em qualquer status) — pedido do Juliano pra registrar venda de produto
+    // depois do fato, sem precisar que isso esteja amarrado a "concluir" o atendimento.
+    const hasStatusChange = body?.status != null && String(body.status).trim() !== ''
+    const status = hasStatusChange ? String(body.status).trim() : ''
     const paymentMethod = body?.payment_method != null ? String(body.payment_method).trim() : ''
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
-    log('payload_validated', { requestId, bookingId, status, userId: authData.user.id })
+    // selected_products (opcional): array de {name, price} — mesmo formato já usado em
+    // create_public_booking_v15/phone_update_booking_products. products_price é sempre
+    // recalculado aqui a partir da lista, nunca aceito pronto do cliente.
+    const rawProducts = Array.isArray(body?.selected_products) ? body.selected_products : null
+    const selectedProducts = rawProducts
+      ? rawProducts
+          .map((p: any) => ({ name: String(p?.name || '').trim(), price: Number(p?.price || 0) }))
+          .filter((p: { name: string; price: number }) => p.name && Number.isFinite(p.price) && p.price >= 0)
+      : null
+
+    log('payload_validated', { requestId, bookingId, status, hasProducts: Boolean(selectedProducts), userId: authData.user.id })
 
     if (!bookingId) return fail('validation_booking_id', 'Agendamento não informado.', 400, { requestId })
-    if (!allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
+    if (!hasStatusChange && !selectedProducts) {
+      return fail('validation_nothing_to_update', 'Informe um status ou os produtos a atualizar.', 400, { requestId })
+    }
+    if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
     // Concluir um atendimento sempre exige a forma de pagamento — é o que alimenta o
     // relatório financeiro. Validado aqui também (não só na tela) porque o admin-booking-status
     // é chamado com a sessão do dono, mas nada impede outra chamada direta à function.
-    if (status === 'completed' && !allowedPaymentMethods.includes(paymentMethod)) {
+    if (hasStatusChange && status === 'completed' && !allowedPaymentMethods.includes(paymentMethod)) {
       return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
     }
 
@@ -130,7 +148,7 @@ Deno.serve(async (request: Request) => {
 
     log('booking_loaded', { requestId, bookingId, currentStatus: current.status, customerEmail: Boolean(current.customer_email) })
 
-    if (status === 'cancelled' && !['pending', 'confirmed'].includes(current.status)) {
+    if (hasStatusChange && status === 'cancelled' && !['pending', 'confirmed'].includes(current.status)) {
       return fail('cancellation_state', 'Este agendamento não pode mais ser cancelado.', 400, {
         requestId,
         currentStatus: current.status,
@@ -138,14 +156,19 @@ Deno.serve(async (request: Request) => {
     }
 
     let rebookingToken = ''
-    const updatePayload: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
-    if (status === 'completed') {
+    const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (hasStatusChange) updatePayload.status = status
+    if (hasStatusChange && status === 'completed') {
       updatePayload.payment_method = paymentMethod
     }
-    if (status === 'cancelled') {
+    if (hasStatusChange && status === 'cancelled') {
       rebookingToken = newToken()
       updatePayload.rebooking_token_hash = await hash(rebookingToken)
       updatePayload.rebooking_expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    }
+    if (selectedProducts) {
+      updatePayload.selected_products = selectedProducts
+      updatePayload.products_price = selectedProducts.reduce((a, p) => a + p.price, 0)
     }
 
     const { data: updated, error: updateError } = await admin
@@ -171,10 +194,10 @@ Deno.serve(async (request: Request) => {
 
     log('booking_updated', { requestId, bookingId, newStatus: updated.status })
 
-    // Trilha de auditoria: registra a mudança de status no histórico do cliente,
-    // para o dono ter rastreabilidade de quem/quando alterou o agendamento.
+    // Trilha de auditoria: registra a mudança de status e/ou de produtos no histórico do
+    // cliente, para o dono ter rastreabilidade de quem/quando alterou o agendamento.
     // Não bloqueia a resposta se falhar.
-    if (current.status !== status) {
+    if ((hasStatusChange && current.status !== status) || selectedProducts) {
       try {
         const statusLabels: Record<string, string> = {
           pending: 'aguardando confirmação',
@@ -188,14 +211,18 @@ Deno.serve(async (request: Request) => {
           .select('id')
           .eq('phone', String(current.customer_phone || '').replace(/\D/g, ''))
           .maybeSingle()
+        const title = hasStatusChange && current.status !== status
+          ? `Agendamento marcado como ${statusLabels[status] || status}`
+          : 'Produtos do atendimento atualizados'
         await admin.from('customer_timeline').insert({
           customer_id: customer?.id ?? null,
           booking_id: bookingId,
-          event_type: 'booking_status_changed',
-          title: `Agendamento marcado como ${statusLabels[status] || status}`,
+          event_type: hasStatusChange && current.status !== status ? 'booking_status_changed' : 'booking_products_updated',
+          title,
           details: {
             from: current.status,
-            to: status,
+            to: hasStatusChange ? status : current.status,
+            products: selectedProducts ?? undefined,
             changed_by: authData.user.id,
             booking_date: current.booking_date,
             start_time: current.start_time,

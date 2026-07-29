@@ -10,10 +10,30 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const catalog = window.BDJ_SERVICES || [];
+  // Mesmo catálogo de produtos usado pela JuIA (ju-ia-site/index.ts) — repo ainda não tem
+  // fonte única de produtos (mesmo gotcha já documentado pros serviços antes da v7), então
+  // mantemos igual ao catálogo mais ativo/recente pra não divergir preço na hora da venda.
+  const productCatalog = [
+    { name: 'Pasta Matte 150g', price: 34 },
+    { name: 'Pasta Modeladora Brilho Extra Forte 150g', price: 38 },
+    { name: 'Pomada em pó', price: 35 },
+    { name: 'Óleo Para Barba 30mL', price: 36 },
+    { name: 'Balm Para Barba 150g', price: 35 },
+    { name: 'Shampoo Para Barba 240mL', price: 35 },
+    { name: 'Shampoo Caspbell Anticaspa', price: 42.99 },
+    { name: 'Energético Monster Energy 473ml', price: 14 },
+    { name: 'Energético Monster Zero Sugar 473ml', price: 14 },
+  ];
   const $ = (id) => document.getElementById(id);
   const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const formatPhoneDisplay = (digits = '') => {
+    const d = String(digits).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return digits;
+  };
   const PAYMENT_LABELS = { pix: 'Pix', debito: 'Débito', credito: 'Crédito', dinheiro: 'Dinheiro', fidelidade: 'Fidelidade' };
 
   async function auth() {
@@ -30,11 +50,16 @@
     show();
   }
   function showLogin(m = '') { $('admin-login').hidden = false; $('admin-app').hidden = true; if ($('admin-message')) $('admin-message').textContent = m; }
+  let linkedCustomerId = null;
+
   async function show() {
     $('admin-login').hidden = true; $('admin-app').hidden = false;
     $('admin-signout').onclick = () => sb.auth.signOut().then(() => location.reload());
     $('balcao-services').innerHTML = renderServicePicker();
+    $('balcao-products').innerHTML = renderProductPicker();
     bindServicePicker();
+    bindProductPicker();
+    bindCustomerSearch();
     setDefaultDateTime();
     $('balcao-save').onclick = saveWalkin;
     await loadTodayLog();
@@ -49,8 +74,60 @@
   function bindServicePicker() {
     $('balcao-services').addEventListener('change', e => { if (e.target?.name === 'balcao-service') updateTotal(); });
   }
+
+  function renderProductPicker() {
+    return `<div class="booking-service-group"><div>${productCatalog.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i></span></label>`).join('')}</div></div>`;
+  }
+  function selectedProducts() { return [...document.querySelectorAll('input[name="balcao-product"]:checked')].map(i => productCatalog.find(p => p.name === i.value)).filter(Boolean); }
+  function bindProductPicker() {
+    $('balcao-products').addEventListener('change', e => { if (e.target?.name === 'balcao-product') updateTotal(); });
+  }
+
   function updateTotal() {
-    $('balcao-total').textContent = money(selectedServices().reduce((a, s) => a + s.price, 0));
+    const total = selectedServices().reduce((a, s) => a + s.price, 0) + selectedProducts().reduce((a, p) => a + p.price, 0);
+    $('balcao-total').textContent = money(total);
+  }
+
+  // Busca por nome/telefone em customer_profiles (RLS já libera leitura pra qualquer
+  // usuário autenticado — só existe a conta do dono). Evita o dono ter que redigitar
+  // nome/telefone de quem já é cadastrado; ainda permite digitar livre pra cliente novo.
+  let searchTimer = null;
+  function bindCustomerSearch() {
+    const input = $('balcao-name');
+    const box = $('balcao-customer-results');
+    input.addEventListener('input', () => {
+      linkedCustomerId = null;
+      renderCustomerTag(null);
+      clearTimeout(searchTimer);
+      const term = input.value.trim();
+      if (term.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+      searchTimer = setTimeout(() => searchCustomers(term), 250);
+    });
+    input.addEventListener('focus', () => { if (box.innerHTML && input.value.trim().length >= 2) box.hidden = false; });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.balcao-customer-search')) box.hidden = true; });
+  }
+  async function searchCustomers(term) {
+    const box = $('balcao-customer-results');
+    const digits = term.replace(/\D/g, '');
+    let query = sb.from('customer_profiles').select('id,name,phone').limit(6).order('name', { ascending: true });
+    query = digits.length >= 3 ? query.ilike('phone', `%${digits}%`) : query.ilike('name', `%${term}%`);
+    const { data, error } = await query;
+    if (error) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!data || !data.length) { box.innerHTML = '<div class="is-empty">Nenhum cliente encontrado — pode continuar digitando pra cadastrar um novo.</div>'; return; }
+    box.innerHTML = data.map(c => `<button type="button" data-pick="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone)}"><strong>${esc(c.name)}</strong><small>${esc(formatPhoneDisplay(c.phone))}</small></button>`).join('');
+    box.querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
+      $('balcao-name').value = btn.dataset.name;
+      $('balcao-phone').value = formatPhoneDisplay(btn.dataset.phone);
+      linkedCustomerId = btn.dataset.pick;
+      renderCustomerTag(btn.dataset.name);
+      box.hidden = true; box.innerHTML = '';
+    });
+  }
+  function renderCustomerTag(name) {
+    const tag = $('balcao-customer-tag');
+    tag.innerHTML = name ? `<span class="balcao-customer-tag">✓ Cliente do CRM: ${esc(name)}<button type="button" data-clear-customer>×</button></span>` : '';
+    tag.querySelector('[data-clear-customer]')?.addEventListener('click', () => { linkedCustomerId = null; renderCustomerTag(null); });
   }
   function setDefaultDateTime() {
     const now = new Date();
@@ -62,12 +139,16 @@
     const box = $('balcao-today-list');
     const today = isoLocal(new Date());
     const { data, error } = await sb.from('bookings')
-      .select('id,customer_name,service_name,service_price,products_price,start_time,payment_method')
+      .select('id,customer_name,service_name,service_price,products_price,selected_products,start_time,payment_method')
       .eq('channel', 'balcao').eq('booking_date', today)
       .order('start_time', { ascending: true });
     if (error) { box.innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
     if (!data || !data.length) { box.innerHTML = '<div class="admin-empty">Nenhum atendimento de balcão registrado hoje ainda.</div>'; return; }
-    box.innerHTML = data.map(x => `<div class="balcao-log-row"><div><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)} • ${money(Number(x.service_price || 0) + Number(x.products_price || 0))}</small></div><span class="balcao-log-tag">${(x.start_time || '').slice(0, 5)} · ${PAYMENT_LABELS[x.payment_method] || x.payment_method || '—'}</span></div>`).join('');
+    box.innerHTML = data.map(x => {
+      const products = Array.isArray(x.selected_products) ? x.selected_products : [];
+      const productsNote = products.length ? ` + ${products.map(p => p.name).join(', ')}` : '';
+      return `<div class="balcao-log-row"><div><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)}${esc(productsNote)} • ${money(Number(x.service_price || 0) + Number(x.products_price || 0))}</small></div><span class="balcao-log-tag">${(x.start_time || '').slice(0, 5)} · ${PAYMENT_LABELS[x.payment_method] || x.payment_method || '—'}</span></div>`;
+    }).join('');
   }
 
   async function saveWalkin() {
@@ -76,6 +157,7 @@
     const phone = $('balcao-phone').value.trim();
     const phoneDigits = phone.replace(/\D/g, '');
     const services = selectedServices();
+    const products = selectedProducts();
     const date = $('balcao-date').value;
     const time = $('balcao-time').value;
     const payment = $('balcao-payment').value;
@@ -99,6 +181,7 @@
         p_start_time: time,
         p_payment_method: payment,
         p_notes: $('balcao-notes').value.trim() || null,
+        p_selected_products: products.map(p => ({ name: p.name, price: p.price })),
       });
       if (error) { msg.textContent = error.message; return; }
 
@@ -117,7 +200,9 @@
       msg.textContent = 'Atendimento registrado.' + note;
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
-      document.querySelectorAll('input[name="balcao-service"]:checked').forEach(i => { i.checked = false; });
+      document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; });
+      linkedCustomerId = null;
+      renderCustomerTag(null);
       updateTotal();
       setDefaultDateTime();
       await loadTodayLog();
