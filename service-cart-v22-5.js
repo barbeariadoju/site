@@ -192,9 +192,13 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
 
   clearBtn?.addEventListener('click', () => {
     selectedServices.clear();
+    selectedProducts.clear();
     sessionStorage.removeItem(serviceStorageKey);
     localStorage.removeItem(serviceStorageKey);
+    sessionStorage.removeItem(productStorageKey);
+    localStorage.removeItem(productStorageKey);
     sessionStorage.removeItem(agendaServicesKey);
+    sessionStorage.removeItem(agendaProductsKey);
     panelHidden = true;
     render();
   });
