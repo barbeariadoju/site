@@ -127,6 +127,11 @@ Deno.serve(async (request: Request) => {
     const phone = remoteJid.split('@')[0].replace(/\D/g, '')
     if (phone.length < 10) return json({ ok: true, skipped: 'invalid_phone' })
 
+    // Nome do contato como salvo no WhatsApp dele — usado pela JuIA pra saudação
+    // personalizada (ex.: "Bom dia, Alexandre!") quando o telefone ainda não tem
+    // cadastro confirmado no CRM. Pode vir null (ex.: mensagem de anúncio).
+    const pushName = String(data?.pushName || '').trim()
+
     const fromMe = data?.key?.fromMe === true
     const messageId = String(data?.key?.id || '')
     let text = String(data?.message?.conversation || data?.message?.extendedTextMessage?.text || '').trim()
@@ -328,6 +333,7 @@ Deno.serve(async (request: Request) => {
           session_id: `whatsapp:${phone}`,
           history,
           verified_phone: phone,
+          whatsapp_name: pushName,
         }),
       })
 
