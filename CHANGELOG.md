@@ -1,3 +1,12 @@
+## 28.21.1 — Correção visual do chip de produto
+
+- **"🛍 Produtos reservados" virou "🛍 Produtos vendidos"** nos cards de agendamento/atendimento — o produto já foi vendido no momento em que é registrado (não existe conceito de "reserva" de produto no sistema), então o texto estava com a palavra errada. Padronizado com o texto já usado nos modais "Concluir"/"✎ Editar".
+- **Chip de produto não estoura mais em nomes longos no mobile**: era `border-radius:999px` (pílula), então um nome como "Balm Para Barba 150g" quebrava em várias linhas dentro de um card estreito e virava um círculo cortando o preço no meio. Agora o chip empilha nome e preço (mesmo padrão visual já usado no checklist de produtos do "Concluir"/"✎ Editar") com cantos arredondados normais.
+
+## 28.21.0 — Ajuste manual de carimbos de fidelidade
+
+- **Tela Fidelidade ganhou botão "✎ Ajustar carimbos"** por cliente: permite somar ou remover carimbos manualmente (ex.: cliente que já tinha carimbos no cartão físico antes do sistema digital, precisa entrar com esse saldo até tudo ficar ajustado). Nova RPC `admin_adjust_loyalty_points` (migration `052-v28.21.0`) reaproveita a mesma lógica do trigger de corte concluído — cada 10 carimbos vira 1 recompensa — e registra o ajuste em `loyalty_events` (`event_type='adjustment'`) com o motivo digitado, então fica no histórico.
+
 ## 28.20.1 — Serviço extra direto no "Concluir"
 
 - **Botão "Concluir" ganhou o mesmo checklist de serviço do "✎ Editar atendimento"**: antes só dava pra ajustar produtos vendidos na hora de concluir; se o cliente pedisse um serviço extra (ex.: corte + sobrancelha, sendo que só o corte estava agendado), era preciso concluir e depois abrir o "✎ Editar" separadamente pra corrigir. Agora o checklist de serviço aparece direto no "Concluir", pré-marcado com o que estava agendado, e dá pra marcar serviços adicionais antes de fechar o atendimento.
