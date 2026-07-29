@@ -24,6 +24,7 @@
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   let session=null, allBookings=[], customerProfiles=[], experienceRequests=[], customers=[];
   let selectedDate=isoLocal(new Date()), calendarMonth=new Date(); calendarMonth.setDate(1);
+  let monthBlocks=[];
   function isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function formatDate(s,opts={weekday:'long',day:'2-digit',month:'long'}){return new Date(s+'T12:00:00').toLocaleDateString('pt-BR',opts)}
   function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}

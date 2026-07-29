@@ -1,3 +1,7 @@
+## 28.17.1 — Indicadores visuais no calendário do admin
+
+- **Calendário da Agenda (`admin-agenda.html`/`admin-atendimento.html`) agora mostra de relance, em cada dia**: 🚫 dia que a barbearia não atende (domingo/segunda, mesma regra fixa já usada no resto do sistema), 🔒 dia com bloqueio total (`schedule_blocks` com `all_day=true`), ⏰ dia com bloqueio parcial (bloqueio só em parte do horário). Antes só dava pra saber clicando em cada dia. Nova função `loadMonthBlocks()` busca os bloqueios do mês inteiro exibido; `renderCalendar()` prioriza fechado > bloqueio total > bloqueio parcial > normal.
+
 ## 28.17.0 — Atendimento Balcão + forma de pagamento + estatística de canal
 
 - **Nova tela `admin-balcao.html` ("Atendimento Balcão")**, no menu de todas as páginas do admin: registra clientes que vieram direto na porta (nome, telefone, serviços, data/horário aproximado, forma de pagamento). O registro entra direto como agendamento **concluído** (`channel='balcao'`), contando no faturamento e no CRM igual um agendamento do site.
