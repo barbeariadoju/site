@@ -7,7 +7,6 @@ const code=()=>`BJ-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Ma
 const SERVICES=[
 ['Corte + Lavagem',50,40],['Corte de cabelo',40,30],['Corte + Barboterapia',80,60],['Corte + Barba Express',65,50],['Barboterapia com vaporizador de ozônio',50,40],['Barboterapia',40,30],['Barba Express',25,20],['Pezinho (acabamento)',15,10],['Sobrancelha Masculina',15,10],['Depilação nasal (cera quente)',25,20],['Depilação orelhas',25,20],['Freestyle (risquinho)',15,10],['Nevou / Platinado',150,120],['Luzes',120,90],['Alisamento / Relaxamento',70,45],['Pigmentação Capilar (Tintura)',50,30],['Hidratação / Reconstrução Capilar',40,20],['Pigmentação de Barba',35,20],['Pigmentação de Sobrancelha',20,20]
 ] as const
-const PRODUCTS=new Map([['Pasta Matte 150g',34],['Gel Cola Black Shark Barber',16],['Óleo Para Barba 30mL',36],['Balm Para Barba 150g',35],['Shampoo Para Barba 240mL',35],['Pomada em pó',35]])
 Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers})
  if(req.method!=='POST')return json({error:'Método não permitido.'},405)
@@ -16,6 +15,11 @@ Deno.serve(async(req)=>{
   if(!codeValue||!rebookToken)return json({error:'Link de reagendamento inválido.'},400)
   const url=Deno.env.get('SUPABASE_URL')!,service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET'),pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}})
+  // Preço dos produtos vem da tabela public.products (fonte única, migration 051-v28.20.0)
+  // em vez de um Map hardcoded aqui — mesma limitação que ju-ia-site tinha (Deno não
+  // importa o products-catalog-v1.js do front-end).
+  const {data:productsRows}=await admin.from('products').select('name,price').eq('active',true)
+  const PRODUCTS=new Map((productsRows||[]).map((p:any)=>[String(p.name),Number(p.price)]))
   const {data:source,error:sourceError}=await admin.from('bookings').select('*').eq('booking_code',codeValue).maybeSingle()
   if(sourceError||!source)return json({error:'Agendamento original não encontrado.'},404)
   if(!source.rebooking_token_hash||await hash(rebookToken)!==source.rebooking_token_hash)return json({error:'Link inválido ou expirado.'},403)

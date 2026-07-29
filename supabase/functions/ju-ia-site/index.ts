@@ -74,17 +74,12 @@ const services=[
  ['Aparação Corporal Masculina',120,60,'estetica']
 ].map(([name,price,duration,category])=>({name:String(name),price:Number(price),duration:Number(duration),category:String(category)}))
 
-const products=[
- {name:'Pasta Matte 150g',price:34,tags:['corte','combo']},
- {name:'Pasta Modeladora Brilho Extra Forte 150g',price:38,tags:['corte','combo']},
- {name:'Pomada em pó',price:35,tags:['corte','combo']},
- {name:'Óleo Para Barba 30mL',price:36,tags:['barba','combo']},
- {name:'Balm Para Barba 150g',price:35,tags:['barba','combo']},
- {name:'Shampoo Para Barba 240mL',price:35,tags:['barba','combo']},
- {name:'Shampoo Caspbell Anticaspa',price:42.99,tags:['tratamento','quimica','corte']},
- {name:'Energético Monster Energy 473ml',price:14,tags:['all']},
- {name:'Energético Monster Zero Sugar 473ml',price:14,tags:['all']}
-]
+// Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
+// em produtos.html/products-catalog-v1.js — esta function roda em Deno e não consegue
+// importar aquele arquivo de front-end). Agora é populado a cada request a partir da
+// tabela public.products (fonte única, migration 051-v28.20.0), logo no início do
+// handler — ver "products=" dentro de Deno.serve, abaixo.
+let products:{name:string;price:number;tags:string[]}[]=[]
 
 // Entre candidatos por substring (ex. "Barba" bate tanto em "Barba Express"
 // quanto em "Corte + Barba Express"), fica com o nome mais próximo em tamanho
@@ -161,6 +156,11 @@ Deno.serve(async req=>{
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
  const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
  const key=Deno.env.get('OPENAI_API_KEY')
+ // Produtos vêm do banco (tabela public.products, migration 051-v28.20.0) — fonte única
+ // que as Edge Functions conseguem ler direto, em vez de manter uma cópia hardcoded que
+ // ficava desatualizada em relação ao catálogo real do front-end.
+ const {data:productsData}=await supabase.from('products').select('name,price,upsell_tags').eq('active',true)
+ products=(productsData||[]).map((p:any)=>({name:String(p.name),price:Number(p.price),tags:Array.isArray(p.upsell_tags)?p.upsell_tags:[]}))
  const {count}=await supabase.from('site_chat_messages').select('*',{count:'exact',head:true}).eq('session_id',sessionId).gte('created_at',new Date(Date.now()-86400000).toISOString())
  if((count||0)>80)return respond({error:'Limite diário de mensagens atingido. Fale com o Juliano pelo WhatsApp.'},429)
 
