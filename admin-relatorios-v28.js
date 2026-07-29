@@ -67,7 +67,7 @@
   }
   async function load() {
     const [{ data: b, error: be }, { data: s, error: se }] = await Promise.all([
-      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status').order('booking_date', { ascending: true }).limit(5000),
+      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status,channel').order('booking_date', { ascending: true }).limit(5000),
       sb.from('experience_requests').select('answer,status,created_at').order('created_at', { ascending: false }).limit(5000)
     ]);
     if (be) console.error(be);
@@ -123,6 +123,7 @@
     renderAudience(completed, start);
     renderSatisfaction({ answered, satisfied, suggestions, sent });
     renderRevenue({ revenueServ, revenueProd, revenue });
+    renderChannel(completed);
   }
 
   function renderServices(completed) {
@@ -175,6 +176,27 @@
         </div>
         ${answered ? `<div class="rel-bar-track"><i class="rel-bar-fill" style="width:${rate}%"></i></div><p class="rel-note"><b>${rate}%</b> de quem respondeu ficou satisfeito.</p>` : ''}
         <p class="rel-note">${sent} pesquisa(s) enviada(s) · ${answered} resposta(s) recebida(s).</p>
+      </div>`;
+  }
+
+  // "Balcão" = atendimento registrado manualmente pelo admin (cliente que veio direto na
+  // porta). Registros antigos (antes da v28.17.0) não têm essa coluna preenchida e caem
+  // como 'site' pelo default da migration — não dá pra saber a origem retroativamente.
+  function renderChannel(completed) {
+    const box = $('rel-channel');
+    if (!completed.length) { box.innerHTML = '<div class="admin-empty">Nenhum atendimento concluído neste período.</div>'; return; }
+    const site = completed.filter(x => x.channel !== 'balcao').length;
+    const balcao = completed.filter(x => x.channel === 'balcao').length;
+    const total = (site + balcao) || 1;
+    box.innerHTML = `
+      <div class="rel-split">
+        <div class="rel-split-nums">
+          <article><strong>${site}</strong><small>💻 Site / WhatsApp</small></article>
+          <article><strong>${balcao}</strong><small>🚶 Direto na porta</small></article>
+        </div>
+        <div class="rel-dualbar"><i style="width:${Math.round(site / total * 100)}%;background:var(--gold)"></i><i style="width:${Math.round(balcao / total * 100)}%;background:#5a86c9"></i></div>
+        <div class="rel-legend"><span><i class="rel-dot" style="background:var(--gold)"></i>Site / WhatsApp</span><span><i class="rel-dot" style="background:#5a86c9"></i>Direto na porta</span></div>
+        <p class="rel-note">Conta atendimentos concluídos, não clientes únicos. "Direto na porta" é o que foi registrado em Atendimento Balcão.</p>
       </div>`;
   }
 

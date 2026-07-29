@@ -91,12 +91,20 @@ Deno.serve(async (request: Request) => {
 
     const bookingId = String(body?.booking_id || '').trim()
     const status = String(body?.status || '').trim()
+    const paymentMethod = body?.payment_method != null ? String(body.payment_method).trim() : ''
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
+    const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
     log('payload_validated', { requestId, bookingId, status, userId: authData.user.id })
 
     if (!bookingId) return fail('validation_booking_id', 'Agendamento não informado.', 400, { requestId })
     if (!allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
+    // Concluir um atendimento sempre exige a forma de pagamento — é o que alimenta o
+    // relatório financeiro. Validado aqui também (não só na tela) porque o admin-booking-status
+    // é chamado com a sessão do dono, mas nada impede outra chamada direta à function.
+    if (status === 'completed' && !allowedPaymentMethods.includes(paymentMethod)) {
+      return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
+    }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -131,6 +139,9 @@ Deno.serve(async (request: Request) => {
 
     let rebookingToken = ''
     const updatePayload: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
+    if (status === 'completed') {
+      updatePayload.payment_method = paymentMethod
+    }
     if (status === 'cancelled') {
       rebookingToken = newToken()
       updatePayload.rebooking_token_hash = await hash(rebookingToken)
