@@ -1,3 +1,7 @@
+## 28.20.1 — Serviço extra direto no "Concluir"
+
+- **Botão "Concluir" ganhou o mesmo checklist de serviço do "✎ Editar atendimento"**: antes só dava pra ajustar produtos vendidos na hora de concluir; se o cliente pedisse um serviço extra (ex.: corte + sobrancelha, sendo que só o corte estava agendado), era preciso concluir e depois abrir o "✎ Editar" separadamente pra corrigir. Agora o checklist de serviço aparece direto no "Concluir", pré-marcado com o que estava agendado, e dá pra marcar serviços adicionais antes de fechar o atendimento.
+
 ## 28.20.0 — Tabela `products` no banco + modal "✎ Editar atendimento"
 
 - **Nova tabela `public.products` (migration `051-v28.20.0-tabela-produtos.sql`)**: fonte única de produtos que as Edge Functions conseguem ler direto (Deno não importa o `products-catalog-v1.js` do front-end). `ju-ia-site` e `create-rebooking` agora consultam a tabela a cada request em vez de manter arrays hardcoded que divergiam do catálogo real. Leitura pública liberada só pra `active=true` (mesma informação já exposta em produtos.html); escrita só via service_role. Campo `upsell_tags` preserva a lógica de sugestão da JuIA (corte/barba/combo/quimica/tratamento/all) — comportamento dela não mudou, só a origem dos dados. **Ao mudar preço/nome de produto: atualizar a tabela `products` E o `products-catalog-v1.js` (front-end).**

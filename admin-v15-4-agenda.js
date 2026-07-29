@@ -63,7 +63,10 @@
     style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"],.payment-method-grid button[data-payment-option="fidelidade"]{grid-column:1/-1}.payment-method-grid button.is-selected{border-color:var(--gold);background:rgba(240,201,135,.12);color:var(--gold2)}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;max-height:220px;overflow:auto}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:.88rem}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}.booking-edit-card{max-height:88vh;overflow:auto}.booking-edit-card [data-service-slot]{max-height:220px;overflow:auto}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}';
     document.head.appendChild(style);
   }
-  function choosePaymentMethod(existingProducts=[]){
+  // Serviço editável já no "Concluir" (não só no "✎ Editar" depois) — pedido do Juliano
+  // após caso real: corte + sobrancelha no balcão, só o corte estava no agendamento
+  // original, e não dava pra marcar o serviço extra na hora de concluir.
+  function choosePaymentMethod(booking={}){
     return new Promise(resolve=>{
       ensureModalStyles();
       let modal=document.getElementById('payment-method-modal');
@@ -72,14 +75,23 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><div class="payment-method-grid"><button type="button" data-payment="pix">Pix</button><button type="button" data-payment="debito">Débito</button><button type="button" data-payment="credito">Crédito</button><button type="button" data-payment="dinheiro">Dinheiro</button><button type="button" data-payment="fidelidade">Bônus de fidelidade</button></div></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><div class="payment-method-grid"><button type="button" data-payment="pix">Pix</button><button type="button" data-payment="debito">Débito</button><button type="button" data-payment="credito">Crédito</button><button type="button" data-payment="dinheiro">Dinheiro</button><button type="button" data-payment="fidelidade">Bônus de fidelidade</button></div></section>';
         document.body.appendChild(modal);
       }
-      modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(existingProducts);
+      modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
+      modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);
-      const onPick=e=>finish({payment:e.currentTarget.dataset.payment,products:readChecklistProducts(modal)});
+      const onPick=e=>{
+        const services=readChecklistServices(modal);
+        if(!services.length){alert('Selecione ao menos um serviço.');return}
+        finish({
+          payment:e.currentTarget.dataset.payment,
+          products:readChecklistProducts(modal),
+          service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
+        });
+      };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
       const pickEls=modal.querySelectorAll('[data-payment]');
       function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));pickEls.forEach(el=>el.removeEventListener('click',onPick))}
@@ -153,13 +165,14 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null;
+    let paymentMethod=null,completionProducts=null,completionService=null;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
-      const choice=await choosePaymentMethod(parseProducts(booking||{}));
+      const choice=await choosePaymentMethod(booking||{});
       if(!choice)return;
       paymentMethod=choice.payment;
       completionProducts=choice.products;
+      completionService=choice.service;
     }else{
       const prompts={no_show:'Registrar ausência?',cancelled:'Cancelar e liberar o horário? O cliente receberá um e-mail de aviso caso tenha e-mail cadastrado.'};
       if(prompts[status]&&!confirm(prompts[status]))return;
@@ -170,6 +183,7 @@
       const body={booking_id:id,status};
       if(paymentMethod)body.payment_method=paymentMethod;
       if(completionProducts)body.selected_products=completionProducts;
+      if(completionService)body.service=completionService;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
       await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
