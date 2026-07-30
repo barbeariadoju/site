@@ -101,6 +101,11 @@ Deno.serve(async (request: Request) => {
     // comprada depois no Débito). Opcional — quando ausente, o produto é considerado
     // pago na mesma forma do serviço (nenhum registro antigo precisa ser migrado).
     const productsPaymentMethod = body?.products_payment_method != null ? String(body.products_payment_method).trim() : ''
+    // Controle manual (checkbox no "Concluir") de pedir avaliação no Google quando o
+    // cliente responder satisfeito na pesquisa — o Juliano desmarca pra quem já sabe que
+    // avaliou antes. Só um booleano puro, sem "trim" (não é string).
+    const hasGoogleReviewChange = typeof body?.request_google_review === 'boolean'
+    const requestGoogleReview = hasGoogleReviewChange ? Boolean(body.request_google_review) : true
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
@@ -138,7 +143,7 @@ Deno.serve(async (request: Request) => {
     log('payload_validated', { requestId, bookingId, status, hasProducts: Boolean(selectedProducts), hasServiceUpdate: Boolean(serviceUpdate), userId: authData.user.id })
 
     if (!bookingId) return fail('validation_booking_id', 'Agendamento não informado.', 400, { requestId })
-    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !serviceUpdate) {
+    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate) {
       return fail('validation_nothing_to_update', 'Informe um status, o serviço, os produtos ou a forma de pagamento a atualizar.', 400, { requestId })
     }
     if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
@@ -191,6 +196,7 @@ Deno.serve(async (request: Request) => {
     if (hasStatusChange) updatePayload.status = status
     if (hasPaymentMethodChange) updatePayload.payment_method = paymentMethod
     if (hasProductsPaymentMethodChange) updatePayload.products_payment_method = productsPaymentMethod
+    if (hasGoogleReviewChange) updatePayload.request_google_review = requestGoogleReview
     if (hasStatusChange && status === 'cancelled') {
       rebookingToken = newToken()
       updatePayload.rebooking_token_hash = await hash(rebookingToken)
@@ -233,7 +239,7 @@ Deno.serve(async (request: Request) => {
     // pagamento no histórico do cliente, para o dono ter rastreabilidade de quem/quando
     // alterou o agendamento. Não bloqueia a resposta se falhar.
     const isStatusChange = hasStatusChange && current.status !== status
-    if (isStatusChange || selectedProducts || serviceUpdate || hasPaymentMethodChange || hasProductsPaymentMethodChange) {
+    if (isStatusChange || selectedProducts || serviceUpdate || hasPaymentMethodChange || hasProductsPaymentMethodChange || hasGoogleReviewChange) {
       try {
         const statusLabels: Record<string, string> = {
           pending: 'aguardando confirmação',

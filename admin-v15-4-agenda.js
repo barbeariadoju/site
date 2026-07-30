@@ -93,13 +93,14 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><label class="admin-checkbox-row" style="margin-top:16px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
       modal.querySelector('[data-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
+      modal.querySelector('[data-request-google-review]').checked=true;
       let selectedPayment='',selectedProductsPayment='';
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
@@ -127,6 +128,7 @@
           products_payment_method:selectedProductsPayment||null,
           products:readChecklistProducts(modal),
           service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
+          request_google_review:modal.querySelector('[data-request-google-review]').checked,
         });
       };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
@@ -215,7 +217,7 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null;
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
@@ -224,6 +226,7 @@
       completionProducts=choice.products;
       completionService=choice.service;
       completionProductsPayment=choice.products_payment_method;
+      completionRequestGoogleReview=choice.request_google_review;
     }else{
       const prompts={no_show:'Registrar ausência?',cancelled:'Cancelar e liberar o horário? O cliente receberá um e-mail de aviso caso tenha e-mail cadastrado.'};
       if(prompts[status]&&!confirm(prompts[status]))return;
@@ -236,6 +239,7 @@
       if(completionProductsPayment)body.products_payment_method=completionProductsPayment;
       if(completionProducts)body.selected_products=completionProducts;
       if(completionService)body.service=completionService;
+      if(typeof completionRequestGoogleReview==='boolean')body.request_google_review=completionRequestGoogleReview;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
       await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}

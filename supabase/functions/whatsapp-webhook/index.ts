@@ -205,8 +205,23 @@ Deno.serve(async (request: Request) => {
     if (pending) {
       const normalizedReply = normalize(text)
       const trimmedNormalized = normalizedReply.trim()
-      const isSatisfied = /satisfeit|otimo|otima|👍/.test(normalizedReply) || text.includes('😊') || /^bo[am]!?$/.test(trimmedNormalized)
-      const isUnsatisfied = /insatisfeit|ruim|nao gostei|👎/.test(normalizedReply) || text.includes('🙁') || text.includes('😕')
+      // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
+      // 😊/🙁 exato oferecido no menu — caso real (Adalton, 30/07/2026): cliente respondeu
+      // 😂 e depois 😄, a JuIA não reconheceu nenhum dos dois e ficou repetindo "não entendi".
+      // Alternação de emoji literal (não classe [...]) porque char class sem flag /u quebra
+      // com emoji fora do BMP (par substituto vira 2 "caracteres" errados).
+      const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|🥰|😍|🤩|👍|🙌|❤/
+      const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|👎|💔/
+      const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized)
+      const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text)
+      // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
+      // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
+      // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
+      // sempre, mesmo tentando marcar um horário novo. Caso real (Lucas, 30/07/2026): tentou
+      // agendar por texto e por áudio com uma pesquisa pendente, os dois caíram na armadilha.
+      // Respostas de satisfação são sempre curtas (emoji, "bom", "satisfeito" etc.) — só
+      // aplica o gate de "não entendi" pra mensagens curtas; o resto cai pro fluxo normal.
+      const ambiguousShortReply = trimmedNormalized.length <= 40
 
       if (pending.status === 'feedback') {
         const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
@@ -235,9 +250,15 @@ Deno.serve(async (request: Request) => {
         const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: null })
         if (submitResult?.ok) {
           const { data: alreadyReviewed } = await admin.rpc('customer_already_reviewed', { p_customer_id: pending.customer_id })
+          // v28.25.0: o Juliano controla por atendimento (checkbox no "Concluir") se quer
+          // pedir avaliação no Google — desmarcado quando já sabe que aquele cliente já
+          // avaliou (a checagem automática abaixo só cobre quem clicou no nosso link antes).
+          const skipGoogleAsk = alreadyReviewed || pending.request_google_review === false
           const reply = alreadyReviewed
             ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
-            : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
+            : skipGoogleAsk
+              ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
+              : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
           await sendWhatsapp(phone, reply)
           await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           return json({ ok: true, satisfaction: 'satisfied' })
@@ -266,13 +287,15 @@ Deno.serve(async (request: Request) => {
           }
           return json({ ok: true, satisfaction: 'unsatisfied' })
         }
-      } else {
+      } else if (ambiguousShortReply) {
         const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
         await sendWhatsapp(phone, reply)
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
         return json({ ok: true, satisfaction: 'unclear' })
       }
-      // submitResult veio ok:false (ex: token expirado após 30 dias) — cai pro fluxo normal da JuIA abaixo
+      // Mensagem longa/claramente sobre outro assunto (não curta e ambígua) ou
+      // submitResult veio ok:false (ex: token expirado após 30 dias) — cai pro fluxo
+      // normal da JuIA abaixo, sem travar o cliente na pesquisa.
     }
 
     if (!text) {

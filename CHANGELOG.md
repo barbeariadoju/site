@@ -1,3 +1,9 @@
+## 28.25.0 — Controle de avaliação Google + 2 correções na JuIA do WhatsApp
+
+- **Checkbox "Pedir avaliação no Google" no "Concluir atendimento"** (marcado por padrão): quando desmarcado, se o cliente responder satisfeito na pesquisa, a JuIA manda um agradecimento reforçando as formas de agendamento em vez de pedir avaliação — pro Juliano usar em clientes que já sabe que avaliaram. Novo campo `bookings.request_google_review`/`experience_requests.request_google_review` (migration `055`).
+- **JuIA (WhatsApp) não reconhecia emojis de satisfação além do 😊/🙁 exatos do menu**: cliente respondeu 😂 e depois 😄 (pesquisa de satisfação) e ficou preso em "não entendi" repetido. Ampliado pra reconhecer a família toda de emojis positivos/negativos comuns.
+- **Bug maior no mesmo fluxo**: qualquer cliente com pesquisa de satisfação pendente que mandasse uma mensagem que não fosse satisfeito/insatisfeito (pedido de agendamento novo, pergunta, áudio) ficava travado em "não entendi, satisfeito ou insatisfeito?" para sempre — inclusive tentando marcar um horário novo. Agora só aplica esse "gate" pra mensagens curtas (até 40 caracteres, o padrão de uma resposta de satisfação); o resto cai direto no fluxo normal da JuIA.
+
 ## 28.24.0 — Cards de Agenda/Atendimento redesenhados (colapsáveis)
 
 - **Cards de agendamento agora vêm colapsados por padrão**: só hora, nome, serviço, status e total — uma linha compacta, no estilo listas do iOS. Clique no card expande e mostra tudo (telefone, duração, preços, pagamento, produtos, observações, ações). Resolve a reclamação de que a tela ficava "gigante" e obrigava rolar muito com vários agendamentos no dia.
