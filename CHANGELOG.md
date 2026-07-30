@@ -1,3 +1,10 @@
+## 28.26.0 — Cliente no Novo agendamento, rascunho persistente, Dashboard e Relatórios
+
+- **Campo "Cliente" do Novo agendamento trocou o `<datalist>` nativo por um dropdown próprio** (mesmo padrão do Atendimento Balcão), mostrando nome + telefone: corrige dois bugs reais — 1) o popup nativo "sequestrava" a seta-esquerda do teclado, impedindo corrigir o nome digitado; 2) com dois clientes de mesmo nome, não dava pra saber/escolher qual dos dois (agora aparecem os dois, distinguidos pelo telefone).
+- **Rascunho do Novo agendamento não se perde mais ao navegar pra outra tela**: nome, telefone, data, horário, observação e serviços ficam salvos (sessionStorage) e voltam automaticamente se você sair da tela sem salvar. Antes, sair pra conferir algo e voltar resetava tudo pro padrão (hoje, 08:00).
+- **Dashboard**: novos indicadores "Concluídos" e "Ausências" (hoje), e os atendimentos da lista "Agenda de hoje" agora são clicáveis — abrem o mesmo detalhe completo (pagamento, produtos, serviço) dos cards da Agenda, com link direto pra editar lá.
+- **Relatórios**: modo "Dia" ganhou um seletor de data direta (calendário), pra pular direto pra qualquer dia sem clicar "‹" várias vezes. Corrigido também um estouro de layout: números grandes (ex. "R$ 2.448,00") furavam a borda do card em vez de encolher/quebrar linha.
+
 ## 28.25.0 — Controle de avaliação Google + 2 correções na JuIA do WhatsApp
 
 - **Checkbox "Pedir avaliação no Google" no "Concluir atendimento"** (marcado por padrão): quando desmarcado, se o cliente responder satisfeito na pesquisa, a JuIA manda um agradecimento reforçando as formas de agendamento em vez de pedir avaliação — pro Juliano usar em clientes que já sabe que avaliaram. Novo campo `bookings.request_google_review`/`experience_requests.request_google_review` (migration `055`).

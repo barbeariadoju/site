@@ -45,6 +45,9 @@
     $('rel-mode-month').classList.toggle('is-active', m === 'month');
     $('rel-mode-week').classList.toggle('is-active', m === 'week');
     $('rel-mode-day').classList.toggle('is-active', m === 'day');
+    // Seletor de data direta só faz sentido no modo Dia — pedido do Juliano: "quero ver
+    // quanto faturei na quinta passada" sem precisar clicar ‹ várias vezes até chegar lá.
+    $('rel-day-picker').hidden = m !== 'day';
     render();
   }
 
@@ -70,6 +73,9 @@
     $('rel-mode-month').onclick = () => setMode('month');
     $('rel-mode-week').onclick = () => setMode('week');
     $('rel-mode-day').onclick = () => setMode('day');
+    // Ir direto pra uma data específica no modo Dia (ex.: "quanto faturei na quinta
+    // passada") em vez de clicar ‹ várias vezes até chegar lá.
+    $('rel-day-picker').onchange = (e) => { if (!e.target.value) return; ref = new Date(e.target.value + 'T12:00:00'); render(); };
     await load();
   }
   async function load() {
@@ -100,6 +106,7 @@
     const { start, end, label, atCurrent } = getRange();
     $('rel-month-label').textContent = label;
     $('rel-next').disabled = atCurrent;
+    $('rel-day-picker').value = iso(ref);
 
     const inRange = bookings.filter(x => { const d = x.booking_date || ''; return d >= start && d <= end; });
     const completed = inRange.filter(x => x.status === 'completed');
