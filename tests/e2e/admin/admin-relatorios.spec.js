@@ -4,6 +4,7 @@
 // Contas esperadas (mês atual):
 //   concluídos: 3 (Ana 40+0, Bruno 60+25, Ana 40+10)  → faturamento R$ 175,00
 //   ticket médio: 175 / 3 = R$ 58,33
+//   média por cliente: 175 / 2 = R$ 87,50
 //   clientes únicos (por telefone): 2 (Ana e Bruno)
 //   faltas (no_show): 1 (Carla)
 //   satisfação: 2 respostas (1 satisfeito, 1 sugestão) → 50%
@@ -20,6 +21,7 @@ test('Relatórios calculam faturamento, ticket, clientes, faltas e satisfação'
   await expect(page.locator('#rel-revenue')).toHaveText(/R\$\s?175,00/);
   await expect(page.locator('#rel-completed')).toHaveText('3');
   await expect(page.locator('#rel-avg')).toHaveText(/R\$\s?58,33/);
+  await expect(page.locator('#rel-avg-customer')).toHaveText(/R\$\s?87,50/);
   await expect(page.locator('#rel-customers')).toHaveText('2');
   await expect(page.locator('#rel-noshows')).toHaveText('1');
   await expect(page.locator('#rel-satisfaction')).toContainText('50');

@@ -11,7 +11,7 @@
   const ddmm = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
   let bookings = [], surveys = [];
-  let mode = 'month';            // 'month' | 'week'
+  let mode = 'month';            // 'month' | 'week' | 'day'
   let ref = new Date(); ref.setHours(0, 0, 0, 0); // data de referência dentro do período exibido
 
   // Semana do relatório = terça (2) a sábado (6), os dias em que a barbearia abre.
@@ -19,6 +19,10 @@
 
   // Retorna o intervalo [start,end] (strings YYYY-MM-DD), o rótulo e se é o período atual.
   function getRange() {
+    if (mode === 'day') {
+      const dayIso = iso(ref);
+      return { start: dayIso, end: dayIso, label: cap(ref.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })), atCurrent: dayIso >= iso(new Date()) };
+    }
     if (mode === 'week') {
       const start = weekStartTue(ref);
       const end = new Date(start); end.setDate(start.getDate() + 4); // terça + 4 = sábado
@@ -31,7 +35,8 @@
     return { start: iso(start), end: iso(end), label: cap(ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })), atCurrent };
   }
   function shift(dir) {
-    if (mode === 'week') { ref.setDate(ref.getDate() + 7 * dir); }
+    if (mode === 'day') { ref.setDate(ref.getDate() + dir); }
+    else if (mode === 'week') { ref.setDate(ref.getDate() + 7 * dir); }
     else { ref = new Date(ref.getFullYear(), ref.getMonth() + dir, 1); }
   }
   function setMode(m) {
@@ -39,6 +44,7 @@
     mode = m; ref = new Date(); ref.setHours(0, 0, 0, 0);
     $('rel-mode-month').classList.toggle('is-active', m === 'month');
     $('rel-mode-week').classList.toggle('is-active', m === 'week');
+    $('rel-mode-day').classList.toggle('is-active', m === 'day');
     render();
   }
 
@@ -63,6 +69,7 @@
     $('rel-next').onclick = () => { if (getRange().atCurrent) return; shift(1); render(); };
     $('rel-mode-month').onclick = () => setMode('month');
     $('rel-mode-week').onclick = () => setMode('week');
+    $('rel-mode-day').onclick = () => setMode('day');
     await load();
   }
   async function load() {
@@ -103,6 +110,7 @@
     const revenue = revenueServ + revenueProd;
     const avg = completed.length ? revenue / completed.length : 0;
     const phones = new Set(completed.map(x => phoneDigits(x.customer_phone)).filter(Boolean));
+    const avgPerCustomer = phones.size ? revenue / phones.size : 0;
 
     // Satisfação: pesquisas criadas dentro do período selecionado.
     const surveysRange = surveys.filter(s => { const k = iso(new Date(s.created_at)); return k >= start && k <= end; });
@@ -115,6 +123,7 @@
     $('rel-revenue').textContent = money(revenue);
     $('rel-completed').textContent = completed.length;
     $('rel-avg').textContent = money(avg);
+    $('rel-avg-customer').textContent = money(avgPerCustomer);
     $('rel-customers').textContent = phones.size;
     $('rel-satisfaction').textContent = satRate === null ? '—' : pct(satRate);
     $('rel-noshows').textContent = noShows.length;

@@ -89,6 +89,11 @@ export function makeFixtures(overrides = {}) {
       { alert_key: 'whatsapp_connection', last_value: 'open', last_checked_at: tsOfMonth(9, 8), created_at: tsOfMonth(1), updated_at: tsOfMonth(9, 8) },
     ],
 
+    customer_timeline: [
+      { id: 1, customer_id: ANA.id, booking_id: null, event_type: 'booking_status_changed', title: 'Agendamento marcado como concluído', details: { from: 'confirmed', to: 'completed' }, created_at: tsOfMonth(3, 11) },
+      { id: 2, customer_id: ANA.id, booking_id: null, event_type: 'booking_details_updated', title: 'Produtos do atendimento atualizados', details: { products: [{ name: 'Pomada Modeladora', price: 30 }] }, created_at: tsOfMonth(3, 12) },
+    ],
+
     push_subscriptions: [
       { id: 'mock-ps-1', endpoint: 'https://example.com/push/mock-endpoint', keys: { p256dh: 'mock', auth: 'mock' }, device_label: 'Dispositivo de teste', created_at: tsOfMonth(1), last_seen_at: tsOfMonth(9) },
     ],

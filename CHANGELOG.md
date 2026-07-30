@@ -1,3 +1,9 @@
+## 28.22.0 — Auditoria no CRM, 3 campos de preço e novos filtros de Relatórios
+
+- **Timeline de auditoria na tela do cliente (CRM)**: novo botão "🕘 Auditoria" em cada card de cliente (`admin-clientes.html`) mostra os eventos já registrados na tabela `customer_timeline` (correções de status/serviço/produtos/pagamento feitas pelo admin) — carregado sob demanda ao abrir, sem impactar o carregamento normal da tela. Antes essa tabela era só gravada (pelo `admin-booking-status`), nunca lida em lugar nenhum do painel.
+- **Cards de agendamento (Agenda/Atendimento) mostram 3 campos separados** — Serviços, Produtos e Total — em vez de um valor só combinado perto do nome, que ficava ambíguo por não ter rótulo e parecia repetir o subtotal de produtos logo abaixo.
+- **Relatórios ganhou modo "Dia"** (além de Mês/Semana já existentes) e um novo indicador **"Média por cliente"** (faturamento ÷ clientes diferentes atendidos no período) — diferente do "Ticket médio", que divide pelo número de atendimentos (um mesmo cliente pode ter mais de um no período).
+
 ## 28.21.2 — Link do Facebook no vCard
 
 - **`barbearia-do-ju.vcf`**: adicionado link do Facebook (`item6.URL`/`X-ABLabel`, mesmo padrão dos outros links sociais).
