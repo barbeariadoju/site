@@ -24,6 +24,7 @@
         if(d.service)parts.push(`Serviço → ${esc(d.service.name)} (${money(d.service.price)})`);
         if(d.products&&d.products.length)parts.push(`Produtos → ${d.products.map(p=>esc(p.name)).join(', ')}`);
         if(d.payment_method)parts.push(`Pagamento → ${esc(d.payment_method)}`);
+        if(d.products_payment_method)parts.push(`Pagamento dos produtos → ${esc(d.products_payment_method)}`);
         return parts.join(' • ');
       }
       case 'attendance_completed':case 'booking_completed':return `${d.services?esc(d.services)+' • ':''}${d.value!=null?money(d.value):''}`;

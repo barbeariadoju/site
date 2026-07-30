@@ -130,7 +130,7 @@
     const box = $('balcao-today-list');
     const today = isoLocal(new Date());
     const { data, error } = await sb.from('bookings')
-      .select('id,customer_name,service_name,service_price,products_price,selected_products,start_time,payment_method')
+      .select('id,customer_name,service_name,service_price,products_price,selected_products,start_time,payment_method,products_payment_method')
       .eq('channel', 'balcao').eq('booking_date', today)
       .order('start_time', { ascending: true });
     if (error) { box.innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
@@ -138,7 +138,11 @@
     box.innerHTML = data.map(x => {
       const products = Array.isArray(x.selected_products) ? x.selected_products : [];
       const productsNote = products.length ? ` + ${products.map(p => p.name).join(', ')}` : '';
-      return `<div class="balcao-log-row"><div><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)}${esc(productsNote)} • ${money(Number(x.service_price || 0) + Number(x.products_price || 0))}</small></div><span class="balcao-log-tag">${(x.start_time || '').slice(0, 5)} · ${PAYMENT_LABELS[x.payment_method] || x.payment_method || '—'}</span></div>`;
+      const hasSplit = x.products_payment_method && x.products_payment_method !== x.payment_method;
+      const paymentTag = hasSplit
+        ? `${PAYMENT_LABELS[x.payment_method] || x.payment_method} + ${PAYMENT_LABELS[x.products_payment_method] || x.products_payment_method}`
+        : (PAYMENT_LABELS[x.payment_method] || x.payment_method || '—');
+      return `<div class="balcao-log-row"><div><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)}${esc(productsNote)} • ${money(Number(x.service_price || 0) + Number(x.products_price || 0))}</small></div><span class="balcao-log-tag">${(x.start_time || '').slice(0, 5)} · ${esc(paymentTag)}</span></div>`;
     }).join('');
   }
 

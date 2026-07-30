@@ -53,6 +53,17 @@
   // mas sem rótulo, e batia visualmente com o subtotal de produtos logo abaixo, parecendo
   // repetido/contraditório.
   function priceSummaryHtml(x){const s=Number(x.service_price||0),p=Number(x.products_price||0);return `<div class="admin-price-summary"><span class="admin-price-chip"><small>Serviços</small><b>${money(s)}</b></span><span class="admin-price-chip"><small>Produtos</small><b>${money(p)}</b></span><span class="admin-price-chip is-total"><small>Total</small><b>${money(s+p)}</b></span></div>`}
+  const PAYMENT_LABELS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
+  // Mostra a forma de pagamento do atendimento — e uma segunda chip só quando o produto foi
+  // pago diferente do serviço (v28.23.0, ex.: corte no Pix + água no Débito na saída).
+  function paymentSummaryHtml(x){
+    if(!x.payment_method)return '';
+    const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
+    const serviceLabel=PAYMENT_LABELS[x.payment_method]||x.payment_method;
+    if(!hasSplit)return `<div class="admin-payment-summary"><span class="admin-payment-chip">💳 ${esc(serviceLabel)}</span></div>`;
+    const productsLabel=PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method;
+    return `<div class="admin-payment-summary"><span class="admin-payment-chip">💳 Serviço: ${esc(serviceLabel)}</span><span class="admin-payment-chip">💳 Produtos: ${esc(productsLabel)}</span></div>`;
+  }
   async function init(){bindGlobal();if(!sb){showLogin('Configuração do Supabase ausente.');return}const {data,error}=await sb.auth.getSession();if(error){showLogin(error.message);return}session=data.session;renderAuth();sb.auth.onAuthStateChange((_e,s)=>{session=s;renderAuth()})}
   function bindGlobal(){$('admin-signin')?.addEventListener('click',signIn);$('admin-signout')?.addEventListener('click',async()=>{await sb.auth.signOut()});document.querySelectorAll('[data-admin-nav]').forEach(a=>{if(a.dataset.adminNav===page)a.classList.add('is-active')})}
   async function signIn(){const msg=$('admin-message');msg.textContent='Entrando...';const {error}=await sb.auth.signInWithPassword({email:$('admin-email').value,password:$('admin-password').value});msg.textContent=error?(error.message.includes('Invalid login')?'E-mail ou senha incorretos.':error.message):''}

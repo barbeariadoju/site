@@ -21,9 +21,9 @@ const CARLA = { id: 'cccccccc-0000-4000-8000-000000000003', name: 'Carla Exemplo
 const booking = (over) => ({
   id: 'mock-bk-' + Math.random().toString(36).slice(2, 10),
   customer_name: ANA.name, customer_phone: ANA.phone, customer_email: ANA.email,
-  service_name: 'Corte de cabelo', service_price: 40, products_price: 0, products: null,
+  service_name: 'Corte de cabelo', service_price: 40, products_price: 0, products: null, duration_minutes: 30,
   booking_date: dayOfMonth(3), start_time: '10:00:00', end_time: '10:30:00',
-  status: 'completed', channel: 'site', notes: null,
+  status: 'completed', channel: 'site', notes: null, payment_method: 'pix', products_payment_method: null,
   created_at: tsOfMonth(1), updated_at: tsOfMonth(1),
   ...over,
 });
@@ -35,7 +35,7 @@ export function makeFixtures(overrides = {}) {
     // Futuro próximo: 1 confirmado e 1 pendente (aparecem na agenda).
     bookings: [
       booking({}), // Ana, Corte, 40+0
-      booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Corte + Barba', service_price: 60, products_price: 25, booking_date: dayOfMonth(5), start_time: '14:00:00', end_time: '15:00:00', channel: 'balcao' }),
+      booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Corte + Barba', service_price: 60, products_price: 25, selected_products: [{ name: 'Água', price: 25 }], booking_date: dayOfMonth(5), start_time: '14:00:00', end_time: '15:00:00', channel: 'balcao', payment_method: 'pix', products_payment_method: 'debito' }),
       booking({ booking_date: dayOfMonth(8), products_price: 10, start_time: '11:00:00', end_time: '11:30:00' }),
       booking({ booking_date: lastMonth, created_at: new Date(today.getFullYear(), today.getMonth() - 1, 15, 10, 0, 0).toISOString() }),
       booking({ customer_name: CARLA.name, customer_phone: CARLA.phone, customer_email: null, status: 'no_show', booking_date: dayOfMonth(6), start_time: '16:00:00', end_time: '16:30:00' }),

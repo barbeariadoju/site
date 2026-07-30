@@ -1,3 +1,10 @@
+## 28.23.0 — Forma de pagamento separada pra produtos
+
+- **Novo campo `products_payment_method`** em `bookings` (migration `054`): até aqui um atendimento tinha só 1 forma de pagamento pra tudo. Caso real: corte pago no Pix, mas o cliente comprou uma água na saída e pagou no Débito — não tinha como registrar certo. Campo opcional; quando vazio, o produto é considerado pago na mesma forma do serviço (nenhum registro antigo precisa mudar).
+- **Modais "Concluir" e "✎ Editar atendimento"** ganharam um 2º seletor de pagamento, opcional, só pros produtos. O "Concluir" deixou de fechar com 1 clique no pagamento — agora tem botão "Concluir atendimento" no final, pra dar tempo de escolher os 2 pagamentos quando forem diferentes.
+- **Cards de Agenda/Atendimento e o log do Balcão** mostram a forma de pagamento — 1 chip quando é só uma, 2 chips ("Serviço: Pix" / "Produtos: Débito") quando é diferente.
+- Registrado na timeline de auditoria do cliente quando o pagamento dos produtos é alterado.
+
 ## 28.22.1 — Correção: "Ajustar carimbos" não salvava
 
 - **Bug crítico desde a criação do recurso (v28.21.0)**: o botão "✎ Ajustar carimbos" (Fidelidade) sempre falhava com `column reference "points" is ambiguous` e nunca salvava nada — a RPC `admin_adjust_loyalty_points` tinha uma coluna de retorno com o mesmo nome de uma coluna da tabela `loyalty_accounts`, deixando o Postgres em dúvida sobre qual `points` usar no `UPDATE ... RETURNING`. Corrigido qualificando as colunas com alias (migration `053`). Testado direto no banco (cliente fictício) antes de confirmar.

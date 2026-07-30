@@ -97,6 +97,10 @@ Deno.serve(async (request: Request) => {
     const hasStatusChange = body?.status != null && String(body.status).trim() !== ''
     const status = hasStatusChange ? String(body.status).trim() : ''
     const paymentMethod = body?.payment_method != null ? String(body.payment_method).trim() : ''
+    // Forma de pagamento dos PRODUTOS, separada da do serviço (ex.: corte no Pix, água
+    // comprada depois no Débito). Opcional — quando ausente, o produto é considerado
+    // pago na mesma forma do serviço (nenhum registro antigo precisa ser migrado).
+    const productsPaymentMethod = body?.products_payment_method != null ? String(body.products_payment_method).trim() : ''
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
@@ -114,6 +118,7 @@ Deno.serve(async (request: Request) => {
     // caso real: atendimento concluído às pressas sem escolher pagamento certo, ou um
     // atendimento que na hora não tinha forma de pagamento definida ainda.
     const hasPaymentMethodChange = body?.payment_method != null && String(body.payment_method).trim() !== ''
+    const hasProductsPaymentMethodChange = body?.products_payment_method != null && String(body.products_payment_method).trim() !== ''
 
     // Serviço realmente executado pode diferir do que foi agendado (ex.: cliente pediu
     // outro serviço na hora) — permite corrigir service_name/service_price/duration_minutes
@@ -133,12 +138,15 @@ Deno.serve(async (request: Request) => {
     log('payload_validated', { requestId, bookingId, status, hasProducts: Boolean(selectedProducts), hasServiceUpdate: Boolean(serviceUpdate), userId: authData.user.id })
 
     if (!bookingId) return fail('validation_booking_id', 'Agendamento não informado.', 400, { requestId })
-    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !serviceUpdate) {
+    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !serviceUpdate) {
       return fail('validation_nothing_to_update', 'Informe um status, o serviço, os produtos ou a forma de pagamento a atualizar.', 400, { requestId })
     }
     if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
     if (hasPaymentMethodChange && !allowedPaymentMethods.includes(paymentMethod)) {
       return fail('validation_payment_method', 'Forma de pagamento inválida.', 400, { requestId, paymentMethod })
+    }
+    if (hasProductsPaymentMethodChange && !allowedPaymentMethods.includes(productsPaymentMethod)) {
+      return fail('validation_products_payment_method', 'Forma de pagamento dos produtos inválida.', 400, { requestId, productsPaymentMethod })
     }
     // Concluir um atendimento sempre exige a forma de pagamento — é o que alimenta o
     // relatório financeiro. Validado aqui também (não só na tela) porque o admin-booking-status
@@ -182,6 +190,7 @@ Deno.serve(async (request: Request) => {
     const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (hasStatusChange) updatePayload.status = status
     if (hasPaymentMethodChange) updatePayload.payment_method = paymentMethod
+    if (hasProductsPaymentMethodChange) updatePayload.products_payment_method = productsPaymentMethod
     if (hasStatusChange && status === 'cancelled') {
       rebookingToken = newToken()
       updatePayload.rebooking_token_hash = await hash(rebookingToken)
@@ -224,7 +233,7 @@ Deno.serve(async (request: Request) => {
     // pagamento no histórico do cliente, para o dono ter rastreabilidade de quem/quando
     // alterou o agendamento. Não bloqueia a resposta se falhar.
     const isStatusChange = hasStatusChange && current.status !== status
-    if (isStatusChange || selectedProducts || serviceUpdate || hasPaymentMethodChange) {
+    if (isStatusChange || selectedProducts || serviceUpdate || hasPaymentMethodChange || hasProductsPaymentMethodChange) {
       try {
         const statusLabels: Record<string, string> = {
           pending: 'aguardando confirmação',
@@ -256,6 +265,7 @@ Deno.serve(async (request: Request) => {
             service: serviceUpdate ?? undefined,
             products: selectedProducts ?? undefined,
             payment_method: hasPaymentMethodChange ? paymentMethod : undefined,
+            products_payment_method: hasProductsPaymentMethodChange ? productsPaymentMethod : undefined,
             changed_by: authData.user.id,
             booking_date: current.booking_date,
             start_time: current.start_time,
