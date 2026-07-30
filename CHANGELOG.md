@@ -1,3 +1,7 @@
+## 28.22.1 — Correção: "Ajustar carimbos" não salvava
+
+- **Bug crítico desde a criação do recurso (v28.21.0)**: o botão "✎ Ajustar carimbos" (Fidelidade) sempre falhava com `column reference "points" is ambiguous` e nunca salvava nada — a RPC `admin_adjust_loyalty_points` tinha uma coluna de retorno com o mesmo nome de uma coluna da tabela `loyalty_accounts`, deixando o Postgres em dúvida sobre qual `points` usar no `UPDATE ... RETURNING`. Corrigido qualificando as colunas com alias (migration `053`). Testado direto no banco (cliente fictício) antes de confirmar.
+
 ## 28.22.0 — Auditoria no CRM, 3 campos de preço e novos filtros de Relatórios
 
 - **Timeline de auditoria na tela do cliente (CRM)**: novo botão "🕘 Auditoria" em cada card de cliente (`admin-clientes.html`) mostra os eventos já registrados na tabela `customer_timeline` (correções de status/serviço/produtos/pagamento feitas pelo admin) — carregado sob demanda ao abrir, sem impactar o carregamento normal da tela. Antes essa tabela era só gravada (pelo `admin-booking-status`), nunca lida em lugar nenhum do painel.
