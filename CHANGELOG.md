@@ -1,3 +1,7 @@
+## 28.23.1 — Resumo de preço/pagamento mais compacto
+
+- **Os 3 campos (Serviços/Produtos/Total) e a forma de pagamento viraram uma única linha de texto discreto**, no lugar das caixas grandes lançadas na v28.22.0/28.23.0. Ficava alto demais e obrigava rolar muito a tela com várias entradas na Agenda/Atendimento. Sem mudança de dado, só de layout.
+
 ## 28.23.0 — Forma de pagamento separada pra produtos
 
 - **Novo campo `products_payment_method`** em `bookings` (migration `054`): até aqui um atendimento tinha só 1 forma de pagamento pra tudo. Caso real: corte pago no Pix, mas o cliente comprou uma água na saída e pagou no Débito — não tinha como registrar certo. Campo opcional; quando vazio, o produto é considerado pago na mesma forma do serviço (nenhum registro antigo precisa mudar).

@@ -48,21 +48,21 @@
   function whatsappLink(x,type='confirm'){const when=formatDate(x.booking_date,{weekday:'long',day:'2-digit',month:'2-digit'});const msg=type==='reminder'?`Olá, ${x.customer_name}! Lembrete do seu horário amanhã, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`:`Olá, ${x.customer_name}! Seu horário está marcado para ${when}, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`;return whatsappBusinessUrl(x.customer_phone,msg)}
   function parseProducts(x){const p=Array.isArray(x.selected_products)?x.selected_products:[];return p.filter(i=>i&&i.name)}
   function productsHtml(x){const items=parseProducts(x);if(!items.length)return '';return `<div class="admin-products"><span class="admin-products-label">🛍 Produtos vendidos</span>${items.map(p=>`<span class="admin-product-chip"><b>${esc(p.name)}</b><small>${money(p.price)}</small></span>`).join('')}<strong class="admin-products-total">${money(x.products_price||items.reduce((a,p)=>a+Number(p.price||0),0))}</strong></div>`}
-  // 3 campos separados (serviço/produtos/total) em vez de um número só combinado — pedido
-  // do Juliano após confusão num print: o valor perto do nome já era o total (serviço+produtos)
-  // mas sem rótulo, e batia visualmente com o subtotal de produtos logo abaixo, parecendo
-  // repetido/contraditório.
-  function priceSummaryHtml(x){const s=Number(x.service_price||0),p=Number(x.products_price||0);return `<div class="admin-price-summary"><span class="admin-price-chip"><small>Serviços</small><b>${money(s)}</b></span><span class="admin-price-chip"><small>Produtos</small><b>${money(p)}</b></span><span class="admin-price-chip is-total"><small>Total</small><b>${money(s+p)}</b></span></div>`}
   const PAYMENT_LABELS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
-  // Mostra a forma de pagamento do atendimento — e uma segunda chip só quando o produto foi
-  // pago diferente do serviço (v28.23.0, ex.: corte no Pix + água no Débito na saída).
-  function paymentSummaryHtml(x){
-    if(!x.payment_method)return '';
-    const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
-    const serviceLabel=PAYMENT_LABELS[x.payment_method]||x.payment_method;
-    if(!hasSplit)return `<div class="admin-payment-summary"><span class="admin-payment-chip">💳 ${esc(serviceLabel)}</span></div>`;
-    const productsLabel=PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method;
-    return `<div class="admin-payment-summary"><span class="admin-payment-chip">💳 Serviço: ${esc(serviceLabel)}</span><span class="admin-payment-chip">💳 Produtos: ${esc(productsLabel)}</span></div>`;
+  // Linha única e compacta (texto discreto, sem caixas) com serviço/produtos/total e a(s)
+  // forma(s) de pagamento — pedido do Juliano depois que a 1ª versão (3 caixas + chips de
+  // pagamento empilhadas) ficou grande demais e obrigava rolar muito com várias entradas.
+  function priceSummaryHtml(x){
+    const s=Number(x.service_price||0),p=Number(x.products_price||0);
+    let pay='';
+    if(x.payment_method){
+      const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
+      const serviceLabel=esc(PAYMENT_LABELS[x.payment_method]||x.payment_method);
+      pay=hasSplit
+        ? ` · 💳 Serviço ${serviceLabel} / Produtos ${esc(PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method)}`
+        : ` · 💳 ${serviceLabel}`;
+    }
+    return `<small class="admin-price-summary">Serviços ${money(s)} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}</small>`;
   }
   async function init(){bindGlobal();if(!sb){showLogin('Configuração do Supabase ausente.');return}const {data,error}=await sb.auth.getSession();if(error){showLogin(error.message);return}session=data.session;renderAuth();sb.auth.onAuthStateChange((_e,s)=>{session=s;renderAuth()})}
   function bindGlobal(){$('admin-signin')?.addEventListener('click',signIn);$('admin-signout')?.addEventListener('click',async()=>{await sb.auth.signOut()});document.querySelectorAll('[data-admin-nav]').forEach(a=>{if(a.dataset.adminNav===page)a.classList.add('is-active')})}
