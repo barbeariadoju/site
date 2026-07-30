@@ -1,3 +1,9 @@
+## 28.27.0 — Mesclar clientes duplicados + correção do "Arquivar" quebrado
+
+- **Novo botão "🔗 Mesclar" no CRM**: junta dois cadastros do mesmo cliente (ex.: pessoa trocou de número e ficou com 2 perfis) num só — move agendamentos, histórico, timeline e pontos de fidelidade (somados, com o mesmo estouro de 10=1 recompensa) pro cadastro escolhido, e apaga o duplicado. Pede confirmação explícita antes de executar.
+- **Corrigido: o botão "Arquivar" do CRM estava quebrado** desde sempre — a função `admin_archive_customer` existia só no arquivo de migration antigo, mas nunca foi criada de fato no banco (achado ao investigar o merge). Recriada.
+- RLS revisado: já estava travado com `is_admin()` em praticamente toda tabela sensível desde 20/07 — a nota antiga na documentação interna dizia o contrário, corrigida.
+
 ## 28.26.0 — Cliente no Novo agendamento, rascunho persistente, Dashboard e Relatórios
 
 - **Campo "Cliente" do Novo agendamento trocou o `<datalist>` nativo por um dropdown próprio** (mesmo padrão do Atendimento Balcão), mostrando nome + telefone: corrige dois bugs reais — 1) o popup nativo "sequestrava" a seta-esquerda do teclado, impedindo corrigir o nome digitado; 2) com dois clientes de mesmo nome, não dava pra saber/escolher qual dos dois (agora aparecem os dois, distinguidos pelo telefone).
