@@ -1,3 +1,9 @@
+## 28.24.0 — Cards de Agenda/Atendimento redesenhados (colapsáveis)
+
+- **Cards de agendamento agora vêm colapsados por padrão**: só hora, nome, serviço, status e total — uma linha compacta, no estilo listas do iOS. Clique no card expande e mostra tudo (telefone, duração, preços, pagamento, produtos, observações, ações). Resolve a reclamação de que a tela ficava "gigante" e obrigava rolar muito com vários agendamentos no dia.
+- Modo Atendimento passou a usar exatamente o mesmo componente de card da Agenda (antes eram dois layouts diferentes) — visual único em todo o sistema.
+- JuIA: adicionada instrução no prompt pra reconhecer quando o cliente só avisa que chegou/está a caminho/vai se atrasar, respondendo direto sem pedir esclarecimento (não precisa mais de uma segunda mensagem pra entender). Testado e publicado com verificação de integridade byte-a-byte.
+
 ## 28.23.1 — Resumo de preço/pagamento mais compacto
 
 - **Os 3 campos (Serviços/Produtos/Total) e a forma de pagamento viraram uma única linha de texto discreto**, no lugar das caixas grandes lançadas na v28.22.0/28.23.0. Ficava alto demais e obrigava rolar muito a tela com várias entradas na Agenda/Atendimento. Sem mudança de dado, só de layout.
