@@ -3,11 +3,13 @@
 <html lang="pt-BR">
 <head>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};(()=>{const v=localStorage.getItem('bdj_cookie_consent_v1');const ok=v==='accepted';gtag('consent','default',{analytics_storage:ok?'granted':'denied',ad_storage:ok?'granted':'denied',ad_user_data:ok?'granted':'denied',ad_personalization:ok?'granted':'denied',wait_for_update:500})})();</script>
-  <!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  <!-- Google Tag Manager (carregado após o "load" — achado real do PageSpeed: gtag.js+gtm.js somavam 600KB
+       com prioridade máxima no <head>, competindo por banda com a imagem principal e atrasando o LCP.
+       Analytics não precisa bloquear a primeira renderização; adiar pro evento "load" não perde eventos
+       porque o dataLayer já existe e continua recebendo pushes normalmente até o GTM carregar de fato). -->
+<script>(function(w,d,s,l,i){
+function loadGTM(){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f)}
+if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 })(window,document,'script','dataLayer','GTM-T9KR76KB');</script>
 <!-- End Google Tag Manager -->
 <meta charset="utf-8"/>
