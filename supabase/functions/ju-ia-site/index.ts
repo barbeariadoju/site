@@ -226,6 +226,22 @@ Deno.serve(async req=>{
  // (ex.: "tem horário agora?", "oi") apagava o serviço já selecionado no turno anterior.
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([,v])=>v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
+ // v28.30.4: numa pergunta sem menção de serviço, o modelo às vezes "presume" o serviço
+ // do histórico do cliente (context.last_services) — caso real (Juliano, 31/07/2026):
+ // áudio "Tem horário hoje?" respondido com "Não encontrei horário para Pezinho
+ // (acabamento)", serviço nunca citado na conversa. O prompt já proíbe, mas o modelo
+ // desobedece de vez em quando — trava em código: serviço NOVO (que não estava no state)
+ // que coincida com o histórico do cliente só entra se a mensagem citar algo parecido
+ // (findServicesLoose). Pedido explícito de "repetir o de sempre" continua funcionando
+ // (repeatRequest, mais abaixo, seta next.services por conta própria depois desta trava).
+ {
+  const prevServices=Array.isArray(state?.services)?state.services:[]
+  const mentionedLoose=findServicesLoose(message).map((s:any)=>s.name)
+  const prefRaw=context?.preferred_services
+  const prefList=Array.isArray(prefRaw)?prefRaw:(typeof prefRaw==='string'&&prefRaw?[prefRaw]:[])
+  const historyServiceNames=[findService(String(context?.last_services||''))?.name,...prefList.map((x:string)=>findService(String(x))?.name)].filter(Boolean)
+  next.services=next.services.filter((n:string)=>prevServices.includes(n)||mentionedLoose.includes(n)||!historyServiceNames.includes(n))
+ }
  next.products=Array.isArray(next.products)?next.products.map((x:string)=>findProduct(x)?.name).filter(Boolean):[]
  // Corrige bug real (cliente Alessio, confundido com "Rossano", 27/07/2026): depois de
  // um agendamento concluído (next.completed=true), se o cliente pede um agendamento NOVO
@@ -1026,7 +1042,29 @@ Deno.serve(async req=>{
  if(keepBothRequest){next.keep_both_bookings=true}
 
  if(intent==='availability'&&!chosen.length){
-  reply=`Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos${next.date?` para ${formatDateBR(next.date)}`:''} pra você.`
+  // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
+  // responde na hora se aquele dia tem agenda aberta (sondando com duração mínima de
+  // 30min) em vez de só perguntar o serviço — num dia fechado, a resposta certa é
+  // "hoje não temos + próximo dia aberto + qual serviço?", tudo numa mensagem
+  // (pedido do Juliano, 31/07/2026, durante o bloqueio de agenda da viagem).
+  if(next.date){
+   const {data:probe}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:30})
+   if(!(probe||[]).length){
+    const nextAvail=await findNextAvailableDate(supabase,next.date,30)
+    if(nextAvail){
+     const weekday=new Date(nextAvail.date+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
+     const noSlotsIntro=next.date===today()?'Hoje não temos horários disponíveis':`Não temos horários em ${formatDateBR(next.date)}`
+     reply=`${noSlotsIntro}. O próximo dia com agenda aberta é ${formatDateBR(nextAvail.date)} (${weekday}). Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
+     next.date=nextAvail.date
+    }else{
+     reply='No momento não encontrei agenda aberta nas próximas semanas. Quer falar direto com a equipe?'
+    }
+   }else{
+    reply=`Temos sim! Qual serviço você tem interesse? Assim já confiro os horários certinhos para ${formatDateBR(next.date)} pra você.`
+   }
+  }else{
+   reply='Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos pra você.'
+  }
   actions=[{label:'Ver serviços',url:'https://www.barbeariadoju.com.br/agendar/'}]
   handoff=false
  }else if(intent==='availability'&&chosen.length&&!next.date){
