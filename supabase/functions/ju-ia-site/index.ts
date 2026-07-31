@@ -110,7 +110,9 @@ async function findNextAvailableDate(supabase:any,fromISO:string,durationMinutes
  }
  return null
 }
-const stripSpaces=(s:string)=>normalize(s).replace(/\s+/g,'')
+// v28.30.5: além de espaços, remove pontuação — "CABELO!" não casava com nada porque o
+// "!" sobrava na comparação densa (caso real do Juliano, 31/07/2026).
+const stripSpaces=(s:string)=>normalize(s).replace(/[^a-z0-9]/g,'')
 // Fallback pra quando o modelo classifica intent "services" mas não extrai
 // nada em updates.services (mensagem curta com mais de um serviço junto, ex.
 // "barba e pezinho", ou erro de digitação, ex. "barbo terapia" por
@@ -408,9 +410,15 @@ Deno.serve(async req=>{
  // pediu handoff (bug real: reclamação "a barba ficou desigual" citava "barba" e
  // virava um menu de opções de barba em vez de manter o handoff da reclamação).
  const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
+ // v28.30.5 — pedido do Juliano (31/07/2026): "cabelo" solto ("eu queria cabelo", "CABELO!")
+ // não era entendido — a JuIA respondia com pergunta genérica ou a lista de mais procurados.
+ // Igual ao padrão da barba: confirma o serviço óbvio ("seria um Corte de cabelo?") em vez
+ // de adivinhar em silêncio ou devolver lista genérica. Não dispara quando a mensagem já
+ // tem "corte" (aí o match normal resolve sozinho) nem quando já há corte/combo escolhido.
+ const bareCabeloAsk=/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
-  const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name)&&!(bareBarbaAsk&&s.category==='barba'))
+  const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name)&&!(bareBarbaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
   if(newOnes.length){
    chosen.push(...newOnes)
    next.services=chosen.map((s:any)=>s.name)
@@ -419,6 +427,22 @@ Deno.serve(async req=>{
    const barbaOptions=services.filter(s=>s.category==='barba')
    reply=`Temos algumas opções de barba: ${barbaOptions.map(s=>`${s.name} (${money(s.price)}, ${s.duration} min)`).join(', ')}. Qual você prefere?`
    actions=barbaOptions.map(s=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
+   intent='other'
+   handoff=false
+  }
+  if(bareCabeloAsk){
+   const corte=findService('Corte de cabelo')
+   const corteLavagem=findService('Corte + Lavagem')
+   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
+   // Já oferece o upgrade de lavagem aqui — marca haircut_wash_asked pra não repetir a
+   // mesma pergunta no turno seguinte, quando o cliente escolher uma das opções.
+   next.haircut_wash_asked=true
+   reply=`Você gostaria de um Corte de cabelo${corte?` (${money(corte.price)}, ${corte.duration} min)`:''}, seria isso?${corteLavagem?` Se preferir, temos também o Corte + Lavagem por ${money(corteLavagem.price)}, com lavagem profissional incluída.`:''}`
+   actions=[
+    ...(corte?[{label:`Corte de cabelo · ${money(corte.price)}`,message:'Quero Corte de cabelo'}]:[]),
+    ...(corteLavagem?[{label:`Corte + Lavagem · ${money(corteLavagem.price)}`,message:'Quero Corte + Lavagem'}]:[]),
+    {label:'Ver todos os serviços',url:'https://www.barbeariadoju.com.br/agendar/'}
+   ]
    intent='other'
    handoff=false
   }
@@ -1034,7 +1058,10 @@ Deno.serve(async req=>{
  // e/ou data, a resposta ficava só por conta do modelo, que às vezes preferia encaminhar
  // pro Juliano em vez de perguntar o que faltava.
  const availabilityAsk=includesAny(normalizedQuestion,['tem horario','tem vaga','horario livre','horario disponivel','algum horario','horario vago','agenda aberta','vaga agora','vaga hoje'])
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk){
+ // !bareCabeloAsk: se acabamos de perguntar "seria um Corte de cabelo?", essa pergunta não
+ // pode ser atropelada pelo fluxo de disponibilidade no mesmo turno (a data, se citada, já
+ // foi guardada dentro do bloco do bareCabeloAsk acima).
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk&&!bareCabeloAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
@@ -1120,7 +1147,14 @@ Deno.serve(async req=>{
    }
   }else if(effectivePeriod){
    const periodSlots=slotsForPeriod(allSlots,effectivePeriod)
-   if(periodSlots.length){
+   if(periodSlots.length>6){
+    // v28.30.5 — pedido do Juliano (31/07/2026): não despejar 20 horários de uma vez.
+    // Mostra o intervalo do período e uma amostra espalhada (início/meio/fim), guiando o
+    // cliente a escolher; ele pode responder qualquer horário, não só os exemplos.
+    const sample=[periodSlots[0],periodSlots[Math.floor(periodSlots.length*0.25)],periodSlots[Math.floor(periodSlots.length/2)],periodSlots[Math.floor(periodSlots.length*0.75)],periodSlots[periodSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
+    reply=`No período da ${periodLabel(effectivePeriod)} tenho horários entre ${periodSlots[0]} e ${periodSlots[periodSlots.length-1]} para ${duration} minutos. Alguns exemplos: ${sample.join(', ')}. Qual horário fica melhor pra você?`
+    actions=sample.map((t:string)=>({label:t,message:t}))
+   }else if(periodSlots.length){
     reply=`No período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
