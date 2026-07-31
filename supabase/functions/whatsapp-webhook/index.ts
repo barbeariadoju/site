@@ -73,6 +73,22 @@ const transcribeAudioMessage = async (
 }
 
 const HISTORY_LIMIT = 10
+// v28.30.0: human_takeover nunca expirava sozinho — depois de QUALQUER handoff (mesmo um
+// pedido simples "quero falar com o Juliano"), o cliente ficava em silêncio permanente,
+// sem nenhuma tela de admin pra limpar isso. Expira sozinho depois de 3h — tempo razoável
+// pro Juliano assumir a conversa pessoalmente, sem deixar clientes ignorados pra sempre.
+const HUMAN_TAKEOVER_WINDOW_MS = 3 * 60 * 60 * 1000
+// v28.30.0: se o cliente manda várias mensagens picadas em sequência rápida (ex.: "oi" /
+// "quero cortar" / "sexta de tarde"), espera um pouco e junta tudo numa única chamada à
+// JuIA em vez de responder cada uma isoladamente — conversa mais natural, menos respostas
+// fragmentadas/contraditórias.
+const DEBOUNCE_MS = 6000
+
+const isTakeoverActive = (row: { human_takeover?: boolean; human_takeover_at?: string | null } | null | undefined) => {
+  if (!row?.human_takeover) return false
+  if (!row.human_takeover_at) return true // registro antigo sem timestamp — trata como ativo, expira na próxima vez que for setado de novo
+  return Date.now() - new Date(row.human_takeover_at).getTime() < HUMAN_TAKEOVER_WINDOW_MS
+}
 
 // Trava de processamento por telefone (lease com expiração): evita que duas mensagens
 // do mesmo cliente, chegando quase ao mesmo tempo, sejam respondidas em paralelo com
@@ -155,6 +171,7 @@ Deno.serve(async (request: Request) => {
       await admin.from('whatsapp_conversations').upsert({
         phone,
         human_takeover: true,
+        human_takeover_at: new Date().toISOString(),
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'phone' })
@@ -199,6 +216,45 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    if (!text) {
+      await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[mídia ou mensagem sem texto]' })
+      return json({ ok: true, skipped: 'no_text' })
+    }
+
+    // Registra a mensagem individual no histórico ANTES de agrupar — o histórico mostra
+    // cada mensagem real como o cliente mandou, mesmo que a IA processe várias juntas.
+    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎙️ ${text}` : text })
+
+    // Buffer/debounce: junta esta mensagem com qualquer outra que ainda esteja "fresca"
+    // (chegou nos últimos DEBOUNCE_MS) pro mesmo telefone, espera um pouco, e só a
+    // invocação que continuar sendo "a mais recente" depois da espera de fato processa
+    // o texto combinado — as outras (mensagens que já foram superadas por uma mais nova)
+    // saem silenciosamente, sem responder nada (a próxima que vencer responde por todas).
+    const { data: beforeBuffer } = await admin.from('whatsapp_conversations').select('buffer_text').eq('phone', phone).maybeSingle()
+    const combinedSoFar = beforeBuffer?.buffer_text ? `${beforeBuffer.buffer_text}\n${text}` : text
+    const myStamp = new Date().toISOString()
+    await admin.from('whatsapp_conversations').upsert({
+      phone,
+      buffer_text: combinedSoFar,
+      buffer_updated_at: myStamp,
+      last_message_at: myStamp,
+      updated_at: myStamp,
+    }, { onConflict: 'phone' })
+
+    await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
+
+    const { data: afterWait } = await admin.from('whatsapp_conversations').select('buffer_updated_at, buffer_text, human_takeover, human_takeover_at').eq('phone', phone).maybeSingle()
+    if (afterWait?.buffer_updated_at !== myStamp) {
+      // Uma mensagem mais nova chegou enquanto esperávamos — ela (ou a próxima depois
+      // dela) é responsável por processar o texto combinado. Esta invocação não responde.
+      return json({ ok: true, skipped: 'debounced_superseded' })
+    }
+
+    // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
+    // (pode ter crescido mais do que só esta mensagem, se chegaram picadas antes) e limpa.
+    text = afterWait?.buffer_text || text
+    await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
+
     const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
     const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
@@ -228,7 +284,6 @@ Deno.serve(async (request: Request) => {
         if (submitResult?.ok) {
           const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
           if (pushSecret) {
             await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -260,7 +315,6 @@ Deno.serve(async (request: Request) => {
               ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
               : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
           return json({ ok: true, satisfaction: 'satisfied' })
         }
       } else if (isUnsatisfied) {
@@ -268,8 +322,7 @@ Deno.serve(async (request: Request) => {
         if (submitResult?.ok) {
           const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
           await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
-          await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+          await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
           const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
           if (pushSecret) {
             await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -290,7 +343,6 @@ Deno.serve(async (request: Request) => {
       } else if (ambiguousShortReply) {
         const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
         await sendWhatsapp(phone, reply)
-        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
         return json({ ok: true, satisfaction: 'unclear' })
       }
       // Mensagem longa/claramente sobre outro assunto (não curta e ambígua) ou
@@ -298,28 +350,23 @@ Deno.serve(async (request: Request) => {
       // normal da JuIA abaixo, sem travar o cliente na pesquisa.
     }
 
-    if (!text) {
-      await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[mídia ou mensagem sem texto]' })
-      return json({ ok: true, skipped: 'no_text' })
-    }
-
-    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎤 ${text}` : text })
-
     const { data: conversation } = await admin
       .from('whatsapp_conversations')
-      .select('state, human_takeover')
+      .select('state, human_takeover, human_takeover_at')
       .eq('phone', phone)
       .maybeSingle()
 
+    const stillActive = isTakeoverActive(conversation)
     await admin.from('whatsapp_conversations').upsert({
       phone,
       state: conversation?.state || {},
-      human_takeover: conversation?.human_takeover || false,
+      human_takeover: stillActive,
+      human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
       last_message_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'phone' })
 
-    if (conversation?.human_takeover) return json({ ok: true, skipped: 'human_takeover' })
+    if (stillActive) return json({ ok: true, skipped: 'human_takeover' })
 
     // A partir daqui a resposta é gerada e enviada — trava por telefone para não
     // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).
@@ -329,10 +376,10 @@ Deno.serve(async (request: Request) => {
       // ter atualizado o estado (ex.: um agendamento concluído) enquanto esperávamos.
       const { data: freshConversation } = await admin
         .from('whatsapp_conversations')
-        .select('state, human_takeover')
+        .select('state, human_takeover, human_takeover_at')
         .eq('phone', phone)
         .maybeSingle()
-      if (freshConversation?.human_takeover) return json({ ok: true, skipped: 'human_takeover_after_lock' })
+      if (isTakeoverActive(freshConversation)) return json({ ok: true, skipped: 'human_takeover_after_lock' })
       const activeState = freshConversation?.state || conversation?.state || {}
 
       const { data: recentMessages } = await admin
@@ -388,6 +435,7 @@ Deno.serve(async (request: Request) => {
       await admin.from('whatsapp_conversations').update({
         state: ai.state || activeState,
         human_takeover: handoff,
+        human_takeover_at: handoff ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       }).eq('phone', phone)
 
