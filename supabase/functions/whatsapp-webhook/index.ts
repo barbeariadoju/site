@@ -83,6 +83,12 @@ const HUMAN_TAKEOVER_WINDOW_MS = 3 * 60 * 60 * 1000
 // JuIA em vez de responder cada uma isoladamente — conversa mais natural, menos respostas
 // fragmentadas/contraditórias.
 const DEBOUNCE_MS = 6000
+// v28.30.3: conversa parada há mais de 6h = conversa NOVA. Sem isso, o state (data/serviço
+// escolhidos) e o histórico de dias atrás contaminavam a conversa de hoje — caso real
+// (Nicole, 31/07/2026): "Quero agendar" respondido com "A data escolhida já passou" porque
+// o state ainda guardava a data do agendamento dela de 23/07, e o upsell pulou etapas
+// porque o serviço antigo continuava preenchido.
+const STALE_CONVERSATION_MS = 6 * 60 * 60 * 1000
 
 const isTakeoverActive = (row: { human_takeover?: boolean; human_takeover_at?: string | null } | null | undefined) => {
   if (!row?.human_takeover) return false
@@ -230,8 +236,15 @@ Deno.serve(async (request: Request) => {
     // invocação que continuar sendo "a mais recente" depois da espera de fato processa
     // o texto combinado — as outras (mensagens que já foram superadas por uma mais nova)
     // saem silenciosamente, sem responder nada (a próxima que vencer responde por todas).
-    const { data: beforeBuffer } = await admin.from('whatsapp_conversations').select('buffer_text').eq('phone', phone).maybeSingle()
-    const combinedSoFar = beforeBuffer?.buffer_text ? `${beforeBuffer.buffer_text}\n${text}` : text
+    const { data: beforeBuffer } = await admin.from('whatsapp_conversations').select('buffer_text, last_message_at').eq('phone', phone).maybeSingle()
+    // Conversa parada há mais de STALE_CONVERSATION_MS: zera o state ANTES de processar,
+    // pra JuIA começar do zero (sem data/serviço de uma conversa de dias atrás). A decisão
+    // é tomada aqui (antes do upsert tocar last_message_at) — mensagens picadas em sequência
+    // não re-zeram, porque a partir da primeira o last_message_at já fica recente.
+    const staleConversation = beforeBuffer?.last_message_at
+      ? Date.now() - new Date(beforeBuffer.last_message_at).getTime() > STALE_CONVERSATION_MS
+      : false
+    const combinedSoFar = beforeBuffer?.buffer_text && !staleConversation ? `${beforeBuffer.buffer_text}\n${text}` : text
     const myStamp = new Date().toISOString()
     await admin.from('whatsapp_conversations').upsert({
       phone,
@@ -239,6 +252,7 @@ Deno.serve(async (request: Request) => {
       buffer_updated_at: myStamp,
       last_message_at: myStamp,
       updated_at: myStamp,
+      ...(staleConversation ? { state: {} } : {}),
     }, { onConflict: 'phone' })
 
     // v28.30.1: o debounce (espera de DEBOUNCE_MS) e todo o processamento que vem depois
@@ -404,6 +418,9 @@ Deno.serve(async (request: Request) => {
             .from('whatsapp_messages')
             .select('direction, body, created_at')
             .eq('phone', phone)
+            // Só mensagens da conversa ATUAL (janela de 6h) — histórico de dias atrás no
+            // prompt fazia o modelo responder no contexto errado (mesmo caso da Nicole).
+            .gte('created_at', new Date(Date.now() - STALE_CONVERSATION_MS).toISOString())
             .order('created_at', { ascending: false })
             .limit(HISTORY_LIMIT)
 
