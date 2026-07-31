@@ -256,7 +256,13 @@ Deno.serve(async (request: Request) => {
         await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
 
         const { data: afterWait } = await admin.from('whatsapp_conversations').select('buffer_updated_at, buffer_text, human_takeover, human_takeover_at').eq('phone', phone).maybeSingle()
-        if (afterWait?.buffer_updated_at !== myStamp) {
+        // BUG CORRIGIDO (v28.30.2): comparar as duas datas como TEXTO nunca batia — o JS grava
+        // "...207Z" e o PostgREST devolve "...207+00:00" — então TODA invocação se achava
+        // "superada" e ninguém nunca respondia (silêncio total de 31/07/2026, o dia inteiro).
+        // Compara como instante numérico (epoch ms), que é imune ao formato.
+        const stampMs = new Date(myStamp).getTime()
+        const storedMs = afterWait?.buffer_updated_at ? new Date(afterWait.buffer_updated_at).getTime() : NaN
+        if (storedMs !== stampMs) {
           // Uma mensagem mais nova chegou enquanto esperávamos — ela (ou a próxima depois
           // dela) é responsável por processar o texto combinado. Esta invocação não responde.
           return
