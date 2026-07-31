@@ -241,226 +241,246 @@ Deno.serve(async (request: Request) => {
       updated_at: myStamp,
     }, { onConflict: 'phone' })
 
-    await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
+    // v28.30.1: o debounce (espera de DEBOUNCE_MS) e todo o processamento que vem depois
+    // (IA + envio da resposta) agora rodam em segundo plano via EdgeRuntime.waitUntil, DEPOIS
+    // de já termos respondido "ok" pro Evolution API. Motivo: manter a requisição HTTP presa
+    // por 6s+ (debounce sozinho já são 6s, fora IA e envio) arriscava ser cortada pelo lado
+    // de quem chama o webhook antes de terminar — a mensagem já tinha sido gravada (linha
+    // acima), mas a função nunca chegava a responder, e por fora parecia silêncio total.
+    // Foi exatamente o que aconteceu na madrugada/manhã de 31/07/2026: várias conversas
+    // (inclusive uma resposta simples de "Satisfeito") ficaram sem resposta nenhuma por
+    // horas, até o Juliano assumir na mão. Com o ack imediato abaixo, o debounce continua
+    // esperando os 6s pra juntar mensagens picadas — só não trava mais a conexão do webhook.
+    const processBuffered = async () => {
+      try {
+        await new Promise((r) => setTimeout(r, DEBOUNCE_MS))
 
-    const { data: afterWait } = await admin.from('whatsapp_conversations').select('buffer_updated_at, buffer_text, human_takeover, human_takeover_at').eq('phone', phone).maybeSingle()
-    if (afterWait?.buffer_updated_at !== myStamp) {
-      // Uma mensagem mais nova chegou enquanto esperávamos — ela (ou a próxima depois
-      // dela) é responsável por processar o texto combinado. Esta invocação não responde.
-      return json({ ok: true, skipped: 'debounced_superseded' })
-    }
+        const { data: afterWait } = await admin.from('whatsapp_conversations').select('buffer_updated_at, buffer_text, human_takeover, human_takeover_at').eq('phone', phone).maybeSingle()
+        if (afterWait?.buffer_updated_at !== myStamp) {
+          // Uma mensagem mais nova chegou enquanto esperávamos — ela (ou a próxima depois
+          // dela) é responsável por processar o texto combinado. Esta invocação não responde.
+          return
+        }
 
-    // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
-    // (pode ter crescido mais do que só esta mensagem, se chegaram picadas antes) e limpa.
-    text = afterWait?.buffer_text || text
-    await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
+        // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
+        // (pode ter crescido mais do que só esta mensagem, se chegaram picadas antes) e limpa.
+        text = afterWait?.buffer_text || text
+        await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
 
-    const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
-    const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
+        const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
+        const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
-    if (pending) {
-      const normalizedReply = normalize(text)
-      const trimmedNormalized = normalizedReply.trim()
-      // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
-      // 😊/🙁 exato oferecido no menu — caso real (Adalton, 30/07/2026): cliente respondeu
-      // 😂 e depois 😄, a JuIA não reconheceu nenhum dos dois e ficou repetindo "não entendi".
-      // Alternação de emoji literal (não classe [...]) porque char class sem flag /u quebra
-      // com emoji fora do BMP (par substituto vira 2 "caracteres" errados).
-      const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|🥰|😍|🤩|👍|🙌|❤/
-      const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|👎|💔/
-      const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized)
-      const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text)
-      // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
-      // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
-      // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
-      // sempre, mesmo tentando marcar um horário novo. Caso real (Lucas, 30/07/2026): tentou
-      // agendar por texto e por áudio com uma pesquisa pendente, os dois caíram na armadilha.
-      // Respostas de satisfação são sempre curtas (emoji, "bom", "satisfeito" etc.) — só
-      // aplica o gate de "não entendi" pra mensagens curtas; o resto cai pro fluxo normal.
-      const ambiguousShortReply = trimmedNormalized.length <= 40
+        if (pending) {
+          const normalizedReply = normalize(text)
+          const trimmedNormalized = normalizedReply.trim()
+          // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
+          // 😊/🙁 exato oferecido no menu — caso real (Adalton, 30/07/2026): cliente respondeu
+          // 😂 e depois 😄, a JuIA não reconheceu nenhum dos dois e ficou repetindo "não entendi".
+          // Alternação de emoji literal (não classe [...]) porque char class sem flag /u quebra
+          // com emoji fora do BMP (par substituto vira 2 "caracteres" errados).
+          const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|🥰|😍|🤩|👍|🙌|❤/
+          const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|👎|💔/
+          const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized)
+          const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text)
+          // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
+          // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
+          // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
+          // sempre, mesmo tentando marcar um horário novo. Caso real (Lucas, 30/07/2026): tentou
+          // agendar por texto e por áudio com uma pesquisa pendente, os dois caíram na armadilha.
+          // Respostas de satisfação são sempre curtas (emoji, "bom", "satisfeito" etc.) — só
+          // aplica o gate de "não entendi" pra mensagens curtas; o resto cai pro fluxo normal.
+          const ambiguousShortReply = trimmedNormalized.length <= 40
 
-      if (pending.status === 'feedback') {
-        const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
-        if (submitResult?.ok) {
-          const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
-          await sendWhatsapp(phone, reply)
-          const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-          if (pushSecret) {
-            await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-              body: JSON.stringify({
-                custom: {
-                  title: '📝 Sugestão de cliente insatisfeito',
-                  body: `${pending.customer_name || phone}: ${text}`.slice(0, 180),
-                  url: 'https://wa.me/' + phone,
-                  tag: `whatsapp-feedback-${phone}`,
-                },
-              }),
-            }).catch((error) => console.error('[whatsapp-webhook] push feedback', error))
+          if (pending.status === 'feedback') {
+            const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
+            if (submitResult?.ok) {
+              const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
+              await sendWhatsapp(phone, reply)
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '📝 Sugestão de cliente insatisfeito',
+                      body: `${pending.customer_name || phone}: ${text}`.slice(0, 180),
+                      url: 'https://wa.me/' + phone,
+                      tag: `whatsapp-feedback-${phone}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push feedback', error))
+              }
+              return
+            }
+          } else if (isSatisfied) {
+            const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: null })
+            if (submitResult?.ok) {
+              const { data: alreadyReviewed } = await admin.rpc('customer_already_reviewed', { p_customer_id: pending.customer_id })
+              // v28.25.0: o Juliano controla por atendimento (checkbox no "Concluir") se quer
+              // pedir avaliação no Google — desmarcado quando já sabe que aquele cliente já
+              // avaliou (a checagem automática abaixo só cobre quem clicou no nosso link antes).
+              const skipGoogleAsk = alreadyReviewed || pending.request_google_review === false
+              const reply = alreadyReviewed
+                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
+                : skipGoogleAsk
+                  ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
+                  : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
+              await sendWhatsapp(phone, reply)
+              return
+            }
+          } else if (isUnsatisfied) {
+            const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: null })
+            if (submitResult?.ok) {
+              const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
+              await sendWhatsapp(phone, reply)
+              await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '😕 Cliente insatisfeito',
+                      body: `${pending.customer_name || phone} ficou insatisfeito. Combine o retoque sem custo pelo WhatsApp.`,
+                      url: 'https://wa.me/' + phone,
+                      tag: `whatsapp-unsatisfied-${phone}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push unsatisfied', error))
+              }
+              return
+            }
+          } else if (ambiguousShortReply) {
+            const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
+            await sendWhatsapp(phone, reply)
+            return
           }
-          return json({ ok: true, satisfaction: 'feedback_received' })
+          // Mensagem longa/claramente sobre outro assunto (não curta e ambígua) ou
+          // submitResult veio ok:false (ex: token expirado após 30 dias) — cai pro fluxo
+          // normal da JuIA abaixo, sem travar o cliente na pesquisa.
         }
-      } else if (isSatisfied) {
-        const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: null })
-        if (submitResult?.ok) {
-          const { data: alreadyReviewed } = await admin.rpc('customer_already_reviewed', { p_customer_id: pending.customer_id })
-          // v28.25.0: o Juliano controla por atendimento (checkbox no "Concluir") se quer
-          // pedir avaliação no Google — desmarcado quando já sabe que aquele cliente já
-          // avaliou (a checagem automática abaixo só cobre quem clicou no nosso link antes).
-          const skipGoogleAsk = alreadyReviewed || pending.request_google_review === false
-          const reply = alreadyReviewed
-            ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
-            : skipGoogleAsk
-              ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
-              : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
-          await sendWhatsapp(phone, reply)
-          return json({ ok: true, satisfaction: 'satisfied' })
-        }
-      } else if (isUnsatisfied) {
-        const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: null })
-        if (submitResult?.ok) {
-          const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
-          await sendWhatsapp(phone, reply)
-          await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
-          const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-          if (pushSecret) {
-            await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-              body: JSON.stringify({
-                custom: {
-                  title: '😕 Cliente insatisfeito',
-                  body: `${pending.customer_name || phone} ficou insatisfeito. Combine o retoque sem custo pelo WhatsApp.`,
-                  url: 'https://wa.me/' + phone,
-                  tag: `whatsapp-unsatisfied-${phone}`,
-                },
-              }),
-            }).catch((error) => console.error('[whatsapp-webhook] push unsatisfied', error))
-          }
-          return json({ ok: true, satisfaction: 'unsatisfied' })
-        }
-      } else if (ambiguousShortReply) {
-        const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
-        await sendWhatsapp(phone, reply)
-        return json({ ok: true, satisfaction: 'unclear' })
-      }
-      // Mensagem longa/claramente sobre outro assunto (não curta e ambígua) ou
-      // submitResult veio ok:false (ex: token expirado após 30 dias) — cai pro fluxo
-      // normal da JuIA abaixo, sem travar o cliente na pesquisa.
-    }
 
-    const { data: conversation } = await admin
-      .from('whatsapp_conversations')
-      .select('state, human_takeover, human_takeover_at')
-      .eq('phone', phone)
-      .maybeSingle()
+        const { data: conversation } = await admin
+          .from('whatsapp_conversations')
+          .select('state, human_takeover, human_takeover_at')
+          .eq('phone', phone)
+          .maybeSingle()
 
-    const stillActive = isTakeoverActive(conversation)
-    await admin.from('whatsapp_conversations').upsert({
-      phone,
-      state: conversation?.state || {},
-      human_takeover: stillActive,
-      human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
-      last_message_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'phone' })
+        const stillActive = isTakeoverActive(conversation)
+        await admin.from('whatsapp_conversations').upsert({
+          phone,
+          state: conversation?.state || {},
+          human_takeover: stillActive,
+          human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'phone' })
 
-    if (stillActive) return json({ ok: true, skipped: 'human_takeover' })
+        if (stillActive) return
 
-    // A partir daqui a resposta é gerada e enviada — trava por telefone para não
-    // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).
-    const locked = await acquireLock(admin, phone)
-    try {
-      // Relê o estado mais recente: se esperamos pela trava, outra mensagem pode
-      // ter atualizado o estado (ex.: um agendamento concluído) enquanto esperávamos.
-      const { data: freshConversation } = await admin
-        .from('whatsapp_conversations')
-        .select('state, human_takeover, human_takeover_at')
-        .eq('phone', phone)
-        .maybeSingle()
-      if (isTakeoverActive(freshConversation)) return json({ ok: true, skipped: 'human_takeover_after_lock' })
-      const activeState = freshConversation?.state || conversation?.state || {}
+        // A partir daqui a resposta é gerada e enviada — trava por telefone para não
+        // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).
+        const locked = await acquireLock(admin, phone)
+        try {
+          // Relê o estado mais recente: se esperamos pela trava, outra mensagem pode
+          // ter atualizado o estado (ex.: um agendamento concluído) enquanto esperávamos.
+          const { data: freshConversation } = await admin
+            .from('whatsapp_conversations')
+            .select('state, human_takeover, human_takeover_at')
+            .eq('phone', phone)
+            .maybeSingle()
+          if (isTakeoverActive(freshConversation)) return
+          const activeState = freshConversation?.state || conversation?.state || {}
 
-      const { data: recentMessages } = await admin
-        .from('whatsapp_messages')
-        .select('direction, body, created_at')
-        .eq('phone', phone)
-        .order('created_at', { ascending: false })
-        .limit(HISTORY_LIMIT)
+          const { data: recentMessages } = await admin
+            .from('whatsapp_messages')
+            .select('direction, body, created_at')
+            .eq('phone', phone)
+            .order('created_at', { ascending: false })
+            .limit(HISTORY_LIMIT)
 
-      const history = (recentMessages || [])
-        .reverse()
-        .slice(0, -1)
-        .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.body }))
+          const history = (recentMessages || [])
+            .reverse()
+            .slice(0, -1)
+            .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.body }))
 
-      const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
-        body: JSON.stringify({
-          message: text,
-          state: activeState,
-          session_id: `whatsapp:${phone}`,
-          history,
-          verified_phone: phone,
-          whatsapp_name: pushName,
-        }),
-      })
-
-      const ai = await aiResponse.json().catch(() => ({}))
-      if (!aiResponse.ok || !ai?.reply) {
-        console.error('[whatsapp-webhook] ju-ia-site falhou', aiResponse.status, ai)
-        return json({ ok: false, error: 'Falha ao consultar a JuIA.' }, 502)
-      }
-
-      const reply = String(ai.reply)
-      const handoff = Boolean(ai.handoff)
-
-      const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: phone, text: reply }),
-      })
-      const sendData = await sendResponse.json().catch(() => ({}))
-      const sentMessageId = String(sendData?.key?.id || '') || null
-
-      await admin.from('whatsapp_messages').insert({
-        phone,
-        direction: 'out',
-        body: reply,
-        sent_by: 'bot',
-        evolution_message_id: sentMessageId,
-      })
-
-      await admin.from('whatsapp_conversations').update({
-        state: ai.state || activeState,
-        human_takeover: handoff,
-        human_takeover_at: handoff ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      }).eq('phone', phone)
-
-      if (handoff) {
-        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-        if (pushSecret) {
-          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+          const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
             body: JSON.stringify({
-              custom: {
-                title: '💬 WhatsApp precisa de você',
-                body: `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`,
-                url: 'https://wa.me/' + phone,
-                tag: `whatsapp-handoff-${phone}`,
-              },
+              message: text,
+              state: activeState,
+              session_id: `whatsapp:${phone}`,
+              history,
+              verified_phone: phone,
+              whatsapp_name: pushName,
             }),
-          }).catch((error) => console.error('[whatsapp-webhook] push handoff', error))
-        }
-      }
+          })
 
-      return json({ ok: true, sent: sendResponse.ok, handoff })
-    } finally {
-      if (locked) await releaseLock(admin, phone)
+          const ai = await aiResponse.json().catch(() => ({}))
+          if (!aiResponse.ok || !ai?.reply) {
+            console.error('[whatsapp-webhook] ju-ia-site falhou', aiResponse.status, ai)
+            return
+          }
+
+          const reply = String(ai.reply)
+          const handoff = Boolean(ai.handoff)
+
+          const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+            body: JSON.stringify({ number: phone, text: reply }),
+          })
+          const sendData = await sendResponse.json().catch(() => ({}))
+          const sentMessageId = String(sendData?.key?.id || '') || null
+
+          await admin.from('whatsapp_messages').insert({
+            phone,
+            direction: 'out',
+            body: reply,
+            sent_by: 'bot',
+            evolution_message_id: sentMessageId,
+          })
+
+          await admin.from('whatsapp_conversations').update({
+            state: ai.state || activeState,
+            human_takeover: handoff,
+            human_takeover_at: handoff ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          }).eq('phone', phone)
+
+          if (handoff) {
+            const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+            if (pushSecret) {
+              await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                body: JSON.stringify({
+                  custom: {
+                    title: '💬 WhatsApp precisa de você',
+                    body: `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`,
+                    url: 'https://wa.me/' + phone,
+                    tag: `whatsapp-handoff-${phone}`,
+                  },
+                }),
+              }).catch((error) => console.error('[whatsapp-webhook] push handoff', error))
+            }
+          }
+        } finally {
+          if (locked) await releaseLock(admin, phone)
+        }
+      } catch (error) {
+        console.error('[whatsapp-webhook] background', error)
+      }
     }
+
+    // @ts-ignore — EdgeRuntime é global do runtime das Edge Functions da Supabase (não existe
+    // no Deno padrão): roda a promise depois de já termos mandado a resposta HTTP abaixo.
+    EdgeRuntime.waitUntil(processBuffered())
+
+    return json({ ok: true, buffered: true })
   } catch (error) {
     console.error('[whatsapp-webhook]', error)
     return json({ error: error instanceof Error ? error.message : 'Erro interno.' }, 500)
