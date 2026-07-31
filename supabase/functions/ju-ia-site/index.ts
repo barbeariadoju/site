@@ -288,7 +288,12 @@ Deno.serve(async req=>{
  // "quero", mesmo sendo claramente uma pergunta de preço combinado — a exclusão certa
  // é so quando "quero" está junto de um verbo de agendar de fato (marcar/agendar/
  // reservar), não "quero" isolado (que também aparece em frases como "quero fazer").
- const isPriceOrInfoQuestion=/\bquanto\b|\bqual\s+(o\s+)?preco\b|\binclui\b|\bdura\b|\bcusta\b|\bdoi\b/.test(normalizedQuestion)&&!/\bmarcar\b|\bagendar\b|\breservar\b/.test(normalizedQuestion)
+ // v28.31.3: exigia "qual" logo antes de "preço" — não casava "e o preço de X", "o preço
+ // do Y" ou "preço da Z" sem "qual"/"quanto" na frase. Achado testando de propósito: "e o
+ // preço da hidratação capilar" era sequestrado pelo upsell de complemento em vez de
+ // responder o preço. "preco" agora é gatilho sozinho, cobre qualquer frase que cite a
+ // palavra.
+ const isPriceOrInfoQuestion=/\bquanto\b|\bpreco\b|\binclui\b|\bdura\b|\bcusta\b|\bdoi\b/.test(normalizedQuestion)&&!/\bmarcar\b|\bagendar\b|\breservar\b/.test(normalizedQuestion)
  const hasCustomer=Boolean(context?.customer_id)
  const customerFirstName=firstName(context?.name)
  const contextFullName=hasCustomer?String(context?.name||'').trim():''
@@ -499,7 +504,17 @@ Deno.serve(async req=>{
  // "trocar"/"mudar" sozinhos são ambíguos entre reagendar (dia/hora) e trocar
  // serviço — desambigua olhando se o que vem depois de "pra/para" é um serviço
  // conhecido do catálogo (ex.: "mudar pra barba" = serviço; "mudar pra sexta" não é).
- const swapTailMatch=normalizedQuestion.match(/(?:trocar|mudar)\s+(?:o\s+|meu\s+|esse\s+)?(?:servico\s+)?(?:para|pra)\s+(.+)/)
+ // v28.31.3: exigia "pra/para" logo em seguida de "trocar/mudar [o/meu/esse] [servico]",
+ // sem tolerar nada no meio — "trocar o servico DO MEU AGENDAMENTO pra Barboterapia" não
+ // casava (a frase real tem "do meu agendamento" entre "servico" e "pra"), então o cliente
+ // já dizia o serviço novo na mesma mensagem e mesmo assim a JuIA perguntava de novo "qual
+ // serviço?". Agora só exige "trocar/mudar" + "servico" em qualquer lugar da frase, e pega
+ // o texto depois do último "pra/para" — ainda seguro contra falso positivo (ex. "quero
+ // agendar pra Barba Express", "mudar pra sexta") porque o gatilho real de troca de serviço
+ // continua exigindo a palavra "servico" na frase, e o resultado só vira serviço de fato se
+ // `findService` reconhecer o texto capturado.
+ const wantsServiceSwap=/\b(trocar|mudar)\b/.test(normalizedQuestion)&&/\bservico\b/.test(normalizedQuestion)
+ const swapTailMatch=wantsServiceSwap?normalizedQuestion.match(/(?:para|pra)\s+(.+)$/):null
  const swapTailService=swapTailMatch?findService(swapTailMatch[1]):null
  const changeServiceAsk=includesAny(normalizedQuestion,['trocar o servico','trocar de servico','mudar o servico','mudar de servico','trocar meu servico','mudar meu servico','pode trocar o servico','pode mudar o servico'])||Boolean(swapTailService)
  const rescheduleAsk=includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])&&!changeServiceAsk
@@ -894,20 +909,34 @@ Deno.serve(async req=>{
     handoff=false
    }
   }else if(!next.pending_change_service_booking_id){
+   // v28.31.4: quando o cliente já diz o serviço-alvo na MESMA mensagem que pede a troca
+   // (ex.: "quero trocar o serviço do meu agendamento pra Barboterapia"), este bloco
+   // identificava o agendamento mas SEMPRE perguntava "qual serviço?" de novo, ignorando
+   // que desiredFresh já tinha a resposta — só era consultado numa segunda mensagem. Bug
+   // real achado testando de propósito: o v28.31.3 já corrigia a extração do serviço da
+   // frase (swapTailMatch), mas o valor extraído nunca era usado aqui na primeira vez.
+   // Agora, se já sabemos o serviço-alvo e ele é diferente do atual, pula direto pra
+   // confirmação em vez de perguntar de novo.
+   const askOrConfirm=(b:any)=>{
+    next.pending_change_service_booking_id=b.id
+    if(swapTailService&&normalize(swapTailService.name)!==normalize(String(b.service_name||''))){
+     next.pending_change_service_new_name=swapTailService.name
+     reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, ${swapTailService.duration} min)? Responda sim ou não.`
+     actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+    }else{
+     reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (atualmente ${b.service_name}). Qual serviço você quer no lugar?`
+    }
+    handoff=false
+   }
    if(!upcomingBookings.length){
     reply='Não encontrei nenhum agendamento futuro nesse número para trocar o serviço.'
     handoff=false
    }else if(upcomingBookings.length===1){
-    const b=upcomingBookings[0]
-    next.pending_change_service_booking_id=b.id
-    reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (atualmente ${b.service_name}). Qual serviço você quer no lugar?`
-    handoff=false
+    askOrConfirm(upcomingBookings[0])
    }else{
     const matched=upcomingBookings.find((b:any)=>normalizedQuestion.includes(String(b.start_time).slice(0,5)))
     if(matched){
-     next.pending_change_service_booking_id=matched.id
-     reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(matched.booking_date)} às ${String(matched.start_time).slice(0,5)} (atualmente ${matched.service_name}). Qual serviço você quer no lugar?`
-     handoff=false
+     askOrConfirm(matched)
     }else{
      reply='Você tem mais de um agendamento futuro. Qual deles quer trocar o serviço?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
      actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Trocar o serviço do de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
@@ -1057,8 +1086,16 @@ Deno.serve(async req=>{
  // delas perguntou nada neste turno), retoma o fluxo normal de agendamento sozinha —
  // sem isso, a conversa ficava parada esperando o modelo "adivinhar" que devia seguir
  // pra checar disponibilidade depois de um simples "não, só isso"/"não quero produto".
+ // v28.31.3: bug real achado testando de propósito — com data/hora já confirmados e os
+ // upsells resolvidos, um "sim" do cliente confirmando o horário reabria a MESMA pergunta
+ // "quer reservar esse horário?" em loop, em vez de concluir o agendamento (dependia do
+ // modelo "adivinhar" sozinho intent=book, o que só funcionava por sorte). Especialmente
+ // grave no WhatsApp: o cliente nunca vê o botão "Reservar" (actions não chegam lá), só
+ // digitando "sim"/"pode"/"confirmo" — se isso não vira agendamento de verdade, a conversa
+ // trava pra sempre. Com data+hora+serviço já conhecidos, uma resposta curta de sim/não
+ // (afirmando ou só recusando o último upsell) sempre significa "pode seguir" aqui.
  if(chosen.length&&next.upsell_services_done&&next.upsell_products_done&&!hairWashJustAsked&&!servicesUpsellJustAsked&&!productsUpsellJustAsked&&activelyBooking&&notSpecialFlow&&intent!=='book'){
-  intent='availability'
+  intent=(next.date&&next.time&&(simpleYes||simpleNo))?'book':'availability'
  }
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
