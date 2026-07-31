@@ -16,15 +16,11 @@
 .espera-chip-group span{color:var(--muted);font-size:.78rem;margin-right:4px}
 .espera-chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:.8rem;font-weight:600;padding:.3rem .7rem;border-radius:999px;cursor:pointer}
 .espera-chip.is-selected{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
-.espera-card{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px}
-.espera-card-main{display:flex;flex-direction:column;gap:6px}
-.espera-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.espera-card-head h3{margin:0;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.3px;color:var(--text)}
-.espera-source{font-size:.75rem;color:var(--muted)}
-.espera-contact{margin:0;color:var(--muted);font-size:.88rem}
-.espera-tags{display:flex;flex-wrap:wrap;gap:6px}
-.espera-tag{font-size:.78rem;color:var(--gold2);background:rgba(240,201,135,.08);padding:.25rem .6rem;border-radius:999px}
-.espera-notes{margin:2px 0 0;color:var(--muted);font-size:.85rem;font-style:italic}
+.espera-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;transition:border-color .18s}
+.espera-card:hover{border-color:rgba(240,201,135,.35)}
+.espera-source{flex:0 0 auto;font-size:.75rem;color:var(--muted)}
+.espera-contact{margin:0 0 8px;color:var(--muted);font-size:.88rem}
+.espera-notes{margin:0 0 8px;color:var(--muted);font-size:.85rem;font-style:italic}
 .espera-waiting{color:var(--muted);font-size:.76rem}
 .espera-card-actions{display:flex;flex-wrap:wrap;gap:8px}
 .espera-card-actions a,.espera-card-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.4rem .8rem;border-radius:10px;cursor:pointer;text-decoration:none}
@@ -90,4 +86,4 @@
 <div class="admin-modal-actions"><button type="button" data-close-espera-modal>Cancelar</button><button id="espera-form-save" class="btn primary" type="button">Salvar</button></div>
 </section></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="services-catalog-v7.js?v=28.16.1"></script><script src="admin-espera-v28.js?v=28.16.1"></script><script src="admin-pwa.js?v=28.16.1"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="services-catalog-v7.js?v=28.16.1"></script><script src="admin-espera-v28.js?v=28.29.0"></script><script src="admin-pwa.js?v=28.16.1"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>

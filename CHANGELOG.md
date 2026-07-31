@@ -1,3 +1,10 @@
+## 28.29.0 — Cards colapsáveis no CRM, Fidelidade, Lista de espera
+
+- **Mesmo visual "clique pra expandir" da Agenda/Atendimento (v28.24.0) agora também no CRM, na Fidelidade e na Lista de espera.** O card do CRM mostrava tudo sempre (aniversário, tags, preferências, notas, sugestão privada, estatísticas inteiras) e ficava enorme — agora colapsa pra um resumo (avatar, nome, telefone, badge VIP, Ju Score) e expande com um clique pro resto. Mesmo padrão na Lista de espera (resumo: nome + dia/horário/serviço) e na Fidelidade (resumo: nome/telefone/barra de progresso, escondendo só o botão "✎ Ajustar carimbos", ação ocasional).
+- **De brinde: a Fidelidade não tinha nenhum estilo de card antes** (os itens da lista apareciam sem borda, sem fundo, sem cantos arredondados) — corrigido junto.
+- Reaproveita as mesmas classes CSS já usadas pela Agenda (`.admin-booking-summary`/`.admin-booking-detail`, globais via `css/04-agenda-admin-core.css`) em vez de duplicar o mecanismo de colapsar em cada tela.
+- Atendimento Balcão: conteúdo já era compacto (uma linha só), sem necessidade de colapsar — só ganhou o mesmo destaque de borda ao passar o mouse, pra manter a família visual.
+
 ## 28.28.1 — Catálogo de serviços unificado + correção de bug real na JuIA
 
 - **Novo `public.services`** (migration `057`): os 22 serviços que viviam duplicados em `services-catalog-v7.js` (front-end) e num array hardcoded dentro de `ju-ia-site/index.ts` agora têm uma tabela única no banco, mesmo padrão já usado pra produtos (`public.products`, migration 051). A Edge Function `ju-ia-site` passou a consultar a tabela em vez do array fixo; o front-end continua lendo `services-catalog-v7.js` normalmente (sem custo de rede extra).

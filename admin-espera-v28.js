@@ -162,31 +162,39 @@
     bindCardActions(box);
   }
 
+  // Card colapsado por padrão (resumo: nome/data/horário/serviço) — mesmo padrão de
+  // bookingCardHtml() em admin-v15-4-agenda.js, pedido do Juliano pra visual único em todo
+  // o admin. Reaproveita as classes .admin-booking-summary/.admin-booking-detail (globais
+  // via css/04-agenda-admin-core.css, importado por style.css) em vez de duplicar o CSS de
+  // colapsar. Clique no resumo expande contato/observações/tempo de espera/ações; o
+  // formulário de encaixe (fitFormHtml) continua com seu próprio toggle independente
+  // (openRowId), aninhado dentro do detalhe.
   function cardHtml(row) {
     const isOpen = openRowId === row.id;
     return `<article class="espera-card" data-row="${row.id}">
-      <div class="espera-card-main">
-        <div class="espera-card-head">
-          <h3>${esc(row.customer_name)}</h3>
-          <span class="espera-source">${row.source === 'site' ? '🌐 site' : '✍ admin'}</span>
+      <button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="${isOpen}">
+        <span class="admin-booking-summary-main">
+          <strong>${esc(row.customer_name)}</strong>
+          <small>📅 ${esc(whenLabel(row))} • 🕐 ${esc(timeRangeLabel(row))}${row.service_name ? ` • ✂ ${esc(row.service_name)}` : ''}</small>
+        </span>
+        <span class="espera-source">${row.source === 'site' ? '🌐 site' : '✍ admin'}</span>
+        <span class="admin-booking-chevron">⌄</span>
+      </button>
+      <div class="admin-booking-detail${isOpen ? ' is-open' : ''}">
+        <div class="admin-booking-detail-inner">
+          <p class="espera-contact">${formatPhone(row.customer_phone)}${row.customer_email ? ` • ${esc(row.customer_email)}` : ''}</p>
+          ${row.notes ? `<p class="espera-notes">${esc(row.notes)}</p>` : ''}
+          <small class="espera-waiting">Esperando há ${daysWaiting(row)} dia(s)</small>
+          <div class="espera-card-actions">
+            <a href="${whatsappBusinessUrl(row.customer_phone, `Oi, ${row.customer_name}! Abriu uma vaga na Barbearia do Ju${row.preferred_date ? ` em ${row.preferred_date.split('-').reverse().join('/')}` : ''}. Quer aproveitar?`)}" target="_blank" rel="noopener">WhatsApp</a>
+            ${row.status === 'esperando' ? `<button data-fit="${row.id}" class="is-primary">Encaixar</button>` : ''}
+            <button data-edit="${row.id}">Editar</button>
+            ${row.status === 'esperando' ? `<button data-cancel="${row.id}">Cancelar</button>` : ''}
+            <button class="is-danger" data-delete="${row.id}">Excluir</button>
+          </div>
+          ${isOpen ? fitFormHtml(row) : ''}
         </div>
-        <p class="espera-contact">${formatPhone(row.customer_phone)}${row.customer_email ? ` • ${esc(row.customer_email)}` : ''}</p>
-        <div class="espera-tags">
-          <span class="espera-tag">📅 ${esc(whenLabel(row))}</span>
-          <span class="espera-tag">🕐 ${esc(timeRangeLabel(row))}</span>
-          ${row.service_name ? `<span class="espera-tag">✂ ${esc(row.service_name)}</span>` : ''}
-        </div>
-        ${row.notes ? `<p class="espera-notes">${esc(row.notes)}</p>` : ''}
-        <small class="espera-waiting">Esperando há ${daysWaiting(row)} dia(s)</small>
       </div>
-      <div class="espera-card-actions">
-        <a href="${whatsappBusinessUrl(row.customer_phone, `Oi, ${row.customer_name}! Abriu uma vaga na Barbearia do Ju${row.preferred_date ? ` em ${row.preferred_date.split('-').reverse().join('/')}` : ''}. Quer aproveitar?`)}" target="_blank" rel="noopener">WhatsApp</a>
-        ${row.status === 'esperando' ? `<button data-fit="${row.id}" class="is-primary">Encaixar</button>` : ''}
-        <button data-edit="${row.id}">Editar</button>
-        ${row.status === 'esperando' ? `<button data-cancel="${row.id}">Cancelar</button>` : ''}
-        <button class="is-danger" data-delete="${row.id}">Excluir</button>
-      </div>
-      ${isOpen ? fitFormHtml(row) : ''}
     </article>`;
   }
 
@@ -209,6 +217,7 @@
   }
 
   function bindCardActions(box) {
+    box.querySelectorAll('[data-toggle-card]').forEach(b => b.onclick = () => { const detail = b.closest('.espera-card').querySelector('.admin-booking-detail'); const opening = !detail.classList.contains('is-open'); detail.classList.toggle('is-open', opening); b.setAttribute('aria-expanded', String(opening)); });
     box.querySelectorAll('[data-fit]').forEach(b => b.onclick = () => { openRowId = openRowId === b.dataset.fit ? null : b.dataset.fit; render(); });
     box.querySelectorAll('[data-fit-cancel]').forEach(b => b.onclick = () => { openRowId = null; render(); });
     box.querySelectorAll('[data-fit-confirm]').forEach(b => b.onclick = () => confirmFit(b.dataset.fitConfirm, b));
