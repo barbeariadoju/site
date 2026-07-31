@@ -382,6 +382,55 @@ Deno.serve(async (request: Request) => {
           // normal da JuIA abaixo, sem travar o cliente na pesquisa.
         }
 
+        // v28.31.0: resposta à pesquisa "por que você não agendou?" (mandada pelo
+        // whatsapp-lead-followup no dia seguinte ao 1º nudge sem resposta). Só intercepta
+        // mensagem CURTA (<=60 caracteres) — igual ao gate da pesquisa de satisfação — pra
+        // não sequestrar um pedido novo de verdade ("quero agendar amanhã às 15h" não devia
+        // virar "motivo: outro"). Mensagem longa ou sem lead pendente cai pro fluxo normal.
+        const trimmedText = text.trim()
+        if (trimmedText.length <= 60) {
+          const { data: pendingLead } = await admin
+            .from('conversation_leads')
+            .select('phone')
+            .eq('phone', phone)
+            .eq('followup_stage', 2)
+            .is('reason', null)
+            .maybeSingle()
+          if (pendingLead) {
+            const normalizedLeadReply = normalize(trimmedText)
+            let reason: string | null = null
+            if (/^1\b|horario|\bdia\b|\bdata\b/.test(normalizedLeadReply)) reason = 'sem_horario_desejado'
+            else if (/^2\b|preco|caro|valor/.test(normalizedLeadReply)) reason = 'preco'
+            else if (/^3\b|pesquisando|so olhando|cotando|so vendo/.test(normalizedLeadReply)) reason = 'so_pesquisando'
+            else reason = 'outro'
+            await admin.from('conversation_leads').update({
+              reason,
+              reason_detail: reason === 'outro' ? trimmedText : null,
+              responded_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq('phone', phone)
+            await sendWhatsapp(phone, 'Entendido, muito obrigado pelo retorno! 🙏 Qualquer coisa, é só me chamar por aqui.')
+            if (reason === 'outro') {
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '💬 Motivo de não-agendamento',
+                      body: `${phone}: ${trimmedText}`.slice(0, 180),
+                      url: 'https://wa.me/' + phone,
+                      tag: `lead-reason-${phone}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push lead reason', error))
+              }
+            }
+            return
+          }
+        }
+
         const { data: conversation } = await admin
           .from('whatsapp_conversations')
           .select('state, human_takeover, human_takeover_at')

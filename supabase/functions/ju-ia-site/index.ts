@@ -1240,6 +1240,49 @@ Deno.serve(async req=>{
   const greetName=crmName?firstName(crmName):(String(body?.whatsapp_name||'').trim()?firstName(String(body.whatsapp_name)):'')
   reply=`${greetingNow()}${greetName?`, ${greetName}`:''}! ${reply}`
  }
+ // v28.31.0: funil de conversas com interesse sem agendamento fechado (pedido do
+ // Juliano, 31/07/2026) — uma linha por telefone, atualizada a cada mensagem dele.
+ // Só existe pro canal WhatsApp (verifiedPhone), que é o único onde dá pra mandar
+ // um follow-up depois. "kind" decide o texto do nudge que o whatsapp-lead-followup
+ // vai mandar: 'availability' (já citou dia+serviço, o caso mais "quente"),
+ // 'price_or_service' (só citou o serviço/perguntou preço), 'greeting' (mensagem
+ // curta tipo "oi", sem nada mais — o caso que o Juliano descreveu explicitamente:
+ // "cliente manda oi e some"). Qualquer outra coisa (pergunta de endereço/horário de
+ // funcionamento, reclamação, cancelamento etc.) não gera lead — não tem o que
+ // "reativar" ali, forçar isso seria chato. Se o agendamento foi concluído
+ // (next.completed) ou virou handoff/cancelamento/remarcação, apaga o lead: não faz
+ // sentido cobrar alguém que já resolveu o que queria.
+ if(verifiedPhone){
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
+  if(next.completed||isSpecialFlow){
+   await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
+  }else{
+   const trimmedMsg=message.trim()
+   const isBareGreeting=trimmedMsg.length<=20&&/^(oi+|ol[aá]|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*a[ií]|eai|fala)\b[\s!.,?]*$/i.test(normalize(trimmedMsg))
+   const kind=(next.date&&chosen.length)?'availability':chosen.length?'price_or_service':(isBareGreeting?'greeting':null)
+   if(kind){
+    await supabase.from('conversation_leads').upsert({
+     phone:verifiedPhone,
+     customer_name:hasCustomer?contextFullName:(String(body?.whatsapp_name||'').trim()||null),
+     kind,
+     last_message_text:message.slice(0,300),
+     service_interest:chosen.length?chosen.map((s:any)=>s.name).join(' + '):null,
+     date_interest:next.date||null,
+     last_message_at:new Date().toISOString(),
+     followup_stage:0,
+     followup_1_sent_at:null,
+     followup_2_sent_at:null,
+     reason:null,
+     reason_detail:null,
+     responded_at:null,
+     updated_at:new Date().toISOString(),
+    },{onConflict:'phone'}).then(()=>{})
+   }else{
+    await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
+   }
+  }
+ }
+
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})
  return respond({reply,intent,state:next,actions,handoff})
 })
