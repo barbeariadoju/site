@@ -287,6 +287,32 @@ Deno.serve(async (request: Request) => {
         text = afterWait?.buffer_text || text
         await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
 
+        // v28.31.1: checagem de human_takeover MOVIDA pra cá, antes de tudo — bug real
+        // (Lucas, 31/07/2026): o Juliano assumiu a conversa pessoalmente (respondeu do
+        // próprio WhatsApp), mas as mensagens seguintes do cliente ainda caíam na pesquisa
+        // de satisfação pendente ("Não entendi... satisfeito ou insatisfeito?"), porque essa
+        // checagem só rodava DEPOIS da pesquisa/lead — um "Isso", "kkkk" ou qualquer resposta
+        // curta do cliente disparava a pesquisa por cima da conversa que o Juliano já estava
+        // conduzindo. Agora, se o Juliano está no controle, a JuIA nem olha pra pesquisa,
+        // lead ou IA — só atualiza o carimbo de hora e sai, em silêncio.
+        const { data: conversation } = await admin
+          .from('whatsapp_conversations')
+          .select('state, human_takeover, human_takeover_at')
+          .eq('phone', phone)
+          .maybeSingle()
+
+        const stillActive = isTakeoverActive(conversation)
+        await admin.from('whatsapp_conversations').upsert({
+          phone,
+          state: conversation?.state || {},
+          human_takeover: stillActive,
+          human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'phone' })
+
+        if (stillActive) return
+
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
@@ -430,24 +456,6 @@ Deno.serve(async (request: Request) => {
             return
           }
         }
-
-        const { data: conversation } = await admin
-          .from('whatsapp_conversations')
-          .select('state, human_takeover, human_takeover_at')
-          .eq('phone', phone)
-          .maybeSingle()
-
-        const stillActive = isTakeoverActive(conversation)
-        await admin.from('whatsapp_conversations').upsert({
-          phone,
-          state: conversation?.state || {},
-          human_takeover: stillActive,
-          human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'phone' })
-
-        if (stillActive) return
 
         // A partir daqui a resposta é gerada e enviada — trava por telefone para não
         // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).

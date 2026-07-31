@@ -3,7 +3,7 @@
 // horario. bindBookingActions() aqui tambem eh usada por
 // admin-v15-4-atendimento.js. Ver header de admin-v15-4-core.js.
 
-  function initAgenda(){selectedDate=new URLSearchParams(location.search).get('data')||isoLocal(new Date());calendarMonth=new Date(selectedDate+'T12:00:00');calendarMonth.setDate(1);$('calendar-prev').onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);refreshCalendar()};$('calendar-next').onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);refreshCalendar()};$('block-all-day').onchange=()=>{$('block-time-fields').hidden=$('block-all-day').checked};$('block-save').onclick=saveBlock;refreshCalendar();loadAgendaDay()}
+  function initAgenda(){selectedDate=new URLSearchParams(location.search).get('data')||isoLocal(new Date());calendarMonth=new Date(selectedDate+'T12:00:00');calendarMonth.setDate(1);$('calendar-prev').onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()-1);refreshCalendar()};$('calendar-next').onclick=()=>{calendarMonth.setMonth(calendarMonth.getMonth()+1);refreshCalendar()};$('block-all-day').onchange=()=>{const allDay=$('block-all-day').checked;$('block-time-fields').hidden=allDay;$('block-range-wrap').hidden=!allDay;if(!allDay)$('block-range-end').value=''};$('block-save').onclick=saveBlock;refreshCalendar();loadAgendaDay()}
   // Bloqueios do mês inteiro (pedido do Juliano: ver de relance no calendário quais dias
   // estão fechados/bloqueados sem precisar clicar em cada um). Separado de loadBlocks()
   // (que só busca o dia selecionado, pro painel de baixo) porque aqui precisa do mês todo.
@@ -269,5 +269,28 @@ ${data?.email?.error||'Verifique os registros da função.'}`);
     }finally{if(button&&button.isConnected){button.disabled=false;button.textContent=oldText}}
   }
   async function loadBlocks(){const box=$('agenda-block-list'),{data,error}=await sb.from('schedule_blocks').select('*').eq('block_date',selectedDate).order('start_time',{ascending:true,nullsFirst:true});if(error){box.innerHTML=`<div class="admin-empty">${esc(error.message)}</div>`;return}box.innerHTML=(data||[]).length?data.map(x=>`<div class="admin-block-row"><div><strong>${x.all_day?'Dia inteiro':`${x.start_time.slice(0,5)}–${x.end_time.slice(0,5)}`}</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></div><button data-delete-block="${x.id}">Liberar</button></div>`).join(''):'<div class="admin-empty">Nenhum bloqueio nesta data.</div>';box.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock))}
-  async function saveBlock(){const allDay=$('block-all-day').checked,start=$('block-start').value,end=$('block-end').value,msg=$('block-message');if(!allDay&&(!start||!end||start>=end)){msg.textContent='Informe um intervalo válido.';return}msg.textContent='Salvando...';const {error}=await sb.from('schedule_blocks').insert({block_date:selectedDate,all_day:allDay,start_time:allDay?null:start,end_time:allDay?null:end,reason:$('block-reason').value.trim()||null});msg.textContent=error?error.message:'Bloqueio criado.';if(!error){$('block-reason').value='';await loadBlocks()}}
+  // v28.31.1: bloqueio em INTERVALO de dias (pedido do Juliano, 31/07/2026, depois de uma
+  // viagem em que ele teve que bloquear dia a dia) — só disponível com "Fechar o dia
+  // inteiro" marcado (bloqueio parcial de horário não faz sentido replicado por vários
+  // dias). Cria uma linha por dia, cada uma "dia inteiro", mesmo motivo em todas — e é
+  // exatamente essa lista (schedule_blocks all_day=true) que a JuIA agora lê pra saber
+  // que está fechada excepcionalmente (ver ju-ia-site/index.ts).
+  async function saveBlock(){
+   const allDay=$('block-all-day').checked,start=$('block-start').value,end=$('block-end').value,rangeEnd=$('block-range-end').value,msg=$('block-message')
+   if(!allDay&&(!start||!end||start>=end)){msg.textContent='Informe um intervalo válido.';return}
+   const reason=$('block-reason').value.trim()||null
+   let dates=[selectedDate]
+   if(allDay&&rangeEnd){
+    if(rangeEnd<selectedDate){msg.textContent='A data final precisa ser depois da inicial.';return}
+    dates=[]
+    const cursor=new Date(selectedDate+'T12:00:00'),last=new Date(rangeEnd+'T12:00:00')
+    while(cursor<=last){dates.push(isoLocal(cursor));cursor.setDate(cursor.getDate()+1)}
+    if(dates.length>60){msg.textContent='Intervalo grande demais (máximo 60 dias). Confira as datas.';return}
+   }
+   msg.textContent='Salvando...'
+   const rows=dates.map(d=>({block_date:d,all_day:allDay,start_time:allDay?null:start,end_time:allDay?null:end,reason}))
+   const {error}=await sb.from('schedule_blocks').insert(rows)
+   msg.textContent=error?error.message:(dates.length>1?`${dates.length} dias bloqueados.`:'Bloqueio criado.')
+   if(!error){$('block-reason').value='';$('block-range-end').value='';await refreshCalendar();await loadBlocks()}
+  }
   async function deleteBlock(id){if(!confirm('Liberar este bloqueio?'))return;const {error}=await sb.from('schedule_blocks').delete().eq('id',id);if(error)alert(error.message);else loadBlocks()}
