@@ -237,7 +237,14 @@ Deno.serve(async req=>{
  // normalmente significa "nada de novo nesta mensagem", não "esqueça o que já foi
  // escolhido". Sem esse filtro, qualquer mensagem que não recite o serviço de novo
  // (ex.: "tem horário agora?", "oi") apagava o serviço já selecionado no turno anterior.
- const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([,v])=>v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
+ // v28.31.2: "sales_stage" nunca é lido em lugar nenhum do código (só é escrito
+ // deterministicamente em 2 pontos específicos, mais abaixo) — mas o modelo devolve um
+ // valor livre pra esse campo a cada resposta, sem checagem nenhuma. Achado testando de
+ // propósito: "corte pro meu filho de 5 anos" devolveu sales_stage em TAILANDÊS
+ // ("บริการ solicitado"), que ficava salvo no state e voltava pro prompt nos próximos
+ // turnos como ruído sem sentido. Exclui do merge automático — só as 2 atribuições
+ // deterministicas (abaixo) definem esse campo agora.
+ const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  // v28.30.4: numa pergunta sem menção de serviço, o modelo às vezes "presume" o serviço
  // do histórico do cliente (context.last_services) — caso real (Juliano, 31/07/2026):
@@ -1007,7 +1014,10 @@ Deno.serve(async req=>{
   }else{
    next.haircut_wash_asked=true
    hairWashJustAsked=true
-   reply='Prefere só o corte ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?'
+   // v28.31.2: preço do "só o corte" só existia no label do botão (actions), que o
+   // WhatsApp NUNCA envia (só o texto de reply chega lá) — cliente no WhatsApp via o
+   // preço do Corte + Lavagem mas não o do corte sozinho. Achado testando de propósito.
+   reply='Prefere só o corte (R$ 40,00) ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?'
    actions=[{label:'Só o corte · R$ 40',message:'Só o corte'},{label:'Corte + Lavagem · R$ 50',message:'Quero com lavagem'}]
    intent='other';handoff=false
   }
