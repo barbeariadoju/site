@@ -18,6 +18,14 @@
     $('admin-signout')?.addEventListener('click', () => sb.auth.signOut());
     $('ai-refresh')?.addEventListener('click', loadSnapshot);
     $('ai-form')?.addEventListener('submit', askAI);
+    // Enter envia a pergunta (padrão de chat) — Shift+Enter continua quebrando linha.
+    // Sem isso, Enter só quebrava linha no textarea e obrigava clicar no botão sempre.
+    $('ai-question')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        $('ai-form')?.requestSubmit();
+      }
+    });
     document.querySelectorAll('[data-ai-prompt]').forEach(btn => btn.addEventListener('click', () => {
       $('ai-question').value = btn.dataset.aiPrompt;
       $('ai-question').focus();

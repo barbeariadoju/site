@@ -223,6 +223,15 @@ Deno.serve(async req=>{
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
 
  const normalizedQuestion=normalize(message)
+ // Bug real achado no banco de ~150 cenários de teste (31/07/2026): perguntas puras
+ // sobre um serviço nomeado (preço, duração, "inclui X?") eram sequestradas pelo fluxo
+ // de agendamento — o cliente perguntava "quanto custa a barboterapia com ozônio" e,
+ // como o nome do serviço batia no catálogo, o sistema tratava como se o cliente
+ // tivesse ESCOLHIDO o serviço pra agendar, disparando "quer incluir complemento?"/
+ // "só o corte ou corte+lavagem?" em vez de responder a pergunta feita. Detecta
+ // pergunta pura (tem palavra de pergunta, não tem verbo de ação de agendar) pra não
+ // deixar essas respostas automáticas atropelarem a resposta real do modelo.
+ const isPriceOrInfoQuestion=/\bquanto\b|\bqual\s+(o\s+)?preco\b|\binclui\b|\bdura\b|\bcusta\b|\bdoi\b/.test(normalizedQuestion)&&!/\bquero\b|\bmarcar\b|\bagendar\b|\breservar\b/.test(normalizedQuestion)
  const hasCustomer=Boolean(context?.customer_id)
  const customerFirstName=firstName(context?.name)
  const contextFullName=hasCustomer?String(context?.name||'').trim():''
@@ -357,8 +366,12 @@ Deno.serve(async req=>{
  // de categoria barba já estiver selecionado (não fica reperguntando à toa depois
  // que o cliente já escolheu, inclusive quando ele mesmo responde clicando numa
  // das opções, ex. "Quero Barba Express" - essa mensagem não bate mais no regex).
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!chosen.some((s:any)=>s.category==='barba')
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'){
+ // bareBarbaAsk e a conversão services→availability abaixo não devem disparar pra
+ // perguntas puras de preço/duração (isPriceOrInfoQuestion) nem quando o modelo já
+ // pediu handoff (bug real: reclamação "a barba ficou desigual" citava "barba" e
+ // virava um menu de opções de barba em vez de manter o handoff da reclamação).
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
   const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name)&&!(bareBarbaAsk&&s.category==='barba'))
   if(newOnes.length){
@@ -379,7 +392,9 @@ Deno.serve(async req=>{
  }
  // Cliente já citou o(s) serviço(s) exato(s) (ex.: "barba e pezinho") — não faz sentido
  // mostrar a lista genérica de mais procurados. Segue direto pro fluxo de disponibilidade.
- if(intent==='services'&&chosen.length){
+ // Exceto se for pergunta pura de preço/duração — aí a resposta do modelo já respondeu
+ // a pergunta, não faz sentido virar isso num fluxo de disponibilidade.
+ if(intent==='services'&&chosen.length&&!isPriceOrInfoQuestion){
   intent='availability'
  }
  if(intent==='loyalty'){
@@ -417,6 +432,13 @@ Deno.serve(async req=>{
  // ignorando que changeServiceAsk também era true pra essa mesma frase. Uma negação
  // explícita antes de "cancelar" cancela o próprio cancelAsk.
  const cancelNegated=/\bnao\b[^.!?]{0,20}\bcancelar\b/.test(normalizedQuestion)
+ // Bug real achado no banco de teste (31/07/2026): "se pode cancelar depois, sem
+ // problemas?" é uma pergunta hipotética sobre a política, não um pedido de cancelar
+ // agora — mas batia no mesmo "pode cancelar" de cancelAsk e o cliente recebia "para
+ // cancelar com segurança, preciso confirmar seu WhatsApp" do nada, no meio de uma
+ // pergunta sobre como funciona o processo. "se" antes de "cancelar" (dentro de uma
+ // janela curta) marca a frase como hipotética/condicional, não uma ação pedida agora.
+ const cancelHypothetical=/\bse\b[^.!?]{0,20}\bcancelar\b/.test(normalizedQuestion)
  // Adicionar/remover produto de um agendamento JÁ CONFIRMADO — diferente do
  // upsell de produto durante a criação de um agendamento novo (que não
  // menciona "agendamento"/"horário marcado"). Exige as duas coisas juntas
@@ -432,7 +454,7 @@ Deno.serve(async req=>{
  const addProductAsk=addProductVerb&&mentionsProduto&&productBookingContext
  const removeProductAsk=removeProductVerb&&mentionsProduto&&productBookingContext
  const updateProductsAsk=addProductAsk||removeProductAsk
- if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated))intent='cancel'
+ if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical))intent='cancel'
 
  if(intent==='cancel'){
   if(!verifiedPhone){
@@ -870,7 +892,10 @@ Deno.serve(async req=>{
  // cancelamento/reagendamento/troca de serviço/duplicados já estarem resolvidos) porque
  // "intent" só fica definitivo depois desses blocos.
  const activelyBooking=['services','availability','book'].includes(intent)||Boolean(next.date)
- const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&!next.completed
+ // isPriceOrInfoQuestion aqui de novo: sem isso, uma pergunta de preço/duração que o
+ // modelo já respondeu corretamente (ex. "quanto tempo demora uma luzes completa")
+ // ainda podia cair nas perguntas de upsell abaixo e apagar a resposta real.
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&!next.completed&&!isPriceOrInfoQuestion
 
  // Pedido do Juliano: "Corte de cabelo" sozinho (R$40) sempre oferece o upgrade pro
  // "Corte + Lavagem" (R$50, lavagem profissional incluída) antes de seguir — melhora o

@@ -75,9 +75,23 @@ Deno.serve(async (req) => {
   const repeatNoShows=[...noShowMap.values()].filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,15)
   const revenue30=completed.filter((x:any)=>x.booking_date>=addDays(today,-30)).reduce((a:number,x:any)=>a+Number(x.service_price||0)+Number(x.products_price||0),0)
   const completed30=completed.filter((x:any)=>x.booking_date>=addDays(today,-30))
+  // Bug real (30/07/2026): o bloco "today" só olhava pending/confirmed — assim que o
+  // Juliano clica "Concluir" num atendimento, o registro vira status 'completed' e
+  // desaparecia inteiro da visão de "hoje", fazendo a JuIA responder "não houve
+  // atendimentos hoje" mesmo com 11 concluídos. completedTodayRows cobre esse buraco;
+  // services conta cada combo (ex. "Corte + Barba") como serviços separados, igual ao
+  // resto do sistema (ver matchCurrentServiceNames em admin-v15-4-agenda.js).
+  const completedTodayRows=completed.filter((x:any)=>x.booking_date===today)
+  const completedTodayRevenue=completedTodayRows.reduce((a:number,x:any)=>a+Number(x.service_price||0)+Number(x.products_price||0),0)
+  const completedTodayServiceCount=completedTodayRows.reduce((a:number,x:any)=>a+String(x.service_name||'').split('+').map((s:string)=>s.trim()).filter(Boolean).length,0)
+  const completedTodayClients=new Set(completedTodayRows.map((x:any)=>phone(x.customer_phone))).size
   const snapshot={
     date:today,
-    today:{appointments:todayRows.length,pending:todayRows.filter((x:any)=>x.status==='pending').length,confirmed:todayRows.filter((x:any)=>x.status==='confirmed').length,forecast:todayRows.reduce((a:number,x:any)=>a+Number(x.service_price||0)+Number(x.products_price||0),0),schedule:todayRows.map((x:any)=>({time:String(x.start_time).slice(0,5),name:x.customer_name,services:x.service_name,status:x.status,value:Number(x.service_price||0)+Number(x.products_price||0)}))},
+    today:{
+      appointments:todayRows.length,pending:todayRows.filter((x:any)=>x.status==='pending').length,confirmed:todayRows.filter((x:any)=>x.status==='confirmed').length,forecast:todayRows.reduce((a:number,x:any)=>a+Number(x.service_price||0)+Number(x.products_price||0),0),schedule:todayRows.map((x:any)=>({time:String(x.start_time).slice(0,5),name:x.customer_name,services:x.service_name,status:x.status,value:Number(x.service_price||0)+Number(x.products_price||0)})),
+      completed:completedTodayRows.length,completed_revenue:completedTodayRevenue,average_ticket:completedTodayRows.length?completedTodayRevenue/completedTodayRows.length:0,distinct_clients_served:completedTodayClients,average_services_per_client:completedTodayClients?completedTodayServiceCount/completedTodayClients:0,
+      completed_schedule:completedTodayRows.map((x:any)=>({time:String(x.start_time).slice(0,5),name:x.customer_name,services:x.service_name,value:Number(x.service_price||0)+Number(x.products_price||0)}))
+    },
     last_30_days:{completed:completed30.length,revenue:revenue30,average_ticket:completed30.length?revenue30/completed30.length:0,no_shows:noShows.filter((x:any)=>x.booking_date>=addDays(today,-30)).length},
     customers:{total:profiles.length,inactive_over_30_days:inactive,birthdays_next_30_days:birthdays,repeat_no_shows:repeatNoShows},
     upcoming:active.filter((x:any)=>x.booking_date>=today).slice(0,35).map((x:any)=>({date:x.booking_date,time:String(x.start_time).slice(0,5),name:x.customer_name,services:x.service_name,status:x.status,value:Number(x.service_price||0)+Number(x.products_price||0)}))
