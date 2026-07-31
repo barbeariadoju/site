@@ -118,6 +118,10 @@
     const avg = completed.length ? revenue / completed.length : 0;
     const phones = new Set(completed.map(x => phoneDigits(x.customer_phone)).filter(Boolean));
     const avgPerCustomer = phones.size ? revenue / phones.size : 0;
+    // Pedido do Juliano: mesma lógica do card do Dashboard (split de combo por "+"), aqui pro
+    // período selecionado em vez de só "hoje".
+    const serviceCount = completed.reduce((a, x) => a + String(x.service_name || '').split('+').map(s => s.trim()).filter(Boolean).length, 0);
+    const servicesPerCustomer = phones.size ? serviceCount / phones.size : 0;
 
     // Satisfação: pesquisas criadas dentro do período selecionado.
     const surveysRange = surveys.filter(s => { const k = iso(new Date(s.created_at)); return k >= start && k <= end; });
@@ -132,6 +136,7 @@
     $('rel-avg').textContent = money(avg);
     $('rel-avg-customer').textContent = money(avgPerCustomer);
     $('rel-customers').textContent = phones.size;
+    $('rel-services-customer').textContent = servicesPerCustomer.toFixed(1);
     $('rel-satisfaction').textContent = satRate === null ? '—' : pct(satRate);
     $('rel-noshows').textContent = noShows.length;
 
