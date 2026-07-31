@@ -1,3 +1,12 @@
+## 28.29.1 — Auditoria de segurança/performance do banco (achados dos advisors)
+
+- **Vazamento de dados real corrigido**: a view antiga `v27_customer_metrics` (resquício do CRM de 2026-anterior, migration 027) rodava com privilégio elevado (`SECURITY DEFINER`, ignora RLS) e tinha permissão de leitura pro papel `authenticated` — que nesse projeto inclui qualquer **cliente logado na área do cliente**, não só o Juliano. Qualquer cliente logado conseguia consultar essa view direto pela API e ver nome, telefone, e-mail e histórico de gasto de **todos** os outros clientes. Confirmado que nada no código atual usa essa view — removida (migration 059).
+- **3 policies de RLS duplicadas removidas** (mesma condição, cobrindo o mesmo caso duas vezes) em `contact_messages`, `customer_timeline` e `experience_requests` — cada consulta pagava o custo de avaliar as duas à toa.
+- **3 policies de RLS otimizadas** para reavaliar `auth.uid()` uma vez por consulta em vez de uma vez por linha (`admin_users`, `ai_conversations`, `push_subscriptions`) — ganho de performance em escala, sem mudar o comportamento.
+- **5 índices novos** em chaves estrangeiras que não tinham (bookings, customer_timeline, email_outbox, loyalty_events, waitlist) + **1 índice duplicado removido** em `customer_timeline`.
+- **3 funções sem `search_path` fixo corrigidas** (`waitlist_touch_updated_at`, `phone_match_key`, `touch_contact_messages_updated_at`) — hardening padrão, sem mudança de comportamento (migration 060).
+- **Pendência que só o Juliano pode resolver** (é uma configuração da conta, não do banco): ativar "Leaked Password Protection" no painel do Supabase Auth (checagem de senha vazada contra HaveIBeenPwned) — está desativado.
+
 ## 28.29.0 — Cards colapsáveis no CRM, Fidelidade, Lista de espera
 
 - **Mesmo visual "clique pra expandir" da Agenda/Atendimento (v28.24.0) agora também no CRM, na Fidelidade e na Lista de espera.** O card do CRM mostrava tudo sempre (aniversário, tags, preferências, notas, sugestão privada, estatísticas inteiras) e ficava enorme — agora colapsa pra um resumo (avatar, nome, telefone, badge VIP, Ju Score) e expande com um clique pro resto. Mesmo padrão na Lista de espera (resumo: nome + dia/horário/serviço) e na Fidelidade (resumo: nome/telefone/barra de progresso, escondendo só o botão "✎ Ajustar carimbos", ação ocasional).
