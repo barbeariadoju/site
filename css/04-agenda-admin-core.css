@@ -188,6 +188,7 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 .pharma-note{background:rgba(120,170,220,.06);border-color:#7aa8d8}.pharma-note strong{color:#9cc0e6}
 .sources-list{font-size:.88rem;color:#a8a8a8}.sources-list li{margin-bottom:4px}
 .warning-note{margin:1.2em 0;padding:14px 16px;border-radius:14px;border-left:3px solid #d87a5a;background:rgba(216,122,90,.08)}.warning-note p{margin:0;color:#d4d4d4}.warning-note strong{color:#e3987a}
+.series-nav{margin:1.5em 0;padding:16px 18px;border-radius:16px;border:1px solid rgba(240,201,135,.28);background:rgba(255,255,255,.03)}.series-nav p.eyebrow{margin:0 0 8px}.series-nav ol{margin:0;padding-left:1.3rem;color:#d4d4d4}.series-nav li{margin-bottom:4px}.series-nav li.current{color:#e3c65d;font-weight:700}.series-nav li.current a{color:#e3c65d}
 @media(max-width:680px){.cookie-banner{left:10px;right:10px;bottom:10px;display:block;padding:16px}.cookie-actions{margin-top:13px}.cookie-actions button{flex:1}.admin-toast-region{top:10px;right:10px;width:calc(100vw - 20px)}}
 
 
