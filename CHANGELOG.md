@@ -1,3 +1,8 @@
+## 28.28.1 — Catálogo de serviços unificado + correção de bug real na JuIA
+
+- **Novo `public.services`** (migration `057`): os 22 serviços que viviam duplicados em `services-catalog-v7.js` (front-end) e num array hardcoded dentro de `ju-ia-site/index.ts` agora têm uma tabela única no banco, mesmo padrão já usado pra produtos (`public.products`, migration 051). A Edge Function `ju-ia-site` passou a consultar a tabela em vez do array fixo; o front-end continua lendo `services-catalog-v7.js` normalmente (sem custo de rede extra).
+- **Bug real encontrado e corrigido (migration `058`): nem `public.services` nem `public.products` tinham permissão de leitura (`GRANT SELECT`) para o papel usado pelas Edge Functions.** A política de RLS existia, mas sem o `GRANT` de base toda consulta falhava silenciosamente — na prática, a JuIA nunca conseguiu consultar o catálogo real de produtos desde que a tabela foi criada (v28.20.0), sempre respondendo "não tenho o preço atualizado" quando perguntada sobre produto. Corrigido para as duas tabelas.
+
 ## 28.27.0 — Mesclar clientes duplicados + correção do "Arquivar" quebrado
 
 - **Novo botão "🔗 Mesclar" no CRM**: junta dois cadastros do mesmo cliente (ex.: pessoa trocou de número e ficou com 2 perfis) num só — move agendamentos, histórico, timeline e pontos de fidelidade (somados, com o mesmo estouro de 10=1 recompensa) pro cadastro escolhido, e apaga o duplicado. Pede confirmação explícita antes de executar.

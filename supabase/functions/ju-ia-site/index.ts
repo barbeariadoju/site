@@ -65,20 +65,13 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
 })
 const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':'final do dia'
 
-const services=[
- ['Corte + Lavagem',50,40,'corte'],['Corte de cabelo',40,30,'corte'],['Raspar a cabeça',40,30,'corte'],['Corte de cabelo infantil',40,30,'corte'],['Corte + Barboterapia',80,60,'combo'],['Corte + Barba Express',65,50,'combo'],
- ['Barboterapia com vaporizador de ozônio',50,40,'barba'],['Barboterapia',40,30,'barba'],['Barba Express',25,20,'barba'],['Pezinho (acabamento)',15,10,'adicional'],
- ['Sobrancelha Masculina',15,10,'adicional'],['Depilação nasal (cera quente)',25,20,'adicional'],['Depilação orelhas',25,20,'adicional'],['Freestyle (risquinho)',15,10,'adicional'],
- ['Nevou / Platinado',150,120,'quimica'],['Luzes',120,90,'quimica'],['Alisamento / Relaxamento',70,45,'quimica'],['Pigmentação Capilar (Tintura)',50,30,'quimica'],
- ['Hidratação / Reconstrução Capilar',40,20,'tratamento'],['Pigmentação de Barba',35,20,'pigmentacao'],['Pigmentação de Sobrancelha',20,20,'pigmentacao'],
- ['Aparação Corporal Masculina',120,60,'estetica']
-].map(([name,price,duration,category])=>({name:String(name),price:Number(price),duration:Number(duration),category:String(category)}))
-
 // Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
-// em produtos.html/products-catalog-v1.js — esta function roda em Deno e não consegue
-// importar aquele arquivo de front-end). Agora é populado a cada request a partir da
-// tabela public.products (fonte única, migration 051-v28.20.0), logo no início do
-// handler — ver "products=" dentro de Deno.serve, abaixo.
+// em services-catalog-v7.js/products-catalog-v1.js — esta function roda em Deno e não
+// consegue importar esses arquivos de front-end). Agora populados a cada request a
+// partir de public.services (migration 057-v28.28.0) e public.products (migration
+// 051-v28.20.0), fontes únicas, logo no início do handler — ver dentro de Deno.serve,
+// abaixo.
+let services:{name:string;price:number;duration:number;category:string}[]=[]
 let products:{name:string;price:number;tags:string[]}[]=[]
 
 // Entre candidatos por substring (ex. "Barba" bate tanto em "Barba Express"
@@ -156,9 +149,12 @@ Deno.serve(async req=>{
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
  const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
  const key=Deno.env.get('OPENAI_API_KEY')
- // Produtos vêm do banco (tabela public.products, migration 051-v28.20.0) — fonte única
- // que as Edge Functions conseguem ler direto, em vez de manter uma cópia hardcoded que
- // ficava desatualizada em relação ao catálogo real do front-end.
+ // Serviços e produtos vêm do banco (public.services migration 057-v28.28.0,
+ // public.products migration 051-v28.20.0) — fontes únicas que as Edge Functions
+ // conseguem ler direto, em vez de manter cópias hardcoded que ficavam desatualizadas
+ // em relação ao catálogo real do front-end.
+ const {data:servicesData}=await supabase.from('services').select('name,price,duration_minutes,upsell_tag').eq('active',true).order('sort_order')
+ services=(servicesData||[]).map((s:any)=>({name:String(s.name),price:Number(s.price),duration:Number(s.duration_minutes),category:String(s.upsell_tag)}))
  const {data:productsData}=await supabase.from('products').select('name,price,upsell_tags').eq('active',true)
  products=(productsData||[]).map((p:any)=>({name:String(p.name),price:Number(p.price),tags:Array.isArray(p.upsell_tags)?p.upsell_tags:[]}))
  const {count}=await supabase.from('site_chat_messages').select('*',{count:'exact',head:true}).eq('session_id',sessionId).gte('created_at',new Date(Date.now()-86400000).toISOString())
