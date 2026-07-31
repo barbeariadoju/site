@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cancel-12",
+    "category": "cancelamento",
+    "message": "cancela os dois horarios que marquei",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cliente com 2 agendamentos — deve listar e perguntar qual(is)."
+  },
+  {
+    "id": "cancel-13",
+    "category": "cancelamento",
+    "message": "quero cancelar meu agendamento de amanha especificamente",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento específico entre múltiplos."
+  },
+  {
+    "id": "cancel-14",
+    "category": "cancelamento",
+    "message": "deixa os dois marcados mesmo, eu vou nos dois",
+    "reply": "Perfeito, os dois atendimentos permanecem confirmados. Até lá!",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Cliente confirma que quer manter 2 agendamentos duplicados/diferentes."
+  },
+  {
+    "id": "cancel-15",
+    "category": "cancelamento",
+    "message": "to com duvida se marquei certo, pode conferir meus horarios?",
+    "reply": "Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos pra você.",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "Pergunta sobre agendamentos existentes, não é bem um cancelamento — ver se responde com clareza."
+  }
+]

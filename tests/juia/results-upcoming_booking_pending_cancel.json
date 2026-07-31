@@ -1,0 +1,32 @@
+[
+  {
+    "id": "cancel-05",
+    "category": "cancelamento",
+    "message": "sim, pode cancelar",
+    "reply": "Para cancelar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.",
+    "intent": "cancel",
+    "handoff": true,
+    "flags": [],
+    "note": "Confirmação simples de cancelamento — precisa de pending_cancel_booking_id."
+  },
+  {
+    "id": "cancel-06",
+    "category": "cancelamento",
+    "message": "nao, deixa como esta",
+    "reply": "Tudo bem, deixamos como está. Como posso ajudar?",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Negação de cancelamento — deve manter o agendamento."
+  },
+  {
+    "id": "cancel-07",
+    "category": "cancelamento",
+    "message": "na verdade nao quero cancelar nao, quero so mudar o horario",
+    "reply": "Para remarcar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.",
+    "intent": "reschedule",
+    "handoff": true,
+    "flags": [],
+    "note": "Recuo de cancelamento + pedido de reagendamento (teste do Fix A em contexto de pending_cancel)."
+  }
+]

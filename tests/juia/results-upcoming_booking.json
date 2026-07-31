@@ -1,0 +1,312 @@
+[
+  {
+    "id": "unexpected-01",
+    "category": "imprevisto",
+    "message": "vou chegar uns 10 minutos atrasado, pode ser?",
+    "reply": "Tudo certo, pode vir tranquilo!",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve confirmar tranquilamente sem re-perguntar dados do agendamento."
+  },
+  {
+    "id": "unexpected-02",
+    "category": "imprevisto",
+    "message": "to chegando",
+    "reply": "Tudo certo, te aguardamos!",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Aviso de chegada — resposta breve e acolhedora."
+  },
+  {
+    "id": "unexpected-03",
+    "category": "imprevisto",
+    "message": "nao vou conseguir ir hoje, surgiu um imprevisto",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve iniciar fluxo de cancelamento (pede confirmação)."
+  },
+  {
+    "id": "unexpected-04",
+    "category": "imprevisto",
+    "message": "desculpa, esqueci completamente do horario de hoje",
+    "reply": "Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos pra você.",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve tratar com compreensão — provavelmente oferece remarcar ou cancelar."
+  },
+  {
+    "id": "unexpected-05",
+    "category": "imprevisto",
+    "message": "caiu uma tempestade aqui, ainda da pra ir?",
+    "reply": "Tudo certo! Se estiver seguro para você, pode vir normalmente. Caso prefira, me avise se precisar cancelar ou remarcar.",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve responder que o atendimento continua confirmado (não é sobre isso), sem travar."
+  },
+  {
+    "id": "unexpected-06",
+    "category": "imprevisto",
+    "message": "briguei com o carro, vou de uber, pode demorar um pouco mais",
+    "reply": "Tudo certo, sem problema! Vá com calma e te aguardamos por aqui. 🚗",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Aviso informal de atraso — resposta breve, sem re-perguntar dados."
+  },
+  {
+    "id": "unexpected-07",
+    "category": "imprevisto",
+    "message": "vou emendar com o trabalho, posso chegar uns 20min depois do horario?",
+    "reply": "Tudo certo, pode chegar até 20 minutos depois. Até já!",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Aviso de atraso — resposta acolhedora, sem tratar como pedido novo."
+  },
+  {
+    "id": "unexpected-08",
+    "category": "imprevisto",
+    "message": "ja fui em outro lugar, pode cancelar",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve reconhecer como pedido de cancelamento."
+  },
+  {
+    "id": "unexpected-09",
+    "category": "imprevisto",
+    "message": "nao vou poder ir mais, minha esposa passou mal",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Situação delicada — deve tratar com empatia e seguir pro cancelamento."
+  },
+  {
+    "id": "unexpected-10",
+    "category": "imprevisto",
+    "message": "perdi a hora, ainda tem chance de ir mais tarde?",
+    "reply": "Claro! Qual serviço você tem interesse? Assim já confiro os horários certinhos para 30/07/2026 pra você.",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "Não deve confirmar horário sem checar disponibilidade real."
+  },
+  {
+    "id": "unexpected-11",
+    "category": "imprevisto",
+    "message": "meu carro quebrou, vou ter que remarcar",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "reschedule",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve reconhecer como pedido de reagendamento."
+  },
+  {
+    "id": "unexpected-12",
+    "category": "imprevisto",
+    "message": "ainda esta de pé nosso horario? tive um imprevisto no trabalho mas devo conseguir ir",
+    "reply": "Sim, tudo certo! Pode ficar tranquilo, estaremos te esperando. 🙂",
+    "intent": "faq",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve confirmar o agendamento existente sem re-perguntar dados."
+  },
+  {
+    "id": "unexpected-13",
+    "category": "imprevisto",
+    "message": "to preso no transito, deve ser uns 15 min de atraso",
+    "reply": "Tudo bem, sem problemas! Vamos te aguardar por aqui. Se precisar de algo, é só avisar.",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Aviso de atraso — resposta breve."
+  },
+  {
+    "id": "unexpected-14",
+    "category": "imprevisto",
+    "message": "oi, marquei errado o dia, era pra ter marcado amanha",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "reschedule",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve reconhecer como pedido de reagendamento pro dia certo."
+  },
+  {
+    "id": "unexpected-15",
+    "category": "imprevisto",
+    "message": "passa mal aqui, mas amanha eu vou",
+    "reply": "Poxa, melhoras! Você está se referindo a algum agendamento ou gostaria de marcar para amanhã?",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Ambíguo — humano deve avaliar se a JuIA lida bem (provável reagendamento)."
+  },
+  {
+    "id": "request-03",
+    "category": "pedido",
+    "message": "quero remarcar meu horario",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "reschedule",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve iniciar fluxo de reagendamento."
+  },
+  {
+    "id": "request-04",
+    "category": "pedido",
+    "message": "posso mudar meu agendamento pra sabado?",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "reschedule",
+    "handoff": false,
+    "flags": [],
+    "note": "Reagendamento com dia específico."
+  },
+  {
+    "id": "request-05",
+    "category": "pedido",
+    "message": "quero trocar meu servico de corte pra barba express",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer trocar o serviço?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "change_service",
+    "handoff": false,
+    "flags": [],
+    "note": "Troca de serviço explícita."
+  },
+  {
+    "id": "request-06",
+    "category": "pedido",
+    "message": "nao quero cancelar, so queria saber se da pra adiantar meu horario",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer remarcar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "reschedule",
+    "handoff": false,
+    "flags": [],
+    "note": "Negação de cancelamento + pedido de reagendamento — teste direto do Fix A."
+  },
+  {
+    "id": "addition-01",
+    "category": "adicao",
+    "message": "quero adicionar um produto no meu agendamento",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "update_products",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve perguntar qual produto."
+  },
+  {
+    "id": "addition-02",
+    "category": "adicao",
+    "message": "da pra colocar tambem uma agua mineral no meu horario marcado?",
+    "reply": "Claro! Posso deixar uma Água Mineral separada para você retirar no seu horário.",
+    "intent": "upsell_products",
+    "handoff": false,
+    "flags": [],
+    "note": "Adição de produto específico."
+  },
+  {
+    "id": "addition-03",
+    "category": "adicao",
+    "message": "quero tirar o produto que coloquei no agendamento",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "update_products",
+    "handoff": false,
+    "flags": [],
+    "note": "Remoção de produto — deve perguntar qual, se houver mais de um."
+  },
+  {
+    "id": "addition-04",
+    "category": "adicao",
+    "message": "esqueci de pedir o oleo de barba, da pra incluir no meu horario?",
+    "reply": "Temos algumas opções de barba: Barboterapia com vaporizador de ozônio (R$ 50,00, 40 min), Barboterapia (R$ 40,00, 30 min), Barba Express (R$ 25,00, 20 min). Qual você prefere?",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Adição de produto específico por nome."
+  },
+  {
+    "id": "addition-05",
+    "category": "adicao",
+    "message": "ja que vou ai, quero fazer sobrancelha tambem, alem do corte que ja marquei",
+    "reply": "Claro! Posso incluir a Sobrancelha Masculina junto ao seu corte. Vou verificar se é possível manter o mesmo horário; o serviço custa R$ 15,00 e dura 10 minutos.",
+    "intent": "upsell_services",
+    "handoff": false,
+    "flags": [],
+    "note": "Adicionar SERVIÇO a um agendamento (não produto) — deve tratar como troca/adição de serviço, não confundir com produto."
+  },
+  {
+    "id": "cancel-01",
+    "category": "cancelamento",
+    "message": "quero cancelar meu agendamento",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Fluxo direto de cancelamento."
+  },
+  {
+    "id": "cancel-02",
+    "category": "cancelamento",
+    "message": "pode desmarcar meu horario de amanha",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento com termo alternativo \"desmarcar\"."
+  },
+  {
+    "id": "cancel-03",
+    "category": "cancelamento",
+    "message": "ja marquei em outro lugar, pode cancelar esse",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento por motivo explícito."
+  },
+  {
+    "id": "cancel-04",
+    "category": "cancelamento",
+    "message": "nao vou mais poder ir, cancela pra mim por favor",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento educado."
+  },
+  {
+    "id": "cancel-08",
+    "category": "cancelamento",
+    "message": "cancela ai que eu marco de novo depois",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento informal."
+  },
+  {
+    "id": "cancel-09",
+    "category": "cancelamento",
+    "message": "quero cancelar mas fiquem tranquilos que eu volto",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento com contexto emocional — resposta breve e gentil."
+  },
+  {
+    "id": "cancel-10",
+    "category": "cancelamento",
+    "message": "to sem tempo essa semana, pode cancelar o meu horario",
+    "reply": "Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n1. 04/08/2026 às 14:00 — Corte de cabelo\n2. 06/08/2026 às 10:00 — Barba Express",
+    "intent": "cancel",
+    "handoff": false,
+    "flags": [],
+    "note": "Cancelamento com justificativa."
+  }
+]

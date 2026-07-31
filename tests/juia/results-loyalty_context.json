@@ -1,0 +1,62 @@
+[
+  {
+    "id": "question-01",
+    "category": "questionamento",
+    "message": "quantos pontos eu tenho de fidelidade?",
+    "reply": "Teste, você acumulou 7 de 10 pontos. Faltam 3 para ganhar um corte gratuito. Você já passou da metade do caminho.",
+    "intent": "loyalty",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve responder com base no contexto real do cliente."
+  },
+  {
+    "id": "question-02",
+    "category": "questionamento",
+    "message": "quantos cortes faltam pra eu ganhar o gratuito?",
+    "reply": "Teste, você acumulou 7 de 10 pontos. Faltam 3 para ganhar um corte gratuito. Você já passou da metade do caminho.",
+    "intent": "loyalty",
+    "handoff": false,
+    "flags": [],
+    "note": "Cálculo de pontos restantes."
+  },
+  {
+    "id": "question-03",
+    "category": "questionamento",
+    "message": "ja tenho alguma recompensa disponivel?",
+    "reply": "Teste, você acumulou 7 de 10 pontos. Faltam 3 para ganhar um corte gratuito. Você já passou da metade do caminho.",
+    "intent": "loyalty",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve informar recompensas disponíveis corretamente."
+  },
+  {
+    "id": "question-04",
+    "category": "questionamento",
+    "message": "voces sabem quem eu sou?",
+    "reply": "Sim, identificamos você pelo seu número de WhatsApp. Como posso ajudar?",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Pergunta de identidade — não deve revelar dados sensíveis sem confirmação."
+  },
+  {
+    "id": "question-05",
+    "category": "questionamento",
+    "message": "qual foi meu ultimo atendimento?",
+    "reply": "Não tenho registro de um atendimento concluído para este número até o momento.",
+    "intent": "faq",
+    "handoff": false,
+    "flags": [],
+    "note": "Deve usar histórico se disponível, sem inventar."
+  },
+  {
+    "id": "question-13",
+    "category": "questionamento",
+    "message": "da pra saber o nome do produto que uso sempre?",
+    "reply": "Não consigo identificar qual produto você usa sempre, pois não tenho esse registro no seu histórico. Se me enviar uma foto ou descrever a embalagem, tento identificar para você!",
+    "intent": "faq",
+    "handoff": false,
+    "flags": [],
+    "note": "Pergunta sobre produto favorito/histórico."
+  }
+]
