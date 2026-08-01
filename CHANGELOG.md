@@ -1,3 +1,10 @@
+## 28.35.0 — JuIA reconhece fotos de referência no WhatsApp (item 1 da lista de melhorias)
+
+- **Bug real corrigido de quebra**: antes desta versão, quando um cliente mandava uma FOTO pelo WhatsApp (com ou sem legenda), a JuIA ficava em silêncio total — pior do que uma recusa educada. A legenda da foto (`imageMessage.caption`) nunca era lida pelo código, então a mensagem sempre caía no mesmo caminho de "mídia sem texto, sem resposta".
+- **Novo**: `whatsapp-webhook` baixa a foto via Evolution API (mesmo endpoint já usado pra transcrever áudio) e manda pra um modelo com visão (mesmo `gpt-5.6-luna` da JuIA, agora com input multimodal). O modelo descreve o corte/barba/coloração mostrado (comprimento, degradê, risco, formato da barba etc.) e essa descrição entra no fluxo normal da conversa, como se fosse o texto do cliente — a JuIA responde considerando a referência enviada.
+- Se a foto não mostrar claramente um corte/barba/coloração, responde educadamente pedindo pra descrever com palavras (sem gastar handoff). Se a análise falhar por qualquer motivo, cai num fallback educado — nunca mais silêncio total.
+- Testado a chamada de visão isoladamente (ponte temporária, sem tocar no WhatsApp real): confirmado que reconhece um corte/cabelo real e que recusa educadamente uma foto sem relação, antes de liberar em produção.
+
 ## 28.34.0 — Funil de reativação avançado (item 0 da lista de melhorias, o mais pedido)
 
 - **Reabertura de vaga proativa**: quando um agendamento que ocupava a data que um lead abandonado queria é cancelado ou reagendado — de QUALQUER origem (admin, site, WhatsApp, ou o auto-cancelamento por falta de confirmação da v28.32.0) — a JuIA agora avisa esse cliente sozinha ("abriu uma vaga de novo pra [data]..."). Implementado com um trigger direto na tabela `bookings` (`bookings_notify_leads_slot_reopened`, migration 070), que cobre todos os pontos de cancelamento/reagendamento de uma vez só, sem precisar caçar cada chamada de RPC em TypeScript. O envio de fato acontece no cron `whatsapp-lead-followup`, que já rodava a cada 15 min.

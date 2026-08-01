@@ -78,6 +78,60 @@ const transcribeAudioMessage = async (
   }
 }
 
+// v28.35.0: cliente manda uma FOTO de referência (corte, barba, cor) em vez de descrever
+// com palavras — antes disso a JuIA ficava em silêncio total (pior que "recusa
+// educadamente": nem chegava a responder, porque a legenda da imagem [imageMessage.caption]
+// nunca era lida e a mensagem caía direto no skip de "mídia sem texto"). Baixa a imagem via
+// Evolution API (mesmo endpoint getBase64FromMediaMessage já usado pro áudio) e manda pro
+// modelo com visão (mesmo gpt-5.6-luna da JuIA, Responses API aceita input multimodal).
+// Se a imagem não mostrar claramente um corte/barba/coloração, o modelo devolve o token
+// NAO_RELACIONADO e a função responde educadamente sem inventar nada. Se a análise falhar
+// por qualquer motivo, cai num fallback educado (mesmo padrão do áudio) em vez de silêncio.
+const describeReferenceImage = async (
+  key: unknown,
+  mimetype: string | undefined,
+  evolutionApiUrl: string,
+  evolutionApiKey: string,
+  evolutionInstance: string,
+): Promise<string> => {
+  try {
+    const mediaResponse = await fetchWithTimeout(`${evolutionApiUrl}/chat/getBase64FromMediaMessage/${evolutionInstance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+      body: JSON.stringify({ message: { key } }),
+    }, 20000)
+    if (!mediaResponse.ok) return ''
+    const mediaData = await mediaResponse.json().catch(() => ({}))
+    const base64 = String(mediaData?.base64 || '')
+    if (!base64) return ''
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
+    if (!openaiKey) return ''
+
+    const visionPrompt = 'Você ajuda uma barbearia a entender fotos de referência enviadas por clientes no WhatsApp. Descreva em português do Brasil, em até 2 frases objetivas, o corte de cabelo, estilo de barba ou coloração capilar mostrado na imagem, com detalhes úteis pra um barbeiro entender o que o cliente quer (comprimento, tipo de degradê, risco, formato da barba, técnica de cor etc.). Não sugira nome de serviço nem preço. Se a imagem não mostrar claramente um corte de cabelo, barba ou coloração capilar em uma pessoa, responda SOMENTE o texto NAO_RELACIONADO, sem mais nada.'
+    const r = await fetchWithTimeout('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-5.6-luna',
+        reasoning: { effort: 'low' },
+        max_output_tokens: 250,
+        instructions: visionPrompt,
+        input: [{ role: 'user', content: [{ type: 'input_image', image_url: `data:${mimetype || 'image/jpeg'};base64,${base64}` }] }],
+      }),
+    }, 25000)
+    if (!r.ok) return ''
+    const d = await r.json().catch(() => ({}))
+    const textOut = typeof d?.output_text === 'string'
+      ? d.output_text.trim()
+      : (d?.output || []).flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text).join('\n').trim()
+    return textOut
+  } catch (error) {
+    console.error('[whatsapp-webhook] describe_image', error instanceof Error ? error.message : error)
+    return ''
+  }
+}
+
 const HISTORY_LIMIT = 10
 // v28.30.0: human_takeover nunca expirava sozinho — depois de QUALQUER handoff (mesmo um
 // pedido simples "quero falar com o Juliano"), o cliente ficava em silêncio permanente,
@@ -228,6 +282,29 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // Cliente mandou uma FOTO de referência (corte/barba/cor) em vez de texto — ver
+    // describeReferenceImage acima. A legenda (imageMessage.caption) nunca era lida antes
+    // disso, então mesmo uma foto COM legenda caía direto no skip de "mídia sem texto"
+    // (silêncio total, pior que uma recusa educada).
+    let imageDescribed = false
+    if (!text && data?.message?.imageMessage) {
+      const caption = String(data.message.imageMessage.caption || '').trim()
+      const description = await describeReferenceImage(data?.key, data.message.imageMessage?.mimetype, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+      if (description === 'NAO_RELACIONADO') {
+        await sendWhatsapp(phone, `${greetingNow()}! 😊 Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?`)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, sem relação com corte/barba/cor identificada]' })
+        return json({ ok: true, skipped: 'image_not_related' })
+      } else if (description) {
+        text = `Cliente enviou uma foto de referência de corte/barba/cor. Descrição da imagem: ${description}${caption ? ` Legenda que o cliente escreveu junto: "${caption}"` : ''}`
+        imageDescribed = true
+      } else {
+        const fallback = `${greetingNow()}! 😊 Recebi sua foto, mas no momento não consigo analisar imagens de referência por aqui — poderia descrever com palavras o que você gostaria? Assim já te ajudo certinho.`
+        await sendWhatsapp(phone, fallback)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, não foi possível analisar]' })
+        return json({ ok: true, skipped: 'image_not_analyzed' })
+      }
+    }
+
     if (!text) {
       await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[mídia ou mensagem sem texto]' })
       return json({ ok: true, skipped: 'no_text' })
@@ -235,7 +312,7 @@ Deno.serve(async (request: Request) => {
 
     // Registra a mensagem individual no histórico ANTES de agrupar — o histórico mostra
     // cada mensagem real como o cliente mandou, mesmo que a IA processe várias juntas.
-    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: audioTranscribed ? `🎙️ ${text}` : text })
+    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: imageDescribed ? `📷 ${text}` : audioTranscribed ? `🎙️ ${text}` : text })
 
     // Buffer/debounce: junta esta mensagem com qualquer outra que ainda esteja "fresca"
     // (chegou nos últimos DEBOUNCE_MS) pro mesmo telefone, espera um pouco, e só a
