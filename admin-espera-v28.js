@@ -177,7 +177,7 @@
           <strong>${esc(row.customer_name)}</strong>
           <small>📅 ${esc(whenLabel(row))} • 🕐 ${esc(timeRangeLabel(row))}${row.service_name ? ` • ✂ ${esc(row.service_name)}` : ''}</small>
         </span>
-        <span class="espera-source">${row.source === 'site' ? '🌐 site' : '✍ admin'}</span>
+        <span class="espera-source">${row.source === 'site' ? '🌐 site' : row.source === 'whatsapp' ? '💬 whatsapp' : '✍ admin'}</span>
         <span class="admin-booking-chevron">⌄</span>
       </button>
       <div class="admin-booking-detail${isOpen ? ' is-open' : ''}">

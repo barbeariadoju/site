@@ -1078,6 +1078,7 @@ Deno.serve(async req=>{
        service_name:offer.service_name,
        service_price:offer.service_price,
        duration_minutes:offer.duration_minutes,
+       source:verifiedPhone?'whatsapp':'site',
       }),
      })
      const wlData=await wlResp.json().catch(()=>({}))

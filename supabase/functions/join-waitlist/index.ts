@@ -34,6 +34,12 @@ Deno.serve(async (req: Request) => {
       if (rawDate >= today) preferredDate = rawDate
     }
 
+    // v28.38.1: antes gravava 'site' fixo mesmo quando quem chamava era a JuIA no
+    // WhatsApp (a mesma function serve os dois canais) — as entradas do WhatsApp
+    // apareciam com a etiqueta errada no admin. Só aceita os valores válidos da
+    // constraint (migration 073); qualquer coisa fora disso cai no default 'site'.
+    const source = ['site', 'admin', 'whatsapp'].includes(String(body?.source)) ? String(body.source) : 'site'
+
     const serviceName = body?.service_name ? String(body.service_name).slice(0, 200) : null
     const servicePrice = Number.isFinite(Number(body?.service_price)) && Number(body?.service_price) >= 0 ? Number(body.service_price) : null
     const duration = Number.isInteger(Number(body?.duration_minutes)) && Number(body.duration_minutes) >= 10 && Number(body.duration_minutes) <= 240 ? Number(body.duration_minutes) : null
@@ -62,7 +68,7 @@ Deno.serve(async (req: Request) => {
       preferred_date: preferredDate,
       preferred_period: period,
       notes,
-      source: 'site',
+      source,
     }
 
     let id = existing?.id || null
