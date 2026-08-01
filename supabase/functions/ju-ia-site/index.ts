@@ -243,6 +243,27 @@ async function findNextAvailableDate(supabase:any,fromISO:string,durationMinutes
  }
  return null
 }
+// v28.38.0: mesmo aviso de "vaga aberta pra quem está na lista de espera" que já existia
+// só em admin-booking-status/manage-booking (cancelamento pelo admin) — cancelar/remarcar
+// pela JuIA no WhatsApp (whatsapp_cancel_booking/phone_reschedule_booking, chamadas direto
+// aqui, sem passar por aquelas duas functions) não disparava esse aviso, então o Juliano
+// só ficava sabendo de uma vaga compatível com a lista de espera se o cancelamento
+// acontecesse pelo painel admin. Avisa só o Juliano (push), não reserva nada sozinho — o
+// encaixe continua manual, mesmo padrão de admin-espera.html.
+async function notifyWaitlistIfMatch(supabase:any,bookingDate:string,startTime:string){
+ const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+ const supabaseUrl=Deno.env.get('SUPABASE_URL')
+ if(!pushSecret||!supabaseUrl)return
+ try{
+  const {data:waiting}=await supabase.rpc('waitlist_matches_for_slot',{p_date:bookingDate,p_start_time:startTime})
+  if(Array.isArray(waiting)&&waiting.length){
+   const names=waiting.slice(0,3).map((w:any)=>w.customer_name).join(', ')
+   const extra=waiting.length>3?` +${waiting.length-3}`:''
+   const timeLabel=String(startTime).slice(0,5)
+   await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🎉 Vaga aberta — tem gente esperando!',body:`${formatDateBR(bookingDate)} às ${timeLabel} abriu. ${names}${extra} está(ão) na lista de espera para esse dia.`,url:'/admin-espera.html?app=1',tag:`waitlist-slot-${bookingDate}-${timeLabel}`}})}).catch(()=>{})
+  }
+ }catch(error){console.error('[ju-ia-site] waitlist_check',error)}
+}
 // v28.30.5: além de espaços, remove pontuação — "CABELO!" não casava com nada porque o
 // "!" sobrava na comparação densa (caso real do Juliano, 31/07/2026).
 const stripSpaces=(s:string)=>normalize(s).replace(/[^a-z0-9]/g,'')
@@ -725,6 +746,7 @@ Deno.serve(async req=>{
      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
      const supabaseUrl=Deno.env.get('SUPABASE_URL')
      if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado pela JuIA',body:`${cancelled.customer_name||customerFirstName} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}\n${cancelled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${cancelled.id}`}})}).catch(()=>{})
+     await notifyWaitlistIfMatch(supabase,cancelled.booking_date,cancelled.start_time)
     }
     next.pending_cancel_booking_id=null
    }else if(simpleNo){
@@ -811,6 +833,7 @@ Deno.serve(async req=>{
      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
      const supabaseUrl=Deno.env.get('SUPABASE_URL')
      if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔄 Agendamento remarcado pela JuIA',body:`${rescheduled.customer_name||customerFirstName}\nDe ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}\n${rescheduled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-rescheduled-${rescheduled.id}`}})}).catch(()=>{})
+     if(target)await notifyWaitlistIfMatch(supabase,target.booking_date,target.start_time)
      next.pending_reschedule_booking_id=null
      next.pending_reschedule_new_date=null
      next.pending_reschedule_new_time=null
@@ -1204,6 +1227,7 @@ Deno.serve(async req=>{
      reply=`Prontinho! Cancelei o agendamento das ${String(toCancel.start_time).slice(0,5)} e mantive o das ${String(keep.start_time).slice(0,5)}.`
      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrl=Deno.env.get('SUPABASE_URL')
      if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento duplicado cancelado pela JuIA',body:`${customerFirstName||'Cliente'} tinha 2 horários em ${formatDateBR(toCancel.booking_date)} — mantido ${String(keep.start_time).slice(0,5)}, cancelado ${String(toCancel.start_time).slice(0,5)}.`,url:'/admin-agenda.html?app=1',tag:`booking-dup-${toCancel.id}`}})}).catch(()=>{})
+     await notifyWaitlistIfMatch(supabase,toCancel.booking_date,toCancel.start_time)
     }else{
      reply='Não consegui cancelar agora. O Juliano vai confirmar direto com você.'
      handoff=true

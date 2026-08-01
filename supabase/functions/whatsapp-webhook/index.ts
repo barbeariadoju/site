@@ -34,6 +34,14 @@ const greetingNow = () => {
   return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
+// v28.38.0 (item 6): meia-noite de hoje em Brasília, usada como início da janela de
+// histórico enviada ao modelo (ver HISTORY_LIMIT/recentMessages abaixo) — "o dia
+// inteiro", não um número fixo de horas pra trás.
+const startOfTodaySP = () => {
+  const todayISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  return new Date(`${todayISO}T00:00:00-03:00`).toISOString()
+}
+
 // Cliente manda áudio (mensagem de voz) em vez de texto — sem isso, a JuIA ficava em
 // silêncio total (bug real relatado pelo Juliano). Baixa o áudio via Evolution API
 // (getBase64FromMediaMessage, que já devolve descriptografado) e transcreve com o Whisper
@@ -132,7 +140,14 @@ const describeReferenceImage = async (
   }
 }
 
-const HISTORY_LIMIT = 10
+// v28.38.0 (item 6): antes só as últimas 10 mensagens dentro de 6h iam pro prompt do
+// modelo — uma conversa de manhã e outra à tarde no MESMO dia (comum: cliente pergunta
+// preço de manhã, some, volta à tarde pra agendar) perdia o contexto da parte da manhã,
+// arriscando uma resposta fora de contexto (ex.: repetir uma pergunta já respondida, ou
+// não reconhecer que já é a segunda vez que ele pergunta). Limite maior comporta o
+// volume normal de mensagens de um dia inteiro sem custo desproporcional (mensagens de
+// cliente são capadas em 500 caracteres).
+const HISTORY_LIMIT = 40
 // v28.30.0: human_takeover nunca expirava sozinho — depois de QUALQUER handoff (mesmo um
 // pedido simples "quero falar com o Juliano"), o cliente ficava em silêncio permanente,
 // sem nenhuma tela de admin pra limpar isso. Expira sozinho depois de 3h — tempo razoável
@@ -614,9 +629,15 @@ Deno.serve(async (request: Request) => {
             .from('whatsapp_messages')
             .select('direction, body, created_at')
             .eq('phone', phone)
-            // Só mensagens da conversa ATUAL (janela de 6h) — histórico de dias atrás no
-            // prompt fazia o modelo responder no contexto errado (mesmo caso da Nicole).
-            .gte('created_at', new Date(Date.now() - STALE_CONVERSATION_MS).toISOString())
+            // v28.38.0 (item 6): janela é o DIA CALENDÁRIO atual (Brasília), não mais um
+            // rolling de 6h — histórico de dias ANTERIORES continua de fora (histórico de
+            // dias atrás no prompt fazia o modelo responder no contexto errado, mesmo caso
+            // da Nicole), mas dentro do mesmo dia o modelo agora vê a conversa inteira,
+            // mesmo com um intervalo de várias horas no meio (ex.: pergunta de manhã,
+            // agendamento à tarde). Não confundir com STALE_CONVERSATION_MS (6h) abaixo,
+            // que continua controlando só o reset do state ESTRUTURADO (data/serviço
+            // escolhidos) — são propósitos diferentes.
+            .gte('created_at', startOfTodaySP())
             .order('created_at', { ascending: false })
             .limit(HISTORY_LIMIT)
 
