@@ -38,8 +38,16 @@ const greetingNow=()=>{
 
 const extractRequestedTime=(text='')=>{
  const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH])([0-5]\d)(?:\D|$)/)
- if(!match)return ''
- return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`
+ if(match)return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`
+ // v28.31.5: "às 9h"/"19h" (hora sem minutos, jeito mais comum de falar horário no
+ // Brasil) não casava — o regex acima exige os minutos depois do h. Fallback: hora
+ // seguida de "h" sem minutos, desde que o "h" não seja começo de outra palavra
+ // (ex.: "8horas" ainda casa, "amanhã" não tem dígito antes). Achado testando de
+ // propósito — o modelo geralmente extrai sozinho, mas o extrator determinístico é
+ // usado direto no fluxo de reagendamento e não pode depender disso.
+ const bare=String(text).match(/(?:^|\D)([01]?\d|2[0-3])\s*[hH](?![0-9])/)
+ if(bare)return `${String(Number(bare[1])).padStart(2,'0')}:00`
+ return ''
 }
 const slotHour=(slot:string)=>Number(String(slot).slice(0,2))
 const detectPeriod=(text:string)=>{
@@ -441,7 +449,14 @@ Deno.serve(async req=>{
  const bareCabeloAsk=/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
-  const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name)&&!(bareBarbaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
+  // v28.31.5: não adicionar via fallback um serviço GENÉRICO quando uma variante mais
+  // específica dele já está escolhida — bug real achado testando: "quanto tempo dura a
+  // barboterapia com ozônio?" deixava o state com "Barboterapia com vaporizador de
+  // ozônio" (do modelo) E "Barboterapia" (deste fallback, que só casou o pedaço
+  // "barboterapia" do texto). Se o cliente emendasse "quero agendar amanhã às 10h",
+  // a JuIA somaria os DOIS (R$ 90, 70 min) sem ele ter escolhido nada disso. Um nome
+  // que é substring de um serviço já escolhido é o mesmo serviço, não um novo.
+  const newOnes=loose.filter((s:any)=>!chosen.some((c:any)=>c.name===s.name||normalize(c.name).includes(normalize(s.name)))&&!(bareBarbaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
   if(newOnes.length){
    chosen.push(...newOnes)
    next.services=chosen.map((s:any)=>s.name)
@@ -1046,7 +1061,12 @@ Deno.serve(async req=>{
    // v28.31.2: preço do "só o corte" só existia no label do botão (actions), que o
    // WhatsApp NUNCA envia (só o texto de reply chega lá) — cliente no WhatsApp via o
    // preço do Corte + Lavagem mas não o do corte sozinho. Achado testando de propósito.
-   reply='Prefere só o corte (R$ 40,00) ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?'
+   // v28.31.5: quando o cliente pediu MAIS serviços junto do corte (ex.: "corte e barba
+   // express"), esta pergunta atropelava a resposta sem reconhecer os outros — o cliente
+   // podia achar que a barba foi ignorada, mesmo estando anotada no state. Agora abre
+   // confirmando o que já foi anotado antes de perguntar do corte.
+   const others=chosen.filter((s:any)=>s.name!=='Corte de cabelo').map((s:any)=>s.name)
+   reply=`${others.length?`Anotei ${others.join(' + ')}! Sobre o corte: `:''}Prefere só o corte (R$ 40,00) ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?`
    actions=[{label:'Só o corte · R$ 40',message:'Só o corte'},{label:'Corte + Lavagem · R$ 50',message:'Quero com lavagem'}]
    intent='other';handoff=false
   }
