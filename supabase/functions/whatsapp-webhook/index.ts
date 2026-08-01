@@ -20,6 +20,12 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 }
 
 const normalize = (s = '') => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const formatDateBR = (value: any) => {
+  const iso = String(value || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
 
 // Saudação pelo horário de Brasília — mesmo cálculo do ju-ia-site, duplicado aqui (funções
 // não compartilham módulo neste projeto) só pro caso de fallback de áudio não transcrito.
@@ -312,6 +318,62 @@ Deno.serve(async (request: Request) => {
         }, { onConflict: 'phone' })
 
         if (stillActive) return
+
+        // v28.32.0: confirmação de presença automática (pedido do Juliano, 31/07/2026 à
+        // noite) — checada ANTES da pesquisa de satisfação, mesmo raciocínio do fix do
+        // human_takeover: uma resposta curta e transacional como essa não pode ser
+        // atropelada por outra checagem. O pedido em si (texto + confirmation_requested_at)
+        // é mandado pelo cron whatsapp-booking-confirmation; aqui só interpretamos a
+        // resposta do cliente.
+        const { data: pendingConfirmationRows } = await admin.rpc('find_pending_confirmation_by_phone', { p_phone: phone })
+        const pendingConfirmation = Array.isArray(pendingConfirmationRows) ? pendingConfirmationRows[0] : pendingConfirmationRows
+
+        if (pendingConfirmation) {
+          const normalizedReply = normalize(text)
+          const trimmedNormalized = normalizedReply.trim()
+          const ambiguousShortReply = trimmedNormalized.length <= 40
+          // "não" checado primeiro: uma frase como "não vou poder ir, pode cancelar" tem
+          // tanto negação quanto uma eventual palavra de confirmação solta — a negação
+          // decide. Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
+          const isDecline = /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply)
+          const isConfirm = !isDecline && /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply)
+
+          if (isDecline) {
+            const { data: cancelledRows, error: cancelError } = await admin.rpc('whatsapp_cancel_booking', { p_phone: phone, p_booking_id: pendingConfirmation.id })
+            const cancelled = Array.isArray(cancelledRows) ? cancelledRows[0] : cancelledRows
+            if (!cancelError && cancelled) {
+              await sendWhatsapp(phone, 'Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário. Se quiser remarcar outro dia, é só me chamar.')
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '❌ Cliente avisou que não vai',
+                      body: `${cancelled.customer_name || phone} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0, 5)} — respondeu que não confirma presença.`,
+                      url: '/admin-agenda.html?app=1',
+                      tag: `booking-confirmation-declined-${cancelled.id}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push confirmation decline', error))
+              }
+              return
+            }
+            // Erro (ex.: já passou do horário) — cai pro fluxo normal abaixo, sem travar o cliente.
+          } else if (isConfirm) {
+            const { data: confirmedRows, error: confirmError } = await admin.rpc('phone_confirm_booking', { p_phone: phone, p_booking_id: pendingConfirmation.id })
+            const confirmed = Array.isArray(confirmedRows) ? confirmedRows[0] : confirmedRows
+            if (!confirmError && confirmed) {
+              await sendWhatsapp(phone, `Combinado! 😊 Te esperamos hoje às ${String(confirmed.start_time).slice(0, 5)}.`)
+              return
+            }
+          } else if (ambiguousShortReply) {
+            await sendWhatsapp(phone, `Só confirmando: você vai conseguir vir hoje às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name})? Responda *sim* ou *não*.`)
+            return
+          }
+          // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
+        }
 
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience

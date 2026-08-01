@@ -1297,7 +1297,15 @@ Deno.serve(async req=>{
         if(record&&pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({record})})
       }catch(pushError){console.error('[ju-ia-site] push',pushError)}
       const prodText=selectedProducts.length?` Produtos reservados: ${selectedProducts.map((p:any)=>p.name).join(', ')}.`:''
-      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊`
+      // v28.32.0: fidelidade proativa (pedido do Juliano, 31/07/2026 à noite, item 5) — só
+      // no momento exato da confirmação do agendamento (não em qualquer resposta), e só
+      // quando o telefone já é confirmado pelo canal (WhatsApp) — nunca em telefone digitado
+      // em texto livre no chat do site, que pode ser de outra pessoa. Duas situações: já tem
+      // recompensa disponível (avisa que pode usar), ou este atendimento fecha o cartão de 10
+      // (avisa que o PRÓXIMO corte sai grátis). Fora esses dois casos específicos, continua
+      // calado sobre fidelidade — não vira propaganda a cada agendamento.
+      const loyaltyNote=(verifiedPhone&&hasCustomer)?(rewards>0?` A propósito, você já tem ${rewards} corte(s) grátis disponível(is) pela fidelidade — é só avisar quando quiser usar! 🎁`:points===9?` Ah, e esse atendimento vai completar seu cartão fidelidade — no próximo corte você ganha um grátis! 🎉`:''):''
+      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
     }
