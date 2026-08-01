@@ -1340,7 +1340,11 @@ Deno.serve(async req=>{
  // sentido cobrar alguém que já resolveu o que queria.
  if(verifiedPhone){
   const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
-  if(next.completed||isSpecialFlow){
+  if(next.completed){
+   // v28.34.0: vira agendamento de verdade — preserva a linha (resolution='booked') em
+   // vez de apagar, pra o painel admin-leads.html conseguir calcular taxa de recuperação.
+   await supabase.from('conversation_leads').update({resolved_at:new Date().toISOString(),resolution:'booked',updated_at:new Date().toISOString()}).eq('phone',verifiedPhone).then(()=>{})
+  }else if(isSpecialFlow){
    await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
   }else{
    const trimmedMsg=message.trim()
@@ -1361,6 +1365,8 @@ Deno.serve(async req=>{
      reason:null,
      reason_detail:null,
      responded_at:null,
+     resolved_at:null,
+     resolution:null,
      updated_at:new Date().toISOString(),
     },{onConflict:'phone'}).then(()=>{})
    }else{

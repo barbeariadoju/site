@@ -85,13 +85,46 @@ Deno.serve(async (request: Request) => {
   }
 
   const now = Date.now()
-  let nudge1Sent = 0, nudge1Skipped = 0, nudge2Sent = 0, nudge2Skipped = 0
+  let nudge1Sent = 0, nudge1Skipped = 0, nudge2Sent = 0, nudge2Skipped = 0, reopenedSent = 0, reopenedSkipped = 0
+
+  // --- Vaga reaberta (v28.34.0): o trigger bookings_notify_leads_slot_reopened marca
+  // slot_reopened_at sozinho quando um agendamento que ocupava a data que este lead
+  // queria (kind='availability', date_interest) é cancelado ou reagendado pra outro dia
+  // — de QUALQUER origem (admin, site, WhatsApp, auto-cancelamento por falta de
+  // confirmação). Este bloco só lê a marca e avisa o cliente; não precisa saber quem
+  // liberou a vaga nem por quê.
+  const { data: reopenedLeads, error: reopenedError } = await admin
+    .from('conversation_leads')
+    .select('phone, customer_name, date_interest, last_message_at')
+    .not('slot_reopened_at', 'is', null)
+    .is('slot_reopened_notified_at', null)
+    .is('resolved_at', null)
+
+  if (reopenedError) { console.error('[whatsapp-lead-followup] reopened', reopenedError); return json({ error: reopenedError.message }, 500) }
+
+  for (const lead of reopenedLeads || []) {
+    try {
+      if (await isResolved(lead.phone, lead.last_message_at)) {
+        await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
+        continue
+      }
+      const name = firstName(lead.customer_name)
+      const dateLabel = formatDateBR(lead.date_interest)
+      await sendWhatsapp(lead.phone, `Boa notícia${name ? `, ${name}` : ''}! 🎉 Abriu uma vaga de novo pra ${dateLabel}, que era o dia que você queria. Ainda tem interesse? Se quiser, já posso ver um horário pra você.`)
+      await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
+      reopenedSent++
+    } catch (error) {
+      console.error('[whatsapp-lead-followup] reopened falhou', lead.phone, error)
+      reopenedSkipped++
+    }
+  }
 
   // --- Estágio 1: primeiro toque, 2h depois da última mensagem sem resposta ---
   const { data: stage0Leads, error: stage0Error } = await admin
     .from('conversation_leads')
     .select('phone, customer_name, kind, service_interest, last_message_at')
     .eq('followup_stage', 0)
+    .is('resolved_at', null)
     .lt('last_message_at', new Date(now - NUDGE1_AFTER_MS).toISOString())
     .gt('last_message_at', new Date(now - MAX_LOOKBACK_MS).toISOString())
 
@@ -142,6 +175,7 @@ Deno.serve(async (request: Request) => {
     .from('conversation_leads')
     .select('phone, service_interest, last_message_at, followup_1_sent_at, kind')
     .eq('followup_stage', 1)
+    .is('resolved_at', null)
     .neq('kind', 'greeting')
     .lt('followup_1_sent_at', new Date(now - NUDGE2_AFTER_MS).toISOString())
     .gt('followup_1_sent_at', new Date(now - MAX_LOOKBACK_MS).toISOString())
@@ -164,5 +198,5 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  return json({ ok: true, nudge1_sent: nudge1Sent, nudge1_skipped: nudge1Skipped, nudge2_sent: nudge2Sent, nudge2_skipped: nudge2Skipped })
+  return json({ ok: true, nudge1_sent: nudge1Sent, nudge1_skipped: nudge1Skipped, nudge2_sent: nudge2Sent, nudge2_skipped: nudge2Skipped, reopened_sent: reopenedSent, reopened_skipped: reopenedSkipped })
 })

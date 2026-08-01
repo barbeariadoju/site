@@ -1,3 +1,12 @@
+## 28.34.0 — Funil de reativação avançado (item 0 da lista de melhorias, o mais pedido)
+
+- **Reabertura de vaga proativa**: quando um agendamento que ocupava a data que um lead abandonado queria é cancelado ou reagendado — de QUALQUER origem (admin, site, WhatsApp, ou o auto-cancelamento por falta de confirmação da v28.32.0) — a JuIA agora avisa esse cliente sozinha ("abriu uma vaga de novo pra [data]..."). Implementado com um trigger direto na tabela `bookings` (`bookings_notify_leads_slot_reopened`, migration 070), que cobre todos os pontos de cancelamento/reagendamento de uma vez só, sem precisar caçar cada chamada de RPC em TypeScript. O envio de fato acontece no cron `whatsapp-lead-followup`, que já rodava a cada 15 min.
+- **Pontuação quente/morno/frio**: nova view `conversation_leads_scored` classifica cada lead por intenção (motivo respondido > tipo de conversa > esfriou por silêncio de 10+ dias), usada no novo painel `admin-leads.html`.
+- **Campanha por interesse antigo (disparo manual)**: nova Edge Function `conversation-leads-campaign` — o Juliano decide quando disparar, com filtro opcional por serviço, nunca automática. Nunca inventa promoção/desconto.
+- **Painel de analytics do funil** (`admin-leads.html`, novo item no menu): quente/morno/frio em aberto, taxa de recuperação (quantos leads viraram agendamento de verdade), motivos de desistência (sem horário/preço/só pesquisando/outro). Pra calcular a taxa de recuperação, o `ju-ia-site` deixou de apagar o lead quando ele vira agendamento — agora marca `resolution='booked'` e preserva a linha (só esse caso; os outros motivos de limpeza continuam apagando como antes).
+- Testado com `npm run test:admin` (15/15) + teste temporário de interação (filtro por heat, disparo de campanha simulado), apagado depois. Regressão do `ju-ia-site` conferida com mensagem real via curl/Node antes e depois do deploy.
+- `get_advisors` rodado depois das migrations (hábito do projeto): achou 1 finding real (função de trigger executável via RPC por engano, sem risco prático mas corrigido mesmo assim, migration 072).
+
 ## 28.33.0 — Avaliações do Google com rascunho de resposta por IA (modo aprovação)
 
 - **Nova tela `admin-avaliacoes.html`**: lista avaliações recebidas no Google Business Profile, cada uma com um rascunho de resposta gerado por IA. O Juliano revisa, edita se quiser, aprova e só então publica de fato no Google — nunca publica sozinha. Abas Pendentes/Aprovadas/Publicadas/Ignoradas, mesmo padrão visual de card colapsável do resto do admin.
