@@ -1,3 +1,10 @@
+## 28.33.0 — Avaliações do Google com rascunho de resposta por IA (modo aprovação)
+
+- **Nova tela `admin-avaliacoes.html`**: lista avaliações recebidas no Google Business Profile, cada uma com um rascunho de resposta gerado por IA. O Juliano revisa, edita se quiser, aprova e só então publica de fato no Google — nunca publica sozinha. Abas Pendentes/Aprovadas/Publicadas/Ignoradas, mesmo padrão visual de card colapsável do resto do admin.
+- **Duas Edge Functions novas**: `google-reviews-sync` (busca avaliações novas via API do Google, gera o rascunho com IA seguindo o mesmo tom/EEAT do site e mencionando naturalmente serviços reais/"Barbearia do Ju"/"Bragança Paulista", avisa por push) e `google-reviews-publish` (só essa escreve de fato no Google, só chamada pelo admin autenticado depois da aprovação).
+- **Nova tabela `google_reviews`** (migration 069): fila com status pending → approved → posted, mesmo padrão de outras filas do sistema (email_queue, sms_queue).
+- **Pré-requisito em andamento**: acesso à API de avaliações do Google (Business Profile) depende de aprovação separada do Google (protocolo 8-0854000041581, solicitado em 2026-08-01, prazo 7-10 dias úteis) + autorização OAuth depois disso. Até lá, as duas functions ficam deployadas mas inertes (sem credencial configurada) — nenhum cron agendado ainda.
+
 ## 28.29.2 — 2 bugs reais da JuIA corrigidos (análise de ~200 conversas reais)
 
 - **Bug sério: agendamento criado com horário errado.** Cliente com um corte já concluído (dia X, 11h) pediu um agendamento novo pra outro dia, "16h ou 17h" — a JuIA confirmou usando o horário antigo (11h, do atendimento já feito), ignorando completamente o que o cliente pediu. Corrigido: sempre que aparece uma data nova depois de um atendimento já concluído, o horário antigo é descartado e a JuIA pergunta de novo, em vez de herdar um horário de um atendimento encerrado.

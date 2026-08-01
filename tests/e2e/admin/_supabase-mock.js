@@ -125,7 +125,10 @@ export async function mockAdmin(page, overrides = {}) {
 
     if (url.pathname.startsWith('/functions/v1/')) {
       const name = url.pathname.split('/')[3];
-      return json(fixtures.functions[name] ?? { ok: true, mock: true });
+      const def = fixtures.functions[name];
+      let body = null;
+      try { body = JSON.parse(req.postData() || 'null'); } catch { /* sem corpo */ }
+      return json(typeof def === 'function' ? def(body) : def ?? { ok: true, mock: true });
     }
 
     if (url.pathname.startsWith('/rest/v1/rpc/')) {

@@ -1,0 +1,43 @@
+<!doctype html><html lang="pt-BR"><head><title>Avaliações Google | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=28.21.1"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<style>
+.avaliacoes-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px;flex-wrap:wrap}
+.avaliacoes-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.avaliacoes-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
+.avaliacoes-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;transition:border-color .18s}
+.avaliacoes-card:hover{border-color:rgba(240,201,135,.35)}
+.avaliacoes-stars{color:#f1d675;letter-spacing:1px}
+.avaliacoes-status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.72rem;font-weight:700;white-space:nowrap}
+.avaliacoes-status[data-status="pending"]{color:#f1d675}
+.avaliacoes-status[data-status="approved"]{color:#7ee2aa}
+.avaliacoes-status[data-status="posted"]{color:#8fbfe0}
+.avaliacoes-status[data-status="ignored"]{color:#888}
+.avaliacoes-comment{margin:0 0 10px;color:var(--muted);font-size:.9rem;white-space:pre-wrap}
+.avaliacoes-draft{width:100%;min-height:100px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit;font-size:.88rem;resize:vertical}
+.avaliacoes-card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.avaliacoes-card-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.4rem .8rem;border-radius:10px;cursor:pointer}
+.avaliacoes-card-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
+.avaliacoes-card-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
+.avaliacoes-card-actions button[disabled]{opacity:.4;cursor:not-allowed}
+.avaliacoes-meta{color:var(--muted);font-size:.78rem}
+.avaliacoes-no-draft{color:#e6a0a0;font-size:.82rem;font-style:italic}
+@media(max-width:700px){.avaliacoes-card-actions{flex-direction:column}.avaliacoes-card-actions button{width:100%;text-align:center}}
+</style>
+</head><body data-admin-page="avaliacoes"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="avaliacoes" class="is-active" href="admin-avaliacoes.html"><span>⭐</span>Avaliações Google</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><p class="eyebrow">Avaliações Google</p><h1>Responda com um clique — nunca sozinha.</h1><p>A IA prepara um rascunho pra cada avaliação nova. Revise, edite se quiser e só então aprove e publique.</p></div></header>
+
+<section class="admin-metrics"><article><span>Pendentes</span><strong id="avaliacoes-metric-pending">0</strong><small>aguardando revisão</small></article><article><span>Publicadas</span><strong id="avaliacoes-metric-posted">0</strong><small>este mês</small></article></section>
+
+<section class="admin-surface">
+  <div class="avaliacoes-tabs">
+    <button data-avaliacoes-tab="pending" class="is-active" type="button">Pendentes</button>
+    <button data-avaliacoes-tab="approved" type="button">Aprovadas</button>
+    <button data-avaliacoes-tab="posted" type="button">Publicadas</button>
+    <button data-avaliacoes-tab="ignored" type="button">Ignoradas</button>
+  </div>
+  <div id="avaliacoes-list"></div>
+</section>
+
+</main></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="admin-avaliacoes-v28.js?v=28.33.0"></script><script src="admin-pwa.js?v=28.16.1"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
