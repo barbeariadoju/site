@@ -1,3 +1,10 @@
+## 28.37.0 — Lista de espera integrada no WhatsApp (item 4 da lista de melhorias)
+
+- **Novo**: quando não há horário disponível no dia pedido (nem no dia alternativo mais próximo), a JuIA agora oferece diretamente colocar o cliente na lista de espera do dia original — antes esse recurso só existia no chat do site (`agendar/horario`). Reaproveita a mesma Edge Function `join-waitlist` já usada lá (dedup por telefone, aviso push pro Juliano).
+- Exige apenas telefone (WhatsApp ou já conhecido na conversa) e nome — risco bem menor que cancelar/remarcar (não mexe em nada existente), por isso não exige o mesmo nível de confirmação por WhatsApp verificado.
+- **Bug real achado testando de propósito**: a mensagem "Quero entrar na lista de espera" contém a palavra "quero", que satisfaz a heurística `simpleYes` usada em outro ponto do código (o bloco que retoma o fluxo de agendamento depois dos upsells resolvidos). Sem excluir a nova intenção `join_waitlist` desse bloco, ele sobrescrevia a classificação e **criava um agendamento de verdade** no dia/horário alternativo oferecido, em vez de colocar o cliente na lista de espera do dia original que ele pediu — o oposto do que foi pedido. Corrigido excluindo `join_waitlist` do gate `notSpecialFlow` (mesmo padrão já usado pra cancel/reschedule/change_service/update_products). Encontrado e corrigido antes de qualquer cliente real ser afetado — testado end-to-end via curl com telefone de teste, incluindo o cenário exato que quebrou, antes e depois do fix.
+- Testado o fluxo completo (serviço → upsells → dia sem vaga → oferta de lista de espera → confirmação) e regressão de um agendamento normal em dia com vaga.
+
 ## 28.36.0 — JuIA interpreta conteúdo de links (item 2 da lista de melhorias)
 
 - **Novo**: quando o cliente manda um link em vez de escrever (post de Instagram/TikTok com uma foto de referência, ou qualquer outra página), a JuIA agora tenta abrir o link com segurança e usar o conteúdo — antes disso só recusava educadamente sem tentar ver nada. Funciona nos dois canais (site e WhatsApp).

@@ -686,6 +686,11 @@ Deno.serve(async req=>{
  // pergunta sobre como funciona o processo. "se" antes de "cancelar" (dentro de uma
  // janela curta) marca a frase como hipotética/condicional, não uma ação pedida agora.
  const cancelHypothetical=/\bse\b[^.!?]{0,20}\bcancelar\b/.test(normalizedQuestion)
+ // v28.37.0 (item 4): resposta à oferta de lista de espera (ver next.pending_waitlist,
+ // setado no bloco de disponibilidade sem horário). Prioriza a checagem de pending
+ // sobre o texto solto — "sim" sozinho normalmente não bateria em nenhuma palavra-chave.
+ const waitlistAsk=includesAny(normalizedQuestion,['lista de espera','fila de espera','me avisa quando abrir','me avise quando abrir','entrar na lista','quero entrar na espera','avisa se abrir'])
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&next.pending_waitlist&&((simpleYes&&!simpleNo)||waitlistAsk))intent='join_waitlist'
  // Adicionar/remover produto de um agendamento JÁ CONFIRMADO — diferente do
  // upsell de produto durante a criação de um agendamento novo (que não
  // menciona "agendamento"/"horário marcado"). Exige as duas coisas juntas
@@ -1014,6 +1019,58 @@ Deno.serve(async req=>{
   }
  }
 
+ // v28.37.0 (item 4): confirma a entrada na lista de espera oferecida no bloco de
+ // disponibilidade sem horário (next.pending_waitlist). Mesmo padrão de segurança dos
+ // outros fluxos, mas de risco bem menor (não cria agendamento nem mexe em nada
+ // existente) — por isso não exige verifiedPhone como cancel/reschedule/change_service
+ // exigem, só um telefone conhecido (site ou WhatsApp) e um nome.
+ if(intent==='join_waitlist'){
+  const offer=next.pending_waitlist
+  if(!offer){
+   intent='availability'
+  }else if(simpleNo){
+   reply='Tudo bem, não coloquei você na lista de espera. Se mudar de ideia, é só falar.'
+   next.pending_waitlist=null
+   handoff=false
+  }else{
+   const wlPhone=String(verifiedPhone||next.phone||knownPhone||'').replace(/\D/g,'')
+   const wlName=String(next.name||contextFullName||'').trim()
+   const missing=[]
+   if(wlPhone.length<10)missing.push('seu WhatsApp com DDD')
+   if(!wlName)missing.push('seu nome')
+   if(missing.length){
+    reply=`Para te colocar na lista de espera, preciso de ${missing.join(' e ')}.`
+    handoff=false
+   }else{
+    let wlOk=false
+    try{
+     const wlResp=await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/join-waitlist`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:`Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`},
+      body:JSON.stringify({
+       customer_name:wlName,
+       customer_phone:wlPhone,
+       preferred_date:offer.date,
+       preferred_period:offer.period||'qualquer',
+       service_name:offer.service_name,
+       service_price:offer.service_price,
+       duration_minutes:offer.duration_minutes,
+      }),
+     })
+     const wlData=await wlResp.json().catch(()=>({}))
+     wlOk=wlResp.ok&&Boolean(wlData?.ok)
+    }catch(error){console.error('[ju-ia-site] join_waitlist',error)}
+    reply=wlOk
+     ?`Prontinho, ${firstName(wlName)}! Te coloquei na lista de espera pra ${formatDateBR(offer.date)}${offer.service_name?` (${offer.service_name})`:''}. Assim que abrir uma vaga, eu te aviso por aqui.`
+     :'Não consegui te colocar na lista de espera agora. Pode tentar de novo em instantes, ou fale com o Juliano.'
+    handoff=false
+    next.pending_waitlist=null
+    next.phone=wlPhone
+    if(!next.name)next.name=wlName
+   }
+  }
+ }
+
  // Troca só o serviço do agendamento (service_name/price/duration_minutes),
  // preservando dia e horário — não mexe em booking_date/start_time. "desired"
  // só é lido de swapTailService (extraído direto desta mensagem via regex) ou
@@ -1176,7 +1233,13 @@ Deno.serve(async req=>{
  // isPriceOrInfoQuestion aqui de novo: sem isso, uma pergunta de preço/duração que o
  // modelo já respondeu corretamente (ex. "quanto tempo demora uma luzes completa")
  // ainda podia cair nas perguntas de upsell abaixo e apagar a resposta real.
- const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&!next.completed&&!isPriceOrInfoQuestion
+ // v28.37.1: bug real achado testando de propósito — "Quero entrar na lista de espera"
+ // contém a palavra "quero", que satisfaz simpleYes. Sem excluir join_waitlist daqui, o
+ // bloco de "retomar fluxo" mais abaixo (que reage a simpleYes/simpleNo quando data+hora
+ // já estão preenchidos) sobrescrevia intent='join_waitlist' para 'book' e CRIAVA um
+ // agendamento de verdade no dia/horário alternativo oferecido, em vez de colocar o
+ // cliente na lista de espera do dia original — o oposto do que ele pediu.
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion
 
  // Pedido do Juliano: "Corte de cabelo" sozinho (R$40) sempre oferece o upgrade pro
  // "Corte + Lavagem" (R$50, lavagem profissional incluída) antes de seguir — melhora o
@@ -1331,14 +1394,22 @@ Deno.serve(async req=>{
   const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
 
   if(!allSlots.length){
+   // v28.37.0 (item 4): antes só sugeria o próximo dia aberto — agora também oferece
+   // lista de espera pro dia ORIGINAL que o cliente pediu (mesmo recurso que já existe
+   // no site, agendar/horario/join-waitlist). Captura next.date ANTES de sobrescrever
+   // com nextAvail.date logo abaixo.
+   const waitlistOffer={date:next.date,period:effectivePeriod||null,service_name:serviceNames,service_price:chosen.reduce((a:number,s:any)=>a+s.price,0),duration_minutes:duration}
    const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
    if(nextAvail){
     const weekday=new Date(nextAvail.date+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
-    reply=`Não encontrei horário em ${formatDateBR(next.date)} para ${serviceNames}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday})${nextAvail.slots.length<=10?`: ${nextAvail.slots.join(', ')}`:`, com ${nextAvail.slots.length} horários`}. Quer marcar nesse dia?`
+    reply=`Não encontrei horário em ${formatDateBR(next.date)} para ${serviceNames}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday})${nextAvail.slots.length<=10?`: ${nextAvail.slots.join(', ')}`:`, com ${nextAvail.slots.length} horários`}. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga.`
+    next.pending_waitlist=waitlistOffer
     next.date=nextAvail.date
-    actions=nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]
+    actions=[...(nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]),{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
    }else{
-    reply='Não encontrei horário disponível nas próximas semanas para esse atendimento. Quer falar direto com a equipe?'
+    reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
+    next.pending_waitlist=waitlistOffer
+    actions=[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
    }
   }else if(effectiveTime){
    // Antes de dizer "não está disponível", checa se o motivo é que o próprio cliente já
