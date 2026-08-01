@@ -28,6 +28,131 @@ const formatDateBR=(value:any)=>{
  return `${d}/${m}/${y}`
 }
 const firstName=(value:any)=>String(value||'').trim().split(/\s+/)[0]||'cliente'
+
+const fetchWithTimeout=async(url:string,init:RequestInit,timeoutMs=8000)=>{
+ const controller=new AbortController()
+ const timeout=setTimeout(()=>controller.abort(),timeoutMs)
+ try{return await fetch(url,{...init,signal:controller.signal})}
+ finally{clearTimeout(timeout)}
+}
+
+// v28.36.0 (item 2): cliente manda um LINK em vez de escrever (post de Instagram/TikTok
+// com uma foto de referência, ou qualquer outra página). Antes disso a JuIA só recusava
+// educadamente, sem tentar ver nada. Guarda contra SSRF: só http/https, bloqueia hostname
+// literal privado/loopback/link-local/metadados de nuvem por string (checagem síncrona,
+// sempre ativa) + tenta resolver DNS e bloquear se o IP resolvido for privado (proteção
+// extra "melhor esforço" — se Deno.resolveDns não estiver disponível no runtime, ignora
+// essa camada em vez de quebrar o recurso inteiro pra domínios públicos normais). Cada
+// redirect é revalidado do zero antes de seguir.
+const isPrivateOrReservedIp=(ip:string):boolean=>{
+ if(ip.includes('.')){
+  const p=ip.split('.').map(Number)
+  if(p.length!==4||p.some(n=>Number.isNaN(n)))return true
+  const [a,b]=p
+  if(a===10||a===127||a===0)return true
+  if(a===169&&b===254)return true
+  if(a===172&&b>=16&&b<=31)return true
+  if(a===192&&b===168)return true
+  if(a===100&&b>=64&&b<=127)return true
+  return false
+ }
+ const lower=ip.toLowerCase()
+ if(lower==='::1'||lower==='::')return true
+ if(/^fe[89ab][0-9a-f]:/.test(lower))return true
+ if(/^f[cd][0-9a-f]{2}:/.test(lower))return true
+ return false
+}
+const isObviouslyPrivateHostname=(hostname:string):boolean=>{
+ const lower=hostname.toLowerCase()
+ if(lower==='localhost'||lower.endsWith('.local')||lower.endsWith('.internal')||lower==='metadata.google.internal')return true
+ if(/^[0-9.]+$/.test(hostname)||hostname.includes(':'))return isPrivateOrReservedIp(hostname)
+ return false
+}
+const isPrivateHostByDns=async(hostname:string):Promise<boolean>=>{
+ try{
+  // @ts-ignore — Deno.resolveDns pode não existir/ser permitido neste runtime; falha
+  // silenciosamente (não bloqueia domínio público nenhum se a checagem não for possível).
+  const a=await Deno.resolveDns(hostname,'A').catch(()=>[])
+  // @ts-ignore
+  const aaaa=await Deno.resolveDns(hostname,'AAAA').catch(()=>[])
+  const ips=[...(a||[]),...(aaaa||[])]
+  return ips.length>0&&ips.some(isPrivateOrReservedIp)
+ }catch{return false}
+}
+const MAX_LINK_BYTES=800000
+const MAX_IMAGE_BYTES=6000000
+async function fetchSafely(startUrl:string,maxBytes:number,timeoutMs=8000):Promise<{finalUrl:string,contentType:string,bytes:Uint8Array}|null>{
+ let currentUrl=startUrl
+ for(let hop=0;hop<5;hop++){
+  let parsed:URL
+  try{parsed=new URL(currentUrl)}catch{return null}
+  if(parsed.protocol!=='http:'&&parsed.protocol!=='https:')return null
+  if(isObviouslyPrivateHostname(parsed.hostname))return null
+  if(await isPrivateHostByDns(parsed.hostname))return null
+  let resp:Response
+  try{
+   resp=await fetchWithTimeout(currentUrl,{redirect:'manual',headers:{'User-Agent':'Mozilla/5.0 (compatible; BarbeariaDoJuBot/1.0)'}},timeoutMs)
+  }catch{return null}
+  if([301,302,303,307,308].includes(resp.status)){
+   const loc=resp.headers.get('location')
+   if(!loc)return null
+   try{currentUrl=new URL(loc,currentUrl).toString()}catch{return null}
+   continue
+  }
+  if(!resp.ok)return null
+  const contentLength=Number(resp.headers.get('content-length')||0)
+  if(contentLength&&contentLength>maxBytes)return null
+  const contentType=resp.headers.get('content-type')||''
+  const buf=await resp.arrayBuffer().catch(()=>null)
+  if(!buf)return null
+  const bytes=new Uint8Array(buf).slice(0,maxBytes)
+  return{finalUrl:currentUrl,contentType,bytes}
+ }
+ return null
+}
+const metaTag=(html:string,prop:string):string=>{
+ const re=new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']*)["']`,'i')
+ const m=html.match(re)
+ return m?m[1].trim():''
+}
+async function describeImageFromBytes(bytes:Uint8Array,contentType:string,openaiKey:string):Promise<string>{
+ let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i])
+ const base64=btoa(binary)
+ const visionPrompt='Você ajuda uma barbearia a entender fotos de referência enviadas por clientes. Descreva em português do Brasil, em até 2 frases objetivas, o corte de cabelo, estilo de barba ou coloração capilar mostrado na imagem, com detalhes úteis pra um barbeiro entender o que o cliente quer (comprimento, tipo de degradê, risco, formato da barba, técnica de cor etc.). Não sugira nome de serviço nem preço. Se a imagem não mostrar claramente um corte de cabelo, barba ou coloração capilar em uma pessoa, responda SOMENTE o texto NAO_RELACIONADO, sem mais nada.'
+ const r=await fetchWithTimeout('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${openaiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',reasoning:{effort:'low'},max_output_tokens:250,instructions:visionPrompt,input:[{role:'user',content:[{type:'input_image',image_url:`data:${contentType||'image/jpeg'};base64,${base64}`}]}]})},15000).catch(()=>null)
+ if(!r||!r.ok)return ''
+ const d=await r.json().catch(()=>({}))
+ return textFrom(d)
+}
+async function describeLinkContent(rawUrl:string,openaiKey:string):Promise<string|null>{
+ const page=await fetchSafely(rawUrl,MAX_LINK_BYTES,8000)
+ if(!page||!page.contentType.includes('text/html'))return null
+ const html=new TextDecoder().decode(page.bytes)
+ const ogImage=metaTag(html,'og:image')
+ const ogTitle=metaTag(html,'og:title')
+ const ogDesc=metaTag(html,'og:description')
+ const titleMatch=html.match(/<title[^>]*>([^<]*)<\/title>/i)
+ const plainTitle=titleMatch?titleMatch[1].trim():''
+ const title=ogTitle||plainTitle
+ const description=ogDesc
+
+ if(ogImage&&openaiKey){
+  try{
+   const absoluteImageUrl=new URL(ogImage,page.finalUrl).toString()
+   const image=await fetchSafely(absoluteImageUrl,MAX_IMAGE_BYTES,10000)
+   if(image&&image.contentType.startsWith('image/')){
+    const described=await describeImageFromBytes(image.bytes,image.contentType,openaiKey)
+    if(described&&described!=='NAO_RELACIONADO'){
+     return `Cliente enviou um link com uma foto de referência. Descrição da imagem: ${described}${title?` (página: "${title}")`:''}`
+    }
+   }
+  }catch{/* segue pro fallback de texto abaixo */}
+ }
+ if(title||description){
+  return `Cliente enviou um link. Título da página: "${title||'sem título'}"${description?`. Descrição: "${description}"`:''}.`
+ }
+ return null
+}
 const includesAny=(text:string,terms:string[])=>terms.some(term=>text.includes(term))
 // Saudação correta pelo horário de Brasília — computada aqui (não pedida ao modelo) pra
 // garantir que "Bom dia/Boa tarde/Boa noite" nunca saia errado.
@@ -169,7 +294,7 @@ Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors})
  if(req.method!=='POST')return respond({error:'Método não permitido.'},405)
  const body=await req.json().catch(()=>({}))
- const message=String(body.message||'').trim().slice(0,500)
+ let message=String(body.message||'').trim().slice(0,500)
  if(!message)return respond({error:'Mensagem vazia.'},400)
  const state=body.state&&typeof body.state==='object'?body.state:{}
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
@@ -186,16 +311,24 @@ Deno.serve(async req=>{
  const {count}=await supabase.from('site_chat_messages').select('*',{count:'exact',head:true}).eq('session_id',sessionId).gte('created_at',new Date(Date.now()-86400000).toISOString())
  if((count||0)>80)return respond({error:'Limite diário de mensagens atingido. Fale com o Juliano pelo WhatsApp.'},429)
 
- // Cliente manda só um link (ex.: compartilhou uma imagem/post gerado em outro app) —
- // a JuIA não enxerga conteúdo de link nenhum. Responde direto, sem gastar chamada de
- // IA, e no canal WhatsApp aproveita pra indicar o site (onde dá pra ver serviços e
- // agenda sozinho). Só dispara quando a mensagem é BASICAMENTE o link (pouco texto
- // sobrando), pra não atrapalhar uma mensagem normal que só cita um link de passagem.
- const isWhatsapp=Boolean(String(body.verified_phone||'').trim())
- if(isWhatsapp&&/(?:https?:\/\/|www\.)\S+/i.test(message)&&message.replace(/https?:\/\/\S+|www\.\S+/gi,'').trim().length<15){
-  const reply=`${greetingNow()}! Não consigo ver o conteúdo de links por aqui — pode me mandar por escrito o que você precisa? Se preferir, acesse nosso site www.barbeariadoju.com.br e faça seu agendamento de forma simples e rápida: lá você confere todos os serviços e consulta os horários disponíveis na nossa agenda. 😊`
-  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state,intent:'other'}]).then(()=>{})
-  return respond({reply,intent:'other',state,actions:[],handoff:false})
+ // v28.36.0 (item 2): cliente manda só um LINK (ex.: post de Instagram/TikTok com uma foto
+ // de referência, ou qualquer outra página) — antes só recusava educadamente. Agora tenta
+ // buscar o conteúdo com segurança (ver describeLinkContent/fetchSafely acima) e usa o que
+ // conseguir extrair (imagem principal da página analisada por visão, ou título/descrição)
+ // como se fosse o texto do cliente, seguindo pro fluxo normal. Só dispara quando a
+ // mensagem é BASICAMENTE o link (pouco texto sobrando), pra não atrapalhar uma mensagem
+ // normal que só cita um link de passagem. Vale pros dois canais (site e WhatsApp).
+ const linkMatch=message.match(/(https?:\/\/\S+|www\.\S+)/i)
+ if(linkMatch&&message.replace(/https?:\/\/\S+|www\.\S+/gi,'').trim().length<15){
+  const rawLink=/^https?:\/\//i.test(linkMatch[0])?linkMatch[0]:`https://${linkMatch[0]}`
+  const linkContext=await describeLinkContent(rawLink,key||'').catch((err)=>{console.error('[ju-ia-site] describe_link',err);return null})
+  if(linkContext){
+   message=linkContext
+  }else{
+   const reply=`${greetingNow()}! Não consegui abrir esse link por aqui — pode me mandar por escrito o que você precisa? Se preferir, acesse nosso site www.barbeariadoju.com.br e faça seu agendamento de forma simples e rápida: lá você confere todos os serviços e consulta os horários disponíveis na nossa agenda. 😊`
+   await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state,intent:'other'}]).then(()=>{})
+   return respond({reply,intent:'other',state,actions:[],handoff:false})
+  }
  }
 
  let context:any={}
@@ -440,7 +573,12 @@ Deno.serve(async req=>{
  // perguntas puras de preço/duração (isPriceOrInfoQuestion) nem quando o modelo já
  // pediu handoff (bug real: reclamação "a barba ficou desigual" citava "barba" e
  // virava um menu de opções de barba em vez de manter o handoff da reclamação).
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
+ // v28.36.0: "sem barba" (ex.: descrição de imagem/link dizendo "corte tal, sem barba")
+ // disparava o menu de opções de barba mesmo assim — o regex original não entendia
+ // negação. Achado testando o reconhecimento de links de propósito. Mesmo padrão do
+ // cancelNegated (uma negação explícita logo antes cancela o próprio gatilho).
+ const barbaNegated=/\bsem\b[^.!?]{0,15}\bbarba\b/i.test(message)
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
  // v28.30.5 — pedido do Juliano (31/07/2026): "cabelo" solto ("eu queria cabelo", "CABELO!")
  // não era entendido — a JuIA respondia com pergunta genérica ou a lista de mais procurados.
  // Igual ao padrão da barba: confirma o serviço óbvio ("seria um Corte de cabelo?") em vez

@@ -1,3 +1,11 @@
+## 28.36.0 — JuIA interpreta conteúdo de links (item 2 da lista de melhorias)
+
+- **Novo**: quando o cliente manda um link em vez de escrever (post de Instagram/TikTok com uma foto de referência, ou qualquer outra página), a JuIA agora tenta abrir o link com segurança e usar o conteúdo — antes disso só recusava educadamente sem tentar ver nada. Funciona nos dois canais (site e WhatsApp).
+- **Guarda contra SSRF**: só http/https; bloqueia hostname literal privado/loopback/link-local/metadados de nuvem (checagem síncrona sempre ativa); tenta resolver DNS e bloquear se o IP resolvido for privado (proteção extra, falha aberta pra domínio público se a checagem de DNS não estiver disponível no runtime); cada redirect é revalidado do zero antes de seguir; limite de tamanho e timeout na busca da página e da imagem.
+- Extrai a imagem principal da página (`og:image`) e roda pela mesma chamada de visão do item 1 (v28.35.0) pra descrever o corte/barba/cor. Sem imagem, usa título/descrição da página como contexto. Se nada funcionar (link bloqueado, sem metadados, erro de rede), mantém a recusa educada.
+- **Bug real achado testando o recurso**: uma descrição de imagem contendo "sem barba" disparava o menu de opções de barba mesmo assim — o regex que detecta menção a barba não entendia negação. Corrigido (mesmo padrão já usado pro "não quero cancelar").
+- Testado com um link real (Wikipedia, artigo sobre corte de cabelo): a JuIA extraiu a imagem, descreveu o corte corretamente e seguiu a conversa normalmente. Regressão conferida com mensagens normais antes e depois do fix.
+
 ## 28.35.0 — JuIA reconhece fotos de referência no WhatsApp (item 1 da lista de melhorias)
 
 - **Bug real corrigido de quebra**: antes desta versão, quando um cliente mandava uma FOTO pelo WhatsApp (com ou sem legenda), a JuIA ficava em silêncio total — pior do que uma recusa educada. A legenda da foto (`imageMessage.caption`) nunca era lida pelo código, então a mensagem sempre caía no mesmo caminho de "mídia sem texto, sem resposta".
