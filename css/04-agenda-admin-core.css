@@ -205,3 +205,10 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 @media(max-width:520px){.contact-channel .contact-phone{font-size:.82rem}.cart-row{align-items:flex-start}.cart-row-main{align-items:flex-start}.cart-qty-actions{padding-top:1px}}
 
 /* V23 — Área do Cliente e CRM Premium */
+
+/* V28.41.0 — indicação de produto (afiliados) nos artigos do blog */
+.product-pick{margin:1.4em 0;padding:16px 18px;border-radius:14px;border:1px solid rgba(240,201,135,.35);background:rgba(255,255,255,.03)}
+.product-pick .affiliate-tag{display:inline-block;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a8a8a;background:rgba(255,255,255,.07);padding:3px 9px;border-radius:999px;margin-bottom:10px}
+.product-pick h3{margin:0 0 6px;font-size:1.05rem;color:#f0c987}
+.product-pick p{margin:0 0 12px;color:#d4d4d4}
+.product-pick a.btn{display:inline-block}
