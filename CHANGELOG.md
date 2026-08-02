@@ -1,3 +1,10 @@
+## 28.39.0 — Limpeza de índices órfãos (reavaliação dos advisors)
+
+- **Reavaliados os ~15 índices "não usados" apontados pelos advisors** (pedido do Juliano). A maioria continua sendo índice legítimo de suporte a tabela ativa com baixo tráfego (negócio pequeno) — mesma conclusão da auditoria anterior (28.29.1), não vale dropar precocemente. Dois casos, porém, eram genuinamente órfãos, não só "baixo tráfego":
+  - **`email_outbox` era uma fila morta da v21** (migration 013): a trigger `bookings_v21_email_queue` ainda gravava nela a cada agendamento/mudança de status, mas nenhuma edge function lê essa tabela desde que o envio real de e-mail migrou pra `email_queue` (usada por `booking-email`/`send-email`/`notifications-watchdog`/`booking-reminder-24h`). Confirmado: as 40 linhas existentes estavam TODAS com `status='pending'`, nunca processadas — cliente não perdia e-mail nenhum (o envio real acontece por outro caminho), era só overhead de escrita numa tabela que só crescia sem propósito. Trigger, função e tabela removidas (migration 074).
+  - **`bookings_customer_phone_idx` nunca podia ser usado**: toda consulta de telefone no banco usa `regexp_replace(customer_phone,...)` ou `phone_match_key()`, nunca a coluna crua — confirmado varrendo todas as migrations. Um índice btree simples na coluna não serve pra filtro por função da coluna, então esse era órfão por design, não por baixo volume. Removido.
+- Testado com `npm run test:admin` (15/15) depois da limpeza, e confirmado por grep que nada no front-end/admin referenciava `email_outbox`.
+
 ## 28.38.3 — Foto do Juliano recortada corretamente (hero + avatar do autor)
 
 - **Corrigido**: a foto de corpo inteiro (`juliano-retrato.jpg`, 768×1376, retrato) estava sendo forçada em dois espaços que não combinam com esse formato — a foto grande de `sobre-o-juliano.html` (faixa larga e baixa) cortava o rosto quase inteiro (só aparecia do pescoço pra baixo), e o avatar circular de "Escrito por Juliano..." (presente em ~33 páginas de blog/serviço) mostrava o rosto pequeno e mal enquadrado.
