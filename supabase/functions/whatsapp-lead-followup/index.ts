@@ -85,7 +85,38 @@ Deno.serve(async (request: Request) => {
   }
 
   const now = Date.now()
-  let nudge1Sent = 0, nudge1Skipped = 0, nudge2Sent = 0, nudge2Skipped = 0, reopenedSent = 0, reopenedSkipped = 0
+  let nudge1Sent = 0, nudge1Skipped = 0, nudge2Sent = 0, nudge2Skipped = 0, reopenedSent = 0, reopenedSkipped = 0, waitlistOfferSent = 0, waitlistOfferSkipped = 0
+
+  // --- Item 1 (fechar o loop da lista de espera, v28.40.0): o trigger
+  // bookings_notify_waitlist_slot_reopened marca status='avisado' + offered_date/
+  // offered_start_time sozinho quando um horário livre casa com quem está esperando
+  // (de QUALQUER origem de cancelamento/reagendamento, e só quando a duração do
+  // serviço realmente cabe no horário liberado). Este bloco só manda a mensagem
+  // proativa perguntando se ainda quer aquele horário — a resposta (sim/não) é
+  // tratada no whatsapp-webhook, nunca cria agendamento sozinho aqui.
+  const { data: waitlistOffers, error: waitlistOffersError } = await admin
+    .from('waitlist')
+    .select('id, customer_name, customer_phone, service_name, offered_date, offered_start_time')
+    .eq('status', 'avisado')
+    .not('offered_date', 'is', null)
+    .not('offered_start_time', 'is', null)
+    .is('notified_at', null)
+
+  if (waitlistOffersError) { console.error('[whatsapp-lead-followup] waitlist_offers', waitlistOffersError) }
+
+  for (const offer of waitlistOffers || []) {
+    try {
+      const name = firstName(offer.customer_name)
+      const dateLabel = formatDateBR(offer.offered_date)
+      const timeLabel = String(offer.offered_start_time).slice(0, 5)
+      await sendWhatsapp(offer.customer_phone, `Boa notícia${name ? `, ${name}` : ''}! 🎉 Abriu uma vaga pra ${dateLabel} às ${timeLabel}${offer.service_name ? ` (${offer.service_name})` : ''} — o horário que você estava esperando. Ainda quer? Responda *sim* ou *não*.`)
+      await admin.from('waitlist').update({ notified_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', offer.id)
+      waitlistOfferSent++
+    } catch (error) {
+      console.error('[whatsapp-lead-followup] waitlist_offer falhou', offer.customer_phone, error)
+      waitlistOfferSkipped++
+    }
+  }
 
   // --- Vaga reaberta (v28.34.0): o trigger bookings_notify_leads_slot_reopened marca
   // slot_reopened_at sozinho quando um agendamento que ocupava a data que este lead
@@ -198,5 +229,5 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  return json({ ok: true, nudge1_sent: nudge1Sent, nudge1_skipped: nudge1Skipped, nudge2_sent: nudge2Sent, nudge2_skipped: nudge2Skipped, reopened_sent: reopenedSent, reopened_skipped: reopenedSkipped })
+  return json({ ok: true, nudge1_sent: nudge1Sent, nudge1_skipped: nudge1Skipped, nudge2_sent: nudge2Sent, nudge2_skipped: nudge2Skipped, reopened_sent: reopenedSent, reopened_skipped: reopenedSkipped, waitlist_offer_sent: waitlistOfferSent, waitlist_offer_skipped: waitlistOfferSkipped })
 })

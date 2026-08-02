@@ -467,6 +467,61 @@ Deno.serve(async (request: Request) => {
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
         }
 
+        // v28.40.0 (item 1, fechar o loop da lista de espera): resposta à oferta
+        // proativa de vaga (mandada pelo whatsapp-lead-followup quando o trigger
+        // bookings_notify_waitlist_slot_reopened marca um horário compatível). Mesmo
+        // padrão de sim/não do bloco de confirmação de presença acima — checado
+        // ANTES do fluxo normal da JuIA pra não deixar a resposta cair no lugar errado.
+        const { data: pendingWaitlistOfferRows } = await admin.rpc('find_pending_waitlist_offer_by_phone', { p_phone: phone })
+        const pendingWaitlistOffer = Array.isArray(pendingWaitlistOfferRows) ? pendingWaitlistOfferRows[0] : pendingWaitlistOfferRows
+
+        if (pendingWaitlistOffer) {
+          const normalizedReply = normalize(text)
+          const trimmedNormalized = normalizedReply.trim()
+          const ambiguousShortReply = trimmedNormalized.length <= 40
+          const isDecline = /\bnao\b|nao vou|nao posso|nao quero|nao consigo|infelizmente/.test(normalizedReply)
+          const isConfirm = !isDecline && /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|\bquero\b|^ok$/.test(normalizedReply)
+          const dateLabel = formatDateBR(pendingWaitlistOffer.offered_date)
+          const timeLabel = String(pendingWaitlistOffer.offered_start_time).slice(0, 5)
+
+          if (isConfirm) {
+            const { data: confirmedRows, error: confirmError } = await admin.rpc('phone_confirm_waitlist_booking', { p_phone: phone, p_waitlist_id: pendingWaitlistOffer.id })
+            const confirmed = Array.isArray(confirmedRows) ? confirmedRows[0] : confirmedRows
+            if (!confirmError && confirmed) {
+              await sendWhatsapp(phone, `Prontinho! ✅ Confirmado pra ${formatDateBR(confirmed.booking_date)} às ${String(confirmed.start_time).slice(0, 5)} (${confirmed.service_name}). Te esperamos!`)
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '🎉 Vaga da lista de espera confirmada',
+                      body: `${confirmed.customer_name || phone} confirmou ${formatDateBR(confirmed.booking_date)} às ${String(confirmed.start_time).slice(0, 5)} (${confirmed.service_name}).`,
+                      url: '/admin-agenda.html?app=1',
+                      tag: `waitlist-confirmed-${confirmed.id}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push waitlist confirm', error))
+              }
+              return
+            }
+            // Erro (ex.: alguém confirmou primeiro e o horário já foi ocupado) — devolve
+            // a pessoa pra fila de espera em vez de deixá-la achando que agendou.
+            await admin.from('waitlist').update({ status: 'esperando', offered_date: null, offered_start_time: null, notified_at: null, updated_at: new Date().toISOString() }).eq('id', pendingWaitlistOffer.id)
+            await sendWhatsapp(phone, 'Poxa, esse horário acabou de ser ocupado por outra pessoa 😕 Continuo te avisando assim que abrir outra vaga.')
+            return
+          } else if (isDecline) {
+            await admin.from('waitlist').update({ status: 'esperando', offered_date: null, offered_start_time: null, notified_at: null, updated_at: new Date().toISOString() }).eq('id', pendingWaitlistOffer.id)
+            await sendWhatsapp(phone, 'Tudo bem, sem problemas! Você continua na lista de espera — aviso assim que abrir outra vaga.')
+            return
+          } else if (ambiguousShortReply) {
+            await sendWhatsapp(phone, `Só confirmando: você ainda quer o horário de ${dateLabel} às ${timeLabel}${pendingWaitlistOffer.service_name ? ` (${pendingWaitlistOffer.service_name})` : ''}? Responda *sim* ou *não*.`)
+            return
+          }
+          // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
+        }
+
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
