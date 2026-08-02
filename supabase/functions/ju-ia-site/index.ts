@@ -708,10 +708,21 @@ Deno.serve(async req=>{
  // janela curta) marca a frase como hipotética/condicional, não uma ação pedida agora.
  const cancelHypothetical=/\bse\b[^.!?]{0,20}\bcancelar\b/.test(normalizedQuestion)
  // v28.37.0 (item 4): resposta à oferta de lista de espera (ver next.pending_waitlist,
- // setado no bloco de disponibilidade sem horário). Prioriza a checagem de pending
- // sobre o texto solto — "sim" sozinho normalmente não bateria em nenhuma palavra-chave.
+ // setado no bloco de disponibilidade sem horário).
+ // v28.38.2: bug real achado testando de propósito — quando a oferta era INDIRETA (a
+ // mensagem pergunta primeiro "Quer marcar nesse dia?" e só depois menciona a lista),
+ // um "sim" do cliente confirmando a RESERVA no dia alternativo era sequestrado e virava
+ // entrada na lista de espera do dia original: o cliente achava que tinha agendado, mas
+ // só ficou esperando. Agora "sim" solto só entra na lista quando a pergunta foi DIRETA
+ // sobre a lista (flag direct, setada no branch sem nenhum dia alternativo); a frase
+ // explícita/botão ("quero entrar na lista de espera") continua valendo nos dois casos.
+ // "Não" com oferta pendente descarta a oferta (sem isso, um "sim" qualquer mais tarde
+ // na mesma conversa reativava a lista do nada).
  const waitlistAsk=includesAny(normalizedQuestion,['lista de espera','fila de espera','me avisa quando abrir','me avise quando abrir','entrar na lista','quero entrar na espera','avisa se abrir'])
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&next.pending_waitlist&&((simpleYes&&!simpleNo)||waitlistAsk))intent='join_waitlist'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&next.pending_waitlist){
+  if(simpleNo&&!waitlistAsk)next.pending_waitlist=null
+  else if((simpleYes&&!simpleNo&&next.pending_waitlist.direct)||waitlistAsk)intent='join_waitlist'
+ }
  // Adicionar/remover produto de um agendamento JÁ CONFIRMADO — diferente do
  // upsell de produto durante a criação de um agendamento novo (que não
  // menciona "agendamento"/"horário marcado"). Exige as duas coisas juntas
@@ -1433,7 +1444,9 @@ Deno.serve(async req=>{
     actions=[...(nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]),{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
-    next.pending_waitlist=waitlistOffer
+    // direct: aqui a pergunta É sobre a lista (não há dia alternativo) — um "sim" solto
+    // do cliente significa "sim, me coloca na lista" (ver reclassificação v28.38.2).
+    next.pending_waitlist={...waitlistOffer,direct:true}
     actions=[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
    }
   }else if(effectiveTime){
@@ -1542,6 +1555,9 @@ Deno.serve(async req=>{
       reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
+      // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
+      // não faz mais sentido; sem limpar, um "sim" posterior ainda podia reativá-la.
+      next.pending_waitlist=null
     }
    }
   }
