@@ -1,3 +1,7 @@
+## 28.43.3 — Copy mais curta e direta no box do e-book (7 artigos)
+
+- **Texto do `.ebook-promo` encurtado** a pedido do Juliano: título vira pergunta direta ("Quer aprender tudo sobre cuidados com a barba?"), descrição cai pra uma linha, removida a menção à garantia de 7 dias dentro do box (já fica visível na própria página de checkout), botão passa de "Quero o guia completo →" pra "Comprar agora". Preço com valor real (R$49,99 → R$24,99) mantido — converte melhor que só citar "50% de desconto" em texto solto. Testado nos 7 artigos + regressão geral.
+
 ## 28.43.2 — Revisão profunda de acabamento (pedido do Juliano: "padrão premium estilo Apple")
 
 - **Auditoria completa de tudo desta sessão** (Playwright em desktop 1280px e mobile 375px, screenshots reais + estilos computados): hero com 4 botões, seção Centro de Conhecimento, blocos `.product-pick` (10 artigos) e `.ebook-promo` (7 artigos), seção Sazonal do blog. Zero overflow horizontal em mobile; blocos do e-book quebram linha corretamente no celular.
