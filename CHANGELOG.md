@@ -1,3 +1,8 @@
+## 28.39.1 — Taxa de conversão na lista de espera
+
+- **Novo card de métrica em `admin-espera.html`**: "Taxa de conversão" — quantos pedidos já resolvidos (encaixado/cancelado/expirado) viraram agendamento de verdade. Mesmo raciocínio da taxa de recuperação do funil de reativação (`admin-leads.html`): só conta quem já teve desfecho, excluindo quem ainda está esperando/avisado (sem resposta ainda). Sem pedidos resolvidos, mostra "—" em vez de dividir por zero.
+- Testado com fixture nova (1 encaixado + 1 cancelado → 50%, "1 de 2 pedidos resolvidos") e `npm run test:admin` (15/15).
+
 ## 28.39.0 — Limpeza de índices órfãos (reavaliação dos advisors)
 
 - **Reavaliados os ~15 índices "não usados" apontados pelos advisors** (pedido do Juliano). A maioria continua sendo índice legítimo de suporte a tabela ativa com baixo tráfego (negócio pequeno) — mesma conclusão da auditoria anterior (28.29.1), não vale dropar precocemente. Dois casos, porém, eram genuinamente órfãos, não só "baixo tráfego":

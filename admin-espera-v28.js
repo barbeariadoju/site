@@ -155,6 +155,20 @@
     $('espera-metric-waiting').textContent = waitingTotal;
     $('espera-metric-fitted').textContent = encaixadosMes;
 
+    // v28.39.1: taxa de conversão da lista de espera (pedido do Juliano) — mesmo
+    // raciocínio da taxa de recuperação do funil de reativação (admin-leads.html):
+    // só considera pedidos já RESOLVIDOS (encaixado/cancelado/expirado), excluindo
+    // quem ainda está esperando/avisado (esses ainda não têm desfecho pra contar).
+    const resolved = rows.filter(r => ['encaixado', 'cancelado', 'expirado'].includes(r.status));
+    const fittedTotal = resolved.filter(r => r.status === 'encaixado').length;
+    if (resolved.length) {
+      $('espera-metric-conversion').textContent = `${Math.round((fittedTotal / resolved.length) * 100)}%`;
+      $('espera-metric-conversion-detail').textContent = `${fittedTotal} de ${resolved.length} pedidos resolvidos`;
+    } else {
+      $('espera-metric-conversion').textContent = '—';
+      $('espera-metric-conversion-detail').textContent = 'sem pedidos resolvidos ainda';
+    }
+
     const list = filteredRows();
     const box = $('espera-list');
     if (!list.length) { box.innerHTML = '<div class="admin-empty"><strong>Ninguém aqui.</strong><small>Ajuste os filtros ou aguarde novos pedidos vindos do site.</small></div>'; return; }
