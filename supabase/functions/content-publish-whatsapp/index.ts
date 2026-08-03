@@ -63,6 +63,10 @@ Deno.serve(async (request: Request) => {
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
     const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
 
+    // Timeout de 90s: publicar Status com allContacts é lento na Evolution (ela enumera
+    // todos os contatos pra distribuir) — 20s estourava na prática (visto nos logs:
+    // 20.2s e abort). O navegador do admin espera sem problema; o botão mostra
+    // "Publicando..." enquanto isso.
     const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
@@ -73,7 +77,7 @@ Deno.serve(async (request: Request) => {
         font: 1,
         allContacts: true,
       }),
-    }, 20000)
+    }, 90000)
 
     if (!statusResponse.ok) {
       const errBody = await statusResponse.text().catch(() => '')
