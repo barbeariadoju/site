@@ -1,3 +1,7 @@
+## 28.44.1 — Corrige CORS do content-publish-whatsapp (erro real: "Failed to fetch")
+
+- **Bug real achado pelo Juliano ao testar pela primeira vez**: clicar em "Aprovar e publicar" retornava `Não foi possível publicar: Failed to fetch` — erro de CORS, não erro do servidor (a função nunca chegava a rodar). Faltavam os headers `Access-Control-Allow-*` na resposta do `OPTIONS` (preflight) e nas respostas normais — único edge function client-facing do projeto que não tinha isso (todos os outros, como `ju-ia-admin`, já seguiam esse padrão). Corrigido copiando o mesmo `corsHeaders` já usado em `ju-ia-admin`. Confirmado via requisição `OPTIONS` real que os headers agora retornam certo antes de pedir pro Juliano testar de novo. Rascunho de teste ficou intacto (nunca chegou a mudar de status), sem necessidade de limpeza.
+
 ## 28.44.0 — Central de Conteúdo v1: rascunho diário de Status com aprovação humana
 
 - **Novo, pedido do Juliano após avaliar uma proposta de automação total**: rascunho diário de Status do WhatsApp gerado por IA, mas **nunca publicado sozinho** — decisão consciente após pesar o risco de suspensão do número (o mesmo que roda a JuIA) por padrão de bot detectável em publicação automática recorrente. Toda publicação exige um clique explícito do Juliano.

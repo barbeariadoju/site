@@ -1,7 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://www.barbeariadoju.com.br',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } })
 
 const requiredSecret = (name: string) => {
   const value = Deno.env.get(name)?.trim()
@@ -23,7 +29,7 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 // no WhatsApp da barbearia — sempre chamado por um clique explícito do Juliano no admin
 // (verify_jwt=true, só admin autenticado). Nunca disparado por cron ou automaticamente.
 Deno.serve(async (request: Request) => {
-  if (request.method === 'OPTIONS') return new Response('ok')
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
 
   try {
