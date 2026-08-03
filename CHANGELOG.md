@@ -1,3 +1,8 @@
+## 28.44.5 — Prévia visual do Status na Central de Conteúdo (pedido do Juliano)
+
+- **Prévia da arte no card de aprovação**: antes de aprovar, o `admin-conteudo.html` agora mostra a imagem exatamente como será publicada (quando o rascunho tem `context.image_url`), com a legenda logo abaixo — "assim eu já solicito as edições necessárias antes de cada post e evito expor de forma ruim". Rascunhos só-texto ganham um aviso de que o WhatsApp renderiza sobre fundo escuro. Fixture atualizada pra exercitar a prévia no teste (16/16).
+- Também gerada a **capa quadrada do produto pra Hotmart** (1080×1080, recorte da arte da campanha) — a imagem original do produto (Juliano aparando uma nuca) não tinha relação com um e-book de barba, observação do próprio Juliano.
+
 ## 28.44.4 — Anti-papagaio no WhatsApp + fonte do Status de texto (Bebas Neue)
 
 - **Fonte do Status de texto trocada (feedback do Juliano no teste real)**: o Status de texto saiu com a fonte serifada do WhatsApp (números oldstyle "caídos", "OFF" maiúsculo feio) — era o `font: 1` da Evolution. Trocado pra `font: 4` (Bebas Neue, a mesma fonte de display do site). Só afeta o fallback de texto — o **padrão oficial de anúncio** agora é Status de IMAGEM (arte com a identidade do site + legenda curta com link, renderizada na fonte padrão limpa do WhatsApp), definido com o Juliano pra todos os anúncios futuros.

@@ -71,9 +71,13 @@
         : `Gerado em ${created} · ${r.source === 'ia' ? 'IA' : 'Manual'}`;
       const contextText = contextLabel(r.context);
       const editable = r.status === 'rascunho';
+      // Prévia visual (pedido do Juliano): mostra a arte exatamente como vai sair no
+      // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
+      const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
       return `<article class="conteudo-card" data-id="${r.id}">
         <span class="badge ${esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
+        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">Prévia — a imagem abaixo é publicada junto, com o texto como legenda:</p><img src="${esc(imageUrl)}" alt="Arte que será publicada no Status" loading="lazy"></div>` : `<p class="meta">Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.</p>`}
         <textarea data-role="caption" ${editable ? '' : 'readonly'}>${esc(r.caption)}</textarea>
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
