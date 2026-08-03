@@ -723,6 +723,26 @@ Deno.serve(async (request: Request) => {
           const reply = String(ai.reply)
           const handoff = Boolean(ai.handoff)
 
+          // v28.44.4: anti-papagaio — caso real (Juliano, 02/08/2026): ele encaminhou 3
+          // mensagens de divulgação com a palavra "barba" (link + textos do lançamento do
+          // e-book) e a JuIA respondeu o MESMO menu de barba 3 vezes em 3 minutos, uma pra
+          // cada mensagem (espaçadas >6s, então o debounce não agrupa). Se a resposta
+          // gerada é idêntica à última que o bot mandou pra esse telefone há menos de 10
+          // minutos, fica em silêncio em vez de repetir feito robô — quem mandou a mesma
+          // coisa de novo em seguida já recebeu a resposta.
+          const { data: lastOut } = await admin
+            .from('whatsapp_messages')
+            .select('body, created_at')
+            .eq('phone', phone)
+            .eq('direction', 'out')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          if (lastOut && lastOut.body === reply && Date.now() - new Date(lastOut.created_at).getTime() < 10 * 60 * 1000) {
+            console.log('[whatsapp-webhook] resposta idêntica à anterior (<10min), suprimida', phone)
+            return
+          }
+
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },

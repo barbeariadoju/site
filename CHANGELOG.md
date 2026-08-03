@@ -1,3 +1,10 @@
+## 28.44.4 — Anti-papagaio no WhatsApp + fonte do Status de texto (Bebas Neue)
+
+- **Fonte do Status de texto trocada (feedback do Juliano no teste real)**: o Status de texto saiu com a fonte serifada do WhatsApp (números oldstyle "caídos", "OFF" maiúsculo feio) — era o `font: 1` da Evolution. Trocado pra `font: 4` (Bebas Neue, a mesma fonte de display do site). Só afeta o fallback de texto — o **padrão oficial de anúncio** agora é Status de IMAGEM (arte com a identidade do site + legenda curta com link, renderizada na fonte padrão limpa do WhatsApp), definido com o Juliano pra todos os anúncios futuros.
+
+- **Caso real (Juliano, 02/08/2026)**: ele encaminhou pro número da barbearia 3 mensagens de divulgação do e-book (link da Hotmart + textos promocionais), todas contendo a palavra "barba" — e a JuIA respondeu o MESMO menu "Temos algumas opções de barba..." 3 vezes seguidas, uma pra cada mensagem (espaçadas por mais de 6s, então o debounce de mensagens picadas não agrupa). A 4ª mensagem foi a recusa educada da foto (print de Status → `NAO_RELACIONADO`), que individualmente é o comportamento correto.
+- **Fix no `whatsapp-webhook` (v29)**: antes de enviar a resposta gerada pela IA, compara com a última mensagem que o bot mandou pra esse telefone — se for idêntica e tiver menos de 10 minutos, suprime o envio (loga e sai em silêncio). Só se aplica ao fluxo da IA; os blocos transacionais (confirmação de presença, lista de espera, pesquisa) não passam por essa trava, porque neles a repetição é intencional ("responda sim ou não").
+
 ## 28.44.3 — Status com imagem (arte real) + limpeza dos 2 Status feios do primeiro teste
 
 - **Descoberta do teste real**: os DOIS cliques em "publicar" tinham publicado (o primeiro, que "falhou" com timeout, também foi — a Evolution continuou processando depois do abort, exatamente o cuidado documentado na 28.44.2). Resultado: 2 Status de texto puro no ar, com o link renderizado como um preview minúsculo e feio. O Juliano pediu pra apagar e refazer profissional.

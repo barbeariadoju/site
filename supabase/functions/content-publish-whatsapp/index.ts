@@ -68,9 +68,11 @@ Deno.serve(async (request: Request) => {
     // link como um preview minúsculo e feio, visto no primeiro teste real). Sem imagem,
     // cai no Status de texto de antes.
     const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
+    // font: 4 = Bebas Neue (mesma fonte de display do site) — a fonte 1 (serifada, com
+    // números oldstyle "caídos") saiu feia no primeiro Status real e o Juliano reclamou.
     const statusPayload = imageUrl
       ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: true }
-      : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 1, allContacts: true }
+      : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 4, allContacts: true }
 
     // Timeout de 90s: publicar Status com allContacts é lento na Evolution (ela enumera
     // todos os contatos pra distribuir) — 20s estourava na prática (visto nos logs:
