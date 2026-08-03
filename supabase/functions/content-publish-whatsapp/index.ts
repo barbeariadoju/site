@@ -63,6 +63,15 @@ Deno.serve(async (request: Request) => {
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
     const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
 
+    // Se o rascunho tem uma imagem (context.image_url), publica como Status de IMAGEM
+    // com a legenda — visual muito melhor que o Status de texto puro (que renderiza o
+    // link como um preview minúsculo e feio, visto no primeiro teste real). Sem imagem,
+    // cai no Status de texto de antes.
+    const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
+    const statusPayload = imageUrl
+      ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: true }
+      : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 1, allContacts: true }
+
     // Timeout de 90s: publicar Status com allContacts é lento na Evolution (ela enumera
     // todos os contatos pra distribuir) — 20s estourava na prática (visto nos logs:
     // 20.2s e abort). O navegador do admin espera sem problema; o botão mostra
@@ -70,13 +79,7 @@ Deno.serve(async (request: Request) => {
     const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({
-        type: 'text',
-        content: finalCaption,
-        backgroundColor: '#0b0b0b',
-        font: 1,
-        allContacts: true,
-      }),
+      body: JSON.stringify(statusPayload),
     }, 90000)
 
     if (!statusResponse.ok) {
