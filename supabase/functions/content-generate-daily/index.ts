@@ -24,10 +24,43 @@ const formatDateBR = (iso: string) => {
   return `${d}/${m}/${y}`
 }
 
-// Central de Conteúdo (v28.44.0): gera 1 rascunho de Status por dia, sempre baseado em
-// dado real (vaga aberta hoje, ou serviço em destaque via public.pick_featured_service).
-// NUNCA publica sozinho — só cria o rascunho e avisa o Juliano; publicar é sempre uma
-// ação humana explícita no admin (ver content-publish-whatsapp).
+const textFromResponses = (d: any): string =>
+  typeof d?.output_text === 'string'
+    ? d.output_text.trim()
+    : (d?.output || []).flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text).join('\n').trim()
+
+async function generateCaption(openaiKey: string | undefined, prompt: string): Promise<string> {
+  if (!openaiKey) return ''
+  try {
+    const r = await fetchWithTimeout('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-5.6-luna',
+        reasoning: { effort: 'low' },
+        max_output_tokens: 220,
+        instructions: prompt,
+        input: [{ role: 'user', content: [{ type: 'input_text', text: 'Escreva o texto de hoje.' }] }],
+      }),
+    }, 20000)
+    if (!r.ok) return ''
+    const d = await r.json().catch(() => ({}))
+    return textFromResponses(d)
+  } catch (error) {
+    console.error('[content-generate-daily] openai', error instanceof Error ? error.message : error)
+    return ''
+  }
+}
+
+// Central de Conteúdo (v28.44.0, estendido em v28.45.0): gera 1 rascunho por dia pra
+// cada plataforma ainda sem rascunho hoje (Status do WhatsApp + Facebook), sempre
+// baseado em dado real (vaga aberta hoje, ou serviço em destaque via
+// public.pick_featured_service). NUNCA publica sozinho — só cria o rascunho e avisa o
+// Juliano; publicar é sempre uma ação humana explícita no admin (ver
+// content-publish-whatsapp/content-publish-meta).
+// Instagram fica de fora daqui de propósito: a Graph API exige imagem pra publicar lá,
+// e ainda não existe geração automática de arte (fase futura) — rascunho de Instagram
+// continua sendo criado manualmente por enquanto.
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
 
@@ -44,15 +77,19 @@ Deno.serve(async (request: Request) => {
     const dow = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay()
     if (dow === 0 || dow === 1) return json({ ok: true, skipped: 'fechado_hoje' })
 
-    // Evita gerar duas vezes no mesmo dia se o cron rodar de novo por algum motivo.
     const startOfTodayISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
-    const { data: existing } = await admin
-      .from('content_posts')
-      .select('id')
-      .eq('source', 'ia')
-      .gte('created_at', startOfTodayISO)
-      .maybeSingle()
-    if (existing) return json({ ok: true, skipped: 'ja_gerado_hoje' })
+    const platformsToGenerate: string[] = []
+    for (const platform of ['whatsapp_business', 'facebook']) {
+      const { data: existing } = await admin
+        .from('content_posts')
+        .select('id')
+        .eq('source', 'ia')
+        .eq('platform', platform)
+        .gte('created_at', startOfTodayISO)
+        .maybeSingle()
+      if (!existing) platformsToGenerate.push(platform)
+    }
+    if (!platformsToGenerate.length) return json({ ok: true, skipped: 'ja_gerado_hoje' })
 
     // Dado real #1: tem vaga aberta hoje pro serviço mais comum (Corte de cabelo, 30min)?
     const { data: slots } = await admin.rpc('get_available_slots', { p_date: todaySP, p_duration_minutes: 30 })
@@ -76,65 +113,56 @@ Deno.serve(async (request: Request) => {
     }
 
     const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
-    let caption = ''
-    if (openaiKey) {
+    const fallbackCaption = context.tipo === 'vaga_aberta'
+      ? `📅 Abriu um horário hoje às ${context.primeiro_horario}! Chama pra garantir o seu.`
+      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agenda pelos próximos dias!`
+    const fallbackCaptionFacebook = context.tipo === 'vaga_aberta'
+      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo site www.barbeariadoju.com.br/agendar/ ou chame no WhatsApp.`
+      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias no site www.barbeariadoju.com.br/agendar/ ou pelo WhatsApp.`
+
+    const insertedRows: { id: string; platform: string; caption: string }[] = []
+
+    if (platformsToGenerate.includes('whatsapp_business')) {
       const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. Fato real de hoje: ${contextFact}`
-      try {
-        const r = await fetchWithTimeout('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'gpt-5.6-luna',
-            reasoning: { effort: 'low' },
-            max_output_tokens: 180,
-            instructions: prompt,
-            input: [{ role: 'user', content: [{ type: 'input_text', text: 'Escreva o texto do Status de hoje.' }] }],
-          }),
-        }, 20000)
-        if (r.ok) {
-          const d = await r.json().catch(() => ({}))
-          caption = typeof d?.output_text === 'string'
-            ? d.output_text.trim()
-            : (d?.output || []).flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text).join('\n').trim()
-        }
-      } catch (error) {
-        console.error('[content-generate-daily] openai', error instanceof Error ? error.message : error)
-      }
-    }
-    // Sem IA disponível (ou falhou): fallback determinístico, sempre baseado no mesmo fato real.
-    if (!caption) {
-      caption = context.tipo === 'vaga_aberta'
-        ? `📅 Abriu um horário hoje às ${context.primeiro_horario}! Chama pra garantir o seu.`
-        : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agenda pelos próximos dias!`
+      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaption
+      const { data: inserted, error } = await admin
+        .from('content_posts')
+        .insert({ platform: 'whatsapp_business', caption, status: 'rascunho', source: 'ia', context })
+        .select('id')
+        .single()
+      if (error || !inserted) console.error('[content-generate-daily] insert whatsapp', error)
+      else insertedRows.push({ id: inserted.id, platform: 'whatsapp_business', caption })
     }
 
-    const { data: inserted, error: insertError } = await admin
-      .from('content_posts')
-      .insert({ caption, status: 'rascunho', source: 'ia', context })
-      .select('id')
-      .single()
-    if (insertError || !inserted) {
-      console.error('[content-generate-daily] insert', insertError)
-      return json({ error: 'Falha ao salvar rascunho.' }, 500)
+    if (platformsToGenerate.includes('facebook')) {
+      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp. NUNCA invente preço, horário ou dado que não foi passado. Fato real de hoje: ${contextFact}`
+      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaptionFacebook
+      const { data: inserted, error } = await admin
+        .from('content_posts')
+        .insert({ platform: 'facebook', caption, status: 'rascunho', source: 'ia', context })
+        .select('id')
+        .single()
+      if (error || !inserted) console.error('[content-generate-daily] insert facebook', error)
+      else insertedRows.push({ id: inserted.id, platform: 'facebook', caption })
     }
+
+    if (!insertedRows.length) return json({ error: 'Falha ao salvar rascunho(s).' }, 500)
 
     const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
     if (pushSecret) {
+      const platformLabel: Record<string, string> = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook' }
+      const title = insertedRows.length > 1 ? '📝 Novos rascunhos de conteúdo prontos' : '📝 Novo rascunho de conteúdo pronto'
+      const body = insertedRows.map((r) => `${platformLabel[r.platform] || r.platform}: ${r.caption.slice(0, 80)}`).join('\n')
       await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
         body: JSON.stringify({
-          custom: {
-            title: '📝 Novo rascunho de Status pronto',
-            body: caption.slice(0, 120),
-            url: '/admin-conteudo.html?app=1',
-            tag: `content-draft-${inserted.id}`,
-          },
+          custom: { title, body, url: '/admin-conteudo.html?app=1', tag: `content-draft-${todaySP}` },
         }),
       }).catch((error) => console.error('[content-generate-daily] push', error))
     }
 
-    return json({ ok: true, id: inserted.id, caption, context })
+    return json({ ok: true, generated: insertedRows, context })
   } catch (error) {
     console.error('[content-generate-daily]', error)
     return json({ error: error instanceof Error ? error.message : 'Erro interno.' }, 500)

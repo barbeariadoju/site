@@ -34,6 +34,46 @@
         render();
       });
     });
+    $('conteudo-new-btn').addEventListener('click', () => {
+      $('conteudo-new-form').hidden = false;
+      $('conteudo-new-btn').hidden = true;
+    });
+    $('conteudo-new-cancel').addEventListener('click', () => {
+      $('conteudo-new-form').reset();
+      $('conteudo-new-error').textContent = '';
+      $('conteudo-new-form').hidden = true;
+      $('conteudo-new-btn').hidden = false;
+    });
+    $('conteudo-new-form').addEventListener('submit', createDraft);
+    await load();
+  }
+
+  async function createDraft(e) {
+    e.preventDefault();
+    const errorEl = $('conteudo-new-error');
+    errorEl.textContent = '';
+    const platform = $('conteudo-new-platform').value;
+    const caption = $('conteudo-new-caption').value.trim();
+    const imageUrl = $('conteudo-new-image').value.trim();
+    if (!caption) { errorEl.textContent = 'Escreva o texto do post.'; return; }
+    if (platform === 'instagram' && !imageUrl) { errorEl.textContent = 'Instagram exige um link de imagem.'; return; }
+    const submitBtn = $('conteudo-new-form').querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salvando...';
+    const { error } = await sb.from('content_posts').insert({
+      platform,
+      caption,
+      status: 'rascunho',
+      source: 'manual',
+      context: imageUrl ? { image_url: imageUrl } : null,
+    });
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Salvar rascunho';
+    if (error) { errorEl.textContent = error.message; return; }
+    $('conteudo-new-form').reset();
+    $('conteudo-new-form').hidden = true;
+    $('conteudo-new-btn').hidden = false;
+    document.querySelector('[data-conteudo-tab="rascunho"]').click();
     await load();
   }
 

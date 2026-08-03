@@ -1,3 +1,9 @@
+## 28.46.0 — Criar rascunho manual na Central de Conteúdo + gerador diário ganha Facebook
+
+- **`content-generate-daily` agora também propõe um rascunho de Facebook por dia** (texto, mesmo fato real usado pro Status — vaga aberta ou serviço em destaque), além do Status do WhatsApp que já existia. Guarda de "já gerado hoje" agora é por plataforma (antes bloqueava os dois se qualquer um já tivesse sido gerado). Instagram fica de fora do gerador automático por enquanto — a Graph API exige imagem e ainda não existe geração automática de arte.
+- **Central de Conteúdo ganha criação manual pela própria tela** (`admin-conteudo.html`): botão "+ Novo rascunho" abre um formulário (plataforma, texto, link de imagem opcional — obrigatório pro Instagram) e salva direto, sem precisar de mim/SQL. Precisou de `grant insert on content_posts to authenticated` (RLS já cobria, faltava o GRANT de base — mesma lição da migration 058).
+- **Bug de CSS achado testando de propósito**: `.conteudo-new-form{display:grid}` tinha especificidade maior que a regra `[hidden]{display:none}` do navegador — o formulário nunca ficava de fato escondido, mesmo com o atributo `hidden` certo no HTML. Corrigido com `.conteudo-new-form[hidden]{display:none}` explícito.
+
 ## 28.45.0 — Publicação no Facebook/Instagram via Meta Graph API + fix do Instagram na JuIA
 
 - **Bug real corrigido**: a JuIA respondia o handle do Instagram errado pra clientes (sem o underscore final — flagrado pelo Juliano num atendimento real). Causa: o prompt nunca informava o Instagram oficial, então o modelo "chutava" um handle plausível. Adicionado `@barbeariadoju_` como dado real do negócio no prompt (mesmo padrão de endereço/horário/pagamento — nunca inventar, sempre informar). Testado ao vivo (`curl` direto na function): resposta agora sai correta.

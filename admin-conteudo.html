@@ -18,17 +18,51 @@
 .conteudo-empty{color:var(--muted);padding:24px;text-align:center}
 .conteudo-preview{margin:0 0 12px}
 .conteudo-preview img{display:block;max-width:280px;width:100%;border-radius:14px;border:1px solid var(--line)}
+.conteudo-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.conteudo-toolbar .conteudo-tabs{margin-bottom:0}
+#conteudo-new-btn{appearance:none;border:1px solid var(--line);background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;font:inherit;font-size:.85rem;font-weight:700;padding:.5rem 1rem;border-radius:10px;cursor:pointer}
+.conteudo-new-form{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.05);margin-bottom:18px;padding:16px;display:grid;gap:10px}
+.conteudo-new-form[hidden]{display:none}
+.conteudo-new-form label{display:grid;gap:4px;font-size:.82rem;color:var(--muted)}
+.conteudo-new-form select,.conteudo-new-form textarea,.conteudo-new-form input[type="text"]{width:100%;padding:.55rem .7rem;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.conteudo-new-form textarea{min-height:70px;resize:vertical}
+.conteudo-new-form-actions{display:flex;gap:8px}
+.conteudo-new-form-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.85rem;font-weight:600;padding:.5rem .9rem;border-radius:10px;cursor:pointer}
+.conteudo-new-form-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
 </style>
 </head><body data-admin-page="conteudo"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="avaliacoes" href="admin-avaliacoes.html"><span>⭐</span>Avaliações Google</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a><a data-admin-nav="leads" href="admin-leads.html"><span>🔥</span>Funil de Reativação</a><a data-admin-nav="conteudo" class="is-active" href="admin-conteudo.html"><span>🗂️</span>Central de Conteúdo</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
 
-<header class="admin-page-header"><div><p class="eyebrow">Central de Conteúdo</p><h1>Rascunhos de Status do WhatsApp.</h1><p>A IA sugere um Status por dia com base em dados reais (vaga aberta ou serviço em destaque). Nada é publicado sem sua aprovação.</p></div></header>
+<header class="admin-page-header"><div><p class="eyebrow">Central de Conteúdo</p><h1>Status do WhatsApp, Facebook e Instagram.</h1><p>A IA sugere um post por dia com base em dados reais (vaga aberta ou serviço em destaque). Nada é publicado sem sua aprovação.</p></div></header>
 
 <section class="admin-metrics"><article><span>Pendentes</span><strong id="conteudo-metric-pendentes">0</strong><small>aguardando aprovação</small></article><article><span>Publicados</span><strong id="conteudo-metric-publicados">0</strong><small>este mês</small></article></section>
 
 <section class="admin-surface">
-  <div class="conteudo-tabs"><button data-conteudo-tab="rascunho" class="is-active" type="button">Rascunhos</button><button data-conteudo-tab="publicado" type="button">Publicados</button><button data-conteudo-tab="rejeitado" type="button">Rejeitados</button></div>
+  <div class="conteudo-toolbar">
+    <div class="conteudo-tabs"><button data-conteudo-tab="rascunho" class="is-active" type="button">Rascunhos</button><button data-conteudo-tab="publicado" type="button">Publicados</button><button data-conteudo-tab="rejeitado" type="button">Rejeitados</button></div>
+    <button id="conteudo-new-btn" type="button">+ Novo rascunho</button>
+  </div>
+  <form id="conteudo-new-form" class="conteudo-new-form" hidden>
+    <label>Plataforma
+      <select id="conteudo-new-platform">
+        <option value="whatsapp_business">Status do WhatsApp</option>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+      </select>
+    </label>
+    <label>Texto / legenda
+      <textarea id="conteudo-new-caption" required placeholder="Escreva o texto do post..."></textarea>
+    </label>
+    <label>Link da imagem (opcional — obrigatório pra Instagram)
+      <input type="text" id="conteudo-new-image" placeholder="https://www.barbeariadoju.com.br/assets/...">
+    </label>
+    <p class="field-help" id="conteudo-new-error"></p>
+    <div class="conteudo-new-form-actions">
+      <button type="submit" class="is-primary">Salvar rascunho</button>
+      <button type="button" id="conteudo-new-cancel">Cancelar</button>
+    </div>
+  </form>
   <div id="conteudo-list"></div>
 </section>
 
 </main></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="admin-conteudo-v28.js?v=28.45.0"></script><script src="admin-pwa.js?v=28.16.1"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="admin-conteudo-v28.js?v=28.46.0"></script><script src="admin-pwa.js?v=28.16.1"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
