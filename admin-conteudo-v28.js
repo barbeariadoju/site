@@ -60,6 +60,9 @@
     return '';
   }
 
+  const PLATFORM_LABEL = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook', instagram: 'Instagram' };
+  const PLATFORM_FN = { whatsapp_business: 'content-publish-whatsapp', facebook: 'content-publish-meta', instagram: 'content-publish-meta' };
+
   function render() {
     const list = $('conteudo-list');
     const filtered = rows.filter(r => r.status === statusTab);
@@ -74,14 +77,21 @@
       // Prévia visual (pedido do Juliano): mostra a arte exatamente como vai sair no
       // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
       const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
-      return `<article class="conteudo-card" data-id="${r.id}">
+      const platformLabel = PLATFORM_LABEL[r.platform] || r.platform;
+      const noImageNote = r.platform === 'instagram'
+        ? 'Instagram exige uma imagem — este rascunho ainda não tem arte definida.'
+        : r.platform === 'facebook'
+        ? 'Este rascunho é só texto (sem arte) — vai como post de texto no Facebook.'
+        : 'Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.';
+      return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}">
         <span class="badge ${esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
+        <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
-        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">Prévia — a imagem abaixo é publicada junto, com o texto como legenda:</p><img src="${esc(imageUrl)}" alt="Arte que será publicada no Status" loading="lazy"></div>` : `<p class="meta">Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.</p>`}
+        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">Prévia — a imagem abaixo é publicada junto, com o texto como legenda:</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
         <textarea data-role="caption" ${editable ? '' : 'readonly'}>${esc(r.caption)}</textarea>
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no Status</button>
+          <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}
       </article>`;
@@ -97,13 +107,16 @@
 
   async function publish(card) {
     const id = card.dataset.id;
+    const platform = card.dataset.platform;
     const caption = card.querySelector('[data-role="caption"]').value.trim();
     const buttons = card.querySelectorAll('button');
-    buttons.forEach(b => b.disabled = true);
     const publishBtn = card.querySelector('[data-action="publish"]');
+    const originalLabel = publishBtn.textContent;
+    buttons.forEach(b => b.disabled = true);
     publishBtn.textContent = 'Publicando...';
     try {
-      const res = await fetch(`${cfg.supabaseUrl}/functions/v1/content-publish-whatsapp`, {
+      const fnName = PLATFORM_FN[platform] || 'content-publish-whatsapp';
+      const res = await fetch(`${cfg.supabaseUrl}/functions/v1/${fnName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
         body: JSON.stringify({ id, caption }),
@@ -114,7 +127,7 @@
     } catch (error) {
       alert(`Não foi possível publicar: ${error.message}`);
       buttons.forEach(b => b.disabled = false);
-      publishBtn.textContent = '✅ Aprovar e publicar no Status';
+      publishBtn.textContent = originalLabel;
     }
   }
 

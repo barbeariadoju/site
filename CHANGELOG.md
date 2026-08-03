@@ -1,3 +1,10 @@
+## 28.45.0 — Publicação no Facebook/Instagram via Meta Graph API + fix do Instagram na JuIA
+
+- **Bug real corrigido**: a JuIA respondia o handle do Instagram errado pra clientes (sem o underscore final — flagrado pelo Juliano num atendimento real). Causa: o prompt nunca informava o Instagram oficial, então o modelo "chutava" um handle plausível. Adicionado `@barbeariadoju_` como dado real do negócio no prompt (mesmo padrão de endereço/horário/pagamento — nunca inventar, sempre informar). Testado ao vivo (`curl` direto na function): resposta agora sai correta.
+- **Central de Conteúdo ganha Facebook e Instagram** (Fase 1 da Central de Marketing via Meta Graph API, depois de configurar app/usuário de sistema/tokens no Meta for Developers): nova edge function `content-publish-meta` (verify_jwt=true, só admin) publica de fato via Graph API — Facebook como foto (com legenda) ou post de texto puro sem imagem; Instagram sempre com imagem (cria o container, espera processar, publica). Mesmo princípio de segurança do Status do WhatsApp: nunca publica sozinho, sempre um clique explícito do Juliano no admin. `content_posts.platform` agora aceita `facebook`/`instagram` além de `whatsapp_business`; nova coluna `meta_post_id` guarda o ID retornado pela Meta.
+- `admin-conteudo.html`/`admin-conteudo-v28.js`: cada card agora mostra a plataforma (Status do WhatsApp / Facebook / Instagram) e o botão de aprovar já chama a function certa pra cada uma.
+- Credenciais da Meta (token de usuário de sistema, ID da Página, ID do Instagram) guardadas como secrets do Supabase — nunca passaram pelo chat/repo.
+
 ## 28.44.5 — Prévia visual do Status na Central de Conteúdo (pedido do Juliano)
 
 - **Prévia da arte no card de aprovação**: antes de aprovar, o `admin-conteudo.html` agora mostra a imagem exatamente como será publicada (quando o rascunho tem `context.image_url`), com a legenda logo abaixo — "assim eu já solicito as edições necessárias antes de cada post e evito expor de forma ruim". Rascunhos só-texto ganham um aviso de que o WhatsApp renderiza sobre fundo escuro. Fixture atualizada pra exercitar a prévia no teste (16/16).
