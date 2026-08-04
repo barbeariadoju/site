@@ -531,10 +531,16 @@ Deno.serve(async (request: Request) => {
           // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
           // 😊/🙁 exato oferecido no menu — caso real (Adalton, 30/07/2026): cliente respondeu
           // 😂 e depois 😄, a JuIA não reconheceu nenhum dos dois e ficou repetindo "não entendi".
-          // Alternação de emoji literal (não classe [...]) porque char class sem flag /u quebra
-          // com emoji fora do BMP (par substituto vira 2 "caracteres" errados).
-          const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|🥰|😍|🤩|👍|🙌|❤/
-          const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|👎|💔/
+          // Caso real 2 (04/08/2026): cliente respondeu ☺️ — visualmente parecida com 😊, mas é
+          // de um bloco Unicode totalmente diferente (carinhas "clássicas" tipo ☺/☹, não o bloco
+          // moderno 😀-🥰) e não estava coberta. Alternação de emoji literal (não classe [...])
+          // porque char class sem flag /u quebra com emoji fora do BMP (par substituto vira 2
+          // "caracteres" errados).
+          // v28.52.1 (04/08/2026, pedido do Juliano): lista ampliada de vez pra cobrir "qualquer
+          // emoji que sinalize positivo/negativo" — não só carinhas, também joia/joia-pra-baixo
+          // e variações de coração.
+          const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|☺|🥰|😍|🤩|😌|🥲|😇|😻|🤗|🥳|👍|🙌|👏|💪|✅|❤|💛|💚|💙|💜|🧡|🖤|🤍|🤎|💕|💖|💗|💓|💞|✨|🎉|💯/
+          const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|😠|😤|😩|😫|🤮|💩|❌|👎|💔/
           const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized)
           const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text)
           // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
