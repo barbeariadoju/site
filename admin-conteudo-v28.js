@@ -144,6 +144,7 @@
         ${isStoryPlatform ? '<p class="meta">Esse texto é só anotação interna — o Story não tem legenda, sai só a imagem.</p>' : ''}
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
+          ${!imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
           <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}
@@ -156,6 +157,40 @@
     list.querySelectorAll('[data-action="reject"]').forEach(btn => {
       btn.addEventListener('click', () => reject(btn.closest('.conteudo-card')));
     });
+    list.querySelectorAll('[data-action="generate-image"]').forEach(btn => {
+      btn.addEventListener('click', () => generateImage(btn.closest('.conteudo-card')));
+    });
+  }
+
+  // Central de Marketing — Fase 2 (v28.49.0): chama content-generate-image (Gemini) pra
+  // criar a arte do rascunho direto no servidor, sem depender do Gemini no navegador.
+  async function generateImage(card) {
+    const id = card.dataset.id;
+    const buttons = card.querySelectorAll('button');
+    const genBtn = card.querySelector('[data-action="generate-image"]');
+    const originalLabel = genBtn.textContent;
+    buttons.forEach(b => b.disabled = true);
+    genBtn.textContent = 'Gerando imagem... (pode levar ~30s)';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      const res = await fetch(`${cfg.supabaseUrl}/functions/v1/content-generate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
+        body: JSON.stringify({ id }),
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Falha ao gerar imagem.');
+      await load();
+    } catch (error) {
+      const timedOut = error?.name === 'AbortError';
+      alert(timedOut ? 'A geração demorou demais e o navegador desistiu de esperar. Tente de novo.' : `Não foi possível gerar a imagem: ${error.message}`);
+      buttons.forEach(b => b.disabled = false);
+      genBtn.textContent = originalLabel;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async function publish(card) {
