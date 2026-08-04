@@ -25,9 +25,29 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
+// Aviso por push pro Juliano sobre o desfecho da publicação em segundo plano — sem
+// isso ele não teria como saber se o Status saiu ou falhou depois que a tela respondeu.
+async function notifyOutcome(supabaseUrl: string, title: string, body: string, tag: string) {
+  const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+  if (!pushSecret) return
+  await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+    body: JSON.stringify({ custom: { title, body, url: '/admin-conteudo.html?app=1', tag } }),
+  }).catch((error) => console.error('[content-publish-whatsapp] push', error))
+}
+
 // Central de Conteúdo (v28.44.0): único ponto do sistema que de fato publica um Status
 // no WhatsApp da barbearia — sempre chamado por um clique explícito do Juliano no admin
 // (verify_jwt=true, só admin autenticado). Nunca disparado por cron ou automaticamente.
+//
+// v28.48.2: a espera pela Evolution saiu do caminho da resposta HTTP. O sendStatus com
+// allContacts enumera todos os contatos e pode passar de 90s (caso real na 1ª execução
+// do fluxo diário, 2026-08-04: 90.4s = abort + 500 pro navegador, sem o Status sair).
+// Agora a function reivindica a trava, responde na hora ({publishing:true}) e publica
+// em segundo plano via EdgeRuntime.waitUntil (mesmo padrão comprovado do
+// whatsapp-webhook) com timeout folgado de 130s. Desfecho vai por push e pelo próprio
+// status do card (aprovado→publicado, ou de volta pra rascunho em caso de falha).
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
@@ -78,11 +98,11 @@ Deno.serve(async (request: Request) => {
     // rascunho→aprovado publica — uma segunda chamada simultânea não acha mais o status
     // 'rascunho' e recebe 409 em vez de publicar de novo. Já aconteceu na prática (2
     // cliques em erro de timeout = 2 Status reais publicados, precisou apagar via
-    // dev-admin-tools). Em caso de falha da Evolution mais abaixo, o status volta pra
-    // 'rascunho' e libera nova tentativa. 'aprovado' funciona como lease de 3 minutos
-    // (approved_at = início da tentativa): se a function morrer no meio sem reverter,
-    // uma nova tentativa depois do prazo consegue "roubar" a lease em vez do rascunho
-    // ficar preso pra sempre.
+    // dev-admin-tools). Em caso de falha da Evolution no segundo plano, o status volta
+    // pra 'rascunho' e libera nova tentativa. 'aprovado' funciona como lease de 3
+    // minutos (approved_at = início da tentativa): se a function morrer no meio sem
+    // reverter, uma nova tentativa depois do prazo consegue "roubar" a lease em vez do
+    // rascunho ficar preso pra sempre.
     const { data: claimed } = await admin
       .from('content_posts')
       .update({ status: 'aprovado', approved_at: new Date().toISOString() })
@@ -107,35 +127,48 @@ Deno.serve(async (request: Request) => {
       ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: true }
       : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 4, allContacts: true }
 
-    // Timeout de 90s: publicar Status com allContacts é lento na Evolution (ela enumera
-    // todos os contatos pra distribuir) — 20s estourava na prática (visto nos logs:
-    // 20.2s e abort). O navegador do admin espera sem problema; o botão mostra
-    // "Publicando..." enquanto isso.
-    const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify(statusPayload),
-    }, 90000)
+    const publishInBackground = async () => {
+      try {
+        const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+          body: JSON.stringify(statusPayload),
+        }, 130000)
 
-    if (!statusResponse.ok) {
-      const errBody = await statusResponse.text().catch(() => '')
-      console.error('[content-publish-whatsapp] evolution error', statusResponse.status, errBody)
-      await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
-      return json({ error: 'Falha ao publicar no WhatsApp. Tente novamente.' }, 502)
+        if (!statusResponse.ok) {
+          const errBody = await statusResponse.text().catch(() => '')
+          console.error('[content-publish-whatsapp] evolution error', statusResponse.status, errBody)
+          await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+          await notifyOutcome(supabaseUrl, '❌ Status do WhatsApp não publicou', 'A Evolution recusou a publicação. O rascunho voltou pra fila — confira o WhatsApp antes de tentar de novo.', `content-pub-fail-${id}`)
+          return
+        }
+
+        const statusData = await statusResponse.json().catch(() => ({}))
+        const evolutionMessageId = String(statusData?.key?.id || '') || null
+
+        await admin.from('content_posts').update({
+          caption: finalCaption,
+          status: 'publicado',
+          published_at: new Date().toISOString(),
+          evolution_message_id: evolutionMessageId,
+        }).eq('id', id)
+        await notifyOutcome(supabaseUrl, '✅ Status do WhatsApp publicado', finalCaption.slice(0, 90), `content-pub-ok-${id}`)
+      } catch (error) {
+        // Timeout ou erro de rede: a Evolution pode ter publicado mesmo assim (caso já
+        // visto na prática). NÃO reverter pra rascunho automaticamente — avisar pra
+        // conferir no celular; o lease de 3 min libera nova tentativa se não saiu.
+        console.error('[content-publish-whatsapp] background', error)
+        await notifyOutcome(supabaseUrl, '⚠️ Status do WhatsApp: confirmação pendente', 'A Evolution demorou a responder. Confira no celular se o Status saiu antes de tentar de novo (pra não duplicar).', `content-pub-warn-${id}`)
+      }
     }
 
-    const statusData = await statusResponse.json().catch(() => ({}))
-    const evolutionMessageId = String(statusData?.key?.id || '') || null
+    // EdgeRuntime.waitUntil mantém o processamento vivo depois da resposta HTTP
+    // (comprovado em produção no whatsapp-webhook). Fallback: espera em linha.
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
+    if (runtime?.waitUntil) runtime.waitUntil(publishInBackground())
+    else await publishInBackground()
 
-    const nowIso = new Date().toISOString()
-    await admin.from('content_posts').update({
-      caption: finalCaption,
-      status: 'publicado',
-      published_at: nowIso,
-      evolution_message_id: evolutionMessageId,
-    }).eq('id', id)
-
-    return json({ ok: true, id, published_at: nowIso })
+    return json({ ok: true, publishing: true, id }, 202)
   } catch (error) {
     console.error('[content-publish-whatsapp]', error)
     return json({ error: error instanceof Error ? error.message : 'Erro interno.' }, 500)

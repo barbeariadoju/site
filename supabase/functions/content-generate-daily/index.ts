@@ -100,8 +100,15 @@ Deno.serve(async (request: Request) => {
     let context: Record<string, unknown>
 
     if (openSlotsCount > 0) {
-      const firstSlot = String(slotList[0].slot_time).slice(0, 5)
-      contextFact = `Hoje (${formatDateBR(todaySP)}) tem ${openSlotsCount} horário(s) livre(s) na agenda, o mais próximo às ${firstSlot}. Convide o cliente a aproveitar esse horário livre hoje mesmo.`
+      // Regra de posicionamento (pedido explícito do Juliano, 2026-08-04): NUNCA comunicar
+      // quantidade de horários livres nem qualquer sinal de agenda vazia — isso sinaliza
+      // falta de procura. Apresentar no máximo 1-3 horários como oportunidade escassa
+      // ("tenho uma janela às X", "quem agenda primeiro escolhe"). A contagem real fica
+      // só no context (dado interno), jamais no texto publicado.
+      const sampleTimes = slotList.slice(0, 3).map((s: { slot_time: unknown }) => String(s.slot_time).slice(0, 5))
+      const firstSlot = sampleTimes[0]
+      const extraTimes = sampleTimes.slice(1)
+      contextFact = `Hoje (${formatDateBR(todaySP)}) existe oportunidade de encaixe: uma janela às ${firstSlot}${extraTimes.length ? ` e mais algumas poucas ao longo do dia (ex.: ${extraTimes.join(', ')})` : ''}. Apresente como OPORTUNIDADE escassa e valorizada ("tenho uma janela às X", "quem agenda primeiro escolhe"). É PROIBIDO: dizer quantos horários existem, dizer que a agenda está livre/aberta/vazia, ou qualquer frase que sugira pouca procura.`
       context = { tipo: 'vaga_aberta', data: todaySP, horarios_livres: openSlotsCount, primeiro_horario: firstSlot }
     } else {
       const { data: featuredRows } = await admin.rpc('pick_featured_service')
@@ -123,7 +130,7 @@ Deno.serve(async (request: Request) => {
     const insertedRows: { id: string; platform: string; caption: string }[] = []
 
     if (platformsToGenerate.includes('whatsapp_business')) {
-      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
       const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaption
       const { data: inserted, error } = await admin
         .from('content_posts')
@@ -135,7 +142,7 @@ Deno.serve(async (request: Request) => {
     }
 
     if (platformsToGenerate.includes('facebook')) {
-      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp. NUNCA invente preço, horário ou dado que não foi passado. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
       const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaptionFacebook
       const { data: inserted, error } = await admin
         .from('content_posts')

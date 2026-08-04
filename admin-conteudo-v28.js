@@ -184,6 +184,12 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Falha ao publicar.');
       await load();
+      if (data.publishing) {
+        // v28.48.2: a publicação de Status roda em segundo plano no servidor (a resposta
+        // volta na hora). Recarrega a lista algumas vezes pra o card virar "Publicado"
+        // sozinho quando o servidor confirmar — o desfecho também chega por push.
+        [15000, 45000, 90000, 150000].forEach((ms) => setTimeout(() => load().catch(() => {}), ms));
+      }
     } catch (error) {
       const timedOut = error?.name === 'AbortError';
       alert(timedOut
