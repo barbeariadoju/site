@@ -57,6 +57,10 @@
     const imageUrl = $('conteudo-new-image').value.trim();
     if (!caption) { errorEl.textContent = 'Escreva o texto do post.'; return; }
     if (platform === 'instagram' && !imageUrl) { errorEl.textContent = 'Instagram exige um link de imagem.'; return; }
+    // A Meta busca a imagem pelos próprios servidores dela, não pelo navegador — um link
+    // relativo (ex. "/assets/foto.jpg") funciona aqui no admin mas falha silenciosamente
+    // na hora de publicar. Exige link completo com https:// pra evitar esse bug.
+    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) { errorEl.textContent = 'O link da imagem precisa ser completo, começando com https:// (não funciona um caminho relativo).'; return; }
     const submitBtn = $('conteudo-new-form').querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Salvando...';
@@ -86,7 +90,7 @@
   }
 
   function updateMetrics() {
-    const pendentes = rows.filter(r => r.status === 'rascunho').length;
+    const pendentes = rows.filter(r => r.status === 'rascunho' || r.status === 'aprovado').length;
     const now = new Date();
     const publicadosMes = rows.filter(r => r.status === 'publicado' && r.published_at && new Date(r.published_at).getMonth() === now.getMonth() && new Date(r.published_at).getFullYear() === now.getFullYear()).length;
     $('conteudo-metric-pendentes').textContent = pendentes;
@@ -105,7 +109,9 @@
 
   function render() {
     const list = $('conteudo-list');
-    const filtered = rows.filter(r => r.status === statusTab);
+    // 'aprovado' = publicação em andamento (lease de 3 min no servidor) — aparece junto
+    // dos rascunhos pra nunca "sumir" da tela se uma tentativa travar no meio.
+    const filtered = rows.filter(r => statusTab === 'rascunho' ? (r.status === 'rascunho' || r.status === 'aprovado') : r.status === statusTab);
     if (!filtered.length) { list.innerHTML = `<div class="conteudo-empty">Nenhum post ${statusTab === 'rascunho' ? 'pendente' : statusTab} por aqui.</div>`; return; }
     list.innerHTML = filtered.map(r => {
       const created = new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -113,7 +119,7 @@
         ? `Publicado em ${new Date(r.published_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
         : `Gerado em ${created} · ${r.source === 'ia' ? 'IA' : 'Manual'}`;
       const contextText = contextLabel(r.context);
-      const editable = r.status === 'rascunho';
+      const editable = r.status === 'rascunho' || r.status === 'aprovado';
       // Prévia visual (pedido do Juliano): mostra a arte exatamente como vai sair no
       // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
       const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
@@ -124,7 +130,7 @@
         ? 'Este rascunho é só texto (sem arte) — vai como post de texto no Facebook.'
         : 'Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.';
       return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}">
-        <span class="badge ${esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
+        <span class="badge ${r.status === 'aprovado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
         ${imageUrl ? `<div class="conteudo-preview"><p class="meta">Prévia — a imagem abaixo é publicada junto, com o texto como legenda:</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}

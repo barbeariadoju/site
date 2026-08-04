@@ -68,6 +68,39 @@ Deno.serve(async (request: Request) => {
     // link como um preview minúsculo e feio, visto no primeiro teste real). Sem imagem,
     // cai no Status de texto de antes.
     const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
+    // v28.46.1: mesma trava do content-publish-meta — a Evolution API busca a imagem
+    // pelos próprios servidores dela, então um link relativo (ex. "/assets/foto.jpg")
+    // falharia lá com erro genérico. Barra aqui com mensagem clara.
+    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
+      return json({ error: 'O link da imagem precisa ser completo (começando com https://) — um caminho relativo não funciona pro WhatsApp buscar a imagem.' }, 400)
+    }
+    // Trava atômica contra clique duplo/aba dupla (v28.46.1): só quem conseguir mudar
+    // rascunho→aprovado publica — uma segunda chamada simultânea não acha mais o status
+    // 'rascunho' e recebe 409 em vez de publicar de novo. Já aconteceu na prática (2
+    // cliques em erro de timeout = 2 Status reais publicados, precisou apagar via
+    // dev-admin-tools). Em caso de falha da Evolution mais abaixo, o status volta pra
+    // 'rascunho' e libera nova tentativa. 'aprovado' funciona como lease de 3 minutos
+    // (approved_at = início da tentativa): se a function morrer no meio sem reverter,
+    // uma nova tentativa depois do prazo consegue "roubar" a lease em vez do rascunho
+    // ficar preso pra sempre.
+    const { data: claimed } = await admin
+      .from('content_posts')
+      .update({ status: 'aprovado', approved_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('status', 'rascunho')
+      .select('id')
+    if (!claimed?.length) {
+      const leaseCutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+      const { data: reclaimed } = await admin
+        .from('content_posts')
+        .update({ approved_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('status', 'aprovado')
+        .lt('approved_at', leaseCutoff)
+        .select('id')
+      if (!reclaimed?.length) return json({ error: 'Esse rascunho já está sendo publicado (ou acabou de ser). Atualize a página pra conferir.' }, 409)
+    }
+
     // font: 4 = Bebas Neue (mesma fonte de display do site) — a fonte 1 (serifada, com
     // números oldstyle "caídos") saiu feia no primeiro Status real e o Juliano reclamou.
     const statusPayload = imageUrl
@@ -98,7 +131,6 @@ Deno.serve(async (request: Request) => {
     await admin.from('content_posts').update({
       caption: finalCaption,
       status: 'publicado',
-      approved_at: post.approved_at || nowIso,
       published_at: nowIso,
       evolution_message_id: evolutionMessageId,
     }).eq('id', id)

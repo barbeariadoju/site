@@ -1,3 +1,13 @@
+## 28.46.1 — Auditoria de robustez da Central de Conteúdo (pré-lançamento do uso diário)
+
+Revisão completa pedida pelo Juliano antes de começar a usar a ferramenta "100% na vida real". 3 problemas reais encontrados e corrigidos:
+
+- **Clique duplo publicava 2x**: se o botão de publicar fosse acionado em duas abas/dispositivos ao mesmo tempo (ou num retry após timeout — exatamente o acidente que já tinha acontecido no primeiro Status), as duas chamadas passavam pela checagem e publicavam DUAS vezes. Agora as duas functions de publicação usam o status `'aprovado'` como trava atômica (só quem consegue mudar `rascunho→aprovado` publica; segunda chamada recebe 409), com lease de 3 minutos (`approved_at`) pra nunca deixar um rascunho preso se a function morrer no meio. UI mostra posts "Publicando…" na aba Rascunhos.
+- **Link de imagem relativo falhava silenciosamente**: a Meta e a Evolution buscam a imagem pelos próprios servidores delas — um caminho relativo (`/assets/foo.jpg`) funciona na prévia do admin mas falha na publicação com erro genérico. Bloqueado nos 3 pontos (formulário, `content-publish-meta`, `content-publish-whatsapp`) com mensagem clara pedindo o link completo `https://`.
+- **Espera do processamento do Instagram era curta**: 5 tentativas de 2s podia estourar numa imagem maior; agora 10 tentativas de 2.5s (~25s), ainda bem dentro do limite da function.
+
+Também verificado (sem problema encontrado): cron `bdj-content-generate-daily` ativo (8h BRT, diário); as duas functions de publicação rejeitam corretamente chamadas sem sessão de admin (401 testado ao vivo); `get_advisors` de segurança sem nenhum achado novo; suíte de 16 testes do admin passando.
+
 ## 28.46.0 — Criar rascunho manual na Central de Conteúdo + gerador diário ganha Facebook
 
 - **`content-generate-daily` agora também propõe um rascunho de Facebook por dia** (texto, mesmo fato real usado pro Status — vaga aberta ou serviço em destaque), além do Status do WhatsApp que já existia. Guarda de "já gerado hoje" agora é por plataforma (antes bloqueava os dois se qualquer um já tivesse sido gerado). Instagram fica de fora do gerador automático por enquanto — a Graph API exige imagem e ainda não existe geração automática de arte.

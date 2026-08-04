@@ -65,10 +65,43 @@ Deno.serve(async (request: Request) => {
 
     const finalCaption = editedCaption || post.caption
     const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
+    // Defesa em profundidade: o formulário do admin já bloqueia link relativo, mas um
+    // rascunho pode ter sido criado direto por SQL/API sem passar por ali. A Meta busca a
+    // imagem pelos próprios servidores dela — um link relativo falharia lá com um erro
+    // genérico e confuso; melhor barrar aqui com uma mensagem clara.
+    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
+      return json({ error: 'O link da imagem precisa ser completo (começando com https://) — um caminho relativo não funciona pra Meta buscar a imagem.' }, 400)
+    }
 
     const pageToken = requiredSecret('META_PAGE_ACCESS_TOKEN')
     const pageId = requiredSecret('META_PAGE_ID')
     const igUserId = requiredSecret('META_IG_USER_ID')
+
+    // Trava atômica contra clique duplo/aba dupla (v28.46.1): só quem conseguir mudar
+    // rascunho→aprovado publica — uma segunda chamada simultânea não acha mais o status
+    // 'rascunho' e recebe 409 em vez de publicar de novo. Já aconteceu na prática com o
+    // Status do WhatsApp (2 cliques em erro de timeout = 2 publicações reais). Em caso
+    // de falha da Meta mais abaixo, o status volta pra 'rascunho' e libera nova tentativa.
+    // 'aprovado' funciona como lease de 3 minutos (approved_at = início da tentativa):
+    // se a function morrer no meio sem reverter, uma nova tentativa depois do prazo
+    // consegue "roubar" a lease em vez do rascunho ficar preso pra sempre.
+    const { data: claimed } = await admin
+      .from('content_posts')
+      .update({ status: 'aprovado', approved_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('status', 'rascunho')
+      .select('id')
+    if (!claimed?.length) {
+      const leaseCutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+      const { data: reclaimed } = await admin
+        .from('content_posts')
+        .update({ approved_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('status', 'aprovado')
+        .lt('approved_at', leaseCutoff)
+        .select('id')
+      if (!reclaimed?.length) return json({ error: 'Esse rascunho já está sendo publicado (ou acabou de ser). Atualize a página pra conferir.' }, 409)
+    }
 
     let metaPostId: string | null = null
 
@@ -93,7 +126,10 @@ Deno.serve(async (request: Request) => {
       metaPostId = String(fbData?.post_id || fbData?.id || '') || null
     } else {
       // Instagram exige imagem — não existe post de texto puro por lá.
-      if (!imageUrl) return json({ error: 'Post do Instagram precisa de uma imagem (context.image_url).' }, 400)
+      if (!imageUrl) {
+        await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+        return json({ error: 'Post do Instagram precisa de uma imagem (context.image_url).' }, 400)
+      }
 
       const createParams = new URLSearchParams({ access_token: pageToken, image_url: imageUrl, caption: finalCaption })
       const createResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media`, {
@@ -109,9 +145,12 @@ Deno.serve(async (request: Request) => {
       const creationId = String(createData.id)
 
       // O container pode levar alguns segundos pra processar a imagem antes de poder
-      // ser publicado — espera curta com poucas tentativas antes de desistir.
+      // ser publicado. 10 tentativas de 2.5s (~25s de espera total) — folga maior que o
+      // "poucas tentativas" original, pra não falhar à toa numa imagem um pouco maior ou
+      // numa resposta mais lenta da Meta; a function ainda fica bem dentro do limite de
+      // execução do Supabase Edge Functions.
       let ready = false
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 10; attempt++) {
         const statusResponse = await fetchWithTimeout(
           `https://graph.facebook.com/${GRAPH_VERSION}/${creationId}?fields=status_code&access_token=${pageToken}`,
           { method: 'GET' },
@@ -120,7 +159,7 @@ Deno.serve(async (request: Request) => {
         const statusData = await statusResponse.json().catch(() => ({}))
         if (statusData?.status_code === 'FINISHED') { ready = true; break }
         if (statusData?.status_code === 'ERROR') break
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await new Promise((resolve) => setTimeout(resolve, 2500))
       }
       if (!ready) {
         await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
@@ -145,7 +184,6 @@ Deno.serve(async (request: Request) => {
     await admin.from('content_posts').update({
       caption: finalCaption,
       status: 'publicado',
-      approved_at: post.approved_at || nowIso,
       published_at: nowIso,
       meta_post_id: metaPostId,
     }).eq('id', id)
