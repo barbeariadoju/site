@@ -24,9 +24,18 @@ const firstName = (value: any) => String(value || '').trim().split(/\s+/)[0] || 
 // v28.32.0: confirmação de presença automática (pedido do Juliano, 31/07/2026 à noite).
 // Duas janelas: pede confirmação REQUEST_WINDOW_MINUTES antes do horário; se não confirmar
 // nem recusar até DEADLINE_WINDOW_MINUTES antes, libera a vaga sozinha e avisa o Juliano.
-// A folga entre as duas janelas (3h de aviso, corta às vésperas de 1h) dá tempo real do
-// cliente responder sem deixar o Juliano sem reação se realmente for um não-comparecimento.
-const REQUEST_WINDOW_MINUTES = 180
+// v28.49.1 (04/08/2026): janela de pedido subiu de 3h pra 24h — pedido explícito do
+// Juliano depois do caso do Carlos ("cricri"), que recebia esse pedido de confirmação E
+// o lembrete de 24h (booking-email/booking_reminder_24h) como 2 mensagens separadas no
+// WhatsApp. Decisão: o WhatsApp continua sendo o canal principal (ele confirmou que é a
+// melhor fonte de contato), mas só 1 mensagem — esta aqui passa a fazer o papel de
+// lembrete E confirmação ao mesmo tempo, disparando ~24h antes quando há folga.
+// bookings_due_for_confirmation_request já tem a guarda "created_at < now() - 3h" (quem
+// acabou de agendar não precisa confirmar de novo) — pra reservas feitas com MENOS de 24h
+// de antecedência, essa guarda sozinha já faz o pedido sair assim que der (o mais cedo
+// possível, sem esperar a marca de 24h que nunca vai chegar a tempo), exatamente o "ou
+// menos tempo que isso quando não tiver 24h de margem" que ele pediu.
+const REQUEST_WINDOW_MINUTES = 1440
 const DEADLINE_WINDOW_MINUTES = 60
 
 Deno.serve(async (request: Request) => {
@@ -76,6 +85,11 @@ Deno.serve(async (request: Request) => {
 
   let requestsSent = 0, requestsSkipped = 0, deadlineCancelled = 0, deadlineSkipped = 0
 
+  // Janela subiu pra 24h (v28.49.1) — o agendamento pedido agora pode ser hoje OU amanhã,
+  // não dá mais pra cravar "hoje" no texto sem checar a data real.
+  const todaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const dayWord = (bookingDate: string) => (bookingDate === todaySP ? 'hoje' : 'amanhã')
+
   // --- Pede confirmação: agendamentos dentro da janela de REQUEST_WINDOW_MINUTES que ainda
   // não receberam pedido nenhum. Marca confirmation_requested_at logo depois de enviar, então
   // cada agendamento só entra nesta consulta uma vez, não importa a frequência do cron.
@@ -86,7 +100,7 @@ Deno.serve(async (request: Request) => {
     try {
       const name = firstName(booking.customer_name)
       const time = String(booking.start_time).slice(0, 5)
-      const text = `Oi${name ? `, ${name}` : ''}! 😊 Passando pra confirmar seu horário de hoje às ${time} para ${booking.service_name}. Você confirma presença? Responda *sim* pra confirmar, ou me avisa se não vai poder vir.`
+      const text = `Oi${name ? `, ${name}` : ''}! 😊 Passando pra confirmar seu horário de ${dayWord(booking.booking_date)} às ${time} para ${booking.service_name}. Você confirma presença? Responda *sim* pra confirmar, ou me avisa se não vai poder vir.`
       await sendWhatsapp(booking.customer_phone, text)
       await admin.rpc('mark_confirmation_requested', { p_booking_id: booking.id })
       requestsSent++

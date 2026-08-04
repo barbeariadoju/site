@@ -272,6 +272,14 @@ Deno.serve(async (request: Request) => {
     const requestedChannel = String(body?.channel || '')
     const forcedChannel = ['email', 'sms', 'whatsapp'].includes(requestedChannel) ? requestedChannel : null
 
+    // Pedido do Juliano (04/08/2026, caso real do Carlos Fructuoso "cricri"): o lembrete
+    // de 24h e a confirmação de presença (whatsapp-booking-confirmation, ~3h antes) são
+    // dois toques separados no MESMO WhatsApp — cliente sente como duplicidade. Decisão:
+    // o lembrete de 24h deixa de brigar por WhatsApp (prefere e-mail, cai pra SMS se não
+    // tiver e-mail); a confirmação de perto do horário continua sendo o único ponto de
+    // contato no WhatsApp que pede resposta.
+    const skipWhatsappForReminder = eventType === 'booking_reminder_24h'
+
     const results: unknown[] = []
     let customerChannel = 'none'
     let customerChannelFallbackUsed = false
@@ -285,7 +293,7 @@ Deno.serve(async (request: Request) => {
     } else if (forcedChannel === 'whatsapp' && booking.customer_phone) {
       customerChannel = 'whatsapp'
       results.push(await sendWhatsapp(booking.customer_phone, waText))
-    } else if (!forcedChannel && booking.customer_phone) {
+    } else if (!forcedChannel && booking.customer_phone && !skipWhatsappForReminder) {
       customerChannel = 'whatsapp'
       const whatsappResult: any = await sendWhatsapp(booking.customer_phone, waText)
       results.push(whatsappResult)
@@ -309,6 +317,9 @@ Deno.serve(async (request: Request) => {
       customerChannel = 'email'
       const emailResult: any = await send(emailPayload)
       results.push(emailResult)
+    } else if (!forcedChannel && booking.customer_phone) {
+      customerChannel = 'sms'
+      results.push(await sendSms(smsPayload))
     }
 
     if (customerChannel !== 'none') {
