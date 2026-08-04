@@ -58,3 +58,26 @@ test('formulário de novo rascunho valida imagem obrigatória e link relativo', 
   await expect(page.locator('#conteudo-new-form')).toBeHidden();
   await expect(page.locator('.conteudo-card', { hasText: 'Teste de validação' })).toBeVisible();
 });
+
+// JuIA Social (v28.50.0): comentários/DMs de FB+IG na mesma tela, aprovação separada.
+test('JuIA Social mostra pendente, envia e move pra aba de enviados', async ({ page }) => {
+  const { log } = await mockAdmin(page);
+  await page.goto('/admin-conteudo.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+  const card = page.locator('#social-list .conteudo-card[data-id="mock-si-1"]');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Marina Testando');
+  await card.locator('[data-action="social-send"]').click();
+  await expect.poll(() => log.filter(l => l.includes('/functions/v1/meta-social-reply')).length).toBeGreaterThan(0);
+});
+
+test('JuIA Social rejeitar move o item pra aba de rejeitados/ignorados', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin-conteudo.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+  const card = page.locator('#social-list .conteudo-card[data-id="mock-si-1"]');
+  await card.locator('[data-action="social-reject"]').click();
+  await expect(page.locator('#social-list .conteudo-card[data-id="mock-si-1"]')).toBeHidden();
+  await page.click('[data-social-tab="rejeitado"]');
+  await expect(page.locator('#social-list .conteudo-card[data-id="mock-si-1"]')).toBeVisible();
+});

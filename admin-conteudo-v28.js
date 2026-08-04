@@ -7,6 +7,8 @@
   let rows = [];
   let statusTab = 'rascunho';
   let session = null;
+  let socialRows = [];
+  let socialTab = 'rascunho';
 
   async function auth() {
     if (!sb) { showLogin('Configuração do Supabase ausente.'); return; }
@@ -45,7 +47,16 @@
       $('conteudo-new-btn').hidden = false;
     });
     $('conteudo-new-form').addEventListener('submit', createDraft);
+    document.querySelectorAll('[data-social-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-social-tab]').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        socialTab = btn.dataset.socialTab;
+        renderSocial();
+      });
+    });
     await load();
+    await loadSocial();
   }
 
   async function createDraft(e) {
@@ -250,6 +261,85 @@
       alert('Esse post está sendo publicado agora (ou acabou de mudar de situação) — não dá mais pra rejeitar. Atualize a página pra ver como ficou.');
     }
     await load();
+  }
+
+  // JuIA Social — Fase 1 (v28.50.0): comentários (FB+IG) e mensagens (Messenger+Direct)
+  // vivem em social_inbox, aprovação separada da Central de Conteúdo mas na mesma tela.
+  const SOCIAL_PLATFORM_LABEL = { facebook: 'Facebook', instagram: 'Instagram' };
+  const SOCIAL_KIND_LABEL = { comment: 'Comentário', message: 'Mensagem direta' };
+
+  async function loadSocial() {
+    const { data, error } = await sb.from('social_inbox').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); $('social-list').innerHTML = `<div class="conteudo-empty">${esc(error.message)}</div>`; return; }
+    socialRows = data || [];
+    renderSocial();
+  }
+
+  function renderSocial() {
+    const list = $('social-list');
+    const filtered = socialRows.filter(r => socialTab === 'rascunho' ? r.status === 'rascunho' : socialTab === 'enviado' ? r.status === 'enviado' : (r.status === 'rejeitado' || r.status === 'ignorado'));
+    if (!filtered.length) { list.innerHTML = `<div class="conteudo-empty">Nada por aqui.</div>`; return; }
+    list.innerHTML = filtered.map(r => {
+      const created = new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const editable = r.status === 'rascunho';
+      return `<article class="conteudo-card" data-id="${r.id}">
+        <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}</span>
+        <p class="meta"><strong>${esc(r.sender_name || 'Anônimo')}</strong> disse:</p>
+        <p class="meta" style="color:var(--text);white-space:pre-wrap">${esc(r.original_text)}</p>
+        <textarea data-role="social-reply" ${editable ? '' : 'readonly'}>${esc(r.reply_text || r.ai_draft || '')}</textarea>
+        <p class="meta">Recebido em ${esc(created)}</p>
+        ${editable ? `<div class="conteudo-card-actions">
+          <button type="button" class="is-primary" data-action="social-send">✅ Aprovar e enviar</button>
+          <button type="button" data-action="social-ignore">Ignorar</button>
+          <button type="button" class="is-danger" data-action="social-reject">Rejeitar</button>
+        </div>` : ''}
+      </article>`;
+    }).join('');
+
+    list.querySelectorAll('[data-action="social-send"]').forEach(btn => {
+      btn.addEventListener('click', () => sendSocial(btn.closest('.conteudo-card')));
+    });
+    list.querySelectorAll('[data-action="social-reject"]').forEach(btn => {
+      btn.addEventListener('click', () => updateSocialStatus(btn.closest('.conteudo-card').dataset.id, 'rejeitado'));
+    });
+    list.querySelectorAll('[data-action="social-ignore"]').forEach(btn => {
+      btn.addEventListener('click', () => updateSocialStatus(btn.closest('.conteudo-card').dataset.id, 'ignorado'));
+    });
+  }
+
+  async function sendSocial(card) {
+    const id = card.dataset.id;
+    const replyText = card.querySelector('[data-role="social-reply"]').value.trim();
+    const buttons = card.querySelectorAll('button');
+    const sendBtn = card.querySelector('[data-action="social-send"]');
+    const originalLabel = sendBtn.textContent;
+    buttons.forEach(b => b.disabled = true);
+    sendBtn.textContent = 'Enviando...';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res = await fetch(`${cfg.supabaseUrl}/functions/v1/meta-social-reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
+        body: JSON.stringify({ id, reply_text: replyText }),
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Falha ao enviar.');
+      await loadSocial();
+    } catch (error) {
+      alert(`Não foi possível enviar: ${error.message}`);
+      buttons.forEach(b => b.disabled = false);
+      sendBtn.textContent = originalLabel;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function updateSocialStatus(id, status) {
+    const { error } = await sb.from('social_inbox').update({ status }).eq('id', id).eq('status', 'rascunho');
+    if (error) { alert(`Erro: ${error.message}`); return; }
+    await loadSocial();
   }
 
   auth();
