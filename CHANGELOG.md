@@ -1,3 +1,11 @@
+## 28.47.1 — Fix: tela travava pra sempre se o servidor não respondesse
+
+Achado ao vivo, em 2 tentativas seguidas do Juliano com o Story do Facebook: (1) primeira vez, a chamada ao servidor não retornou nenhuma resposta (sem log de conclusão) e o `fetch()` do navegador, sem limite de espera, ficou preso em "Publicando..." pra sempre — rascunho preso em `aprovado` liberado manualmente; (2) segunda vez, a function respondeu rápido com erro **"The signal has been aborted"** — o timeout de 20s configurado pro passo `/photo_stories` da Meta (endpoint mais raro, parece ser mais lento que os outros) estava curto demais, mesma classe de problema já visto antes com a Evolution API do WhatsApp (que também precisou de mais tempo).
+
+- Adicionado limite de 100s na chamada do navegador (cobre com folga o pior caso real, que é o Instagram esperando a imagem processar). Se estourar, a tela volta ao normal com aviso claro: **não significa que falhou** — orienta conferir direto no Facebook/Instagram/WhatsApp antes de tentar de novo, pra não publicar duplicado (mesma cautela já usada no timeout do Status do WhatsApp).
+- Timeouts internos da Meta subiram de 20s pra 35s (todas as chamadas de escrita) e 45s específico pro passo `/photo_stories` do Story do Facebook, que foi o que estourou de verdade.
+- A trava de publicação dupla (lease de 3 min, da v28.46.1) já cobre o lado do banco — depois desse prazo, uma nova tentativa consegue retomar o rascunho sozinha mesmo sem essa correção.
+
 ## 28.47.0 — Story do Facebook e do Instagram na Central de Conteúdo
 
 - **`content-publish-meta` ganha 2 novos destinos**: Story do Facebook (fluxo em 2 passos verificado na documentação da Meta — sobe a foto sem publicar via `/{page-id}/photos?published=false`, depois publica como story via `/{page-id}/photo_stories`) e Story do Instagram (mesmo container de mídia do feed, só troca `media_type=STORIES`; Story não tem campo de legenda na API — o texto precisa estar na própria imagem). Mesma trava de publicação dupla e validação de link absoluto dos outros destinos.

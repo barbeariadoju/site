@@ -34,7 +34,7 @@ async function createAndWaitInstagramContainer(igUserId: string, pageToken: stri
   const createResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media`, {
     method: 'POST',
     body: params,
-  }, 20000)
+  }, 35000)
   const createData = await createResponse.json().catch(() => ({}))
   if (!createResponse.ok || !createData?.id) {
     console.error('[content-publish-meta] instagram create container error', createResponse.status, createData)
@@ -155,7 +155,7 @@ Deno.serve(async (request: Request) => {
       const fbResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${endpoint}`, {
         method: 'POST',
         body: params,
-      }, 20000)
+      }, 35000)
       const fbData = await fbResponse.json().catch(() => ({}))
       if (!fbResponse.ok) {
         console.error('[content-publish-meta] facebook error', fbResponse.status, fbData)
@@ -171,7 +171,7 @@ Deno.serve(async (request: Request) => {
       const uploadResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/photos`, {
         method: 'POST',
         body: uploadParams,
-      }, 20000)
+      }, 35000)
       const uploadData = await uploadResponse.json().catch(() => ({}))
       if (!uploadResponse.ok || !uploadData?.id) {
         console.error('[content-publish-meta] facebook story upload error', uploadResponse.status, uploadData)
@@ -179,10 +179,12 @@ Deno.serve(async (request: Request) => {
         return json({ error: uploadData?.error?.message || 'Falha ao preparar o Story do Facebook.' }, 502)
       }
       const storyParams = new URLSearchParams({ access_token: pageToken, photo_id: String(uploadData.id) })
+      // 45s aqui — foi exatamente esse passo que estourou 20s numa chamada real
+      // (endpoint mais raro da Meta, aparenta ser mais lento que os outros).
       const storyResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/photo_stories`, {
         method: 'POST',
         body: storyParams,
-      }, 20000)
+      }, 45000)
       const storyData = await storyResponse.json().catch(() => ({}))
       if (!storyResponse.ok) {
         console.error('[content-publish-meta] facebook story publish error', storyResponse.status, storyData)
@@ -207,7 +209,7 @@ Deno.serve(async (request: Request) => {
       const publishResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media_publish`, {
         method: 'POST',
         body: publishParams,
-      }, 20000)
+      }, 35000)
       const publishData = await publishResponse.json().catch(() => ({}))
       if (!publishResponse.ok || !publishData?.id) {
         console.error('[content-publish-meta] instagram publish error', publishResponse.status, publishData)

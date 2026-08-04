@@ -167,20 +167,32 @@
     const originalLabel = publishBtn.textContent;
     buttons.forEach(b => b.disabled = true);
     publishBtn.textContent = 'Publicando...';
+    // v28.47.1: sem isso, se o servidor não responder por qualquer motivo (raro, mas
+    // aconteceu na prática numa chamada de Story), o navegador ficava esperando pra
+    // sempre e o botão nunca saía de "Publicando...". 100s cobre com folga o pior caso
+    // real (Instagram com espera de imagem) sem deixar a tela travada indefinidamente.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 100000);
     try {
       const fnName = PLATFORM_FN[platform] || 'content-publish-whatsapp';
       const res = await fetch(`${cfg.supabaseUrl}/functions/v1/${fnName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
         body: JSON.stringify({ id, caption }),
+        signal: controller.signal,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Falha ao publicar.');
       await load();
     } catch (error) {
-      alert(`Não foi possível publicar: ${error.message}`);
+      const timedOut = error?.name === 'AbortError';
+      alert(timedOut
+        ? 'A publicação demorou demais e o navegador desistiu de esperar. Isso NÃO significa que falhou — confira direto no Facebook/Instagram/WhatsApp antes de tentar de novo, pra não publicar duplicado.'
+        : `Não foi possível publicar: ${error.message}`);
       buttons.forEach(b => b.disabled = false);
       publishBtn.textContent = originalLabel;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
