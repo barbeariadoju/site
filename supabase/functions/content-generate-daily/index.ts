@@ -52,15 +52,54 @@ async function generateCaption(openaiKey: string | undefined, prompt: string): P
   }
 }
 
-// Central de Conteúdo (v28.44.0, estendido em v28.45.0): gera 1 rascunho por dia pra
-// cada plataforma ainda sem rascunho hoje (Status do WhatsApp + Facebook), sempre
-// baseado em dado real (vaga aberta hoje, ou serviço em destaque via
-// public.pick_featured_service). NUNCA publica sozinho — só cria o rascunho e avisa o
-// Juliano; publicar é sempre uma ação humana explícita no admin (ver
-// content-publish-whatsapp/content-publish-meta).
-// Instagram fica de fora daqui de propósito: a Graph API exige imagem pra publicar lá,
-// e ainda não existe geração automática de arte (fase futura) — rascunho de Instagram
-// continua sendo criado manualmente por enquanto.
+// Modelo "Nano Banana" — mesmo usado em content-generate-image. Aposenta 02/10/2026,
+// trocar por gemini-3.1-flash-image antes disso (mesmo formato de chamada REST).
+const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
+const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta visual: dourado (#c89b55) e preto, iluminação de estúdio quente, estética masculina clássica com toque moderno. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem. Nunca gerar rosto de pessoa real/reconhecível nem simular um cliente real — mostrar apenas ambiente, produtos, texturas, detalhes de barbearia (navalha, pente, toalha quente, poltrona, espelho, luz), mãos anônimas trabalhando, ou composições sem rosto em primeiro plano.\n\nFormato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
+
+// Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
+// (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
+// Instagram sempre ficava de fora do gerador diário por falta de imagem.
+async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
+  if (!geminiKey) return null
+  try {
+    const prompt = `${BRAND_STYLE}\n\nTema do dia: ${themeText}`
+    const r = await fetchWithTimeout(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
+      },
+      45000,
+    )
+    if (!r.ok) { console.error('[content-generate-daily] gemini', r.status, await r.text().catch(() => '')); return null }
+    const d = await r.json().catch(() => ({}))
+    const parts = d?.candidates?.[0]?.content?.parts || []
+    const imagePart = parts.find((p: any) => p?.inlineData?.data || p?.inline_data?.data)
+    const base64Data = imagePart?.inlineData?.data || imagePart?.inline_data?.data
+    if (!base64Data) { console.error('[content-generate-daily] gemini sem imagem na resposta'); return null }
+    const bytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+    const path = `instagram/${postId}-${Date.now()}.png`
+    const { error: uploadError } = await admin.storage.from('content-images').upload(path, bytes, { contentType: 'image/png', upsert: true })
+    if (uploadError) { console.error('[content-generate-daily] upload', uploadError); return null }
+    const { data: publicUrlData } = admin.storage.from('content-images').getPublicUrl(path)
+    return publicUrlData.publicUrl
+  } catch (error) {
+    console.error('[content-generate-daily] imagem', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
+// Central de Conteúdo (v28.44.0, estendido em v28.45.0, Instagram+arte em v28.51.0):
+// gera 1 rascunho por dia pra cada plataforma ainda sem rascunho hoje (Status do
+// WhatsApp + Facebook + Instagram), sempre baseado em dado real (vaga aberta hoje, ou
+// serviço em destaque via public.pick_featured_service). NUNCA publica sozinho — só
+// cria o rascunho e avisa o Juliano; publicar é sempre uma ação humana explícita no
+// admin (ver content-publish-whatsapp/content-publish-meta).
+// Instagram também ganha arte automática via Gemini (generateAndUploadImage) — se a
+// geração de imagem falhar por qualquer motivo, o rascunho de texto ainda é criado
+// normalmente; o botão manual "Gerar imagem com IA" no admin cobre esse caso.
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
 
@@ -79,7 +118,7 @@ Deno.serve(async (request: Request) => {
 
     const startOfTodayISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
     const platformsToGenerate: string[] = []
-    for (const platform of ['whatsapp_business', 'facebook']) {
+    for (const platform of ['whatsapp_business', 'facebook', 'instagram']) {
       const { data: existing } = await admin
         .from('content_posts')
         .select('id')
@@ -153,11 +192,34 @@ Deno.serve(async (request: Request) => {
       else insertedRows.push({ id: inserted.id, platform: 'facebook', caption })
     }
 
+    if (platformsToGenerate.includes('instagram')) {
+      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaptionFacebook.replace('site www.barbeariadoju.com.br/agendar/', 'link na bio')
+      const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
+      const themeText = context.tipo === 'servico_destaque'
+        ? `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
+        : 'convite pra agendar um horário — transmitir acolhimento e disponibilidade sem texto na imagem.'
+      const { data: inserted, error } = await admin
+        .from('content_posts')
+        .insert({ platform: 'instagram', caption, status: 'rascunho', source: 'ia', context })
+        .select('id')
+        .single()
+      if (error || !inserted) {
+        console.error('[content-generate-daily] insert instagram', error)
+      } else {
+        insertedRows.push({ id: inserted.id, platform: 'instagram', caption })
+        const imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+        if (imageUrl) {
+          await admin.from('content_posts').update({ context: { ...context, image_url: imageUrl } }).eq('id', inserted.id)
+        }
+      }
+    }
+
     if (!insertedRows.length) return json({ error: 'Falha ao salvar rascunho(s).' }, 500)
 
     const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
     if (pushSecret) {
-      const platformLabel: Record<string, string> = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook' }
+      const platformLabel: Record<string, string> = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook', instagram: 'Instagram' }
       const title = insertedRows.length > 1 ? '📝 Novos rascunhos de conteúdo prontos' : '📝 Novo rascunho de conteúdo pronto'
       const body = insertedRows.map((r) => `${platformLabel[r.platform] || r.platform}: ${r.caption.slice(0, 80)}`).join('\n')
       await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
