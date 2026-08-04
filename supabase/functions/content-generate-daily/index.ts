@@ -87,14 +87,14 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
   try {
     const reference = await fetchReferenceImage()
     const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
-    const parts: unknown[] = [{ text: prompt }]
-    if (reference) parts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
+    const requestParts: unknown[] = [{ text: prompt }]
+    if (reference) requestParts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
+        body: JSON.stringify({ contents: [{ parts: requestParts }], generationConfig: { responseModalities: ['IMAGE'] } }),
       },
       45000,
     )
