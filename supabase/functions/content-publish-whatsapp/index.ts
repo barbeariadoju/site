@@ -127,13 +127,52 @@ Deno.serve(async (request: Request) => {
       ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: true }
       : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 4, allContacts: true }
 
+    // Comportamento REAL da Evolution medido em produção (04/08/2026): o sendStatus com
+    // allContacts PUBLICA o Status imediatamente, mas a resposta HTTP só volta depois de
+    // distribuir pra todos os contatos — pode passar de 130s. Ou seja: timeout de resposta
+    // NÃO significa falha. Por isso, quando a resposta demora, a gente confere direto na
+    // lista de Status (findMessages status@broadcast) se a mensagem entrou no ar.
+    const attemptStartedSec = Math.floor(Date.now() / 1000)
+    const verifyPublished = async (): Promise<string | null> => {
+      try {
+        const r = await fetchWithTimeout(`${evolutionApiUrl}/chat/findMessages/${evolutionInstance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+          body: JSON.stringify({ where: { key: { remoteJid: 'status@broadcast' } }, limit: 8 }),
+        }, 20000)
+        const data = await r.json().catch(() => ({}))
+        const arr = Array.isArray(data) ? data : (data?.messages?.records || data?.messages || data?.records || [])
+        const captionStart = finalCaption.slice(0, 40)
+        for (const m of Array.isArray(arr) ? arr : []) {
+          const text = String(m?.message?.conversation || m?.message?.imageMessage?.caption || '')
+          const ts = Number(m?.messageTimestamp || 0)
+          if (m?.key?.fromMe && ts >= attemptStartedSec - 5 && text.startsWith(captionStart)) {
+            return String(m?.key?.id || '') || null
+          }
+        }
+      } catch (error) {
+        console.error('[content-publish-whatsapp] verify', error)
+      }
+      return null
+    }
+
+    const markPublished = async (evolutionMessageId: string | null) => {
+      await admin.from('content_posts').update({
+        caption: finalCaption,
+        status: 'publicado',
+        published_at: new Date().toISOString(),
+        evolution_message_id: evolutionMessageId,
+      }).eq('id', id)
+      await notifyOutcome(supabaseUrl, '✅ Status do WhatsApp publicado', finalCaption.slice(0, 90), `content-pub-ok-${id}`)
+    }
+
     const publishInBackground = async () => {
       try {
         const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
           body: JSON.stringify(statusPayload),
-        }, 130000)
+        }, 60000)
 
         if (!statusResponse.ok) {
           const errBody = await statusResponse.text().catch(() => '')
@@ -144,21 +183,17 @@ Deno.serve(async (request: Request) => {
         }
 
         const statusData = await statusResponse.json().catch(() => ({}))
-        const evolutionMessageId = String(statusData?.key?.id || '') || null
-
-        await admin.from('content_posts').update({
-          caption: finalCaption,
-          status: 'publicado',
-          published_at: new Date().toISOString(),
-          evolution_message_id: evolutionMessageId,
-        }).eq('id', id)
-        await notifyOutcome(supabaseUrl, '✅ Status do WhatsApp publicado', finalCaption.slice(0, 90), `content-pub-ok-${id}`)
-      } catch (error) {
-        // Timeout ou erro de rede: a Evolution pode ter publicado mesmo assim (caso já
-        // visto na prática). NÃO reverter pra rascunho automaticamente — avisar pra
-        // conferir no celular; o lease de 3 min libera nova tentativa se não saiu.
-        console.error('[content-publish-whatsapp] background', error)
-        await notifyOutcome(supabaseUrl, '⚠️ Status do WhatsApp: confirmação pendente', 'A Evolution demorou a responder. Confira no celular se o Status saiu antes de tentar de novo (pra não duplicar).', `content-pub-warn-${id}`)
+        await markPublished(String(statusData?.key?.id || '') || null)
+      } catch (_timeoutError) {
+        // Resposta demorou (>60s): quase sempre o Status JÁ está publicado — confirmar
+        // olhando a lista de Status. Duas checagens com 15s de intervalo.
+        for (let i = 0; i < 2; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 15000))
+          const foundId = await verifyPublished()
+          if (foundId) { await markPublished(foundId); return }
+        }
+        // Não achou de verdade — aí sim é incerteza real: manter a trava e avisar.
+        await notifyOutcome(supabaseUrl, '⚠️ Status do WhatsApp: confirmação pendente', 'A Evolution demorou e não consegui confirmar a publicação. Confira no celular antes de tentar de novo (pra não duplicar).', `content-pub-warn-${id}`)
       }
     }
 

@@ -58,15 +58,26 @@ Deno.serve(async (request: Request) => {
   const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
 
+  // Formato canônico da Evolution: sempre com DDI 55 — envio sem normalizar falha
+  // SILENCIOSO na Evolution (caso real na confirmação de presença, 2026-08-04:
+  // 0/3 entregas sem 55 vs 373/373 com 55). Mesma regra das funções antigas.
+  const toWhatsNumber = (raw: string) => {
+    const digits = String(raw || '').replace(/\D/g, '')
+    if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return digits
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`
+    return digits
+  }
+
   const sendWhatsapp = async (to: string, textBody: string) => {
+    const number = toWhatsNumber(to)
     const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({ number: to, text: textBody }),
+      body: JSON.stringify({ number, text: textBody }),
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null
-    await admin.from('whatsapp_messages').insert({ phone: to, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
   }
 
   const isResolved = async (phone: string, lastMessageAt: string): Promise<boolean> => {
