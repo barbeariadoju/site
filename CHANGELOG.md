@@ -1,3 +1,13 @@
+## 28.47.2 — Segunda bateria de testes robustos (pré-lançamento oficial do uso diário)
+
+Varredura completa pedida pelo Juliano ("achar e corrigir bugs pra ferramenta ficar 100%"). Achados e correções:
+
+- **Corrida do Rejeitar durante publicação**: rejeitar um card em "Publicando…" gravava 'rejeitado', mas a publicação que já rodava no servidor continuava e sobrescrevia pra 'publicado' no final — a tela dizia "rejeitado" e o post saía de verdade. Agora o Rejeitar só funciona em rascunho puro (condição atômica no update) e avisa com clareza quando chega tarde.
+- **Flake real de teste com causa raiz interessante**: novo spec permanente `admin-conteudo.spec.js` (4 testes: roteamento da function certa por plataforma, rejeitar move de aba, validações do formulário) falhava ~50% das vezes no passo de abrir o formulário. Causa: o `admin-pwa.js` recarrega a página quando o service worker assume o controle na primeira visita — e em teste TODA visita é primeira; o clique corria contra o reload e era desfeito. Corrigido com stub do service worker no harness de teste (`_supabase-mock.js`) — usuário real não é afetado, e a suíte inteira ficou ~4x mais rápida de quebra (os reloads atrasavam todos os testes).
+- **Sondas de segurança ao vivo (tudo negado corretamente)**: SELECT/INSERT/UPDATE em `content_posts` com a chave anônima do site → permission denied/401; as 3 functions de publicação sem sessão de admin → 401; `content-generate-daily` sem o secret → 401.
+- **Pipeline do gerador diário validado de ponta a ponta**: reexecutada a MESMA chamada que o cron fará amanhã às 8h (secret real do vault) → respondeu `{"ok":true,"skipped":"fechado_hoje"}` correto pra segunda-feira. A única parte que ainda não rodou em produção é o loop novo de gerar 2 rascunhos (Status+Facebook), que só executa em dia aberto — primeira execução real é amanhã (terça) às 8h; conferir os 2 rascunhos no push/admin.
+- Suíte agora com 21 testes, 21/21 passando (3 rodadas consecutivas do spec novo sem flake).
+
 ## 28.47.1 — Fix: tela travava pra sempre se o servidor não respondesse
 
 Achado ao vivo, em 2 tentativas seguidas do Juliano com o Story do Facebook: (1) primeira vez, a chamada ao servidor não retornou nenhuma resposta (sem log de conclusão) e o `fetch()` do navegador, sem limite de espera, ficou preso em "Publicando..." pra sempre — rascunho preso em `aprovado` liberado manualmente; (2) segunda vez, a function respondeu rápido com erro **"The signal has been aborted"** — o timeout de 20s configurado pro passo `/photo_stories` da Meta (endpoint mais raro, parece ser mais lento que os outros) estava curto demais, mesma classe de problema já visto antes com a Evolution API do WhatsApp (que também precisou de mais tempo).

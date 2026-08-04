@@ -109,6 +109,17 @@ export async function mockAdmin(page, overrides = {}) {
 
   await page.addInitScript(({ key, sess }) => {
     try { window.localStorage.setItem(key, JSON.stringify(sess)); } catch { /* storage indisponível: a tela de login aparece e o teste falha visivelmente */ }
+    // Desativa o service worker do PWA nos testes: na primeira visita (que aqui é TODA
+    // visita, contexto sempre novo), o admin-pwa.js recarrega a página quando o SW
+    // assume o controle (controllerchange → location.reload) — um clique disparado
+    // nesse intervalo "funcionava" no DOM antigo e era desfeito pelo reload, flake real
+    // achado no spec da Central de Conteúdo (~50% de falha no passo de abrir o
+    // formulário). Usuário real não é afetado (não clica em milissegundos na primeira
+    // visita da vida); nos testes, elimina a classe inteira de corrida.
+    try {
+      const swStub = { register: () => new Promise(() => {}), addEventListener: () => {}, controller: null };
+      Object.defineProperty(navigator, 'serviceWorker', { get: () => swStub });
+    } catch { /* se não der pra sobrescrever, os testes seguem com o comportamento antigo */ }
   }, { key: STORAGE_KEY, sess: session });
 
   await page.route((u) => u.hostname.endsWith('.supabase.co'), async (route) => {

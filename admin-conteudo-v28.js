@@ -198,8 +198,16 @@
 
   async function reject(card) {
     const id = card.dataset.id;
-    const { error } = await sb.from('content_posts').update({ status: 'rejeitado' }).eq('id', id);
+    // Só rejeita quem ainda está em 'rascunho'. Rejeitar um card em 'aprovado'
+    // (publicação em andamento) seria mentira: a publicação que já está rodando no
+    // servidor continuaria e sobrescreveria pra 'publicado' no final — a tela diria
+    // "rejeitado" mas o post sairia de verdade. A condição de status no update torna
+    // a checagem atômica (não dá pra rejeitar "no meio").
+    const { data, error } = await sb.from('content_posts').update({ status: 'rejeitado' }).eq('id', id).eq('status', 'rascunho').select('id');
     if (error) { alert(`Erro: ${error.message}`); return; }
+    if (!data || !data.length) {
+      alert('Esse post está sendo publicado agora (ou acabou de mudar de situação) — não dá mais pra rejeitar. Atualize a página pra ver como ficou.');
+    }
     await load();
   }
 
