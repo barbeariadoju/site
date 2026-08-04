@@ -32,6 +32,28 @@ const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
 
 const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta visual: dourado (#c89b55) e preto, iluminação de estúdio quente, estética masculina clássica com toque moderno. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem. Nunca gerar rosto de pessoa real/reconhecível nem simular um cliente real — mostrar apenas ambiente, produtos, texturas, detalhes de barbearia (navalha, pente, toalha quente, poltrona, espelho, luz), mãos anônimas trabalhando, ou composições sem rosto em primeiro plano.`
 
+// Fotos reais do ambiente (v28.52.0) — sem isso o Gemini às vezes "alucinava" composições
+// desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
+// ambiente/estilo funciona muito melhor do que só descrever em texto.
+const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
+const REFERENCE_INSTRUCTION = 'A foto anexada mostra o ambiente REAL da barbearia — use-a como referência de luz, cores, texturas e composição, mas gere uma imagem NOVA e original (não é pra editar essa foto). Nunca gere pessoas com partes do corpo cortadas, desconexas ou "flutuando" — se incluir alguém, mostre o corpo inteiro ou enquadre só mãos/objetos/ambiente.'
+
+async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+  try {
+    const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
+    const r = await fetch(`https://www.barbeariadoju.com.br/assets/ia-referencia/${file}`)
+    if (!r.ok) return null
+    const buffer = await r.arrayBuffer()
+    let binary = ''
+    const bytes = new Uint8Array(buffer)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return { mimeType: 'image/jpeg', data: btoa(binary) }
+  } catch (error) {
+    console.error('[content-generate-image] referencia', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 // Central de Marketing — Fase 2 (v28.49.0): gera a arte de um rascunho de content_posts
 // via Gemini (imagem), sobe pro bucket público content-images e grava a URL em
 // context.image_url (mesmo campo que content-publish-meta já lê pra publicar/prévia).
@@ -77,7 +99,10 @@ Deno.serve(async (request: Request) => {
       ? 'Tema do dia: convite pra agendar um horário — transmitir acolhimento e disponibilidade sem texto na imagem.'
       : `Tema do dia, baseado na legenda deste post: "${String(post.caption || '').slice(0, 200)}"`
 
-    const prompt = [BRAND_STYLE, formatHint, contextTheme, extraPrompt].filter(Boolean).join('\n\n')
+    const reference = await fetchReferenceImage()
+    const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', formatHint, contextTheme, extraPrompt].filter(Boolean).join('\n\n')
+    const parts: unknown[] = [{ text: prompt }]
+    if (reference) parts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
 
     const geminiResponse = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
@@ -85,7 +110,7 @@ Deno.serve(async (request: Request) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts }],
           generationConfig: { responseModalities: ['IMAGE'] },
         }),
       },

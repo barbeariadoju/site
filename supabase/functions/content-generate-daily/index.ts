@@ -57,19 +57,44 @@ async function generateCaption(openaiKey: string | undefined, prompt: string): P
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
 const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta visual: dourado (#c89b55) e preto, iluminação de estúdio quente, estética masculina clássica com toque moderno. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem. Nunca gerar rosto de pessoa real/reconhecível nem simular um cliente real — mostrar apenas ambiente, produtos, texturas, detalhes de barbearia (navalha, pente, toalha quente, poltrona, espelho, luz), mãos anônimas trabalhando, ou composições sem rosto em primeiro plano.\n\nFormato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
 
+// Fotos reais do ambiente (v28.52.0) — sem isso o Gemini às vezes "alucinava" composições
+// desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
+// ambiente/estilo funciona muito melhor do que só descrever em texto.
+const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
+const REFERENCE_INSTRUCTION = 'A foto anexada mostra o ambiente REAL da barbearia — use-a como referência de luz, cores, texturas e composição, mas gere uma imagem NOVA e original (não é pra editar essa foto). Nunca gere pessoas com partes do corpo cortadas, desconexas ou "flutuando" — se incluir alguém, mostre o corpo inteiro ou enquadre só mãos/objetos/ambiente.'
+
+async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+  try {
+    const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
+    const r = await fetch(`https://www.barbeariadoju.com.br/assets/ia-referencia/${file}`)
+    if (!r.ok) return null
+    const buffer = await r.arrayBuffer()
+    let binary = ''
+    const bytes = new Uint8Array(buffer)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return { mimeType: 'image/jpeg', data: btoa(binary) }
+  } catch (error) {
+    console.error('[content-generate-daily] referencia', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 // Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
 // (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
 // Instagram sempre ficava de fora do gerador diário por falta de imagem.
 async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
   if (!geminiKey) return null
   try {
-    const prompt = `${BRAND_STYLE}\n\nTema do dia: ${themeText}`
+    const reference = await fetchReferenceImage()
+    const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
+    const parts: unknown[] = [{ text: prompt }]
+    if (reference) parts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
       },
       45000,
     )
