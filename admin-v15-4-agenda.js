@@ -69,7 +69,29 @@
   function matchCurrentServiceNames(serviceName){
     const name=String(serviceName||'').trim()
     if(catalog.some(s=>s.name===name))return [name]
-    return name.split('+').map(s=>s.trim()).filter(Boolean)
+    // Combos compostos pela JuIA juntam NOMES COMPLETOS do catálogo com " + " — e alguns
+    // nomes do catálogo também têm "+" no próprio nome ("Corte + Lavagem"). O split
+    // direto quebrava "Corte + Lavagem + Sobrancelha Masculina" em pedaços inexistentes
+    // ("Corte", "Lavagem") e só pré-marcava a sobrancelha (caso real do Guilherme,
+    // 04/08/2026 — risco de concluir registrando só parte do serviço). Segmentação
+    // gulosa: casa o nome de catálogo mais longo no início do restante; sem match,
+    // consome até o próximo "+" como pedaço avulso (comportamento antigo).
+    const sorted=catalog.map(s=>s.name).sort((a,b)=>b.length-a.length)
+    const found=[]
+    let rest=name
+    while(rest){
+      const hit=sorted.find(n=>rest.toLowerCase().startsWith(n.toLowerCase())&&(rest.length===n.length||/^\s*\+/.test(rest.slice(n.length))))
+      if(hit){
+        found.push(hit)
+        rest=rest.slice(hit.length).replace(/^\s*\+\s*/,'').trim()
+      }else{
+        const idx=rest.indexOf('+')
+        const piece=(idx===-1?rest:rest.slice(0,idx)).trim()
+        if(piece)found.push(piece)
+        rest=idx===-1?'':rest.slice(idx+1).trim()
+      }
+    }
+    return found
   }
   function serviceChecklistHtml(currentServiceName=''){
     const selectedNames=new Set(matchCurrentServiceNames(currentServiceName))

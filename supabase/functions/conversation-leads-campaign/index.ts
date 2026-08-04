@@ -80,16 +80,12 @@ Deno.serve(async (request: Request) => {
     await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
   }
 
+  // v28.48.6: comparação de telefone via phone_match_key (RPC lead_booking_exists,
+  // migration 083) — igualdade exata falha quando lead tem DDI 55 e booking não (caso
+  // real do Guilherme, 04/08/2026).
   const isResolved = async (phone: string, lastMessageAt: string): Promise<boolean> => {
-    const { data: booking } = await admin
-      .from('bookings')
-      .select('id')
-      .eq('customer_phone', phone)
-      .in('status', ['pending', 'confirmed', 'completed'])
-      .gte('created_at', lastMessageAt)
-      .limit(1)
-      .maybeSingle()
-    if (booking) return true
+    const { data: hasBooking } = await admin.rpc('lead_booking_exists', { p_phone: phone, p_since: lastMessageAt })
+    if (hasBooking === true) return true
     const { data: conv } = await admin
       .from('whatsapp_conversations')
       .select('human_takeover')

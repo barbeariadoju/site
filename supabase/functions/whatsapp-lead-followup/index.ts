@@ -77,16 +77,13 @@ Deno.serve(async (request: Request) => {
 
   // Um cliente que já foi cuidado (booking real criado depois da conversa abandonada, ou
   // handoff pra humano em andamento) não deve receber nudge nenhum — resolve/apaga o lead.
+  // v28.48.6: comparação de telefone via phone_match_key (RPC lead_booking_exists,
+  // migration 083) — a igualdade exata (eq) falhou em caso real: lead com DDI 55 (do
+  // remoteJid) vs booking sem 55 → a JuIA mandou "ainda tem interesse?" pro Guilherme
+  // 1h depois de ele ser ATENDIDO (04/08/2026).
   const isResolved = async (phone: string, lastMessageAt: string): Promise<boolean> => {
-    const { data: booking } = await admin
-      .from('bookings')
-      .select('id')
-      .eq('customer_phone', phone)
-      .in('status', ['pending', 'confirmed', 'completed'])
-      .gte('created_at', lastMessageAt)
-      .limit(1)
-      .maybeSingle()
-    if (booking) return true
+    const { data: hasBooking } = await admin.rpc('lead_booking_exists', { p_phone: phone, p_since: lastMessageAt })
+    if (hasBooking === true) return true
     const { data: conv } = await admin
       .from('whatsapp_conversations')
       .select('human_takeover, human_takeover_at')
