@@ -56,7 +56,7 @@
     const caption = $('conteudo-new-caption').value.trim();
     const imageUrl = $('conteudo-new-image').value.trim();
     if (!caption) { errorEl.textContent = 'Escreva o texto do post.'; return; }
-    if (platform === 'instagram' && !imageUrl) { errorEl.textContent = 'Instagram exige um link de imagem.'; return; }
+    if (PLATFORMS_REQUIRE_IMAGE.has(platform) && !imageUrl) { errorEl.textContent = `${PLATFORM_LABEL[platform]} exige um link de imagem.`; return; }
     // A Meta busca a imagem pelos próprios servidores dela, não pelo navegador — um link
     // relativo (ex. "/assets/foto.jpg") funciona aqui no admin mas falha silenciosamente
     // na hora de publicar. Exige link completo com https:// pra evitar esse bug.
@@ -104,8 +104,11 @@
     return '';
   }
 
-  const PLATFORM_LABEL = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook', instagram: 'Instagram' };
-  const PLATFORM_FN = { whatsapp_business: 'content-publish-whatsapp', facebook: 'content-publish-meta', instagram: 'content-publish-meta' };
+  const PLATFORM_LABEL = { whatsapp_business: 'Status do WhatsApp', facebook: 'Facebook', instagram: 'Instagram', facebook_story: 'Story do Facebook', instagram_story: 'Story do Instagram' };
+  const PLATFORM_FN = { whatsapp_business: 'content-publish-whatsapp', facebook: 'content-publish-meta', instagram: 'content-publish-meta', facebook_story: 'content-publish-meta', instagram_story: 'content-publish-meta' };
+  // Só o feed do Facebook aceita post de texto puro — os dois Stories e o feed do
+  // Instagram sempre exigem imagem (mesma regra aplicada em content-publish-meta).
+  const PLATFORMS_REQUIRE_IMAGE = new Set(['instagram', 'instagram_story', 'facebook_story']);
 
   function render() {
     const list = $('conteudo-list');
@@ -124,17 +127,21 @@
       // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
       const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
       const platformLabel = PLATFORM_LABEL[r.platform] || r.platform;
-      const noImageNote = r.platform === 'instagram'
-        ? 'Instagram exige uma imagem — este rascunho ainda não tem arte definida.'
+      const noImageNote = PLATFORMS_REQUIRE_IMAGE.has(r.platform)
+        ? `${platformLabel} exige uma imagem — este rascunho ainda não tem arte definida.`
         : r.platform === 'facebook'
         ? 'Este rascunho é só texto (sem arte) — vai como post de texto no Facebook.'
         : 'Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.';
+      // Story não tem legenda de verdade na Meta (o texto precisa estar na própria
+      // imagem) — o campo de texto aqui é só anotação interna, não sai publicado.
+      const isStoryPlatform = r.platform === 'facebook_story' || r.platform === 'instagram_story';
       return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}">
         <span class="badge ${r.status === 'aprovado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
-        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">Prévia — a imagem abaixo é publicada junto, com o texto como legenda:</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
+        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">${isStoryPlatform ? 'Prévia — é exatamente essa imagem que vai pro Story (sem legenda, a Meta não permite texto sobreposto por API):' : 'Prévia — a imagem abaixo é publicada junto, com o texto como legenda:'}</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
         <textarea data-role="caption" ${editable ? '' : 'readonly'}>${esc(r.caption)}</textarea>
+        ${isStoryPlatform ? '<p class="meta">Esse texto é só anotação interna — o Story não tem legenda, sai só a imagem.</p>' : ''}
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
           <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>

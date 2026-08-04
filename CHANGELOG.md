@@ -1,3 +1,9 @@
+## 28.47.0 — Story do Facebook e do Instagram na Central de Conteúdo
+
+- **`content-publish-meta` ganha 2 novos destinos**: Story do Facebook (fluxo em 2 passos verificado na documentação da Meta — sobe a foto sem publicar via `/{page-id}/photos?published=false`, depois publica como story via `/{page-id}/photo_stories`) e Story do Instagram (mesmo container de mídia do feed, só troca `media_type=STORIES`; Story não tem campo de legenda na API — o texto precisa estar na própria imagem). Mesma trava de publicação dupla e validação de link absoluto dos outros destinos.
+- **Limitação real, sem solução por API**: Story publicado por aqui **não tem o link clicável** — a figurinha de link do Instagram só existe pelo app do celular. Serve pra alcance/visibilidade; quem quiser o link clicável no Story ainda precisa publicar manualmente pelo celular.
+- Admin: formulário de criação manual e cards de rascunho já reconhecem os 2 novos tipos, com aviso de que o texto digitado é só anotação interna (não sai publicado no Story).
+
 ## 28.46.1 — Auditoria de robustez da Central de Conteúdo (pré-lançamento do uso diário)
 
 Revisão completa pedida pelo Juliano antes de começar a usar a ferramenta "100% na vida real". 3 problemas reais encontrados e corrigidos:
