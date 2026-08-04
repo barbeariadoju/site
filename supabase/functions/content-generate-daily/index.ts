@@ -61,7 +61,9 @@ const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, b
 // desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
 // ambiente/estilo funciona muito melhor do que só descrever em texto.
 const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
-const REFERENCE_INSTRUCTION = 'A foto anexada mostra o ambiente REAL da barbearia — use-a como referência de luz, cores, texturas e composição, mas gere uma imagem NOVA e original (não é pra editar essa foto). Nunca gere pessoas com partes do corpo cortadas, desconexas ou "flutuando" — se incluir alguém, mostre o corpo inteiro ou enquadre só mãos/objetos/ambiente.'
+// v28.53.1 (04/08/2026): modo edição (mantém o ambiente real fiel) em vez de "inspirado
+// por" — ver mesma nota em content-generate-image/index.ts.
+const REFERENCE_INSTRUCTION = 'A foto anexada é uma foto REAL da Barbearia do Ju. EDITE esta mesma foto — mantenha o ambiente, os móveis, a decoração, os reflexos e o enquadramento EXATAMENTE como estão na foto original. Não recrie o ambiente do zero, não troque a composição nem os elementos reais da loja. Insira apenas a cena/pessoa descrita no tema de hoje dentro desse ambiente real, de forma natural e bem integrada (iluminação e sombras consistentes com a foto original). Se incluir uma pessoa, use alguém fictício e genérico, com o corpo inteiro visível (nunca partes cortadas/flutuando) e sem simular um cliente real específico.'
 
 async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
   try {
