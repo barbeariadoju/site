@@ -19,7 +19,13 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
-const INACTIVITY_MINUTES = 2
+// v28.54.1: 2min era curto demais pra conversa humana real (caso Kelvin, 05/08/2026) —
+// o Juliano respondia normalmente com poucos minutos de pausa (atendendo cliente,
+// digitando) e o watchdog já devolvia o controle pra JuIA no meio da conversa,
+// que então mandava o "cochicho" de reativação por cima do que o Juliano estava
+// conduzindo. 20min dá folga real pra uma pausa natural sem deixar o cliente
+// esperando o dia inteiro se o Juliano de fato se afastar.
+const INACTIVITY_MINUTES = 20
 
 const greetingNow = (): string => {
   const hour = Number(
