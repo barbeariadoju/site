@@ -88,11 +88,16 @@ Deno.serve(async (request: Request) => {
     // link como um preview minúsculo e feio, visto no primeiro teste real). Sem imagem,
     // cai no Status de texto de antes.
     const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
-    // v28.46.1: mesma trava do content-publish-meta — a Evolution API busca a imagem
+    // v28.57.0 — Status de VÍDEO. Espelha image_url; vídeo tem prioridade quando os dois
+    // existem. Atenção ao limite do próprio WhatsApp: Status de vídeo aceita no máximo
+    // ~60 segundos — vídeo mais longo é cortado ou recusado pelo app, não pela Evolution.
+    const videoUrl = typeof post.context?.video_url === 'string' ? post.context.video_url : ''
+    const mediaUrl = videoUrl || imageUrl
+    // v28.46.1: mesma trava do content-publish-meta — a Evolution API busca a mídia
     // pelos próprios servidores dela, então um link relativo (ex. "/assets/foto.jpg")
     // falharia lá com erro genérico. Barra aqui com mensagem clara.
-    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
-      return json({ error: 'O link da imagem precisa ser completo (começando com https://) — um caminho relativo não funciona pro WhatsApp buscar a imagem.' }, 400)
+    if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
+      return json({ error: 'O link da mídia precisa ser completo (começando com https://) — um caminho relativo não funciona pro WhatsApp buscar o arquivo.' }, 400)
     }
     // Trava atômica contra clique duplo/aba dupla (v28.46.1): só quem conseguir mudar
     // rascunho→aprovado publica — uma segunda chamada simultânea não acha mais o status
@@ -166,15 +171,19 @@ Deno.serve(async (request: Request) => {
         }
         // font: 4 = Bebas Neue (mesma fonte de display do site) — a fonte 1 (serifada)
         // saiu feia no primeiro Status real e o Juliano reclamou.
-        const statusPayload = imageUrl
-          ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: false, statusJidList }
-          : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 4, allContacts: false, statusJidList }
+        const statusPayload = videoUrl
+          ? { type: 'video', content: videoUrl, caption: finalCaption, allContacts: false, statusJidList }
+          : imageUrl
+            ? { type: 'image', content: imageUrl, caption: finalCaption, allContacts: false, statusJidList }
+            : { type: 'text', content: finalCaption, backgroundColor: '#0b0b0b', font: 4, allContacts: false, statusJidList }
 
+        // Vídeo: a Evolution baixa e transcodifica o arquivo antes de distribuir, então
+        // demora bem mais que imagem — 90s é o limite seguro do runtime da function.
         const statusResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendStatus/${evolutionInstance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
           body: JSON.stringify(statusPayload),
-        }, 90000)
+        }, videoUrl ? 130000 : 90000)
 
         if (!statusResponse.ok) {
           const errBody = await statusResponse.text().catch(() => '')

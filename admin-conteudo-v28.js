@@ -66,12 +66,20 @@
     const platform = $('conteudo-new-platform').value;
     const caption = $('conteudo-new-caption').value.trim();
     const imageUrl = $('conteudo-new-image').value.trim();
+    // v28.57.0 — campo de vídeo (Reels/Status de vídeo). Espelha o de imagem; quando os
+    // dois estão preenchidos, o vídeo é o que vai publicado e a imagem fica só como capa
+    // de referência aqui no admin.
+    const videoField = $('conteudo-new-video');
+    const videoUrl = videoField ? videoField.value.trim() : '';
+    const mediaUrl = videoUrl || imageUrl;
     if (!caption) { errorEl.textContent = 'Escreva o texto do post.'; return; }
-    if (PLATFORMS_REQUIRE_IMAGE.has(platform) && !imageUrl) { errorEl.textContent = `${PLATFORM_LABEL[platform]} exige um link de imagem.`; return; }
-    // A Meta busca a imagem pelos próprios servidores dela, não pelo navegador — um link
+    if (PLATFORMS_REQUIRE_IMAGE.has(platform) && !mediaUrl) { errorEl.textContent = `${PLATFORM_LABEL[platform]} exige um link de imagem ou de vídeo.`; return; }
+    // A Meta busca a mídia pelos próprios servidores dela, não pelo navegador — um link
     // relativo (ex. "/assets/foto.jpg") funciona aqui no admin mas falha silenciosamente
     // na hora de publicar. Exige link completo com https:// pra evitar esse bug.
     if (imageUrl && !/^https?:\/\//i.test(imageUrl)) { errorEl.textContent = 'O link da imagem precisa ser completo, começando com https:// (não funciona um caminho relativo).'; return; }
+    if (videoUrl && !/^https?:\/\//i.test(videoUrl)) { errorEl.textContent = 'O link do vídeo precisa ser completo, começando com https:// (não funciona um caminho relativo).'; return; }
+    if (videoUrl && !/\.(mp4|mov)(\?|$)/i.test(videoUrl)) { errorEl.textContent = 'O vídeo precisa ser um arquivo .mp4 ou .mov — é o que o Instagram e o WhatsApp aceitam.'; return; }
     const submitBtn = $('conteudo-new-form').querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Salvando...';
@@ -80,7 +88,9 @@
       caption,
       status: 'rascunho',
       source: 'manual',
-      context: imageUrl ? { image_url: imageUrl } : null,
+      context: (imageUrl || videoUrl)
+        ? { ...(imageUrl ? { image_url: imageUrl } : {}), ...(videoUrl ? { video_url: videoUrl } : {}) }
+        : null,
     });
     submitBtn.disabled = false;
     submitBtn.textContent = 'Salvar rascunho';
@@ -137,9 +147,12 @@
       // Prévia visual (pedido do Juliano): mostra a arte exatamente como vai sair no
       // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
       const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
+      // v28.57.0 — vídeo (Reel/Status de vídeo). Quando existe, ele é a mídia publicada e
+      // a prévia vira um player, pro Juliano assistir antes de aprovar.
+      const videoUrl = r.context && typeof r.context.video_url === 'string' ? r.context.video_url : '';
       const platformLabel = PLATFORM_LABEL[r.platform] || r.platform;
       const noImageNote = PLATFORMS_REQUIRE_IMAGE.has(r.platform)
-        ? `${platformLabel} exige uma imagem — este rascunho ainda não tem arte definida.`
+        ? `${platformLabel} exige uma imagem ou vídeo — este rascunho ainda não tem mídia definida.`
         : r.platform === 'facebook'
         ? 'Este rascunho é só texto (sem arte) — vai como post de texto no Facebook.'
         : 'Este rascunho é só texto (sem arte) — o WhatsApp renderiza sobre fundo escuro.';
@@ -150,12 +163,14 @@
         <span class="badge ${r.status === 'aprovado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
-        ${imageUrl ? `<div class="conteudo-preview"><p class="meta">${isStoryPlatform ? 'Prévia — é exatamente essa imagem que vai pro Story (sem legenda, a Meta não permite texto sobreposto por API):' : 'Prévia — a imagem abaixo é publicada junto, com o texto como legenda:'}</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
+        ${videoUrl
+          ? `<div class="conteudo-preview"><p class="meta">${r.platform === 'instagram' ? 'Prévia — este vídeo vai como <strong>Reel</strong> no Instagram, com o texto abaixo como legenda:' : isStoryPlatform ? 'Prévia — este vídeo vai pro Story (sem legenda):' : 'Prévia — este vídeo é publicado com o texto como legenda:'}</p><video src="${esc(videoUrl)}" controls playsinline preload="metadata"></video></div>`
+          : imageUrl ? `<div class="conteudo-preview"><p class="meta">${isStoryPlatform ? 'Prévia — é exatamente essa imagem que vai pro Story (sem legenda, a Meta não permite texto sobreposto por API):' : 'Prévia — a imagem abaixo é publicada junto, com o texto como legenda:'}</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
         <textarea data-role="caption" ${editable ? '' : 'readonly'}>${esc(r.caption)}</textarea>
         ${isStoryPlatform ? '<p class="meta">Esse texto é só anotação interna — o Story não tem legenda, sai só a imagem.</p>' : ''}
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          ${!imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
+          ${videoUrl ? '' : !imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
           <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}

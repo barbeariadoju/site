@@ -114,6 +114,9 @@ export function makeFixtures(overrides = {}) {
       { id: 'mock-cp-3', platform: 'whatsapp_business', caption: '📅 Abriu um horário hoje às 09:00! Chama pra garantir o seu.', background_color: null, status: 'rejeitado', source: 'ia', context: { tipo: 'vaga_aberta', data: dayOfMonth(3), horarios_livres: 1, primeiro_horario: '09:00' }, created_at: tsOfMonth(3, 8), updated_at: tsOfMonth(3, 8), approved_at: null, published_at: null, evolution_message_id: null },
       { id: 'mock-cp-4', platform: 'facebook', caption: '📘 Guia Definitivo da Barba — 50% OFF de lançamento. Link na bio!', background_color: null, status: 'rascunho', source: 'manual', context: { image_url: '/assets/promo-guia-barba-status.jpg' }, created_at: tsOfMonth(2, 20), updated_at: tsOfMonth(2, 20), approved_at: null, published_at: null, evolution_message_id: null, meta_post_id: null },
       { id: 'mock-cp-5', platform: 'instagram_story', caption: 'Anotação interna: divulgar horário livre hoje', background_color: null, status: 'rascunho', source: 'manual', context: { image_url: 'https://www.barbeariadoju.com.br/assets/promo-pigmentacao-capilar.jpg' }, created_at: tsOfMonth(3, 9), updated_at: tsOfMonth(3, 9), approved_at: null, published_at: null, evolution_message_id: null, meta_post_id: null },
+      // v28.57.0 — rascunho de VÍDEO (Reel). Cobre a prévia em player e a ausência do
+      // botão de gerar imagem, que não faz sentido num post de vídeo.
+      { id: 'mock-cp-6', platform: 'instagram', caption: 'Tem coisa que não é sobre pressa. Neste Dia dos Pais, traga seu pai — ou traga seu filho.', background_color: null, status: 'rascunho', source: 'manual', context: { video_url: 'https://www.barbeariadoju.com.br/assets/reel-dia-dos-pais-2026.mp4', campaign: 'dia-dos-pais-2026' }, created_at: tsOfMonth(9, 19), updated_at: tsOfMonth(9, 19), approved_at: null, published_at: null, evolution_message_id: null, meta_post_id: null },
     ],
 
     social_inbox: [

@@ -30,7 +30,7 @@ const GRAPH_VERSION = 'v23.0'
 // Publica um container de mídia do Instagram (feed ou story) e espera processar antes de
 // devolver o creation_id pronto pra publicar. Usado tanto por 'instagram' quanto por
 // 'instagram_story' — a única diferença entre os dois é o media_type enviado na criação.
-async function createAndWaitInstagramContainer(igUserId: string, pageToken: string, params: URLSearchParams): Promise<{ creationId: string } | { error: string }> {
+async function createAndWaitInstagramContainer(igUserId: string, pageToken: string, params: URLSearchParams, isVideo = false): Promise<{ creationId: string } | { error: string }> {
   const createResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media`, {
     method: 'POST',
     body: params,
@@ -42,21 +42,36 @@ async function createAndWaitInstagramContainer(igUserId: string, pageToken: stri
   }
   const creationId = String(createData.id)
 
-  // O container pode levar alguns segundos pra processar a imagem antes de poder ser
-  // publicado. 10 tentativas de 2.5s (~25s de espera total).
+  // O container pode levar alguns segundos pra processar a mídia antes de poder ser
+  // publicado. Imagem: 10 tentativas de 2.5s (~25s). VÍDEO/Reel precisa de muito mais —
+  // a Meta transcodifica o arquivo inteiro antes de liberar (v28.57.0: 40 tentativas de
+  // 3s ≈ 2min). Publicar antes de FINISHED devolve erro genérico e confuso da Meta.
+  const maxAttempts = isVideo ? 40 : 10
+  const waitMs = isVideo ? 3000 : 2500
   let ready = false
-  for (let attempt = 0; attempt < 10; attempt++) {
+  let lastError = ''
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const statusResponse = await fetchWithTimeout(
-      `https://graph.facebook.com/${GRAPH_VERSION}/${creationId}?fields=status_code&access_token=${pageToken}`,
+      `https://graph.facebook.com/${GRAPH_VERSION}/${creationId}?fields=status_code,status&access_token=${pageToken}`,
       { method: 'GET' },
       10000,
     )
     const statusData = await statusResponse.json().catch(() => ({}))
     if (statusData?.status_code === 'FINISHED') { ready = true; break }
-    if (statusData?.status_code === 'ERROR') break
-    await new Promise((resolve) => setTimeout(resolve, 2500))
+    if (statusData?.status_code === 'ERROR') {
+      // `status` traz o motivo real da recusa (formato, duração, proporção) — sem isso o
+      // Juliano só via "não terminou de processar" e não sabia o que corrigir no vídeo.
+      lastError = String(statusData?.status || '')
+      break
+    }
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
   }
-  if (!ready) return { error: 'A imagem não terminou de processar a tempo. Tente publicar de novo em instantes.' }
+  if (!ready) {
+    if (lastError) return { error: `A Meta recusou a mídia: ${lastError}` }
+    return { error: isVideo
+      ? 'O vídeo não terminou de processar a tempo (a Meta pode levar alguns minutos em vídeo maior). Espere um pouco e tente publicar de novo.'
+      : 'A imagem não terminou de processar a tempo. Tente publicar de novo em instantes.' }
+  }
   return { creationId }
 }
 
@@ -99,17 +114,23 @@ Deno.serve(async (request: Request) => {
 
     const finalCaption = editedCaption || post.caption
     const imageUrl = typeof post.context?.image_url === 'string' ? post.context.image_url : ''
-    // Story de qualquer rede e post do Instagram exigem imagem — só o feed do Facebook
+    // v28.57.0 — suporte a vídeo. `context.video_url` espelha `image_url`: quando existe,
+    // o post vira Reel (feed do Instagram), Story de vídeo ou vídeo de Página no Facebook.
+    // Vídeo tem prioridade sobre imagem quando os dois estão presentes (a imagem passa a
+    // valer só como capa/thumbnail de referência no admin).
+    const videoUrl = typeof post.context?.video_url === 'string' ? post.context.video_url : ''
+    const mediaUrl = videoUrl || imageUrl
+    // Story de qualquer rede e post do Instagram exigem mídia — só o feed do Facebook
     // aceita texto puro. Barrado antes da trava de publicação pra não gastar a lease à toa.
-    if (post.platform !== 'facebook' && !imageUrl) {
-      return json({ error: 'Esse tipo de post exige uma imagem (context.image_url).' }, 400)
+    if (post.platform !== 'facebook' && !mediaUrl) {
+      return json({ error: 'Esse tipo de post exige uma imagem ou um vídeo (context.image_url ou context.video_url).' }, 400)
     }
     // Defesa em profundidade: o formulário do admin já bloqueia link relativo, mas um
     // rascunho pode ter sido criado direto por SQL/API sem passar por ali. A Meta busca a
-    // imagem pelos próprios servidores dela — um link relativo falharia lá com um erro
+    // mídia pelos próprios servidores dela — um link relativo falharia lá com um erro
     // genérico e confuso; melhor barrar aqui com uma mensagem clara.
-    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
-      return json({ error: 'O link da imagem precisa ser completo (começando com https://) — um caminho relativo não funciona pra Meta buscar a imagem.' }, 400)
+    if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
+      return json({ error: 'O link da mídia precisa ser completo (começando com https://) — um caminho relativo não funciona pra Meta buscar o arquivo.' }, 400)
     }
 
     const pageToken = requiredSecret('META_PAGE_ACCESS_TOKEN')
@@ -145,17 +166,20 @@ Deno.serve(async (request: Request) => {
     let metaPostId: string | null = null
 
     if (post.platform === 'facebook') {
-      // Com imagem: publica como foto (a legenda vira o texto do post). Sem imagem:
-      // publica como post de texto puro no feed.
-      const endpoint = imageUrl ? `${pageId}/photos` : `${pageId}/feed`
+      // Vídeo: endpoint /videos (file_url + description). Com imagem: /photos (a legenda
+      // vira o texto do post). Sem mídia nenhuma: post de texto puro no feed.
+      const endpoint = videoUrl ? `${pageId}/videos` : imageUrl ? `${pageId}/photos` : `${pageId}/feed`
       const params = new URLSearchParams({ access_token: pageToken })
-      if (imageUrl) { params.set('url', imageUrl); params.set('caption', finalCaption) }
+      if (videoUrl) { params.set('file_url', videoUrl); params.set('description', finalCaption) }
+      else if (imageUrl) { params.set('url', imageUrl); params.set('caption', finalCaption) }
       else { params.set('message', finalCaption) }
 
+      // Vídeo: a Meta baixa o arquivo inteiro do nosso servidor durante esta chamada, então
+      // 35s (suficiente pra foto) pode estourar. 120s dá folga pro Reel típico.
       const fbResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${endpoint}`, {
         method: 'POST',
         body: params,
-      }, 35000)
+      }, videoUrl ? 120000 : 35000)
       const fbData = await fbResponse.json().catch(() => ({}))
       if (!fbResponse.ok) {
         console.error('[content-publish-meta] facebook error', fbResponse.status, fbData)
@@ -163,8 +187,49 @@ Deno.serve(async (request: Request) => {
         return json({ error: fbData?.error?.message || 'Falha ao publicar no Facebook.' }, 502)
       }
       metaPostId = String(fbData?.post_id || fbData?.id || '') || null
+    } else if (post.platform === 'facebook_story' && videoUrl) {
+      // v28.57.0 — Story de VÍDEO no Facebook usa um fluxo próprio, diferente do de foto:
+      // (1) POST /video_stories com upload_phase=start devolve um video_id;
+      // (2) sobe o arquivo por file_url nesse video_id;
+      // (3) POST /video_stories com upload_phase=finish publica.
+      const startParams = new URLSearchParams({ access_token: pageToken, upload_phase: 'start' })
+      const startResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/video_stories`, {
+        method: 'POST',
+        body: startParams,
+      }, 35000)
+      const startData = await startResponse.json().catch(() => ({}))
+      if (!startResponse.ok || !startData?.video_id || !startData?.upload_url) {
+        console.error('[content-publish-meta] fb video story start error', startResponse.status, startData)
+        await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+        return json({ error: startData?.error?.message || 'Falha ao preparar o Story de vídeo do Facebook.' }, 502)
+      }
+
+      // A Meta baixa o arquivo da nossa URL (header file_url), não precisamos enviar bytes.
+      const uploadResponse = await fetchWithTimeout(String(startData.upload_url), {
+        method: 'POST',
+        headers: { Authorization: `OAuth ${pageToken}`, file_url: videoUrl },
+      }, 120000)
+      const uploadResult = await uploadResponse.json().catch(() => ({}))
+      if (!uploadResponse.ok) {
+        console.error('[content-publish-meta] fb video story upload error', uploadResponse.status, uploadResult)
+        await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+        return json({ error: uploadResult?.error?.message || 'Falha ao enviar o vídeo do Story do Facebook.' }, 502)
+      }
+
+      const finishParams = new URLSearchParams({ access_token: pageToken, upload_phase: 'finish', video_id: String(startData.video_id) })
+      const finishResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/video_stories`, {
+        method: 'POST',
+        body: finishParams,
+      }, 60000)
+      const finishData = await finishResponse.json().catch(() => ({}))
+      if (!finishResponse.ok) {
+        console.error('[content-publish-meta] fb video story finish error', finishResponse.status, finishData)
+        await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+        return json({ error: finishData?.error?.message || 'Falha ao publicar o Story de vídeo do Facebook.' }, 502)
+      }
+      metaPostId = String(finishData?.post_id || startData.video_id) || null
     } else if (post.platform === 'facebook_story') {
-      // Story de Página no Facebook é em 2 passos: (1) sobe a foto SEM publicar
+      // Story de FOTO de Página no Facebook é em 2 passos: (1) sobe a foto SEM publicar
       // (published=false, fica "invisível" até virar story), (2) publica esse photo_id
       // como story via /photo_stories. Não existe caption em Story de Facebook.
       const uploadParams = new URLSearchParams({ access_token: pageToken, url: imageUrl, published: 'false' })
@@ -193,13 +258,23 @@ Deno.serve(async (request: Request) => {
       }
       metaPostId = String(storyData?.post_id || storyData?.id || '') || null
     } else if (post.platform === 'instagram' || post.platform === 'instagram_story') {
-      const createParams = new URLSearchParams({ access_token: pageToken, image_url: imageUrl })
-      // Feed do Instagram usa legenda; Story do Instagram não tem campo de legenda (o
-      // texto precisa já estar na própria imagem) — por isso caption só entra no feed.
-      if (post.platform === 'instagram') createParams.set('caption', finalCaption)
-      else createParams.set('media_type', 'STORIES')
+      const createParams = new URLSearchParams({ access_token: pageToken })
+      if (videoUrl) createParams.set('video_url', videoUrl)
+      else createParams.set('image_url', imageUrl)
 
-      const container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams)
+      // Feed do Instagram usa legenda; Story do Instagram não tem campo de legenda (o
+      // texto precisa já estar na própria mídia) — por isso caption só entra no feed.
+      // v28.57.0: vídeo no FEED do Instagram só existe como REELS (a Meta aposentou o
+      // post de vídeo comum) — sem media_type=REELS a criação do container falha.
+      // Story aceita vídeo com o mesmo media_type=STORIES da imagem.
+      if (post.platform === 'instagram') {
+        createParams.set('caption', finalCaption)
+        if (videoUrl) createParams.set('media_type', 'REELS')
+      } else {
+        createParams.set('media_type', 'STORIES')
+      }
+
+      const container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
       if ('error' in container) {
         await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
         return json({ error: container.error }, 502)

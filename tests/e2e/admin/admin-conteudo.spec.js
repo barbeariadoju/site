@@ -81,3 +81,31 @@ test('JuIA Social rejeitar move o item pra aba de rejeitados/ignorados', async (
   await page.click('[data-social-tab="rejeitado"]');
   await expect(page.locator('#social-list .conteudo-card[data-id="mock-si-1"]')).toBeVisible();
 });
+
+// v28.57.0 — suporte a vídeo (Reels/Status de vídeo).
+test('rascunho de vídeo mostra player e esconde o botão de gerar imagem', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin-conteudo.html');
+  const card = page.locator('.conteudo-card[data-id="mock-cp-6"]');
+  await expect(card).toBeVisible();
+  // prévia em player de vídeo, não <img>
+  await expect(card.locator('video')).toHaveAttribute('src', /reel-dia-dos-pais-2026\.mp4$/);
+  await expect(card.locator('img')).toHaveCount(0);
+  // avisa que vai como Reel
+  await expect(card).toContainText('Reel');
+  // gerar imagem não faz sentido num post de vídeo
+  await expect(card.locator('[data-action="generate-image"]')).toHaveCount(0);
+  // e continua publicável
+  await expect(card.locator('[data-action="publish"]')).toBeVisible();
+});
+
+test('formulário recusa link de vídeo que não é mp4/mov', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin-conteudo.html');
+  await page.click('#conteudo-new-btn');
+  await page.selectOption('#conteudo-new-platform', 'instagram');
+  await page.fill('#conteudo-new-caption', 'teste de vídeo');
+  await page.fill('#conteudo-new-video', 'https://www.barbeariadoju.com.br/assets/video.avi');
+  await page.click('#conteudo-new-form button[type="submit"]');
+  await expect(page.locator('#conteudo-new-error')).toContainText('.mp4');
+});
