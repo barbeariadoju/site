@@ -1,0 +1,131 @@
+# Configuração do projeto Supabase — Barbearia do Ju
+#
+# POR QUE ESTE ARQUIVO EXISTE (v28.56.1, 05/08/2026):
+# `supabase functions deploy` SEM este arquivo publica a função com verify_jwt=false,
+# mesmo que ela estivesse com true em produção. Aconteceu de verdade: o primeiro deploy
+# do ju-ia-site pela CLI derrubou o verify_jwt dele de true pra false silenciosamente —
+# o deploy dizia "Deployed Functions" e nada indicava a mudança. Como o ju-ia-site é o
+# cérebro da JuIA (consulta CRM, cria e cancela agendamento), ficar sem exigir JWT é
+# brecha séria.
+#
+# Com as seções abaixo versionadas, qualquer deploy futuro (meu, do Juliano ou de outra
+# sessão) preserva a configuração correta automaticamente. SEMPRE conferir com
+# `npx supabase functions list --project-ref rpkqluaxhqsxnewunhfm` depois de publicar.
+
+project_id = "rpkqluaxhqsxnewunhfm"
+
+# --- Funções que EXIGEM JWT (chamadas pelo admin logado ou pelo site com a chave) ---
+
+[functions.ju-ia-site]
+verify_jwt = true
+
+[functions.create-public-booking]
+verify_jwt = true
+
+[functions.manage-booking]
+verify_jwt = true
+
+[functions.admin-booking-status]
+verify_jwt = true
+
+[functions.rebooking-context]
+verify_jwt = true
+
+[functions.create-rebooking]
+verify_jwt = true
+
+[functions.join-waitlist]
+verify_jwt = true
+
+[functions.send-walkin-welcome]
+verify_jwt = true
+
+[functions.content-publish-whatsapp]
+verify_jwt = true
+
+[functions.content-publish-meta]
+verify_jwt = true
+
+[functions.content-generate-image]
+verify_jwt = true
+
+[functions.meta-social-reply]
+verify_jwt = true
+
+[functions.google-reviews-publish]
+verify_jwt = true
+
+[functions.conversation-leads-campaign]
+verify_jwt = true
+
+[functions.dev-admin-tools]
+verify_jwt = true
+
+[functions.manual-fix-once]
+verify_jwt = true
+
+# --- Funções SEM JWT: webhooks e crons, que se autenticam por x-webhook-secret ---
+# (Evolution API e pg_cron não mandam JWT; a checagem do secret é feita no código.)
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.ju-ia-admin]
+verify_jwt = false
+
+[functions.contact-form]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.booking-email]
+verify_jwt = false
+
+[functions.booking-reminder-24h]
+verify_jwt = false
+
+[functions.satisfaction-dispatch]
+verify_jwt = false
+
+[functions.notifications-watchdog]
+verify_jwt = false
+
+[functions.whatsapp-reactivation-watchdog]
+verify_jwt = false
+
+[functions.whatsapp-lead-followup]
+verify_jwt = false
+
+[functions.whatsapp-booking-confirmation]
+verify_jwt = false
+
+[functions.customer-reactivation]
+verify_jwt = false
+
+[functions.customer-birthday]
+verify_jwt = false
+
+[functions.content-generate-daily]
+verify_jwt = false
+
+[functions.meta-social-sync]
+verify_jwt = false
+
+[functions.meta-insights-weekly]
+verify_jwt = false
+
+[functions.google-reviews-sync]
+verify_jwt = false
+
+[functions.zoho-oauth-start]
+verify_jwt = false
+
+[functions.zoho-oauth-callback]
+verify_jwt = false

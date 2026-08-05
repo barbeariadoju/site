@@ -461,9 +461,12 @@ Deno.serve(async req=>{
  // ESCOLHA do serviço "Corte de cabelo infantil" e o cliente recebia "Quer aproveitar e
  // incluir algum complemento, como Sobrancelha Masculina...?" — sem nunca ouvir que sim,
  // atendemos criança, e por quanto. Um pai perguntando isso simplesmente desiste.
- // Não casa pergunta de AGENDA ("tem horário hoje?", "tem vaga amanhã?"): o gatilho exige
- // verbo de fazer/atender/trabalhar, ou "tem <serviço/corte/atendimento> pra/de".
- const isServiceExistenceQuestion=/\b(voces|vcs|voce|vc)\s+(fazem|faz|cortam|corta|atendem|atende|trabalham|trabalha|tem)\b|\b(fazem|faz|cortam|corta|atendem|atende)\s+(cabelo|corte|barba|crianca|infantil|menino|sobrancelha|luzes|progressiva|penteado|desenho)|\btrabalham?\s+com\b|\btem\s+(servico|corte|atendimento)\s+(de|pra|para)\b|\baceitam?\b/.test(normalizedQuestion)
+ // Não casa pergunta de AGENDA: o gatilho exige verbo de fazer/atender/trabalhar, ou
+ // "tem <serviço/corte/atendimento> pra/de". CUIDADO — "tem" solto depois de "vocês" foi
+ // testado e REMOVIDO daqui de propósito: "vocês têm horário hoje?" é a pergunta mais
+ // comum que a JuIA recebe, e casá-la aqui a marcaria como pergunta informativa,
+ // impedindo o fluxo de disponibilidade de rodar (seria um bug pior que o corrigido).
+ const isServiceExistenceQuestion=/\b(voces|vcs|voce|vc)\s+(fazem|faz|cortam|corta|atendem|atende|trabalham|trabalha)\b|\b(fazem|faz|cortam|corta|atendem|atende)\s+(cabelo|corte|barba|crianca|infantil|menino|sobrancelha|luzes|progressiva|penteado|desenho)|\btrabalham?\s+com\b|\btem\s+(servico|corte|atendimento)\s+(de|pra|para)\b|\baceitam?\b/.test(normalizedQuestion)
  const isPriceOrInfoQuestion=(/\bquanto\b|\bpreco\b|\binclui\b|\bdura\b|\bcusta\b|\bdoi\b/.test(normalizedQuestion)||isServiceExistenceQuestion)&&!/\bmarcar\b|\bagendar\b|\breservar\b/.test(normalizedQuestion)
  const hasCustomer=Boolean(context?.customer_id)
  const customerFirstName=firstName(context?.name)
