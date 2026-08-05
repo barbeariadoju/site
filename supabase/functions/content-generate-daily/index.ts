@@ -61,14 +61,14 @@ const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, b
 // desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
 // ambiente/estilo funciona muito melhor do que só descrever em texto.
 const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
-// v28.53.1 (04/08/2026): modo edição (mantém o ambiente real fiel) em vez de "inspirado
-// por" — ver mesma nota em content-generate-image/index.ts.
-const REFERENCE_INSTRUCTION = 'A foto anexada é uma foto REAL da Barbearia do Ju. EDITE esta mesma foto — mantenha o ambiente, os móveis, a decoração, os reflexos e o enquadramento EXATAMENTE como estão na foto original. Não recrie o ambiente do zero, não troque a composição nem os elementos reais da loja. Insira apenas a cena/pessoa descrita no tema de hoje dentro desse ambiente real, de forma natural e bem integrada (iluminação e sombras consistentes com a foto original). Se incluir uma pessoa, use alguém fictício e genérico, com o corpo inteiro visível (nunca partes cortadas/flutuando) e sem simular um cliente real específico.'
+const JULIANO_REFERENCE = 'juliano-corte.jpg'
+// v28.53.2 (04/08/2026): ver mesma nota em content-generate-image/index.ts — foto real do
+// Juliano como segunda referência + proibição explícita de inventar/duplicar móveis.
+const REFERENCE_INSTRUCTION = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda cadeira de atendimento, mesmo que pareça natural pra composição. O cenário (paredes, móveis, decoração, reflexos, enquadramento) tem que continuar EXATAMENTE como está na foto original, pixel a pixel — só a cena descrita no tema de hoje é nova. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência da segunda foto (mesmo rosto, mesmo cabelo, mesma barba), nunca um barbeiro genérico diferente. Se incluir um cliente, use sempre alguém fictício e genérico (nunca um cliente real), com o corpo inteiro visível, nunca partes cortadas ou flutuando. Se o tema não exigir pessoas, prefira mostrar só o ambiente/produtos — não force a inclusão de gente.'
 
-async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+async function fetchImageAsBase64(file: string): Promise<{ mimeType: string; data: string } | null> {
   try {
-    const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
-    const r = await fetch(`https://www.barbeariadoju.com.br/assets/ia-referencia/${file}`)
+    const r = await fetch(`https://www.barbeariadoju.com.br/assets/${file}`)
     if (!r.ok) return null
     const buffer = await r.arrayBuffer()
     let binary = ''
@@ -81,16 +81,22 @@ async function fetchReferenceImage(): Promise<{ mimeType: string; data: string }
   }
 }
 
+async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+  const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
+  return fetchImageAsBase64(`ia-referencia/${file}`)
+}
+
 // Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
 // (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
 // Instagram sempre ficava de fora do gerador diário por falta de imagem.
 async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
   if (!geminiKey) return null
   try {
-    const reference = await fetchReferenceImage()
+    const [reference, julianoPhoto] = await Promise.all([fetchReferenceImage(), fetchImageAsBase64(JULIANO_REFERENCE)])
     const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
     if (reference) requestParts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
+    if (reference && julianoPhoto) requestParts.push({ inline_data: { mime_type: julianoPhoto.mimeType, data: julianoPhoto.data } })
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
       {

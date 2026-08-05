@@ -36,17 +36,17 @@ const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, b
 // desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
 // ambiente/estilo funciona muito melhor do que só descrever em texto.
 const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
-// v28.53.1 (04/08/2026): o Juliano já tinha validado numa sessão anterior que EDITAR a
-// foto real (mantendo o ambiente fiel, só inserindo a cena/pessoa fictícia dentro dele) dá
-// resultado muito mais fiel do que "gerar algo novo inspirado" — a primeira abordagem
-// (v28.52.0) corrigiu o artefato de corpo cortado, mas o resultado não parecia mais a
-// barbearia de verdade. Trocado pra modo edição.
-const REFERENCE_INSTRUCTION = 'A foto anexada é uma foto REAL da Barbearia do Ju. EDITE esta mesma foto — mantenha o ambiente, os móveis, a decoração, os reflexos e o enquadramento EXATAMENTE como estão na foto original. Não recrie o ambiente do zero, não troque a composição nem os elementos reais da loja. Insira apenas a cena/pessoa descrita no tema de hoje dentro desse ambiente real, de forma natural e bem integrada (iluminação e sombras consistentes com a foto original). Se incluir uma pessoa, use alguém fictício e genérico, com o corpo inteiro visível (nunca partes cortadas/flutuando) e sem simular um cliente real específico.'
+const JULIANO_REFERENCE = 'juliano-corte.jpg'
+// v28.53.2 (04/08/2026): duas rodadas de feedback real do Juliano depois do v28.53.1:
+// (1) o barbeiro gerado não se parecia com ele — precisa da foto real do Juliano como
+// segunda referência, não só o ambiente; (2) mesmo em "modo edição" o Gemini ainda
+// inventava móveis (2ª cadeira, poltrona no meio do sofá) — a instrução precisa proibir
+// isso explicitamente, não só pedir fidelidade em termos gerais.
+const REFERENCE_INSTRUCTION = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda cadeira de atendimento, mesmo que pareça natural pra composição. O cenário (paredes, móveis, decoração, reflexos, enquadramento) tem que continuar EXATAMENTE como está na foto original, pixel a pixel — só a cena descrita no tema de hoje é nova. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência da segunda foto (mesmo rosto, mesmo cabelo, mesma barba), nunca um barbeiro genérico diferente. Se incluir um cliente, use sempre alguém fictício e genérico (nunca um cliente real), com o corpo inteiro visível, nunca partes cortadas ou flutuando. Se o tema não exigir pessoas, prefira mostrar só o ambiente/produtos — não force a inclusão de gente.'
 
-async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+async function fetchImageAsBase64(file: string): Promise<{ mimeType: string; data: string } | null> {
   try {
-    const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
-    const r = await fetch(`https://www.barbeariadoju.com.br/assets/ia-referencia/${file}`)
+    const r = await fetch(`https://www.barbeariadoju.com.br/assets/${file}`)
     if (!r.ok) return null
     const buffer = await r.arrayBuffer()
     let binary = ''
@@ -57,6 +57,11 @@ async function fetchReferenceImage(): Promise<{ mimeType: string; data: string }
     console.error('[content-generate-image] referencia', error instanceof Error ? error.message : error)
     return null
   }
+}
+
+async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
+  const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
+  return fetchImageAsBase64(`ia-referencia/${file}`)
 }
 
 // Central de Marketing — Fase 2 (v28.49.0): gera a arte de um rascunho de content_posts
@@ -104,10 +109,11 @@ Deno.serve(async (request: Request) => {
       ? 'Tema do dia: convite pra agendar um horário — transmitir acolhimento e disponibilidade sem texto na imagem.'
       : `Tema do dia, baseado na legenda deste post: "${String(post.caption || '').slice(0, 200)}"`
 
-    const reference = await fetchReferenceImage()
+    const [reference, julianoPhoto] = await Promise.all([fetchReferenceImage(), fetchImageAsBase64(JULIANO_REFERENCE)])
     const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', formatHint, contextTheme, extraPrompt].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
     if (reference) requestParts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
+    if (reference && julianoPhoto) requestParts.push({ inline_data: { mime_type: julianoPhoto.mimeType, data: julianoPhoto.data } })
 
     const geminiResponse = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
