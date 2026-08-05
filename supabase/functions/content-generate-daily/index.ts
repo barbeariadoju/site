@@ -24,6 +24,51 @@ const formatDateBR = (iso: string) => {
   return `${d}/${m}/${y}`
 }
 
+// v28.55.2 — Rastreamento de origem (auditoria 05/08/2026): os rascunhos gerados pela IA
+// saíam com o link do site CRU (www.barbeariadoju.com.br/agendar/), sem UTM — só os posts
+// escritos à mão tinham. Resultado: nenhum acesso vindo do conteúdo automático aparecia
+// separado no GA4, justamente a métrica que os relatórios usam pra provar o que converte.
+// A regra "todo link de marketing leva UTM" já estava na marketing_memory, mas nunca tinha
+// sido implementada aqui. Agora o link é montado em código (não depende do modelo escrever
+// certo) e qualquer URL do site que o modelo tenha inventado no texto é removida antes.
+const BOOKING_URL = 'https://www.barbeariadoju.com.br/agendar/'
+const bookingLink = (utmSource: string, campaign = 'conteudo-diario') =>
+  `${BOOKING_URL}?utm_source=${utmSource}&utm_medium=social&utm_campaign=${campaign}`
+
+// Remove qualquer URL do próprio site escrita pelo modelo (com ou sem http/www, com ou sem
+// parâmetros), pra não duplicar link nem publicar versão sem rastreio.
+const stripSiteUrls = (text: string) =>
+  text
+    .replace(/(?:https?:\/\/)?(?:www\.)?barbeariadoju\.com\.br[^\s)]*/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+const withBookingLink = (caption: string, utmSource: string) => {
+  const clean = stripSiteUrls(caption).replace(/[\s.:;,-]+$/g, '')
+  return `${clean}\n${bookingLink(utmSource)}`
+}
+
+// v28.55.2 — Trava determinística da regra "nunca expor vacância" (feedback do Juliano,
+// 04/08/2026). O prompt já proibia, mas proibição textual depende do modelo obedecer: no
+// primeiro dia real o post do Facebook saiu com "tem alguns horários livres na agenda" —
+// não citava número nem a palavra "agenda vazia", então escapou da instrução. Agora, se a
+// legenda gerada casar com qualquer sinal de agenda ociosa, ela é DESCARTADA e o fallback
+// escrito à mão (garantidamente seguro) entra no lugar.
+// O `[^.!?\n]{0,20}` entre "agenda" e o adjetivo é proposital: sem ele, "agenda ESTÁ aberta"
+// e "agenda ANDA tranquila" escapavam (só casava o adjetivo colado). Limitado a 20 caracteres
+// e sem cruzar pontuação pra não casar duas frases distintas ("...da agenda. Aberta desde...").
+const SCARCITY_VIOLATION = /hor[áa]ri?os?\s+(livres?|dispon[íi]ve|em aberto|vagos?|sobrando)|agenda[^.!?\n]{0,20}\b(livre|vazia|aberta|tranquila|folgada|sem movimento)|v[áa]rios?\s+hor[áa]rios|muitos?\s+hor[áa]rios|alguns?\s+hor[áa]rios|hor[áa]rios\s+sobrando|sobrando\s+hor[áa]rios|\bvagas?\s+(livres?|abertas?|dispon[íi]ve)|sem\s+fila|pouca\s+procura|movimento[^.!?\n]{0,15}\b(fraco|parado|devagar|baixo)/i
+const safeCaption = (generated: string, fallback: string, platform: string): string => {
+  const candidate = String(generated || '').trim()
+  if (!candidate) return fallback
+  if (SCARCITY_VIOLATION.test(candidate)) {
+    console.error('[content-generate-daily] legenda descartada por expor vacância', platform, candidate)
+    return fallback
+  }
+  return candidate
+}
+
 const textFromResponses = (d: any): string =>
   typeof d?.output_text === 'string'
     ? d.output_text.trim()
@@ -196,14 +241,18 @@ Deno.serve(async (request: Request) => {
       ? `📅 Abriu um horário hoje às ${context.primeiro_horario}! Chama pra garantir o seu.`
       : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agenda pelos próximos dias!`
     const fallbackCaptionFacebook = context.tipo === 'vaga_aberta'
-      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo site www.barbeariadoju.com.br/agendar/ ou chame no WhatsApp.`
-      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias no site www.barbeariadoju.com.br/agendar/ ou pelo WhatsApp.`
+      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo site ou chame no WhatsApp.`
+      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias no site ou pelo WhatsApp.`
+    // Instagram não aceita link clicável na legenda — CTA é "link na bio", sem URL.
+    const fallbackCaptionInstagram = context.tipo === 'vaga_aberta'
+      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo link na bio ou chame no WhatsApp.`
+      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias pelo link na bio ou pelo WhatsApp.`
 
     const insertedRows: { id: string; platform: string; caption: string }[] = []
 
     if (platformsToGenerate.includes('whatsapp_business')) {
-      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
-      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaption
+      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaption, 'whatsapp_business'), 'whatsapp_status')
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'whatsapp_business', caption, status: 'rascunho', source: 'ia', context })
@@ -214,8 +263,8 @@ Deno.serve(async (request: Request) => {
     }
 
     if (platformsToGenerate.includes('facebook')) {
-      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
-      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaptionFacebook
+      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionFacebook, 'facebook'), 'facebook')
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'facebook', caption, status: 'rascunho', source: 'ia', context })
@@ -226,8 +275,10 @@ Deno.serve(async (request: Request) => {
     }
 
     if (platformsToGenerate.includes('instagram')) {
-      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
-      const caption = (await generateCaption(openaiKey, prompt)) || fallbackCaptionFacebook.replace('site www.barbeariadoju.com.br/agendar/', 'link na bio')
+      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      // Instagram: sem URL nenhuma na legenda (não é clicável) — só "link na bio". Por isso
+      // passa por stripSiteUrls sem receber link de volta, diferente das outras plataformas.
+      const caption = stripSiteUrls(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionInstagram, 'instagram'))
       const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
       const themeText = context.tipo === 'servico_destaque'
         ? `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
