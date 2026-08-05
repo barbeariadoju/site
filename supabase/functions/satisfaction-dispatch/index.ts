@@ -55,7 +55,7 @@ Deno.serve(async(req:Request)=>{
 
     let whatsappOk=false
     if(phone.length>=12 && evolutionApiUrl && evolutionApiKey && evolutionInstance){
-      const waText=`Olá, ${first}! Aqui é da Barbearia do Ju 💈 Muito obrigado por vir nos visitar! Como foi sua experiência?\n\n😊 Satisfeito\n🙁 Insatisfeito\n\nResponda com o emoji ou a palavra.`
+      const waText=`Olá, ${first}! Aqui é da Barbearia do Ju 💈 Muito obrigado por vir nos visitar! Como foi sua experiência?\n\nDigite *1* para 😊 Satisfeito\nDigite *2* para 🙁 Insatisfeito`
       try{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',

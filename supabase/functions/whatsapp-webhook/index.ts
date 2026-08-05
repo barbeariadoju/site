@@ -541,8 +541,12 @@ Deno.serve(async (request: Request) => {
           // e variações de coração.
           const positiveEmoji = /😀|😁|😂|😃|😄|😅|😆|🙂|😊|☺|🥰|😍|🤩|😌|🥲|😇|😻|🤗|🥳|👍|🙌|👏|💪|✅|❤|💛|💚|💙|💜|🧡|🖤|🤍|🤎|💕|💖|💗|💓|💞|✨|🎉|💯/
           const negativeEmoji = /🙁|☹|😕|😞|😟|😢|😭|😡|🤬|😠|😤|😩|😫|🤮|💩|❌|👎|💔/
-          const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized)
-          const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text)
+          // v28.54.2 (05/08/2026, pedido do Juliano): pergunta agora pede "digite 1 ou 2" em vez
+          // de emoji (mais confiável de digitar/entender que carinha) — número puro, com ou sem
+          // pontuação solta ("1", "1.", "1!"), conta como resposta. Emoji/palavra continuam
+          // funcionando também (compatibilidade com pesquisas já enviadas antes dessa mudança).
+          const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
+          const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
           // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
           // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
           // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
@@ -614,7 +618,7 @@ Deno.serve(async (request: Request) => {
               return
             }
           } else if (ambiguousShortReply) {
-            const reply = 'Não entendi 🙂 Você pode responder com 😊 se ficou satisfeito, ou 🙁 se ficou insatisfeito.'
+            const reply = 'Não entendi 🙂 Digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito.'
             await sendWhatsapp(phone, reply)
             return
           }
