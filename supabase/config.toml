@@ -129,3 +129,6 @@ verify_jwt = false
 
 [functions.zoho-oauth-callback]
 verify_jwt = false
+
+[functions.content-generate-video]
+verify_jwt = false

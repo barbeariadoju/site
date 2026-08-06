@@ -286,7 +286,78 @@ Deno.serve(async (request: Request) => {
       return json({ ok: true, video_url: videoUrl, size_bytes: bytes.length })
     }
 
-    return json({ error: 'action inválida (use start, status, describe ou upload).' }, 400)
+    // Geração de IMAGEM fora do painel. A `content-generate-image` exige sessão de admin
+    // no navegador, então quando a arte precisa ser produzida e REVISADA antes de virar
+    // rascunho (regra: nada vai pra Central sem passar pelo crivo), ela é gerada por aqui.
+    // Mesmas referências reais e mesmas restrições da function original.
+    if (action === 'image') {
+      const id = String(body?.id || '')
+      const extra = String(body?.prompt || '')
+      const isStory = body?.story === true
+
+      // Atalho: hospedar uma arte pronta (ex.: um quadro extraído de um vídeo já aprovado)
+      // sem gerar nada novo — evita gastar geração quando o ativo bom já existe.
+      const ready = String(body?.rawBase64 || '')
+      if (ready) {
+        const rb = Uint8Array.from(atob(ready), (c) => c.charCodeAt(0))
+        const rp = `${id || 'arte'}/${Date.now()}.jpg`
+        const { error: rErr } = await admin.storage.from('content-images').upload(rp, rb, { contentType: 'image/jpeg', upsert: true })
+        if (rErr) return json({ error: 'Falha ao salvar a arte.' }, 500)
+        const { data: rpu } = admin.storage.from('content-images').getPublicUrl(rp)
+        if (id) {
+          const { data: post } = await admin.from('content_posts').select('context').eq('id', id).maybeSingle()
+          if (post) await admin.from('content_posts').update({ context: { ...(post.context || {}), image_url: rpu.publicUrl } }).eq('id', id)
+        }
+        return json({ ok: true, image_url: rpu.publicUrl })
+      }
+
+      const brand = 'Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta dourada (#c89b55) e preta, iluminação quente, estética masculina clássica. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem.'
+      const refInstruction = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda estação de atendimento nem uma segunda pessoa sendo atendida ao mesmo tempo. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência (mesmo rosto, cabelo e barba). Clientes são sempre fictícios e genéricos, com corpo inteiro visível, nunca partes cortadas ou flutuando.'
+      const formatHint = isStory
+        ? 'Formato vertical de Story, proporção 9:16 (retrato), composição ocupando a tela cheia de um celular, com espaço livre na parte superior e inferior para textos e figurinhas.'
+        : 'Formato quadrado, proporção 1:1, composição centrada para post de feed.'
+
+      const [amb, jul] = await Promise.all([fetchImageAsBase64(REFERENCE_ENV), fetchImageAsBase64(REFERENCE_JULIANO)])
+      const parts: unknown[] = [{ text: [brand, amb ? refInstruction : '', formatHint, extra].filter(Boolean).join('\n\n') }]
+      if (amb) parts.push({ inline_data: { mime_type: amb.mimeType, data: amb.data } })
+      if (amb && jul) parts.push({ inline_data: { mime_type: jul.mimeType, data: jul.data } })
+
+      const r = await fetchWithTimeout(
+        `${GEMINI_BASE}/models/${Deno.env.get('GEMINI_IMAGE_MODEL')?.trim() || 'gemini-2.5-flash-image'}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+          body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
+        },
+        60000,
+      )
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        console.error('[content-generate-video] image', r.status, JSON.stringify(d).slice(0, 500))
+        return json({ error: d?.error?.message || 'Falha ao gerar a imagem.' }, 502)
+      }
+      const p = d?.candidates?.[0]?.content?.parts || []
+      const imgPart = p.find((x: any) => x?.inlineData?.data || x?.inline_data?.data)
+      const b64 = imgPart?.inlineData?.data || imgPart?.inline_data?.data
+      if (!b64) return json({ error: 'O Gemini não devolveu imagem (pode ter recusado o prompt).' }, 502)
+
+      // Devolve em base64 de propósito: a arte é inspecionada antes de ser hospedada, e só
+      // vira rascunho depois de aprovada — hospedar aqui puxaria peça não revisada pro ar.
+      if (body?.upload !== true) return json({ ok: true, image_base64: b64 })
+
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+      const path = `${id || 'arte'}/${Date.now()}.png`
+      const { error: upErr } = await admin.storage.from('content-images').upload(path, bytes, { contentType: 'image/png', upsert: true })
+      if (upErr) return json({ error: 'Falha ao salvar a imagem.' }, 500)
+      const { data: pu } = admin.storage.from('content-images').getPublicUrl(path)
+      if (id) {
+        const { data: post } = await admin.from('content_posts').select('context').eq('id', id).maybeSingle()
+        if (post) await admin.from('content_posts').update({ context: { ...(post.context || {}), image_url: pu.publicUrl } }).eq('id', id)
+      }
+      return json({ ok: true, image_url: pu.publicUrl })
+    }
+
+    return json({ error: 'action inválida (use start, status, describe, upload ou image).' }, 400)
   } catch (error) {
     console.error('[content-generate-video]', error)
     return json({ error: error instanceof Error ? error.message : 'Erro interno.' }, 500)

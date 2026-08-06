@@ -713,7 +713,13 @@ Deno.serve(async req=>{
  const swapTailMatch=wantsServiceSwap?normalizedQuestion.match(/(?:para|pra)\s+(.+)$/):null
  const swapTailService=swapTailMatch?findService(swapTailMatch[1]):null
  const changeServiceAsk=includesAny(normalizedQuestion,['trocar o servico','trocar de servico','mudar o servico','mudar de servico','trocar meu servico','mudar meu servico','pode trocar o servico','pode mudar o servico'])||Boolean(swapTailService)
- const rescheduleAsk=includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])&&!changeServiceAsk
+ // v28.61.1 — caso Moisés, parte 2 (06/08/2026): "vou conseguir chegar só às 19:15" de quem
+ // JÁ TEM agendamento é pedido de remarcação — mas nenhuma frase da lista abaixo casava e o
+ // modelo respondia "te esperamos às 19:15!" SEM remarcar nada no sistema (pior que a recusa
+ // fria original: o cliente é avisado que pode, e o sistema continua com o horário velho).
+ // "chegar/chego + um horário" com agendamento futuro existente entra no fluxo de remarcação.
+ const arrivalTimeAsk=upcomingBookings.length>0&&/\b(chegar|chego|chegando)\b[^.!?]{0,30}\b\d{1,2}[:h]\d{0,2}/.test(normalizedQuestion)
+ const rescheduleAsk=(includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])||arrivalTimeAsk)&&!changeServiceAsk
  const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir'])
  // "Não quero cancelar" contém a substring "quero cancelar", então cancelAsk também
  // disparava aqui — bug real (28/07/2026): cliente disse "Não quero cancelar, quero
@@ -846,7 +852,7 @@ Deno.serve(async req=>{
   }else if(next.pending_reschedule_new_date&&next.pending_reschedule_new_time){
    const target=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
    if(simpleYes&&!simpleNo){
-    const {data:rescheduledRows,error:rescheduleError}=await supabase.rpc('phone_reschedule_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_reschedule_booking_id,p_new_booking_date:next.pending_reschedule_new_date,p_new_start_time:next.pending_reschedule_new_time})
+    const {data:rescheduledRows,error:rescheduleError}=await supabase.rpc('phone_reschedule_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_reschedule_booking_id,p_new_booking_date:next.pending_reschedule_new_date,p_new_start_time:next.pending_reschedule_new_time,p_extend_close_minutes:60})
     const rescheduled=Array.isArray(rescheduledRows)?rescheduledRows[0]:rescheduledRows
     if(rescheduleError||!rescheduled){
      reply='Não consegui remarcar agora — esse horário pode ter ficado indisponível. Quer tentar outro horário?'
@@ -867,6 +873,12 @@ Deno.serve(async req=>{
      const supabaseUrl=Deno.env.get('SUPABASE_URL')
      if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔄 Agendamento remarcado pela JuIA',body:`${rescheduled.customer_name||customerFirstName}\nDe ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)}\n${rescheduled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-rescheduled-${rescheduled.id}`}})}).catch(()=>{})
      if(target)await notifyWaitlistIfMatch(supabase,target.booking_date,target.start_time)
+     // v28.61.0: push dedicado se o horário remarcado terminar depois do fechamento
+     try{
+      const rsEndMin=Number(String(rescheduled.start_time).slice(0,2))*60+Number(String(rescheduled.start_time).slice(3,5))+Number(rescheduled.duration_minutes||0)
+      const rsCloseMin=new Date(String(rescheduled.booking_date)+'T12:00:00-03:00').getUTCDay()===6?15*60:19*60
+      if(rsEndMin>rsCloseMin&&pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'⏰ Atendimento estendido marcado',body:`${rescheduled.customer_name||''} remarcou para ${formatDateBR(rescheduled.booking_date)} às ${String(rescheduled.start_time).slice(0,5)} (${rescheduled.service_name}) — termina depois do fechamento.`,url:'/admin-agenda.html?app=1',tag:`extended-${rescheduled.id}`}})}).catch(()=>{})
+     }catch(extErr){console.error('[ju-ia-site] push estendido remarcacao',extErr)}
      next.pending_reschedule_booking_id=null
      next.pending_reschedule_new_date=null
      next.pending_reschedule_new_time=null
@@ -891,7 +903,19 @@ Deno.serve(async req=>{
    }else if(upcomingBookings.length===1){
     const b=upcomingBookings[0]
     next.pending_reschedule_booking_id=b.id
-    reply=`Vamos remarcar seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name}). Para qual dia e horário você quer mudar?`
+    // v28.61.1: se o cliente JÁ disse o horário novo na mesma mensagem ("vou chegar só às
+    // 19:15"), não perguntar de novo "qual dia e horário?" — guardar o horário, assumir o
+    // dia do próprio agendamento quando não dito, e pedir só a confirmação (a validação de
+    // disponibilidade/horário estendido roda na resposta do "sim").
+    const askedTime=extractRequestedTime(message)
+    if(askedTime){
+     next.time=askedTime
+     if(!next.date)next.date=b.booking_date
+     reply=`Vamos remarcar seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name}) para ${formatDateBR(next.date)} às ${askedTime}, certo? Responda sim que eu verifico esse horário pra você.`
+     actions=[{label:'Sim, esse horário',message:'Sim'},{label:'Outro dia/horário',message:'Prefiro outro dia'}]
+    }else{
+     reply=`Vamos remarcar seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name}). Para qual dia e horário você quer mudar?`
+    }
     handoff=false
    }else{
     const matched=upcomingBookings.find((b:any)=>normalizedQuestion.includes(String(b.start_time).slice(0,5)))
@@ -911,10 +935,14 @@ Deno.serve(async req=>{
     reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser remarcar outro, me avise.'
     next.pending_reschedule_booking_id=null
     handoff=false
-   }else if(!next.date){
+   }else if(!next.date&&!extractRequestedTime(message)){
     reply=`Para qual dia você quer mudar o agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}?`
     handoff=false
    }else{
+    // v28.61.1: cliente que só disse a HORA nova ("chego às 19:15") está falando do MESMO
+    // dia do agendamento — assumir a data do próprio agendamento em vez de perguntar "qual
+    // dia?" (a confirmação explícita sim/não logo abaixo cobre qualquer engano).
+    if(!next.date)next.date=target.booking_date
     const duration=wantsServiceChange?chosen.reduce((a:number,s:any)=>a+s.duration,0):(Number(target.duration_minutes)||30)
     const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
     if(error)return respond({error:error.message},500)
@@ -941,6 +969,19 @@ Deno.serve(async req=>{
      next.pending_reschedule_new_date=next.date
      next.pending_reschedule_new_time=time
      reply=`Confirmando: mudar seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}${wantsServiceChange?` e o serviço para ${desiredServiceName}`:''}? Responda sim ou não.`
+     actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
+     handoff=false
+    }else if(await (async()=>{
+     // v28.61.0 — horário estendido também na remarcação (caso Moisés era exatamente
+     // isso: "vou chegar 18:15" com agendamento já existente). Este intent inteiro só
+     // roda com verifiedPhone (canal WhatsApp), então não precisa checar de novo.
+     const {data:extOk}=await supabase.rpc('extended_close_slot_ok',{p_date:next.date,p_start_time:time,p_duration_minutes:duration,p_extend_minutes:60})
+     return extOk===true
+    })()){
+     next.pending_reschedule_new_date=next.date
+     next.pending_reschedule_new_time=time
+     const isSatR=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6
+     reply=`Nosso horário normal vai até ${isSatR?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${time} sim 😊 Confirmo a mudança de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}? Responda sim ou não.`
      actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
      handoff=false
     }else if(allSlots.length){
@@ -1487,10 +1528,31 @@ Deno.serve(async req=>{
     actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
     next.time=effectiveTime
    }else{
-    const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')
-    const alternatives=(samePeriod.length?samePeriod:allSlots)
-    reply=`${effectiveTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
-    actions=alternatives.map((t:string)=>({label:t,message:t}))
+    // v28.61.0 — horário estendido (caso Moisés, 06/08/2026): cliente pediu 18:15, o
+    // atendimento terminaria depois das 19h e a JuIA recusou friamente com lista de 16
+    // horários ("a ia é engessada", nas palavras do Juliano pro cliente). Regra dele:
+    // "eu fico depois do horário sempre que precisar, preciso faturar" — limite definido
+    // por ele em 06/08: até 60 min depois do fechamento (20h ter-sex / 16h sáb). SÓ no
+    // WhatsApp (verifiedPhone); o site continua estrito. extended_close_slot_ok valida
+    // colisão/bloqueio/dia fechado — só o teto do fechamento é esticado.
+    let extendedOffered=false
+    if(verifiedPhone){
+     const {data:extOk}=await supabase.rpc('extended_close_slot_ok',{p_date:next.date,p_start_time:effectiveTime,p_duration_minutes:duration,p_extend_minutes:60})
+     if(extOk===true){
+      const isSatX=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6
+      reply=`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${effectiveTime} sim 😊 Posso confirmar?`
+      actions=[{label:`Confirmar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
+      next.time=effectiveTime
+      extendedOffered=true
+      handoff=false
+     }
+    }
+    if(!extendedOffered){
+     const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')
+     const alternatives=(samePeriod.length?samePeriod:allSlots)
+     reply=`${effectiveTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
+     actions=alternatives.map((t:string)=>({label:t,message:t}))
+    }
    }
   }else if(effectivePeriod){
    const periodSlots=slotsForPeriod(allSlots,effectivePeriod)
@@ -1556,7 +1618,7 @@ Deno.serve(async req=>{
    else{
     const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0),price=chosen.reduce((a:number,s:any)=>a+s.price,0)
     const selectedProducts=next.products.map((n:string)=>findProduct(n)).filter(Boolean).map((p:any)=>({name:p.name,price:p.price}))
-    const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts})
+    const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
     if(error){reply=error.message.includes('indisponível')?'Esse horário acabou de ficar indisponível. Posso consultar outro para você.':error.message;intent='availability';next.time=null}
     else{
       try{
@@ -1565,6 +1627,17 @@ Deno.serve(async req=>{
         const supabaseUrl=Deno.env.get('SUPABASE_URL')
         if(record&&pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({record})})
       }catch(pushError){console.error('[ju-ia-site] push',pushError)}
+      // v28.61.0: push dedicado quando o atendimento termina DEPOIS do fechamento (horário
+      // estendido, regra do Juliano de 06/08) — o push genérico acima não destaca isso.
+      try{
+        const extEndMin=Number(String(next.time).slice(0,2))*60+Number(String(next.time).slice(3,5))+duration
+        const extCloseMin=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6?15*60:19*60
+        if(extEndMin>extCloseMin){
+          const extPushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+          const extSupabaseUrl=Deno.env.get('SUPABASE_URL')
+          if(extPushSecret&&extSupabaseUrl)await fetch(`${extSupabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':extPushSecret},body:JSON.stringify({custom:{title:'⏰ Atendimento estendido marcado',body:`${next.name} — ${formatDateBR(next.date)} às ${next.time} (${chosen.map((s:any)=>s.name).join(' + ')}) termina depois do fechamento. A JuIA confirmou com aviso.`,url:'/admin-agenda.html?app=1',tag:`extended-${bookingId}`}})})
+        }
+      }catch(extError){console.error('[ju-ia-site] push estendido',extError)}
       const prodText=selectedProducts.length?` Produtos reservados: ${selectedProducts.map((p:any)=>p.name).join(', ')}.`:''
       // v28.32.0: fidelidade proativa (pedido do Juliano, 31/07/2026 à noite, item 5) — só
       // no momento exato da confirmação do agendamento (não em qualquer resposta), e só
