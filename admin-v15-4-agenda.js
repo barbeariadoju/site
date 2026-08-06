@@ -36,7 +36,12 @@
     // (policy "admin delete cancelled bookings", só status='cancelled') — isto aqui é só a
     // UI, a permissão de verdade está no servidor.
     const deleteHtml=x.status==='cancelled'?`<button class="is-danger" data-delete-booking="${x.id}">🗑 Excluir registro</button>`:'';
-    const actionsHtml=`<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Novo retorno</button>${deleteHtml}`;
+    // v28.60.0 — Reativar cancelado (caso Kelvin: robô liberou a vaga às 12:00, cliente
+    // confirmou 12:01 e não havia caminho de volta). Só aparece se o horário ainda não
+    // passou; a RPC admin_reactivate_booking valida colisão/bloqueio no servidor.
+    const notPast=x.booking_date>isoLocal(new Date())||(x.booking_date===isoLocal(new Date())&&x.start_time>new Date().toTimeString().slice(0,8));
+    const reactivateHtml=x.status==='cancelled'&&notPast?`<button data-reactivate="${x.id}">↩️ Reativar</button>`:'';
+    const actionsHtml=`<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Novo retorno</button>${reactivateHtml}${deleteHtml}`;
     return bookingCardHtml(x,actionsHtml)
   }
   async function deleteBooking(id,trigger){
@@ -48,7 +53,21 @@
     if(error){alert(error.message);if(trigger){trigger.disabled=false;trigger.textContent='🗑 Excluir registro'}return}
     await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
   }
-  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b))}
+  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b))}
+  async function reactivateBooking(id,trigger){
+    const booking=allBookings.find(x=>x.id===id);
+    if(!booking)return;
+    if(!confirm(`Reativar o agendamento de ${booking.customer_name} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})? Ele volta como CONFIRMADO.`))return;
+    if(trigger){trigger.disabled=true;trigger.textContent='Reativando…'}
+    const {error}=await sb.rpc('admin_reactivate_booking',{p_booking_id:id});
+    if(error){
+      const msg=String(error.message||'').includes('horario_ocupado')?'Não deu: outro agendamento (ou um bloqueio) já ocupa esse horário. Use "Novo retorno" pra achar outro horário.':error.message;
+      alert(msg);
+      if(trigger){trigger.disabled=false;trigger.textContent='↩️ Reativar'}
+      return
+    }
+    await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+  }
   function reviewWhatsAppLink(x){const msg=`Olá, ${x.customer_name}! Obrigado pela preferência. Foi um prazer atender você hoje na Barbearia do Ju. Se puder, deixe sua avaliação no Google: https://g.page/r/CaQfC5axIQQIEBM/review`;return whatsappBusinessUrl(x.customer_phone,msg)}
   // Grade de produtos reaproveitada tanto no modal de "Concluir" (produtos vendidos junto
   // do fechamento) quanto no modal "✎ Editar atendimento" (corrigir serviço/produtos/

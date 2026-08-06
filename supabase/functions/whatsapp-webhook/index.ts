@@ -487,6 +487,47 @@ Deno.serve(async (request: Request) => {
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
         }
 
+        // v28.60.0 — caso Kelvin (06/08/2026): o cancelamento automático liberou a vaga
+        // às 12:00 e o cliente confirmou às 12:01 — e não existia caminho de volta, a
+        // resposta dele caía no fluxo genérico. Agora, se o cliente manda uma mensagem
+        // de confirmação e existe um cancelamento AUTOMÁTICO recente (últimas 3h, com
+        // pedido de confirmação pendente, horário ainda futuro), o horário é reativado
+        // na hora — desde que ninguém tenha ocupado (a RPC valida colisão e bloqueio).
+        if (!pendingConfirmation) {
+          const reactivateReply = normalize(text)
+          const wantsBack = /^1[\s!.,]*$/.test(reactivateReply.trim()) || (/\bsim\b|confirmo|confirmado|ainda quero|ainda vou|consigo ir|vou conseguir|pode manter|reativa/.test(reactivateReply) && !/\bnao\b/.test(reactivateReply))
+          if (wantsBack) {
+            const { data: reactivatedRows, error: reactivateError } = await admin.rpc('phone_reactivate_recent_booking', { p_phone: phone })
+            const reactivated = Array.isArray(reactivatedRows) ? reactivatedRows[0] : reactivatedRows
+            if (reactivateError && String(reactivateError.message || '').includes('horario_ocupado')) {
+              await sendWhatsapp(phone, 'Poxa, esse horário acabou de ser preenchido por outro cliente 😔 Me diz outro dia e horário que ficam bons pra você que eu encaixo por aqui mesmo.')
+              return
+            }
+            if (!reactivateError && reactivated) {
+              const reactTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+              const reactDayWord = String(reactivated.booking_date) === reactTodaySP ? 'hoje' : `dia ${formatDateBR(reactivated.booking_date)}`
+              await sendWhatsapp(phone, `Prontinho! ✅ Reativei seu horário de ${reactDayWord} às ${String(reactivated.start_time).slice(0, 5)} (${reactivated.service_name}). Te esperamos! 💈`)
+              const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (pushSecret) {
+                await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                  body: JSON.stringify({
+                    custom: {
+                      title: '↩️ Horário reativado pelo cliente',
+                      body: `${reactivated.customer_name || phone} confirmou depois do cancelamento automático — ${formatDateBR(reactivated.booking_date)} às ${String(reactivated.start_time).slice(0, 5)} está confirmado de novo.`,
+                      url: '/admin-agenda.html?app=1',
+                      tag: `booking-reactivated-${reactivated.id}`,
+                    },
+                  }),
+                }).catch((error) => console.error('[whatsapp-webhook] push reactivate', error))
+              }
+              return
+            }
+            // Sem cancelamento recente reativável — segue o fluxo normal (JuIA).
+          }
+        }
+
         // v28.40.0 (item 1, fechar o loop da lista de espera): resposta à oferta
         // proativa de vaga (mandada pelo whatsapp-lead-followup quando o trigger
         // bookings_notify_waitlist_slot_reopened marca um horário compatível). Mesmo

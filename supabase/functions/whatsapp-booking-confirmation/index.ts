@@ -131,7 +131,9 @@ Deno.serve(async (request: Request) => {
       }
       const name = firstName(booking.customer_name)
       const time = String(booking.start_time).slice(0, 5)
-      await sendWhatsapp(booking.customer_phone, `Oi${name ? `, ${name}` : ''}! Como não recebemos sua confirmação a tempo, liberamos seu horário de hoje às ${time} (${booking.service_name}) para outro cliente. Se ainda quiser vir, me chama que vejo outro horário disponível pra você. 🙏`)
+      // v28.60.0: convida a reativar — o webhook reconhece "sim"/"1" depois deste aviso
+      // e reativa o horário sozinho se ninguém tiver ocupado (phone_reactivate_recent_booking).
+      await sendWhatsapp(booking.customer_phone, `Oi${name ? `, ${name}` : ''}! Como não recebemos sua confirmação a tempo, liberamos seu horário de hoje às ${time} (${booking.service_name}). Se você ainda quiser vir, responda *sim* — se o horário continuar livre, eu reativo na hora pra você. 🙏`)
       await notifyJuliano(
         '⏰ Agendamento cancelado por falta de confirmação',
         `${booking.customer_name || booking.customer_phone} não confirmou presença de hoje às ${time} (${booking.service_name}) — vaga liberada automaticamente.`,
