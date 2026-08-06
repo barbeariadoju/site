@@ -24,6 +24,7 @@
       ['agenda','admin-agenda.html','▦','Agenda'],
       ['agendamento','admin-agendamento.html','＋','Agendar'],
       ['clientes','admin-clientes.html','👥','Clientes'],
+      ['conteudo','admin-conteudo.html','📣','Conteúdo'],
       ['assistente','admin-assistente.html','✦','JuIA'],
       ['notificacoes','admin-notificacoes.html','🔔','Alertas']
     ];

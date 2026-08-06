@@ -58,7 +58,10 @@ const withBookingLink = (caption: string, utmSource: string) => {
 // O `[^.!?\n]{0,20}` entre "agenda" e o adjetivo é proposital: sem ele, "agenda ESTÁ aberta"
 // e "agenda ANDA tranquila" escapavam (só casava o adjetivo colado). Limitado a 20 caracteres
 // e sem cruzar pontuação pra não casar duas frases distintas ("...da agenda. Aberta desde...").
-const SCARCITY_VIOLATION = /hor[áa]ri?os?\s+(livres?|dispon[íi]ve|em aberto|vagos?|sobrando)|agenda[^.!?\n]{0,20}\b(livre|vazia|aberta|tranquila|folgada|sem movimento)|v[áa]rios?\s+hor[áa]rios|muitos?\s+hor[áa]rios|alguns?\s+hor[áa]rios|hor[áa]rios\s+sobrando|sobrando\s+hor[áa]rios|\bvagas?\s+(livres?|abertas?|dispon[íi]ve)|sem\s+fila|pouca\s+procura|movimento[^.!?\n]{0,15}\b(fraco|parado|devagar|baixo)/i
+// v28.58.0 — ampliada a pedido do Juliano (06/08): "janela às X" e "oportunidade de
+// encaixe" TODO DIA também expõem cadeira vazia (viraram o post padrão de toda manhã).
+// Agora qualquer menção a janela/encaixe/vaga aberta também derruba a legenda pro fallback.
+const SCARCITY_VIOLATION = /hor[áa]ri?os?\s+(livres?|dispon[íi]ve|em aberto|vagos?|sobrando)|agenda[^.!?\n]{0,20}\b(livre|vazia|aberta|tranquila|folgada|sem movimento)|v[áa]rios?\s+hor[áa]rios|muitos?\s+hor[áa]rios|alguns?\s+hor[áa]rios|hor[áa]rios\s+sobrando|sobrando\s+hor[áa]rios|\bvagas?\s+(livres?|abertas?|dispon[íi]ve)|sem\s+fila|pouca\s+procura|movimento[^.!?\n]{0,15}\b(fraco|parado|devagar|baixo)|\bjanela\b|\bencaixe\b|vaga\s+aberta|oportunidade\s+(especial|de\s+hor[áa]rio)|quem\s+agenda\s+primeiro/i
 const safeCaption = (generated: string, fallback: string, platform: string): string => {
   const candidate = String(generated || '').trim()
   if (!candidate) return fallback
@@ -208,50 +211,84 @@ Deno.serve(async (request: Request) => {
     }
     if (!platformsToGenerate.length) return json({ ok: true, skipped: 'ja_gerado_hoje' })
 
-    // Dado real #1: tem vaga aberta hoje pro serviço mais comum (Corte de cabelo, 30min)?
+    // v28.58.0 — REDESENHO DA ESTRATÉGIA (pedido direto do Juliano, 06/08/2026).
+    // O desenho anterior usava "tem horário livre hoje?" como fato padrão do dia — como
+    // quase sempre tem, TODO post de manhã virava "janela às 08:30 / oportunidade de
+    // encaixe", ou seja, a barbearia anunciava a própria cadeira vazia diariamente
+    // (anti-marketing). Regra nova:
+    //   1. Agenda de hoje QUASE CHEIA (1-3 horários restando) → aí sim falar do dia,
+    //      como sinal de procura alta ("últimos horários de hoje") — escassez verdadeira.
+    //   2. Caso contrário, NUNCA mencionar a agenda de hoje. O post do dia vende marca:
+    //      campanha ativa (marketing_memory categoria "campanha"), ou rotação de temas
+    //      positivos (experiência da loja / cartão fidelidade / serviço em destaque).
     const { data: slots } = await admin.rpc('get_available_slots', { p_date: todaySP, p_duration_minutes: 30 })
     const slotList = Array.isArray(slots) ? slots : []
     const openSlotsCount = slotList.length
 
+    const { data: campaignRows } = await admin
+      .from('marketing_memory')
+      .select('title, content')
+      .eq('category', 'campanha')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const campaign = Array.isArray(campaignRows) && campaignRows.length ? campaignRows[0] : null
+
+    const NO_AGENDA_TALK = 'É PROIBIDO mencionar a agenda de hoje, disponibilidade, encaixe, janela de horário, vaga aberta ou qualquer coisa que sugira que existe horário sobrando — a barbearia é procurada e o post vende a experiência, não a vacância.'
+
     let contextFact: string
     let context: Record<string, unknown>
 
-    if (openSlotsCount > 0) {
-      // Regra de posicionamento (pedido explícito do Juliano, 2026-08-04): NUNCA comunicar
-      // quantidade de horários livres nem qualquer sinal de agenda vazia — isso sinaliza
-      // falta de procura. Apresentar no máximo 1-3 horários como oportunidade escassa
-      // ("tenho uma janela às X", "quem agenda primeiro escolhe"). A contagem real fica
-      // só no context (dado interno), jamais no texto publicado.
-      const sampleTimes = slotList.slice(0, 3).map((s: { slot_time: unknown }) => String(s.slot_time).slice(0, 5))
-      const firstSlot = sampleTimes[0]
-      const extraTimes = sampleTimes.slice(1)
-      contextFact = `Hoje (${formatDateBR(todaySP)}) existe oportunidade de encaixe: uma janela às ${firstSlot}${extraTimes.length ? ` e mais algumas poucas ao longo do dia (ex.: ${extraTimes.join(', ')})` : ''}. Apresente como OPORTUNIDADE escassa e valorizada ("tenho uma janela às X", "quem agenda primeiro escolhe"). É PROIBIDO: dizer quantos horários existem, dizer que a agenda está livre/aberta/vazia, ou qualquer frase que sugira pouca procura.`
-      context = { tipo: 'vaga_aberta', data: todaySP, horarios_livres: openSlotsCount, primeiro_horario: firstSlot }
+    if (openSlotsCount > 0 && openSlotsCount <= 3) {
+      // Escassez REAL: pouquíssimos horários restando é sinal de procura — pode falar.
+      contextFact = `A agenda de hoje (${formatDateBR(todaySP)}) está QUASE CHEIA: restam só os últimos horários do dia. Convide a garantir um dos últimos horários de hoje, com tom de procura alta ("a agenda de hoje está fechando", "últimos horários do dia"). É PROIBIDO dizer o número exato de horários, citar horários específicos, ou usar as palavras "janela", "encaixe" e "vaga".`
+      context = { tipo: 'reta_final', data: todaySP, horarios_livres: openSlotsCount }
+    } else if (campaign) {
+      contextFact = `Campanha ativa da barbearia — use como tema central do post de hoje, escolhendo um ângulo criativo (não repita o texto da campanha ao pé da letra): ${String(campaign.content).slice(0, 600)}. Use apenas preços e datas que estão descritos aí em cima — não invente. ${NO_AGENDA_TALK}`
+      context = { tipo: 'campanha', campanha: campaign.title }
     } else {
-      const { data: featuredRows } = await admin.rpc('pick_featured_service')
-      const featured = Array.isArray(featuredRows) ? featuredRows[0] : featuredRows
-      if (!featured) return json({ ok: true, skipped: 'sem_servico_ativo' })
-      const priceLabel = Number(featured.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      contextFact = `Hoje a agenda já está cheia, então destaque o serviço "${featured.name}" (R$${priceLabel}, ${featured.duration_minutes} minutos) como sugestão pra quem quer agendar pros próximos dias.`
-      context = { tipo: 'servico_destaque', servico: featured.name, preco: featured.price, duracao_minutos: featured.duration_minutes }
+      // Sem campanha: rotação de temas positivos pra não repetir o mesmo post toda manhã.
+      const dayNumber = Number(todaySP.slice(-2))
+      const rotation = dayNumber % 3
+      if (rotation === 0) {
+        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 ou 2 destes fatos verdadeiros (não liste todos): café na chegada, atendimento com hora marcada respeitada (sem fila e sem espera), atendimento sem pressa, ambiente climatizado, cartão fidelidade (a cada 10 cortes, 1 é grátis). ${NO_AGENDA_TALK}`
+        context = { tipo: 'experiencia' }
+      } else if (rotation === 1) {
+        contextFact = `Tema de hoje: o CARTÃO FIDELIDADE da Barbearia do Ju — a cada 10 cortes, 1 é grátis, e todo corte conta automaticamente, sem precisar carimbar nada. ${NO_AGENDA_TALK}`
+        context = { tipo: 'fidelidade' }
+      } else {
+        const { data: featuredRows } = await admin.rpc('pick_featured_service')
+        const featured = Array.isArray(featuredRows) ? featuredRows[0] : featuredRows
+        if (featured) {
+          const priceLabel = Number(featured.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          contextFact = `Tema de hoje: destaque o serviço "${featured.name}" (R$${priceLabel}, ${featured.duration_minutes} minutos) — o que é, pra quem é, por que vale a pena. ${NO_AGENDA_TALK}`
+          context = { tipo: 'servico_destaque', servico: featured.name, preco: featured.price, duracao_minutos: featured.duration_minutes }
+        } else {
+          contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 ou 2 destes fatos verdadeiros: café na chegada, hora marcada respeitada, atendimento sem pressa, ambiente climatizado. ${NO_AGENDA_TALK}`
+          context = { tipo: 'experiencia' }
+        }
+      }
     }
 
     const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
-    const fallbackCaption = context.tipo === 'vaga_aberta'
-      ? `📅 Abriu um horário hoje às ${context.primeiro_horario}! Chama pra garantir o seu.`
-      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agenda pelos próximos dias!`
-    const fallbackCaptionFacebook = context.tipo === 'vaga_aberta'
-      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo site ou chame no WhatsApp.`
-      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias no site ou pelo WhatsApp.`
+    // Fallbacks escritos à mão, garantidamente seguros, um por tema.
+    const FALLBACK_BASE: Record<string, string> = {
+      reta_final: '🔥 A agenda de hoje está quase fechando! Garanta um dos últimos horários do dia.',
+      campanha: '💈 Semana especial na Barbearia do Ju — agende seu horário e viva a experiência completa: café, hora marcada e atendimento sem pressa.',
+      experiencia: '💈 Café na chegada, hora marcada respeitada e atendimento sem pressa. Agende seu horário na Barbearia do Ju!',
+      fidelidade: '🎁 Cartão fidelidade Barbearia do Ju: a cada 10 cortes, 1 é por nossa conta — e todo corte conta automaticamente. Agende o seu!',
+      servico_destaque: context.tipo === 'servico_destaque' ? `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco || 0).toFixed(2).replace('.', ',')}. Agende o seu!` : '',
+    }
+    const base = FALLBACK_BASE[String(context.tipo)] || FALLBACK_BASE.experiencia
+    const fallbackCaption = base
+    const fallbackCaptionFacebook = `${base} Agende pelo site ou chame no WhatsApp.`
     // Instagram não aceita link clicável na legenda — CTA é "link na bio", sem URL.
-    const fallbackCaptionInstagram = context.tipo === 'vaga_aberta'
-      ? `📅 Abriu um horário hoje às ${context.primeiro_horario} na Barbearia do Ju! Agende pelo link na bio ou chame no WhatsApp.`
-      : `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco).toFixed(2).replace('.', ',')}. Agende pelos próximos dias pelo link na bio ou pelo WhatsApp.`
+    const fallbackCaptionInstagram = `${base} Agende pelo link na bio ou chame no WhatsApp.`
 
     const insertedRows: { id: string; platform: string; caption: string }[] = []
 
     if (platformsToGenerate.includes('whatsapp_business')) {
-      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
       const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaption, 'whatsapp_business'), 'whatsapp_status')
       const { data: inserted, error } = await admin
         .from('content_posts')
@@ -263,7 +300,7 @@ Deno.serve(async (request: Request) => {
     }
 
     if (platformsToGenerate.includes('facebook')) {
-      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
       const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionFacebook, 'facebook'), 'facebook')
       const { data: inserted, error } = await admin
         .from('content_posts')
@@ -275,14 +312,18 @@ Deno.serve(async (request: Request) => {
     }
 
     if (platformsToGenerate.includes('instagram')) {
-      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use expressões como "horários livres", "vários horários" ou "alguns horários" — a barbearia é procurada e os horários são apresentados como oportunidade escassa. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
       // Instagram: sem URL nenhuma na legenda (não é clicável) — só "link na bio". Por isso
       // passa por stripSiteUrls sem receber link de volta, diferente das outras plataformas.
       const caption = stripSiteUrls(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionInstagram, 'instagram'))
       const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
       const themeText = context.tipo === 'servico_destaque'
         ? `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
-        : 'convite pra agendar um horário — transmitir acolhimento e disponibilidade sem texto na imagem.'
+        : context.tipo === 'campanha' && campaign
+        ? `clima da campanha ativa da barbearia (${String(campaign.content).slice(0, 200)}) — transmitir o clima em imagem, sem escrever nenhum texto.`
+        : context.tipo === 'fidelidade'
+        ? 'clima de recompensa e cuidado contínuo — detalhes do ambiente e do ritual de barbearia, sem texto na imagem.'
+        : 'a experiência de ser bem atendido — acolhimento, café, poltrona, ambiente premium, sem texto na imagem.'
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'instagram', caption, status: 'rascunho', source: 'ia', context })

@@ -25,6 +25,15 @@
     show();
   }
   function showLogin(m = '') { $('admin-login').hidden = false; $('admin-app').hidden = true; if ($('admin-message')) $('admin-message').textContent = m; }
+  // v28.58.0 — o access_token guardado em `session` expira em ~1h. Quando o app ficava
+  // aberto em segundo plano no celular e o Juliano voltava pelo push, qualquer clique de
+  // enviar/publicar ia com o token vencido e o servidor devolvia 401 ("Não autorizado").
+  // getSession() renova o token sozinho quando necessário — buscar um fresco a cada clique.
+  async function freshToken() {
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) session = data.session;
+    return session ? session.access_token : '';
+  }
   async function show() {
     $('admin-login').hidden = true; $('admin-app').hidden = false;
     $('admin-signout').onclick = () => sb.auth.signOut().then(() => location.reload());
@@ -118,9 +127,16 @@
     $('conteudo-metric-publicados').textContent = publicadosMes;
   }
 
+  // v28.58.0 — pedido do Juliano: nunca mais exibir contagem de horários livres, nem
+  // aqui no admin (o rótulo antigo "Vaga aberta hoje — N horário(s)" passava a impressão
+  // errada de barbearia vazia toda manhã). O rótulo agora só diz o TEMA do post.
   function contextLabel(ctx) {
     if (!ctx) return '';
-    if (ctx.tipo === 'vaga_aberta') return `📅 Vaga aberta hoje — ${ctx.horarios_livres} horário(s), primeiro às ${ctx.primeiro_horario}`;
+    if (ctx.tipo === 'vaga_aberta') return '📅 Tema: convite pra agendar hoje';
+    if (ctx.tipo === 'reta_final') return '🔥 Tema: agenda de hoje quase cheia (procura alta)';
+    if (ctx.tipo === 'campanha') return `📣 Tema: campanha ativa`;
+    if (ctx.tipo === 'experiencia') return '💈 Tema: experiência na barbearia';
+    if (ctx.tipo === 'fidelidade') return '🎁 Tema: cartão fidelidade';
     if (ctx.tipo === 'servico_destaque') return `✂️ Serviço em destaque: ${ctx.servico}`;
     return '';
   }
@@ -202,7 +218,7 @@
     try {
       const res = await fetch(`${cfg.supabaseUrl}/functions/v1/content-generate-image`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await freshToken()}`, apikey: cfg.supabaseAnonKey },
         body: JSON.stringify({ id }),
         signal: controller.signal,
       });
@@ -238,7 +254,7 @@
       const fnName = PLATFORM_FN[platform] || 'content-publish-whatsapp';
       const res = await fetch(`${cfg.supabaseUrl}/functions/v1/${fnName}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await freshToken()}`, apikey: cfg.supabaseAnonKey },
         body: JSON.stringify({ id, caption }),
         signal: controller.signal,
       });
@@ -299,8 +315,8 @@
       const editable = r.status === 'rascunho';
       return `<article class="conteudo-card" data-id="${r.id}">
         <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}</span>
-        <p class="meta"><strong>${esc(r.sender_name || 'Anônimo')}</strong> disse:</p>
-        <p class="meta" style="color:var(--text);white-space:pre-wrap">${esc(r.original_text)}</p>
+        <p class="meta"><strong>${esc(r.sender_name || 'Cliente (a Meta não informou o nome)')}</strong> disse:</p>
+        <p class="meta" style="color:var(--text);white-space:pre-wrap">${r.original_text ? esc(r.original_text) : '<em>(mensagem sem texto — provavelmente figurinha, áudio, foto ou reação; abra o Direct/Messenger pra ver o conteúdo antes de responder)</em>'}</p>
         <textarea data-role="social-reply" ${editable ? '' : 'readonly'}>${esc(r.reply_text || r.ai_draft || '')}</textarea>
         <p class="meta">Recebido em ${esc(created)}</p>
         ${editable ? `<div class="conteudo-card-actions">
@@ -335,7 +351,7 @@
     try {
       const res = await fetch(`${cfg.supabaseUrl}/functions/v1/meta-social-reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await freshToken()}`, apikey: cfg.supabaseAnonKey },
         body: JSON.stringify({ id, reply_text: replyText }),
         signal: controller.signal,
       });
