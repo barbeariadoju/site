@@ -54,16 +54,39 @@
     await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
   }
   function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b))}
+  // v28.65.0 — caso Moisés: o cancelado era 18:00–18:50 e outro cliente entrou das 17:00 às
+  // 18:15 no meio tempo, então reativar batia em 'horario_ocupado' e a única saída oferecida
+  // era criar um agendamento do zero por "Novo retorno" — perdendo o registro original.
+  // Agora, quando o horário está ocupado, dá pra escolher outro na hora e reativar o MESMO
+  // agendamento (preserva histórico, serviço, produtos e observações).
   async function reactivateBooking(id,trigger){
     const booking=allBookings.find(x=>x.id===id);
     if(!booking)return;
     if(!confirm(`Reativar o agendamento de ${booking.customer_name} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})? Ele volta como CONFIRMADO.`))return;
+    const restore=()=>{if(trigger){trigger.disabled=false;trigger.textContent='↩️ Reativar'}};
     if(trigger){trigger.disabled=true;trigger.textContent='Reativando…'}
-    const {error}=await sb.rpc('admin_reactivate_booking',{p_booking_id:id});
+
+    let {error}=await sb.rpc('admin_reactivate_booking',{p_booking_id:id});
+
+    if(error&&String(error.message||'').includes('horario_ocupado')){
+      const dur=booking.duration_minutes||30;
+      const {data:slots}=await sb.rpc('get_available_slots',{p_date:booking.booking_date,p_duration_minutes:dur});
+      const livres=(Array.isArray(slots)?slots:[]).map(s=>String(s.slot_time||s.start_time||s).slice(0,5)).filter(Boolean);
+      const sugestao=livres.length?`\n\nHorários livres em ${formatDate(booking.booking_date)} (${dur} min):\n${livres.join('  ·  ')}`:'\n\nNão há horário livre na grade desse dia — você ainda pode digitar um horário manualmente (ex.: logo após o atendimento anterior).';
+      const escolha=prompt(`Esse horário já foi ocupado por outro agendamento.\n\nDigite o novo horário para reativar (formato HH:MM), ou cancele para desistir.${sugestao}`,livres[0]||booking.start_time.slice(0,5));
+      if(escolha===null){restore();return}
+      const hora=String(escolha).trim();
+      if(!/^\d{1,2}:\d{2}$/.test(hora)){alert('Horário inválido. Use o formato HH:MM, por exemplo 18:15.');restore();return}
+      const normalizado=hora.padStart(5,'0')+':00';
+      ({error}=await sb.rpc('admin_reactivate_booking',{p_booking_id:id,p_new_start_time:normalizado}));
+    }
+
     if(error){
-      const msg=String(error.message||'').includes('horario_ocupado')?'Não deu: outro agendamento (ou um bloqueio) já ocupa esse horário. Use "Novo retorno" pra achar outro horário.':error.message;
+      const msg=String(error.message||'').includes('horario_ocupado')
+        ?'Esse horário também está ocupado (outro agendamento ou bloqueio de agenda). Tente outro horário.'
+        :error.message;
       alert(msg);
-      if(trigger){trigger.disabled=false;trigger.textContent='↩️ Reativar'}
+      restore();
       return
     }
     await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}

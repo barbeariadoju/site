@@ -147,7 +147,14 @@ export async function mockAdmin(page, overrides = {}) {
       const def = fixtures.rpcs[name];
       let body = null;
       try { body = JSON.parse(req.postData() || 'null'); } catch { /* sem corpo */ }
-      return json(typeof def === 'function' ? def(body) : def ?? null);
+      const out = typeof def === 'function' ? def(body) : def ?? null;
+      // Uma RPC pode devolver { __error: 'mensagem' } pra simular exception do Postgres
+      // (ex.: 'horario_ocupado'). Sem isso só dava pra testar caminho feliz — e vários
+      // fluxos do admin existem justamente pra tratar o erro.
+      if (out && typeof out === 'object' && !Array.isArray(out) && out.__error) {
+        return json({ message: String(out.__error), code: out.__code || 'P0001' }, out.__status || 400);
+      }
+      return json(out);
     }
 
     if (url.pathname.startsWith('/rest/v1/')) {
