@@ -100,7 +100,11 @@ Deno.serve(async (request: Request) => {
     try {
       const name = firstName(booking.customer_name)
       const time = String(booking.start_time).slice(0, 5)
-      const text = `Oi${name ? `, ${name}` : ''}! 😊 Passando pra confirmar seu horário de ${dayWord(booking.booking_date)} às ${time} para ${booking.service_name}. Você confirma presença? Responda *sim* pra confirmar, ou me avisa se não vai poder vir.`
+      // v28.59.0 — menu numérico (sugestão do Juliano, 06/08/2026, caso Graziela: cliente
+      // não entendia que PRECISAVA responder). Número é o padrão que já validamos na
+      // pesquisa de satisfação (mais confiável de digitar e de interpretar), e o aviso
+      // final deixa claro o que acontece se não responder — sem tom de ameaça.
+      const text = `Oi${name ? `, ${name}` : ''}! 😊 Aqui é da Barbearia do Ju. Seu horário de ${dayWord(booking.booking_date)} às ${time} (${booking.service_name}) está guardado pra você.\n\nSó preciso da sua confirmação — me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌\n\nSe eu não receber sua resposta até 1h antes, o horário é liberado automaticamente pra outro cliente, tá bom? 💈`
       await sendWhatsapp(booking.customer_phone, text)
       await admin.rpc('mark_confirmation_requested', { p_booking_id: booking.id })
       requestsSent++

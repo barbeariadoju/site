@@ -424,11 +424,25 @@ Deno.serve(async (request: Request) => {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           const ambiguousShortReply = trimmedNormalized.length <= 40
-          // "não" checado primeiro: uma frase como "não vou poder ir, pode cancelar" tem
-          // tanto negação quanto uma eventual palavra de confirmação solta — a negação
-          // decide. Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
-          const isDecline = /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply)
-          const isConfirm = !isDecline && /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply)
+          // v28.59.0 — menu numérico (1 confirmo / 2 remarcar / 3 cancelar), sugestão do
+          // Juliano (caso Graziela). Números exatos seguem o mesmo padrão da pesquisa de
+          // satisfação (^N com pontuação opcional); as palavras continuam valendo por
+          // compatibilidade com quem responde por texto.
+          // Remarcar checado PRIMEIRO: "não consigo nesse horário, quero remarcar" tem
+          // negação E intenção de remarcar — cancelar aqui seria perder o cliente.
+          const isReschedule = /^2[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|mudar\s+(o\s+)?horari|trocar\s+(o\s+)?horari|outro\s+horari|outro\s+dia/.test(normalizedReply)
+          // "não" decide sobre confirmação solta: "não vou poder ir, pode cancelar".
+          // Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
+          const isDecline = !isReschedule && (/^3[\s!.,]*$/.test(trimmedNormalized) || /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply))
+          const isConfirm = !isReschedule && !isDecline && (/^1[\s!.,]*$/.test(trimmedNormalized) || /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply))
+
+          if (isReschedule) {
+            // Só orienta e devolve pro fluxo normal da JuIA — ela já sabe remarcar
+            // (intent reschedule + phone_reschedule_booking, que desde a migration 090
+            // marca o horário novo como confirmado).
+            await sendWhatsapp(phone, 'Sem problema! 🔄 Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.')
+            return
+          }
 
           if (isDecline) {
             const { data: cancelledRows, error: cancelError } = await admin.rpc('whatsapp_cancel_booking', { p_phone: phone, p_booking_id: pendingConfirmation.id })
@@ -457,11 +471,17 @@ Deno.serve(async (request: Request) => {
             const { data: confirmedRows, error: confirmError } = await admin.rpc('phone_confirm_booking', { p_phone: phone, p_booking_id: pendingConfirmation.id })
             const confirmed = Array.isArray(confirmedRows) ? confirmedRows[0] : confirmedRows
             if (!confirmError && confirmed) {
-              await sendWhatsapp(phone, `Combinado! 😊 Te esperamos hoje às ${String(confirmed.start_time).slice(0, 5)}.`)
+              // v28.59.0: a janela do pedido é de 24h — o horário pode ser hoje OU amanhã,
+              // não dá pra cravar "hoje" (bug de texto herdado da janela antiga de 3h).
+              const confirmedTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+              const confirmedDayWord = String(confirmed.booking_date) === confirmedTodaySP ? 'hoje' : 'amanhã'
+              await sendWhatsapp(phone, `Confirmado! ✅ Te esperamos ${confirmedDayWord} às ${String(confirmed.start_time).slice(0, 5)}. Qualquer imprevisto, é só me chamar por aqui. 😊`)
               return
             }
           } else if (ambiguousShortReply) {
-            await sendWhatsapp(phone, `Só confirmando: você vai conseguir vir hoje às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name})? Responda *sim* ou *não*.`)
+            const pendingTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+            const pendingDayWord = String(pendingConfirmation.booking_date) === pendingTodaySP ? 'hoje' : 'amanhã'
+            await sendWhatsapp(phone, `Só pra eu não te perder na agenda 😊 Sobre seu horário de ${pendingDayWord} às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name}), me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌`)
             return
           }
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
