@@ -142,6 +142,19 @@ export function makeFixtures(overrides = {}) {
     admin_save_customer_v23: null,
     admin_archive_customer: null,
     admin_delete_customer_permanently: null,
+    // Funil de conversão da JuIA (v28.63.0). Números redondos de propósito: 20 conversas,
+    // 8 agendamentos = 40%, e os 12 restantes distribuídos pelas 4 etapas.
+    juia_conversion_funnel: (body) => [{
+      periodo_dias: (body && body.p_days) || 14,
+      conversaram: 20,
+      agendaram: 8,
+      taxa_conversao: 40.0,
+      sem_agendar: 12,
+      parou_em_disponibilidade: 5,
+      parou_em_servico_preco: 4,
+      parou_na_saudacao: 2,
+      sem_lead_registrado: 1,
+    }],
     ...(overrides.rpcs || {}),
   };
   const functions = { ...(overrides.functions || {}) };

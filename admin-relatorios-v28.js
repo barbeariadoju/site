@@ -145,6 +145,7 @@
     renderSatisfaction({ answered, satisfied, suggestions, sent });
     renderRevenue({ revenueServ, revenueProd, revenue });
     renderChannel(completed);
+    renderJuia();
   }
 
   function renderServices(completed) {
@@ -218,6 +219,47 @@
         <div class="rel-dualbar"><i style="width:${Math.round(site / total * 100)}%;background:var(--gold)"></i><i style="width:${Math.round(balcao / total * 100)}%;background:#5a86c9"></i></div>
         <div class="rel-legend"><span><i class="rel-dot" style="background:var(--gold)"></i>Site / WhatsApp</span><span><i class="rel-dot" style="background:#5a86c9"></i>Direto na porta</span></div>
         <p class="rel-note">Conta atendimentos concluídos, não clientes únicos. "Direto na porta" é o que foi registrado em Atendimento Balcão.</p>
+      </div>`;
+  }
+
+  // v28.63.0 (melhoria B): até aqui a conversão da JuIA nunca tinha sido medida — foi
+  // calculada à mão uma única vez, em 05/08, e o número se perdeu. Sem isso, mexer no
+  // prompt dela é chute. Usa janela fixa de 14 e 30 dias (não o período selecionado no
+  // topo): conversa e agendamento acontecem em dias diferentes, então recortar por mês
+  // partiria o funil no meio e daria um número enganoso.
+  async function renderJuia() {
+    const box = $('rel-juia');
+    if (!box) return;
+    box.innerHTML = '<div class="admin-empty">Calculando…</div>';
+    const [d14, d30] = await Promise.all([
+      sb.rpc('juia_conversion_funnel', { p_days: 14 }),
+      sb.rpc('juia_conversion_funnel', { p_days: 30 }),
+    ]);
+    const a = d14.data && d14.data[0];
+    const b = d30.data && d30.data[0];
+    if (d14.error || !a) {
+      box.innerHTML = '<div class="admin-empty">Não consegui carregar a conversão agora.</div>';
+      return;
+    }
+    const pct = Number(a.taxa_conversao) || 0;
+    const perdidos = Number(a.sem_agendar) || 0;
+    const etapas = [
+      { rot: 'Já tinha escolhido dia e serviço', n: Number(a.parou_em_disponibilidade) || 0 },
+      { rot: 'Parou no serviço ou no preço', n: Number(a.parou_em_servico_preco) || 0 },
+      { rot: 'Mandou só um "oi" e sumiu', n: Number(a.parou_na_saudacao) || 0 },
+      { rot: 'Outros assuntos (endereço, horário…)', n: Number(a.sem_lead_registrado) || 0 },
+    ].filter(e => e.n > 0).sort((x, y) => y.n - x.n);
+    box.innerHTML = `
+      <div class="rel-split">
+        <div class="rel-split-nums">
+          <article><strong>${a.conversaram}</strong><small>💬 Conversaram (14d)</small></article>
+          <article><strong>${a.agendaram}</strong><small>✅ Agendaram</small></article>
+        </div>
+        <div class="rel-bar-track"><i class="rel-bar-fill" style="width:${Math.max(2, Math.min(100, Math.round(pct)))}%"></i></div>
+        <p class="rel-note"><b>${pct}%</b> de quem escreveu no WhatsApp acabou agendando${b ? ` · em 30 dias: <b>${b.taxa_conversao}%</b>` : ''}.</p>
+        ${perdidos ? `<p class="rel-note">Dos ${perdidos} que não agendaram, onde a conversa parou:</p>
+        <div class="rel-bars">${etapas.map(e => `<div class="rel-bar-row"><div class="rel-bar-head"><b>${esc(e.rot)}</b><span>${e.n}</span></div><div class="rel-bar-track"><i class="rel-bar-fill" style="width:${Math.max(6, Math.round(e.n / perdidos * 100))}%"></i></div></div>`).join('')}</div>` : ''}
+        <p class="rel-note">Conta só quem escreveu no WhatsApp e agendou <b>depois</b> de ter escrito — agendamento feito antes da conversa não entra, porque não foi a JuIA que trouxe.</p>
       </div>`;
   }
 

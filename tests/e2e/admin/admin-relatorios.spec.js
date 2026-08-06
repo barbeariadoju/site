@@ -32,5 +32,13 @@ test('Relatórios calculam faturamento, ticket, clientes, faltas e satisfação'
   // novos × recorrentes: Ana tem concluído no mês passado → 1 recorrente, 1 novo
   await expect(page.locator('#rel-audience')).toContainText('Novos');
 
+  // conversão da JuIA (v28.63.0): 20 conversaram, 8 agendaram = 40%, e a maior perda
+  // ("já tinha escolhido dia e serviço", 5 de 12) aparece no topo da quebra por etapa
+  const juia = page.locator('#rel-juia');
+  await expect(juia).toContainText('20');
+  await expect(juia).toContainText('8');
+  await expect(juia).toContainText('40');
+  await expect(juia).toContainText('Já tinha escolhido dia e serviço');
+
   await page.screenshot({ path: 'test-results/admin-screens/admin-relatorios-numeros.png', fullPage: true });
 });
