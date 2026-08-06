@@ -71,6 +71,22 @@ test('JuIA Social mostra pendente, envia e move pra aba de enviados', async ({ p
   await expect.poll(() => log.filter(l => l.includes('/functions/v1/meta-social-reply')).length).toBeGreaterThan(0);
 });
 
+// v28.64.0: responder DM depende de pages_messaging, que o app da Meta não tem — a API
+// devolve "(#3) Application does not have the capability". Antes o botão aparecia normal e
+// o erro só estourava depois de escrever a resposta.
+test('JuIA Social avisa que DM não pode ser respondida e esconde o botão de enviar', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin-conteudo.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+  const dm = page.locator('#social-list .conteudo-card[data-id="mock-si-4"]');
+  await expect(dm).toBeVisible();
+  await expect(dm).toContainText('ainda não está liberado');
+  await expect(dm.locator('[data-action="social-send"]')).toHaveCount(0);
+  // comentário no mesmo painel continua respondível
+  const comentario = page.locator('#social-list .conteudo-card[data-id="mock-si-1"]');
+  await expect(comentario.locator('[data-action="social-send"]')).toHaveCount(1);
+});
+
 test('JuIA Social rejeitar move o item pra aba de rejeitados/ignorados', async ({ page }) => {
   await mockAdmin(page);
   await page.goto('/admin-conteudo.html');

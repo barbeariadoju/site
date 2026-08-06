@@ -88,7 +88,17 @@ Deno.serve(async (request: Request) => {
 
     if (!sendResult.ok) {
       console.error('[meta-social-reply] falha', item.id, sendResult.status, sendResult.data)
-      return json({ error: sendResult.data?.error?.message || 'Falha ao enviar a resposta.' }, 502)
+      // A Meta responde erro técnico em inglês ("(#3) Application does not have the
+      // capability to make this API call"), que não diz nada pra quem está no painel. Os
+      // códigos 3/10/200 em envio de DM significam sempre a mesma coisa aqui: o app não tem
+      // a permissão de mensagens (pages_messaging / acesso ao Direct), pendência conhecida
+      // desde o diagnóstico de 03/08/2026. Responder COMENTÁRIO funciona normalmente.
+      const code = Number(sendResult.data?.error?.code || 0)
+      const isPermission = item.kind !== 'comment' && [3, 10, 200, 230].includes(code)
+      const friendly = isPermission
+        ? 'Ainda não dá para responder mensagens diretas por aqui: o app da Meta não tem a permissão de mensagens (pages_messaging) habilitada. Responder comentários funciona normalmente. Por enquanto, responda esta pessoa pelo app do Instagram/Messenger — e, quando quiser destravar, é preciso adicionar o caso de uso de Mensagens no app da Meta e gerar um token novo.'
+        : (sendResult.data?.error?.message || 'Falha ao enviar a resposta.')
+      return json({ error: friendly, meta_code: code || null, permission_missing: isPermission }, 502)
     }
 
     const { error: updateError } = await admin.from('social_inbox')
