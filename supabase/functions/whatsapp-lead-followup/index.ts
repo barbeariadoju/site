@@ -90,6 +90,26 @@ Deno.serve(async (request: Request) => {
       .eq('phone', phone)
       .maybeSingle()
     if (conv?.human_takeover) return true
+    // v28.71.0 — CASO TATIANE (07/08/2026): a cliente disse "meu marido vai levar meu filho,
+    // não sei ainda o melhor horário, te mando mensagem antes", e o Juliano respondeu na mão
+    // "Combinado fico no aguardo" às 11:44. Mesmo assim saíram DOIS nudges automáticos
+    // (12:30 e 15:00) cutucando quem já tinha sido atendido e já tinha dito que retornaria.
+    // Motivo: a flag human_takeover estava FALSE, embora human_takeover_at marcasse 11:44 —
+    // responder pelo WhatsApp não liga a flag. Confiar só nela deixa passar todo caso em que
+    // o Juliano assume a conversa manualmente, que é o mais comum.
+    // Sinal confiável: existir mensagem enviada POR HUMANO (sent_by='human'). Se ele falou,
+    // a conversa é dele — robô nenhum entra por cima.
+    const { data: humanReply } = await admin
+      .from('whatsapp_messages')
+      .select('id')
+      .eq('phone', phone)
+      .eq('direction', 'out')
+      .eq('sent_by', 'human')
+      .gte('created_at', new Date(Date.now() - 72 * 3600 * 1000).toISOString())
+      .limit(1)
+    if (humanReply && humanReply.length > 0) return true
+    // A data preenchida também vale, mesmo com a flag desligada.
+    if (conv?.human_takeover_at && Date.now() - new Date(conv.human_takeover_at).getTime() < 72 * 3600 * 1000) return true
     return false
   }
 
