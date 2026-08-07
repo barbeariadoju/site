@@ -373,11 +373,34 @@ Deno.serve(async (request: Request) => {
         // "superada" e ninguém nunca respondia (silêncio total de 31/07/2026, o dia inteiro).
         // Compara como instante numérico (epoch ms), que é imune ao formato.
         const stampMs = new Date(myStamp).getTime()
-        const storedMs = afterWait?.buffer_updated_at ? new Date(afterWait.buffer_updated_at).getTime() : NaN
-        if (storedMs !== stampMs) {
+        const bufferVazio = !afterWait?.buffer_updated_at
+        const storedMs = bufferVazio ? NaN : new Date(afterWait!.buffer_updated_at).getTime()
+
+        if (!bufferVazio && storedMs !== stampMs) {
           // Uma mensagem mais nova chegou enquanto esperávamos — ela (ou a próxima depois
           // dela) é responsável por processar o texto combinado. Esta invocação não responde.
           return
+        }
+
+        // v28.69.0 — BURACO REAL (caso Walter, 07/08/2026): o buffer podia estar NULO aqui,
+        // porque outra invocação em voo já tinha limpado. `storedMs` virava NaN, o teste
+        // `storedMs !== stampMs` dava true e esta invocação desistia em SILÊNCIO — mas quem
+        // limpou o buffer processou o texto ANTERIOR, não este. Resultado: a mensagem do
+        // cliente morria sem resposta e sem erro em log nenhum (o cliente mandou "Corte +
+        // lavagem" e ficou 1h esperando).
+        // Regra nova: buffer vazio NÃO é motivo pra desistir. Só desiste se já saiu uma
+        // resposta DEPOIS desta mensagem — aí sim alguém cobriu por nós. Sem isso, responde,
+        // porque silêncio é pior que uma eventual mensagem repetida.
+        if (bufferVazio) {
+          const { data: jaRespondido } = await admin
+            .from('whatsapp_messages')
+            .select('id')
+            .eq('phone', phone)
+            .eq('direction', 'out')
+            .gte('created_at', new Date(stampMs).toISOString())
+            .limit(1)
+          if (jaRespondido && jaRespondido.length > 0) return
+          console.warn('[whatsapp-webhook] buffer vazio sem resposta enviada — assumindo o processamento', phone)
         }
 
         // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
