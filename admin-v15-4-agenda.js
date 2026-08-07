@@ -27,7 +27,11 @@
   function bookingCardHtml(x,actionsHtml){
     const email=x.customer_email?`<a class="admin-contact-link" href="${emailLink(x)}">✉ ${esc(x.customer_email)}</a>`:'';
     const total=money(Number(x.service_price||0)+Number(x.products_price||0));
-    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}</strong><small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+    // v28.68.0: cliente que avisou ter feito o Pix antecipado. É DECLARAÇÃO do cliente, não
+    // confirmação de pagamento — por isso o texto pede conferência em vez de afirmar "pago".
+    const prepay=x.prepay_declared_at?`<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix — conferir</span>`:'';
+    const prepayMini=x.prepay_declared_at?'<span class="admin-prepay-dot" title="Pix antecipado declarado">💸</span>':'';
+    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong><small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){
     // Excluir registro só aparece pra CANCELADOS — pedido do Juliano (31/07/2026) pra
@@ -39,8 +43,12 @@
     // v28.60.0 — Reativar cancelado (caso Kelvin: robô liberou a vaga às 12:00, cliente
     // confirmou 12:01 e não havia caminho de volta). Só aparece se o horário ainda não
     // passou; a RPC admin_reactivate_booking valida colisão/bloqueio no servidor.
+    // v28.65.1: o botão sumia quando o horário passava, e aí não havia MAIS NENHUM caminho
+    // de volta (o modal "✎ Editar" não tem campo de data/hora). Agora ele fica sempre
+    // disponível pra cancelado: se o horário original já passou, a própria reativação pede
+    // um horário novo. Quem valida é o servidor, que recusa qualquer horário no passado.
     const notPast=x.booking_date>isoLocal(new Date())||(x.booking_date===isoLocal(new Date())&&x.start_time>new Date().toTimeString().slice(0,8));
-    const reactivateHtml=x.status==='cancelled'&&notPast?`<button data-reactivate="${x.id}">↩️ Reativar</button>`:'';
+    const reactivateHtml=x.status==='cancelled'?`<button data-reactivate="${x.id}" data-past="${notPast?'0':'1'}">↩️ Reativar${notPast?'':' (escolher horário)'}</button>`:'';
     const actionsHtml=`<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Novo retorno</button>${reactivateHtml}${deleteHtml}`;
     return bookingCardHtml(x,actionsHtml)
   }

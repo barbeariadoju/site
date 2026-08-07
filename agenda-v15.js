@@ -196,6 +196,41 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
       box.appendChild(b)
     });
   }
+  // v28.68.0 — Pix antecipado. "Já fiz o Pix" NÃO confirma pagamento: só sinaliza pro
+  // Juliano conferir o comprovante (ver comentário da migration 096). Copiar a chave usa
+  // clipboard API com fallback pra execCommand, porque em WebView de app (Instagram, por
+  // exemplo) navigator.clipboard costuma vir bloqueado.
+  function bindPixOffer(bookingCode,managementToken,valor){
+    const box=$('pix-offer'); if(!box)return;
+    const statusEl=$('pix-status');
+    const copiar=async(texto,botao)=>{
+      let ok=false;
+      try{ await navigator.clipboard.writeText(texto); ok=true; }
+      catch{ try{ const ta=document.createElement('textarea'); ta.value=texto; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); document.body.removeChild(ta); }catch{ ok=false } }
+      const antes=botao.querySelector('small').textContent;
+      botao.querySelector('small').textContent=ok?'copiado ✅':'copie manualmente';
+      botao.classList.toggle('is-copied',ok);
+      setTimeout(()=>{botao.querySelector('small').textContent=antes;botao.classList.remove('is-copied')},2600);
+      if(ok)fire('pix_key_copied',{value:valor});
+    };
+    box.querySelectorAll('[data-pix-copy]').forEach(b=>b.onclick=()=>copiar(b.dataset.pixCopy,b));
+    $('pix-later').onclick=()=>{
+      fire('pix_declined',{value:valor});
+      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve! 💈</p>';
+    };
+    $('pix-done').onclick=async(e)=>{
+      e.target.disabled=true; e.target.textContent='Registrando…';
+      const {data,error}=await sb.rpc('declare_prepay',{p_booking_code:bookingCode,p_token:managementToken});
+      const row=Array.isArray(data)?data[0]:data;
+      if(error||!row?.ok){
+        statusEl.textContent='Não consegui registrar agora, mas fique tranquilo: leve o comprovante que acertamos na hora.';
+        e.target.disabled=false; e.target.textContent='✅ Já fiz o Pix';
+        return;
+      }
+      fire('pix_declared',{value:valor});
+      box.innerHTML='<strong class="pix-offer-title">Obrigado! 🙏</strong><p class="pix-offer-lead">Anotamos aqui que você adiantou o pagamento. O Juliano confere o Pix e, no dia, é só sentar na cadeira — quando terminar, você já sai direto. Até breve! 💈</p>';
+    };
+  }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
     $('agenda-submit').disabled=true;$('agenda-submit').textContent='Confirmando...';
@@ -205,7 +240,29 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
     fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
     sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
     const manageUrl=result.manage_url||'';
-    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}`;
+    // v28.68.0 — Pix antecipado (Fase 1). Aparece SÓ depois do horário confirmado: pedir
+    // pagamento antes de garantir a vaga derrubaria agendamento. O apelo é TEMPO, não
+    // desconto — num serviço de R$40 desconto corrói margem, e o ganho real pro cliente é
+    // sair da cadeira e seguir a rotina sem parar pra pagar. Recusar é um clique, sem
+    // fricção: a ideia é oferecer, nunca impor.
+    const totalPagar=t.servicePrice+t.productPrice;
+    const pixHtml=`<div class="pix-offer" id="pix-offer">
+        <strong class="pix-offer-title">Quer já deixar pago?</strong>
+        <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
+        <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
+        <div class="pix-keys">
+          <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
+          <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Chave celular</span><b>11967073038</b><small>toque para copiar</small></button>
+        </div>
+        <p class="pix-offer-note">Em nome da Barbearia do Ju. Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
+        <div class="pix-offer-actions">
+          <button type="button" class="btn primary" id="pix-done">✅ Já fiz o Pix</button>
+          <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>
+        </div>
+        <p class="pix-offer-status" id="pix-status" role="status"></p>
+      </div>`;
+    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?pixHtml:''}`;
+    if(result.booking_code&&result.management_token)bindPixOffer(result.booking_code,result.management_token,totalPagar);
     const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
     document.body.classList.add('booking-complete');
     $('agenda-status').classList.add('is-success');
