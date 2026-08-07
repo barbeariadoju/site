@@ -606,8 +606,22 @@ Deno.serve(async (request: Request) => {
           // de emoji (mais confiável de digitar/entender que carinha) — número puro, com ou sem
           // pontuação solta ("1", "1.", "1!"), conta como resposta. Emoji/palavra continuam
           // funcionando também (compatibilidade com pesquisas já enviadas antes dessa mudança).
-          const isSatisfied = /satisfeit|otimo|otima/.test(normalizedReply) || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
-          const isUnsatisfied = /insatisfeit|ruim|nao gostei/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
+          // v28.67.0 (caso Vaz, 06/08/2026): a mensagem "Me manda o Pix que já faço 😄" foi
+          // lida como resposta da pesquisa SÓ por causa do emoji — a JuIA respondeu o texto
+          // de "satisfeito" e ignorou o pedido de Pix, que o Juliano teve que atender na mão.
+          // Quando a mensagem traz um pedido concreto, ela não é resposta de pesquisa, tenha
+          // o emoji que tiver: cai pro fluxo normal da JuIA, que sabe resolver.
+          const asksSomethingElse = /\bpix\b|pagar|pagamento|transferir|chave|agendar|marcar|remarcar|cancelar|horario|hora marcada|amanha|quanto custa|pre[cç]o|valor|aberto|abre|funciona/.test(normalizedReply)
+          // v28.67.0 (caso Marcelo, 06/08/2026): cliente mandou áudio elogiando e depois
+          // escreveu "só elogios hein" — a JuIA respondeu "não entendi" e NÃO disparou o
+          // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:
+          // prejuízo direto. Elogio em texto livre agora conta como satisfeito.
+          const praise = /elogi|gostei|gostamos|amei|adorei|perfeit|excelent|maravilh|sensacional|nota ?10|recomend|parabens|caprichad|impec|top\b|show\b|massa\b|daora|curti|melhor|satisfeit|otimo|otima|muito bo[am]|ficou bo[am]|arrasou|show de bola|gratid/.test(normalizedReply)
+          const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
+          // `&& !isUnsatisfied` é essencial: "não gostei" contém "gostei" e cairia como
+          // elogio, mandando pedido de avaliação pra quem reclamou.
+          const isSatisfied = !isUnsatisfied && !asksSomethingElse
+            && (praise || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized))
           // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
           // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
           // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
@@ -615,7 +629,8 @@ Deno.serve(async (request: Request) => {
           // agendar por texto e por áudio com uma pesquisa pendente, os dois caíram na armadilha.
           // Respostas de satisfação são sempre curtas (emoji, "bom", "satisfeito" etc.) — só
           // aplica o gate de "não entendi" pra mensagens curtas; o resto cai pro fluxo normal.
-          const ambiguousShortReply = trimmedNormalized.length <= 40
+          // Pedido concreto nunca fica preso no "não entendi" da pesquisa.
+          const ambiguousShortReply = trimmedNormalized.length <= 40 && !asksSomethingElse
 
           if (pending.status === 'feedback') {
             const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
