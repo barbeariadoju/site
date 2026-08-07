@@ -268,7 +268,31 @@ Deno.serve(async (request: Request) => {
       return json({ ok: true, human_takeover: true })
     }
 
+    // v28.69.1 — caso Walter (07/08/2026): ele mandou "Oi bom dia", "Consegue cortar meu
+    // cabelo hj as 19:30" e "?" em 3 segundos. A JuIA já estava gerando resposta para o "oi"
+    // quando o pedido real chegou, e mandou "Bom dia! Como posso ajudar?" — ignorando a
+    // pergunta que ele acabara de fazer. Ele teve de repetir 40 minutos depois.
+    // Antes de enviar, conferimos se o cliente falou de novo depois da mensagem que gerou
+    // esta resposta. Se falou, a resposta nasceu velha: descartamos, e quem processa a
+    // mensagem nova responde o conjunto (o buffer junta os textos).
+    let obsoleteCutoffMs = 0
+    const respostaFicouObsoleta = async () => {
+      if (!obsoleteCutoffMs) return false
+      const { data } = await admin
+        .from('whatsapp_messages')
+        .select('id')
+        .eq('phone', phone)
+        .eq('direction', 'in')
+        .gt('created_at', new Date(obsoleteCutoffMs).toISOString())
+        .limit(1)
+      return !!(data && data.length > 0)
+    }
+
     const sendWhatsapp = async (to: string, body: string) => {
+      if (await respostaFicouObsoleta()) {
+        console.warn('[whatsapp-webhook] resposta descartada: cliente escreveu de novo antes do envio', to)
+        return true
+      }
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
@@ -406,6 +430,8 @@ Deno.serve(async (request: Request) => {
         // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
         // (pode ter crescido mais do que só esta mensagem, se chegaram picadas antes) e limpa.
         text = afterWait?.buffer_text || text
+        // A partir daqui, qualquer mensagem NOVA do cliente torna esta resposta obsoleta.
+        obsoleteCutoffMs = Date.now()
         await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
 
         // v28.31.1: checagem de human_takeover MOVIDA pra cá, antes de tudo — bug real
