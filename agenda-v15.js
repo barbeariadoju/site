@@ -251,10 +251,9 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
         <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
         <div class="pix-keys">
-          <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
-          <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Chave celular</span><b>11967073038</b><small>toque para copiar</small></button>
+          <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Chave Pix · celular</span><b>11967073038</b><small>toque para copiar</small></button>
         </div>
-        <p class="pix-offer-note">Em nome da Barbearia do Ju. Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
+        <p class="pix-offer-note">Conta da Barbearia do Ju (PagBank). Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
         <div class="pix-offer-actions">
           <button type="button" class="btn primary" id="pix-done">✅ Já fiz o Pix</button>
           <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>
