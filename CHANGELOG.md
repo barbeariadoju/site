@@ -1,3 +1,16 @@
+## 28.48.0 — Garantia de ajuste no acabamento + correção das cortesias
+
+Decisão do Juliano em 08/08/2026, ao revisar a copy dos anúncios: assumir publicamente o compromisso de refazer o acabamento sem cobrar. Redação fixada e replicada em todos os pontos de contato:
+
+> **"Se o acabamento não ficou como você queria, volte e a gente ajusta sem cobrar nada."**
+
+- **Home** (`index.html`): entrou na faixa de diferenciais (primeiro item), num card novo do bloco "antes de vir", no FAQ visível e no schema `FAQPage` (pergunta "E se eu não gostar do acabamento?").
+- **Agendamento** (`agendar/horario/index.html`): a garantia aparece na Etapa 4, embaixo do botão Confirmar — que é o momento de hesitação.
+- **JuIA** (`ju-ia-site/index.ts`): passou a conhecer a garantia e a oferecê-la quando o cliente demonstrar receio de não gostar do resultado ou perguntar diretamente. Instruída explicitamente a **nunca prometer devolução de dinheiro** — a garantia é de ajuste, não de reembolso. A garantia também entrou na lista de argumentos usados na objeção de preço.
+
+**Correção de fato, junto**: o site dizia "Café cortesia, água, refrigerante, energético ou bebida gelada" de um jeito que sugeria que tudo era cortesia. Confirmado com o Juliano que **só o café é por conta da casa**; as demais bebidas são vendidas. Corrigido em `agendar/index.html`, no FAQ da home, no schema e no prompt da JuIA.
+
+**Decisão registrada — o que NÃO foi feito**: o Juliano se dispôs a anunciar também ressarcimento do pagamento em caso de insatisfação. Recomendei não anunciar, e ele acatou. Motivos: publicidade obriga o anunciante; ressarcimento custa o ticket mais a cadeira ocupada (recurso escasso num barbeiro sozinho); e o gesto vale mais feito caso a caso, sem ter sido prometido, do que virando política que se testa. Continua podendo ressarcir quando julgar justo — só não está anunciado.
 ## 28.47.2 — Segunda bateria de testes robustos (pré-lançamento oficial do uso diário)
 
 Varredura completa pedida pelo Juliano ("achar e corrigir bugs pra ferramenta ficar 100%"). Achados e correções:
