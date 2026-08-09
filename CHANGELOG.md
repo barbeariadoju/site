@@ -1,3 +1,14 @@
+## 29.4.0 — Chave Pix de e-mail como primeira opção
+
+Decisão do Juliano em 08/08/2026: `contato@barbeariadoju.com.br` (PicPay, pessoa física) passa a ser a **primeira opção** de pagamento em todos os pontos de contato.
+
+**Contexto da decisão, registrado porque ela foi tomada com a informação na mesa.** Levantei duas objeções: (1) a conta é pessoa física, e receita da barbearia caindo fora do CNPJ dificulta a contabilidade do MEI e não constrói histórico de faturamento do negócio; (2) o argumento do teto do MEI não se sustenta hoje — o faturamento projeta ~R$ 30 mil/ano, cerca de um terço do limite, e receita é receita independentemente da conta que recebe. O Juliano reafirmou a escolha, então está feito como ele pediu. Assunto de contador, não meu.
+
+- **Home**: a chave aleatória `d1883c86-...` saiu (ninguém reconhece um amontoado de letras como sendo de uma barbearia). Entrou o e-mail, com o aviso do nome do titular. **O QR Code foi removido** porque apontava para a chave antiga — precisa ser regerado no app do PicPay e reenviado.
+- **Agendamento**: e-mail em primeiro, celular como segunda opção. O botão "Já fiz o Pix" agora declara `picpay`; o link secundário declara `pagbank`.
+- **JuIA**: passa o e-mail primeiro e sozinho, e só oferece o celular se o cliente pedir outra opção. Instruída a **nunca passar as duas de uma vez** — duas chaves na mesma mensagem confundem e derrubam pagamento. Testado ao vivo.
+
+**Inconsistência que isso resolveu de quebra**: a home mostrava uma chave e o fluxo de agendamento mostrava outra. Agora é uma só, com a segunda claramente marcada como alternativa.
 ## 29.3.0 — Pix: o ciclo fechado, sem API e sem taxa
 
 Pedido do Juliano: dar segurança a quem paga adiantado, sem depender da API do PagBank (decisão de não usar a API por ora — ver [[projeto-pix-pagbank-api]]).

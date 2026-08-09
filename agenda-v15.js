@@ -240,10 +240,11 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
       fire('pix_declared',{value:valor,chave});
       box.innerHTML='<strong class="pix-offer-title">Recebemos seu aviso! 🙏</strong><p class="pix-offer-lead">Seu horário está garantido. O Juliano confere o Pix e te avisa por aqui quando o pagamento cair — se faltar alguma coisa, a gente fala com você antes. Não precisa fazer mais nada. 💈</p>';
     };
-    $('pix-done').onclick=(e)=>declarar('pagbank',e.target);
-    // Caso raro: quem pediu a chave alternativa à JuIA e pagou no PicPay.
+    // A chave de e-mail (PicPay) é a primeira opção por decisão do Juliano em 08/08/2026,
+    // então é ela que o botão principal declara. Quem preferiu o celular usa o link abaixo.
+    $('pix-done').onclick=(e)=>declarar('picpay',e.target);
     const outra=$('pix-outra-chave');
-    if(outra)outra.onclick=(e)=>{e.preventDefault();declarar('picpay',outra)};
+    if(outra)outra.onclick=(e)=>{e.preventDefault();declarar('pagbank',outra)};
   }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
@@ -265,15 +266,16 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
         <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
         <div class="pix-keys">
-          <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Chave Pix · celular</span><b>11967073038</b><small>toque para copiar</small></button>
+          <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave Pix · e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
+          <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Ou pelo celular</span><b>11967073038</b><small>toque para copiar</small></button>
         </div>
-        <p class="pix-offer-note">No seu banco vai aparecer <b>Juliano Bruno Lopes Padilha</b> — é o titular da Barbearia do Ju (CNPJ 65.192.881). Pode confirmar tranquilo.<br>Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
+        <p class="pix-offer-note">No seu banco vai aparecer <b>Juliano Bruno Lopes Padilha</b> — é o titular da Barbearia do Ju. Pode confirmar tranquilo.<br>Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
         <div class="pix-offer-actions">
           <button type="button" class="btn primary" id="pix-done">✅ Já fiz o Pix</button>
           <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>
         </div>
         <p class="pix-offer-status" id="pix-status" role="status"></p>
-        <p class="pix-offer-note"><a href="#" id="pix-outra-chave">Paguei no PicPay (e-mail)</a></p>
+        <p class="pix-offer-note"><a href="#" id="pix-outra-chave">Paguei pela chave do celular</a></p>
       </div>`;
     $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?pixHtml:''}`;
     if(result.booking_code&&result.management_token)bindPixOffer(result.booking_code,result.management_token,totalPagar);
