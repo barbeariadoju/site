@@ -1,3 +1,14 @@
+## 29.8.0 — Paleta real da barbearia no gerador de imagens
+
+Depois da aprovação da peça still-life genérica (v29.6-29.7), o Juliano propôs um teste: mandar fotos reais da barbearia, eu descrever só os materiais/objetos/cores (nunca o ambiente inteiro como cena, nunca texto — mesma regra de sempre) e usar isso pra enriquecer o prompt.
+
+**O que ele NÃO queria** também apareceu na mesma madrugada: chegou a compartilhar um prompt gerado por outro modelo que tentava recriar a barbearia inteira numa imagem só — porta de vidro com o nome escrito, frase na parede, três quadros decorativos fictícios, TV com jogo de futebol "reconhecível", reflexo de espelho mostrando o ambiente certo. Recusei executar como veio: tinha os dois problemas exatos que a v29.6.0 corrigiu (texto desenhado pela IA + ambiente inteiro reconhecível, que é como se inventou uma segunda cadeira de barbeiro em 04/08). O Juliano concordou e pediu pra eu criar baseado nas fotos, do meu jeito.
+
+**O prompt novo** (`BRAND_STYLE` em ambas as funções) incorpora a paleta real: tijolo terracota, couro preto capitonê, latão/metal preto com dourado discreto, madeira escura de bancada + viga clara, vidro/cristal (potes de boticário, frascos âmbar), samambaia, toalhas creme, luz quente 2700-3000K nunca fria. Testado com uma ponte temporária (gerar + aplicar marca, sem subir em lugar nenhum), revisado por mim, aprovado pelo Juliano ("ficou perfeita", "MARAVILHOSA") — muito superior ao still life genérico anterior.
+
+Continuam de pé todas as proibições da v29.6.0: sem pessoa, sem ambiente inteiro como sala reconhecível, sem texto/logo desenhado pela IA. A peça aprovada foi publicada como rascunho no Facebook (a still-life genérica de ontem já estava no Instagram).
+
+**Lição registrada**: usar fotos reais como fonte de vocabulário (materiais, cores, objetos) funciona bem. Usar fotos reais como blueprint pra recriar a cena inteira é o mesmo erro de sempre, só que com mais detalhe — e por isso mais difícil do modelo acertar, não mais fácil.
 ## 29.7.0 — Marca real carimbada em toda arte gerada
 
 Pedido do Juliano: as artes automáticas deveriam trazer o nome da barbearia. A resposta não podia ser "deixar a IA escrever" — o próprio acervo já provou o risco (uma peça saiu "BAREARIA DO JU").

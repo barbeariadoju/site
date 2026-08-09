@@ -104,17 +104,19 @@ async function generateCaption(openaiKey: string | undefined, prompt: string): P
 // Modelo "Nano Banana" — mesmo usado em content-generate-image. Aposenta 02/10/2026,
 // trocar por gemini-3.1-flash-image antes disso (mesmo formato de chamada REST).
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
-// v29.6.0 — mesma mudança de direção do content-generate-image: sem foto de referência,
-// sem tentar recriar o Juliano nem o salão. Ver o comentário completo naquele arquivo.
-const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia de bairro em Bragança Paulista/SP.
+// v29.8.0 (09/08/2026) — paleta REAL, ver comentário completo em content-generate-image.
+// Aprovado pelo Juliano depois de testar com as 4 fotos reais da barbearia que ele mandou.
+const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia masculina pequena, sofisticada e premium em Bragança Paulista/SP.
 
-ESTILO: fotografia de produto / still life editorial. Fundo preto quente (#080808), iluminação lateral dura vindo de uma única fonte, sombras profundas e definidas, reflexos metálicos dourados (#c89b55). Textura de grão fino de filme. Alto contraste. Clima sofisticado, masculino, silencioso.
+ESTILO: fotografia de produto / still life editorial, estética "Old Money" com toque de luxo contemporâneo. Iluminação quente e aconchegante, aproximadamente 2700–3000K, tons âmbar/dourados — NUNCA usar luz azul, roxa ou branca fria. Sombras profundas e definidas, reflexos naturais em metal e vidro, profundidade e contraste como fotografia cinematográfica. Sofisticação e exclusividade, sem exagero.
 
-MATERIAIS PERMITIDOS: couro escuro, madeira escura, latão e metal escovado, mármore preto, tecido de barbeiro, vidro âmbar, navalha fechada, pente, tesoura, toalha dobrada, pincel de barba, frascos de produto.
+PALETA E MATERIAIS REAIS desta barbearia (use como ingredientes de uma composição still life, não como uma sala inteira): parede de tijolo aparente terracota como textura de fundo desfocada; couro preto capitonê; latão e metal preto escovado com pequenos detalhes dourados/bronze; madeira escura de bancada e viga de madeira clara aparente; vidro e cristal (potes de boticário com tampa, frascos âmbar de produto); folhagem verde-escura de samambaia; toalhas dobradas em tom creme; halo de luz âmbar/dourada ao redor de um espelho, sugerido apenas como brilho de fundo, não como espelho inteiro.
 
-PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas; interior ou fachada de barbearia reconhecível; cadeira de barbeiro dentro de um ambiente; qualquer texto, letra, número, logotipo ou marca d'água na imagem; estética de banco de imagens.
+OBJETOS EM PRIMEIRO PLANO (still life, poucos por vez): navalha de barbeiro fechada, pente, tesoura de barbeiro, pincel de barba, frasco de produto em vidro âmbar, toalha dobrada — dispostos sobre uma superfície escura (madeira ou mármore preto), com espaço negativo generoso ao redor.
 
-O texto da peça é aplicado depois, fora da imagem — deixe espaço negativo generoso e limpo para isso.
+PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas; o ambiente inteiro da barbearia como uma sala reconhecível (nada de porta, layout, múltiplos móveis simultâneos, televisão, cadeira de barbeiro dentro de um cômodo); qualquer texto, letra, número, frase, logotipo ou marca d'água na imagem — nunca tente escrever "Barbearia do Ju" nem nenhuma frase; estética de banco de imagens.
+
+A marca é aplicada depois, por fora, como carimbo — deixe o canto inferior direito com espaço limpo para isso.
 
 Formato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
 
