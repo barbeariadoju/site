@@ -55,6 +55,9 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
 .admin-booking-summary-main{flex:1;min-width:0;display:grid;gap:2px}
 .admin-booking-summary-main strong{font-size:.95rem;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .admin-booking-summary-main small{color:#8a8a8a;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-visit-badge{justify-self:start;display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.68rem;font-weight:800;white-space:nowrap;margin:1px 0}
+.admin-visit-badge.is-new{background:rgba(255,255,255,.08);color:#c9c9c9}
+.admin-visit-badge.is-recurring{background:rgba(240,201,135,.16);color:var(--gold2)}
 .admin-booking-summary-total{flex:0 0 auto;color:var(--gold2);font-weight:800;font-size:.92rem;white-space:nowrap}
 .admin-booking-chevron{flex:0 0 auto;color:#777;font-size:.8rem;transition:transform .2s ease}
 .admin-booking-summary[aria-expanded="true"] .admin-booking-chevron{transform:rotate(180deg)}

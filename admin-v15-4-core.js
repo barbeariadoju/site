@@ -36,6 +36,12 @@
   function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
   function phoneDigits(s=''){return String(s).replace(/\D/g,'')}
   function formatPhone(p=''){p=phoneDigits(p);return p.length===11?`(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`:p}
+  // Nº da visita do cliente nessa reserva (pedido do Juliano: saber de cara se é a 1ª/2ª/
+  // .../5ª vez ou já é "clientão"). Conta atendimentos CONCLUÍDOS do mesmo telefone antes
+  // dessa data/hora + 1 — funciona tanto pra reserva já concluída (foi a Nª visita mesmo)
+  // quanto pra reserva futura (vai ser a Nª visita quando o cliente chegar).
+  function visitNumber(x){const ph=phoneDigits(x.customer_phone);if(!ph)return 1;const before=allBookings.filter(b=>b.status==='completed'&&phoneDigits(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;return before+1}
+  function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
   function ageFromBirth(date){if(!date)return null;const b=new Date(date+'T12:00:00'),t=new Date();let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a>=0?a:null}
