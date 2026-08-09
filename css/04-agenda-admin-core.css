@@ -148,7 +148,14 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
   .admin-metrics strong,.ai-kpis strong{font-size:clamp(1.1rem,4vw,1.65rem)!important}
   .admin-home-grid,.agenda-layout,.ai-layout{grid-template-columns:1fr!important}
   .admin-shortcuts{grid-template-columns:1fr!important}
-  .admin-booking-summary{padding:13px 14px!important}
+  .admin-booking-summary{padding:13px 14px!important;flex-wrap:wrap!important;gap:8px 10px!important}
+  .admin-booking-summary .admin-status{order:2;margin-left:auto}
+  .admin-booking-time-mini{order:1}
+  .admin-booking-summary-total{order:3}
+  .admin-booking-chevron{order:4}
+  .admin-booking-summary-main{order:5;flex:1 1 100%!important}
+  .admin-booking-summary-main strong{font-size:1.05rem!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.25}
+  .admin-booking-summary-main small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;font-size:.84rem!important;line-height:1.3}
   .admin-booking-detail-inner{padding:0 14px 14px!important}
   .admin-booking-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
   .admin-booking-actions a,.admin-booking-actions button,.crm-actions a,.crm-actions button{min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center}
