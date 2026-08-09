@@ -10,7 +10,7 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const ddmm = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-  let bookings = [], surveys = [];
+  let bookings = [], surveys = [], profiles = [];
   let mode = 'month';            // 'month' | 'week' | 'day'
   let ref = new Date(); ref.setHours(0, 0, 0, 0); // data de referência dentro do período exibido
 
@@ -79,18 +79,22 @@
     await load();
   }
   async function load() {
-    const [{ data: b, error: be }, { data: s, error: se }] = await Promise.all([
+    const [{ data: b, error: be }, { data: s, error: se }, { data: p, error: pe }] = await Promise.all([
       sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status,channel').order('booking_date', { ascending: true }).limit(5000),
-      sb.from('experience_requests').select('answer,status,created_at').order('created_at', { ascending: false }).limit(5000)
+      sb.from('experience_requests').select('answer,status,created_at').order('created_at', { ascending: false }).limit(5000),
+      sb.from('customer_profiles').select('phone,prior_visits').limit(5000)
     ]);
     if (be) console.error(be);
     if (se) console.warn('Pesquisa de satisfação indisponível:', se.message);
-    bookings = b || []; surveys = s || [];
+    if (pe) console.warn('Cadastro de clientes indisponível:', pe.message);
+    bookings = b || []; surveys = s || []; profiles = p || [];
     render();
   }
 
   // Telefone -> data (YYYY-MM-DD) do primeiro atendimento concluído de toda a história.
-  // Serve para separar clientes novos de recorrentes.
+  // Serve para separar clientes novos de recorrentes. Cliente com prior_visits (v29.9.0 —
+  // já vinha desde antes do sistema, marcado na conclusão do atendimento) sempre conta
+  // como se o "primeiro atendimento" fosse muito antigo, pra nunca aparecer como "novo".
   function firstCompletedByPhone() {
     const map = new Map();
     bookings.forEach(x => {
@@ -98,6 +102,11 @@
       const ph = phoneDigits(x.customer_phone); if (!ph) return;
       const d = x.booking_date || '';
       if (!map.has(ph) || d < map.get(ph)) map.set(ph, d);
+    });
+    profiles.forEach(p => {
+      if (!(Number(p.prior_visits) > 0)) return;
+      const ph = phoneDigits(p.phone); if (!ph) return;
+      if (!map.has(ph) || '0001-01-01' < map.get(ph)) map.set(ph, '0001-01-01');
     });
     return map;
   }
