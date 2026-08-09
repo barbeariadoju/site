@@ -44,6 +44,28 @@ export function makeFixtures(overrides = {}) {
       booking({ customer_name: CARLA.name, customer_phone: CARLA.phone, customer_email: null, status: 'pending', booking_date: iso(addDays(today, 2)), start_time: '15:00:00', end_time: '15:30:00' }),
     ],
 
+    // Financeiro (v29.0.0). Receita do mês vem dos bookings acima (R$ 175);
+    // despesas fictícias somam R$ 1.580 + retirada de R$ 500.
+    finance_categories: [
+      { id: 'fc-1', name: 'Aluguel', kind: 'fixo', active: true, sort_order: 10 },
+      { id: 'fc-2', name: 'Anúncios', kind: 'fixo', active: true, sort_order: 60 },
+      { id: 'fc-3', name: 'Mercado', kind: 'variavel', active: true, sort_order: 100 },
+      { id: 'fc-4', name: 'Retirada', kind: 'retirada', active: true, sort_order: 140 },
+    ],
+
+    finance_entries: [
+      { id: 'fe-1', entry_date: dayOfMonth(2), category: 'Aluguel', description: 'Aluguel fictício', amount: 900, payment_method: 'pix', is_recurring: true, notes: null, created_at: tsOfMonth(2), updated_at: tsOfMonth(2) },
+      { id: 'fe-2', entry_date: dayOfMonth(3), category: 'Anúncios', description: null, amount: 600, payment_method: 'credito', is_recurring: true, notes: null, created_at: tsOfMonth(3), updated_at: tsOfMonth(3) },
+      { id: 'fe-3', entry_date: dayOfMonth(5), category: 'Mercado', description: 'Café e água', amount: 80, payment_method: 'debito', is_recurring: false, notes: null, created_at: tsOfMonth(5), updated_at: tsOfMonth(5) },
+      { id: 'fe-4', entry_date: dayOfMonth(6), category: 'Retirada', description: null, amount: 500, payment_method: 'pix', is_recurring: false, notes: null, created_at: tsOfMonth(6), updated_at: tsOfMonth(6) },
+    ],
+
+    finance_fee_rates: [
+      { method: 'debito', label: 'Débito', rate_percent: 2.12, note: null },
+      { method: 'credito', label: 'Crédito à vista', rate_percent: 4.61, note: null },
+      { method: 'pix', label: 'Pix pela maquininha', rate_percent: 0, note: null },
+    ],
+
     customer_profiles: [
       { ...ANA, birth_date: '1990-03-12', vip: true, archived: false, satisfaction_status: 'satisfied', return_interval_days: 21, notes: 'Cliente fictícia dos testes.', created_at: '2026-01-10T12:00:00Z', updated_at: tsOfMonth(1) },
       { ...BRUNO, birth_date: null, vip: false, archived: false, satisfaction_status: null, return_interval_days: null, notes: null, created_at: '2026-02-05T12:00:00Z', updated_at: tsOfMonth(1) },

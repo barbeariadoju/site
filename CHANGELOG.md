@@ -1,3 +1,28 @@
+## 29.0.0 — Módulo financeiro (entrada, saída, lucro e taxa da maquininha)
+
+Pedido do Juliano: controlar entrada e saída de dinheiro, com total gasto no mês contra o faturado e o lucro líquido.
+
+**A simplificação que definiu o desenho**: o faturamento já existe no banco (`bookings` concluídos, serviço + produtos). O módulo não pede lançamento de receita — só de saída, e o lucro sai por subtração. Metade do trabalho já estava feita.
+
+**Migrations 098 e 099**: `finance_categories` (14 categorias, classificadas em `fixo`/`variavel`/`retirada`), `finance_entries` (lançamentos), `finance_fee_rates` (taxas do PagBank) e a coluna `bookings.fee_passed_to_customer`. Todas com RLS `is_admin()` **e** `GRANT` de base — a lição da migration 058.
+
+**Tela nova** `admin-financeiro.html` + `admin-financeiro-v29.js`, ligada no menu das 15 páginas do admin:
+- Cartões de Faturamento, Despesas, Lucro do negócio e Sobrou depois da retirada
+- **Ponto de equilíbrio**: quanto falta para cobrir os custos e quantos atendimentos isso representa ao ticket médio do mês; quando a receita passa as despesas, mostra em que dia isso aconteceu
+- **Taxa da maquininha** por dia, semana e mês, quebrada por modalidade
+- Lançamento rápido e botão "repetir fixos do mês passado" para despesas recorrentes
+
+**Melhorias sobre o pedido original, e o porquê de cada uma:**
+- **Fixo x variável separados** — só assim dá para responder "quanto preciso faturar para não ter prejuízo".
+- **Retirada fora das despesas** — o que o dono tira não é custo do negócio. Misturado, o painel nunca diria se a barbearia se paga.
+- **Categoria "Anúncios"** — não estava na lista do Juliano e é ~R$ 600/mês, mais de um quarto do faturamento. Sem ela o módulo mentiria por omissão no primeiro mês.
+- **Recorrência com um clique** — controle financeiro de pequeno negócio morre por atrito, não por falta de recurso.
+
+**Taxa da maquininha — decisão de desenho.** O pedido original era upload do extrato diário. Descartado: cartão soma ~R$ 634/mês, então a taxa fica entre R$ 15 e R$ 28 — desproporcional para um recurso de trabalho diário. Como o sistema já registra `payment_method`, as alíquotas contratuais bastam para calcular sozinho, e batem com o extrato. Taxas conferidas pelo Juliano no app do PagBank em 08/08/2026 (Visa/Mastercard, recebimento na hora): **débito 2,12%**, **crédito à vista 4,61%**. Pix por chave é **0%** (o padrão da casa); Pix pela maquininha custaria 0,99%.
+
+O atendimento continua registrando o valor cobrado, e a taxa entra como despesa quando não repassada — em vez de descontar no próprio atendimento, o que quebraria a comparação de faturamento entre meses.
+
+Testado com `npm run test:admin`: 26/26, incluindo a tela nova.
 ## 28.48.0 — Garantia de ajuste no acabamento + correção das cortesias
 
 Decisão do Juliano em 08/08/2026, ao revisar a copy dos anúncios: assumir publicamente o compromisso de refazer o acabamento sem cobrar. Redação fixada e replicada em todos os pontos de contato:

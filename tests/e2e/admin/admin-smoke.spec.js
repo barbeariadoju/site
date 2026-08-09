@@ -20,6 +20,7 @@ const PAGES = [
   { file: 'admin-mensagens.html', nome: 'Mensagens', veja: 'Visitante Site' },
   { file: 'admin-notificacoes.html', nome: 'Notificações' },
   { file: 'admin-relatorios.html', nome: 'Relatórios', veja: 'Corte de cabelo' },
+  { file: 'admin-financeiro.html', nome: 'Financeiro', veja: 'Aluguel' },
   { file: 'admin-espera.html', nome: 'Lista de espera', veja: 'Diego Fictício' },
   { file: 'admin-agendamento.html', nome: 'Novo agendamento' },
   { file: 'admin-assistente.html', nome: 'Assistente IA' },

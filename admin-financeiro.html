@@ -1,0 +1,83 @@
+<!doctype html><html lang="pt-BR"><head><title>Financeiro | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.0.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<style>
+.admin-metrics strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:clamp(1.15rem,2.1vw,1.6rem)}
+.fin-rangenav{display:flex;align-items:center;gap:.5rem;margin-bottom:16px}
+.fin-rangenav strong{min-width:10rem;text-align:center;font-size:.95rem;color:var(--text)}
+.fin-rangenav .btn{padding:.25rem .7rem;font-size:1.1rem;line-height:1}
+.fin-rangenav .btn[disabled]{opacity:.35;cursor:not-allowed}
+.fin-add{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);padding:14px;margin-bottom:18px}
+.fin-add-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.fin-add-grid label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted)}
+.fin-add-grid input,.fin-add-grid select{padding:.5rem .6rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.fin-add-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.fin-breakeven{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:18px;background:rgba(240,201,135,.03)}
+.fin-breakeven p{margin:0;color:var(--muted);font-size:.92rem}
+.fin-breakeven strong{color:var(--text)}
+.fin-breakeven.is-ok{border-color:rgba(139,163,104,.45);background:rgba(139,163,104,.08)}
+.fin-breakeven.is-ok strong{color:#a8c07f}
+.fin-bar{height:8px;border-radius:4px;background:rgba(240,201,135,.14);margin-top:10px;overflow:hidden}
+.fin-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.fin-bar i.is-ok{background:linear-gradient(90deg,#6f8a4b,#a8c07f)}
+.fin-group-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.fin-group-title span{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fin-group-title b{font-size:1rem;color:var(--text);font-variant-numeric:tabular-nums}
+.fin-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;background:rgba(240,201,135,.03);padding:11px 14px;margin-bottom:8px;transition:border-color .18s}
+.fin-row:hover{border-color:rgba(240,201,135,.35)}
+.fin-row .fin-day{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.6rem}
+.fin-row .fin-what strong{display:block;font-size:.95rem;font-weight:650}
+.fin-row .fin-what small{color:var(--muted);font-size:.8rem}
+.fin-row .fin-amount{font-variant-numeric:tabular-nums;font-weight:700;font-size:.98rem;white-space:nowrap}
+.fin-row .fin-del{appearance:none;border:1px solid var(--line);background:transparent;color:#e6a0a0;border-radius:9px;padding:.3rem .6rem;font:inherit;font-size:.8rem;cursor:pointer}
+.fin-tag{display:inline-block;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:1px 6px;margin-left:6px;color:var(--gold2)}
+.fin-empty{color:var(--muted);font-size:.9rem;padding:14px 0}
+.fin-fees{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:18px;background:rgba(240,201,135,.03)}
+.fin-fees h3{margin:0 0 12px;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fin-fees-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:12px}
+.fin-fees-grid div{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.fin-fees-grid span{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.fin-fees-grid strong{font-size:1.15rem;font-variant-numeric:tabular-nums}
+.fin-fees table{width:100%;border-collapse:collapse;font-size:.88rem}
+.fin-fees th{text-align:left;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
+.fin-fees th.num,.fin-fees td.num{text-align:right;font-variant-numeric:tabular-nums;padding-right:0}
+.fin-fees td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.fin-fees tr:last-child td{border-bottom:0}
+.fin-fees td b{color:var(--text)}
+.fin-note{color:var(--muted);font-size:.84rem;margin:10px 0 0}
+@media(max-width:700px){.fin-row{grid-template-columns:1fr auto;row-gap:6px}.fin-row .fin-day{grid-column:1/-1}.fin-row .fin-del{grid-column:2}}
+</style>
+</head><body data-admin-page="financeiro"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="financeiro" class="is-active" href="admin-financeiro.html"><span>💰</span>Financeiro</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="avaliacoes" href="admin-avaliacoes.html"><span>⭐</span>Avaliações Google</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a><a data-admin-nav="leads" href="admin-leads.html"><span>🔥</span>Funil de Reativação</a><a data-admin-nav="conteudo" href="admin-conteudo.html"><span>🗂️</span>Central de Conteúdo</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><p class="eyebrow">Financeiro</p><h1>Entrou, saiu, sobrou.</h1><p>O faturamento vem sozinho dos atendimentos concluídos. Aqui você lança só o que sai.</p></div></header>
+
+<section class="admin-metrics"><article><span>Faturamento</span><strong id="fin-metric-revenue">—</strong><small id="fin-metric-revenue-detail">atendimentos concluídos</small></article><article><span>Despesas</span><strong id="fin-metric-expense">—</strong><small id="fin-metric-expense-detail">fixas + variáveis</small></article><article><span>Lucro do negócio</span><strong id="fin-metric-profit">—</strong><small id="fin-metric-profit-detail">antes da sua retirada</small></article><article><span>Sobrou depois da retirada</span><strong id="fin-metric-net">—</strong><small id="fin-metric-net-detail">—</small></article></section>
+
+<section class="admin-surface">
+  <div class="fin-rangenav"><button id="fin-prev" class="btn ghost" type="button" aria-label="Mês anterior">‹</button><strong id="fin-range-label">—</strong><button id="fin-next" class="btn ghost" type="button" aria-label="Próximo mês">›</button></div>
+
+  <div id="fin-breakeven" class="fin-breakeven"><p>Lance seus custos fixos para ver o ponto de equilíbrio.</p></div>
+
+  <div id="fin-fees" class="fin-fees"></div>
+
+  <div class="fin-add">
+    <div class="fin-add-grid">
+      <label>Data<input id="fin-date" type="date"></label>
+      <label>Categoria<select id="fin-category"></select></label>
+      <label>Valor (R$)<input id="fin-amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label>
+      <label>Descrição <small>opcional</small><input id="fin-description" type="text" placeholder="Ex: conta de agosto"></label>
+      <label>Pagamento <small>opcional</small><select id="fin-payment"><option value="">—</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="credito">Crédito</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>
+    </div>
+    <div class="fin-add-actions">
+      <label class="espera-radio-inline" style="font-size:.82rem;color:var(--muted)"><input id="fin-recurring" type="checkbox"> Repete todo mês</label>
+      <button id="fin-save" class="btn primary" type="button">Lançar</button>
+      <button id="fin-repeat" class="btn ghost" type="button">Repetir fixos do mês passado</button>
+      <span id="fin-message" class="field-help" style="margin:0"></span>
+    </div>
+    <p class="fin-note">Marque “repete todo mês” em aluguel, internet, DAS e anúncios. No mês seguinte, um clique traz todos de volta com o mesmo valor.</p>
+  </div>
+
+  <div id="fin-list"></div>
+</section>
+
+</main></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=28.16.1"></script><script src="admin-financeiro-v29.js?v=29.0.0"></script><script src="admin-pwa.js?v=28.58.0"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
