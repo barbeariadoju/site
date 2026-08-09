@@ -1630,6 +1630,13 @@ Deno.serve(async req=>{
     const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
     if(error){reply=error.message.includes('indisponível')?'Esse horário acabou de ficar indisponível. Posso consultar outro para você.':error.message;intent='availability';next.time=null}
     else{
+      // v29.1.0 — marca o canal REAL. create_public_booking_v15 grava 'site' pra tudo,
+      // então formulário e JuIA ficavam indistinguíveis (e ~90% do que aparecia como
+      // "site" era na verdade a JuIA). Não mexo na assinatura da RPC: é o caminho mais
+      // crítico do sistema e uma sobrecarga nova ali sairia caro.
+      try{
+        await supabase.from('bookings').update({channel:verifiedPhone?'juia_whatsapp':'juia_chat'}).eq('id',bookingId)
+      }catch(chErr){console.error('[ju-ia-site] channel',chErr)}
       try{
         const {data:record}=await supabase.from('bookings').select('*').eq('id',bookingId).single()
         const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')

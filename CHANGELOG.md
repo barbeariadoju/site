@@ -1,3 +1,18 @@
+## 29.1.0 — Canal real do agendamento (site x JuIA x balcão)
+
+**O achado que motivou isto.** Entre 01 e 07/08/2026 o banco registrou **22 agendamentos com `channel='site'`**, mas o GA4 recebeu só **3 eventos `booking_confirmed`** — e um deles foi um teste meu. O evento só dispara no formulário do site; a JuIA usa a mesma `create_public_booking_v15` e também saía marcada como "site", sem passar por navegador nenhum.
+
+Conclusão: **cerca de 90% dos agendamentos nascem numa conversa com a JuIA, não num formulário.**
+
+Duas consequências que estavam invisíveis:
+- A **Fase 1 do Pix antecipado** foi construída no fim do formulário do site — ou seja, exposta a ~9% do movimento. A adesão zero medida em 08/08 não prova desinteresse; prova que quase ninguém viu.
+- A **conversão de agendamento ligada no Google Ads em 08/08** (ver [[marketing-ads-proximos-passos]]) enxerga esses mesmos ~9%. Continua muito melhor do que otimizar por "pediu rota no Maps", que era o estado anterior, mas o Google está aprendendo com uma fração da realidade.
+
+**O que mudou (migration 100):** `bookings_channel_check` passou a aceitar `site`, `balcao`, `juia_whatsapp`, `juia_chat` e `rebooking`. A `ju-ia-site` marca o canal certo logo após criar o agendamento (`juia_whatsapp` quando o telefone vem verificado pelo WhatsApp, `juia_chat` no chat do site).
+
+**Decisão de engenharia:** não alterei a assinatura de `create_public_booking_v15` para receber o canal. Ela é o caminho mais crítico do sistema, e mudar a lista de parâmetros cria sobrecarga nova em vez de substituir a função (gotcha já documentado na migration 041). Marcar pelo lado de quem chama tem raio de dano muito menor.
+
+**Limite conhecido:** registros anteriores a 09/08/2026 marcados como `site` podem ser de qualquer origem online — não há como separá-los retroativamente.
 ## 29.0.0 — Módulo financeiro (entrada, saída, lucro e taxa da maquininha)
 
 Pedido do Juliano: controlar entrada e saída de dinheiro, com total gasto no mês contra o faturado e o lucro líquido.
