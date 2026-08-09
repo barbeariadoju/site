@@ -1,3 +1,20 @@
+## 29.6.0 — A geração de imagem parou de tentar ser a barbearia
+
+Consequência direta da decisão de 08/08/2026: **pessoa e ambiente = foto real; IA = só o que não tem rosto nem cômodo.**
+
+**O que estava acontecendo.** `content-generate-image` e `content-generate-daily` anexavam **duas fotos reais** em cada pedido ao Gemini: uma do salão e outra do rosto do Juliano. A instrução dizia, com todas as letras: *"se a cena incluir o barbeiro, ele precisa ter a mesma aparência da segunda foto (mesmo rosto, mesmo cabelo, mesma barba)"*. Havia até um comentário no código explicando a origem — *"o barbeiro gerado não se parecia com ele"*.
+
+Ou seja: os ~R$ 16/mês de Gemini estavam pagando exatamente pelo tipo de peça que decidimos não publicar. O problema nunca foi o custo; era o que saía.
+
+**O que mudou:**
+- Fora as fotos de referência (salão e rosto). O pedido agora é 100% texto.
+- `BRAND_STYLE` reescrito para o still life editorial do guia de criação: fundo preto quente, luz lateral de fonte única, dourado #c89b55, grão de filme — e uma lista explícita do que é **proibido gerar**: pessoas, rostos, mãos, silhuetas, interior/fachada reconhecível, e qualquer texto na imagem.
+- O texto continua sendo aplicado depois, fora da IA — modelo de imagem erra acento e inventa palavra em português, e preço errado publicado é problema real (comprovado no acervo: uma peça dizia "BAREARIA DO JU").
+- Código morto removido (`REFERENCE_IMAGES`, `JULIANO_REFERENCE`, `REFERENCE_INSTRUCTION`, `fetchReferenceImage`, `fetchImageAsBase64`) nos dois arquivos.
+
+**Por que NÃO desligamos a API do Gemini**, que era a pergunta original do Juliano: o que os R$ 16/mês compram não é imagem, é o **cron das 8h** que cria os rascunhos do dia sem ninguém lembrar. Trocar isso por geração manual economiza R$ 16 e custa atenção diária — o recurso mais escasso de um barbeiro que trabalha sozinho. Além disso, desligar a API sem desligar o cron faria ele falhar toda manhã em silêncio.
+
+**Divisão de trabalho combinada:** a automação gera os fundos sem rosto; o Claude do Chrome gera peças pontuais sob demanda pelo Gemini web; foto real para pessoa e ambiente, sempre.
 ## 29.5.0 — QR Code novo e a instituição informada junto da chave
 
 **QR Code gerado do zero** para a chave `contato@barbeariadoju.com.br`, no padrão BR Code do Banco Central (EMV): campos TLV, moeda 986, país BR, recebedor "Barbearia do Ju", cidade BRAGANCA, e CRC16/CCITT-FALSE calculado sobre o payload.

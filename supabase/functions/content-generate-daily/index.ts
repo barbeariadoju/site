@@ -103,36 +103,19 @@ async function generateCaption(openaiKey: string | undefined, prompt: string): P
 // Modelo "Nano Banana" — mesmo usado em content-generate-image. Aposenta 02/10/2026,
 // trocar por gemini-3.1-flash-image antes disso (mesmo formato de chamada REST).
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
-const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta visual: dourado (#c89b55) e preto, iluminação de estúdio quente, estética masculina clássica com toque moderno. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem. Nunca gerar rosto de pessoa real/reconhecível nem simular um cliente real — mostrar apenas ambiente, produtos, texturas, detalhes de barbearia (navalha, pente, toalha quente, poltrona, espelho, luz), mãos anônimas trabalhando, ou composições sem rosto em primeiro plano.\n\nFormato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
+// v29.6.0 — mesma mudança de direção do content-generate-image: sem foto de referência,
+// sem tentar recriar o Juliano nem o salão. Ver o comentário completo naquele arquivo.
+const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia de bairro em Bragança Paulista/SP.
 
-// Fotos reais do ambiente (v28.52.0) — sem isso o Gemini às vezes "alucinava" composições
-// desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
-// ambiente/estilo funciona muito melhor do que só descrever em texto.
-const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
-const JULIANO_REFERENCE = 'juliano-corte.jpg'
-// v28.53.2 (04/08/2026): ver mesma nota em content-generate-image/index.ts — foto real do
-// Juliano como segunda referência + proibição explícita de inventar/duplicar móveis.
-const REFERENCE_INSTRUCTION = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda cadeira de atendimento, mesmo que pareça natural pra composição. O cenário (paredes, móveis, decoração, reflexos, enquadramento) tem que continuar EXATAMENTE como está na foto original, pixel a pixel — só a cena descrita no tema de hoje é nova. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência da segunda foto (mesmo rosto, mesmo cabelo, mesma barba), nunca um barbeiro genérico diferente. Se incluir um cliente, use sempre alguém fictício e genérico (nunca um cliente real), com o corpo inteiro visível, nunca partes cortadas ou flutuando. Se o tema não exigir pessoas, prefira mostrar só o ambiente/produtos — não force a inclusão de gente.'
+ESTILO: fotografia de produto / still life editorial. Fundo preto quente (#080808), iluminação lateral dura vindo de uma única fonte, sombras profundas e definidas, reflexos metálicos dourados (#c89b55). Textura de grão fino de filme. Alto contraste. Clima sofisticado, masculino, silencioso.
 
-async function fetchImageAsBase64(file: string): Promise<{ mimeType: string; data: string } | null> {
-  try {
-    const r = await fetch(`https://www.barbeariadoju.com.br/assets/${file}`)
-    if (!r.ok) return null
-    const buffer = await r.arrayBuffer()
-    let binary = ''
-    const bytes = new Uint8Array(buffer)
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    return { mimeType: 'image/jpeg', data: btoa(binary) }
-  } catch (error) {
-    console.error('[content-generate-daily] referencia', error instanceof Error ? error.message : error)
-    return null
-  }
-}
+MATERIAIS PERMITIDOS: couro escuro, madeira escura, latão e metal escovado, mármore preto, tecido de barbeiro, vidro âmbar, navalha fechada, pente, tesoura, toalha dobrada, pincel de barba, frascos de produto.
 
-async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
-  const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
-  return fetchImageAsBase64(`ia-referencia/${file}`)
-}
+PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas; interior ou fachada de barbearia reconhecível; cadeira de barbeiro dentro de um ambiente; qualquer texto, letra, número, logotipo ou marca d'água na imagem; estética de banco de imagens.
+
+O texto da peça é aplicado depois, fora da imagem — deixe espaço negativo generoso e limpo para isso.
+
+Formato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
 
 // Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
 // (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
@@ -140,11 +123,9 @@ async function fetchReferenceImage(): Promise<{ mimeType: string; data: string }
 async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
   if (!geminiKey) return null
   try {
-    const [reference, julianoPhoto] = await Promise.all([fetchReferenceImage(), fetchImageAsBase64(JULIANO_REFERENCE)])
-    const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
+    // v29.6.0 — pedido 100% texto, sem anexar foto do salão nem do Juliano.
+    const prompt = [BRAND_STYLE, `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
-    if (reference) requestParts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
-    if (reference && julianoPhoto) requestParts.push({ inline_data: { mime_type: julianoPhoto.mimeType, data: julianoPhoto.data } })
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
       {

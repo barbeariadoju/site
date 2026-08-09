@@ -30,39 +30,29 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 // gemini-3.1-flash-image (sucessor, mesmo formato de chamada REST).
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
 
-const BRAND_STYLE = `Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta visual: dourado (#c89b55) e preto, iluminação de estúdio quente, estética masculina clássica com toque moderno. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem. Nunca gerar rosto de pessoa real/reconhecível nem simular um cliente real — mostrar apenas ambiente, produtos, texturas, detalhes de barbearia (navalha, pente, toalha quente, poltrona, espelho, luz), mãos anônimas trabalhando, ou composições sem rosto em primeiro plano.`
+// v29.6.0 (08/08/2026) — MUDANÇA DE DIREÇÃO, e vale saber o porquê antes de mexer aqui.
+//
+// Até a v28.53.2 este prompt tentava fazer a IA recriar a barbearia real e o próprio
+// Juliano, anexando a foto do salão e a foto do rosto dele como referência. Isso nasceu
+// de um problema real ("o barbeiro gerado não se parecia com ele"), mas a solução não
+// funciona: modelo de imagem não mantém identidade entre gerações. Cada peça saía com um
+// rosto um pouco diferente, e o Juliano confirmou isso na prática.
+//
+// A decisão de 08/08/2026 foi parar de tentar: PESSOA E AMBIENTE = FOTO REAL, tirada no
+// celular. IA = só o que não tem rosto nem cômodo. O site inteiro é construído sobre o
+// Juliano ser uma pessoa real (formação, 69 avaliações assinadas) — publicar um "quase
+// ele" toda semana corrói justamente esse ativo.
+//
+// Por isso não há mais foto de referência: o pedido é 100% texto e só produz still life.
+const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia de bairro em Bragança Paulista/SP.
 
-// Fotos reais do ambiente (v28.52.0) — sem isso o Gemini às vezes "alucinava" composições
-// desconexas (ex.: cabeça flutuando sem corpo). Anexar uma foto real como referência de
-// ambiente/estilo funciona muito melhor do que só descrever em texto.
-const REFERENCE_IMAGES = ['fachada.jpeg', 'interior-1.jpeg', 'interior-2.jpeg', 'interior-3.jpeg']
-const JULIANO_REFERENCE = 'juliano-corte.jpg'
-// v28.53.2 (04/08/2026): duas rodadas de feedback real do Juliano depois do v28.53.1:
-// (1) o barbeiro gerado não se parecia com ele — precisa da foto real do Juliano como
-// segunda referência, não só o ambiente; (2) mesmo em "modo edição" o Gemini ainda
-// inventava móveis (2ª cadeira, poltrona no meio do sofá) — a instrução precisa proibir
-// isso explicitamente, não só pedir fidelidade em termos gerais.
-const REFERENCE_INSTRUCTION = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda cadeira de atendimento, mesmo que pareça natural pra composição. O cenário (paredes, móveis, decoração, reflexos, enquadramento) tem que continuar EXATAMENTE como está na foto original, pixel a pixel — só a cena descrita no tema de hoje é nova. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência da segunda foto (mesmo rosto, mesmo cabelo, mesma barba), nunca um barbeiro genérico diferente. Se incluir um cliente, use sempre alguém fictício e genérico (nunca um cliente real), com o corpo inteiro visível, nunca partes cortadas ou flutuando. Se o tema não exigir pessoas, prefira mostrar só o ambiente/produtos — não force a inclusão de gente.'
+ESTILO: fotografia de produto / still life editorial. Fundo preto quente (#080808), iluminação lateral dura vindo de uma única fonte, sombras profundas e definidas, reflexos metálicos dourados (#c89b55). Textura de grão fino de filme. Alto contraste. Clima sofisticado, masculino, silencioso.
 
-async function fetchImageAsBase64(file: string): Promise<{ mimeType: string; data: string } | null> {
-  try {
-    const r = await fetch(`https://www.barbeariadoju.com.br/assets/${file}`)
-    if (!r.ok) return null
-    const buffer = await r.arrayBuffer()
-    let binary = ''
-    const bytes = new Uint8Array(buffer)
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    return { mimeType: 'image/jpeg', data: btoa(binary) }
-  } catch (error) {
-    console.error('[content-generate-image] referencia', error instanceof Error ? error.message : error)
-    return null
-  }
-}
+MATERIAIS PERMITIDOS: couro escuro, madeira escura, latão e metal escovado, mármore preto, tecido de barbeiro, vidro âmbar, navalha fechada, pente, tesoura, toalha dobrada, pincel de barba, frascos de produto.
 
-async function fetchReferenceImage(): Promise<{ mimeType: string; data: string } | null> {
-  const file = REFERENCE_IMAGES[Math.floor(Math.random() * REFERENCE_IMAGES.length)]
-  return fetchImageAsBase64(`ia-referencia/${file}`)
-}
+PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas; interior ou fachada de barbearia reconhecível; cadeira de barbeiro dentro de um ambiente; qualquer texto, letra, número, logotipo ou marca d'água na imagem; estética de banco de imagens.
+
+O texto da peça é aplicado depois, fora da imagem — deixe espaço negativo generoso e limpo para isso.`
 
 // Central de Marketing — Fase 2 (v28.49.0): gera a arte de um rascunho de content_posts
 // via Gemini (imagem), sobe pro bucket público content-images e grava a URL em
@@ -109,11 +99,11 @@ Deno.serve(async (request: Request) => {
       ? 'Tema do dia: convite pra agendar um horário — transmitir acolhimento e disponibilidade sem texto na imagem.'
       : `Tema do dia, baseado na legenda deste post: "${String(post.caption || '').slice(0, 200)}"`
 
-    const [reference, julianoPhoto] = await Promise.all([fetchReferenceImage(), fetchImageAsBase64(JULIANO_REFERENCE)])
-    const prompt = [BRAND_STYLE, reference ? REFERENCE_INSTRUCTION : '', formatHint, contextTheme, extraPrompt].filter(Boolean).join('\n\n')
+    // v29.6.0 — sem fotos de referência. Ver comentário do BRAND_STYLE: mandar a foto do
+    // salão e do rosto do Juliano era a tentativa de fazer a IA "acertar" a barbearia, e
+    // ela não acerta. Agora o pedido é 100% texto e só produz peça de marca sem gente.
+    const prompt = [BRAND_STYLE, formatHint, contextTheme, extraPrompt].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
-    if (reference) requestParts.push({ inline_data: { mime_type: reference.mimeType, data: reference.data } })
-    if (reference && julianoPhoto) requestParts.push({ inline_data: { mime_type: julianoPhoto.mimeType, data: julianoPhoto.data } })
 
     const geminiResponse = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
