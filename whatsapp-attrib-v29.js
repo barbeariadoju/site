@@ -77,11 +77,15 @@
     });
     try {
       // sendBeacon sobrevive à navegação pro WhatsApp; fetch nem sempre.
+      //
+      // ARMADILHA (descoberta testando ao vivo, v29.2.0): o Blob PRECISA ir como
+      // text/plain. Com application/json o navegador exige uma verificação prévia
+      // de CORS, e sendBeacon não sabe fazê-la — a requisição morre em silêncio,
+      // sem erro no console. O servidor lê o corpo como JSON de qualquer forma.
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(ENDPOINT, new Blob([payload], { type: 'application/json' }));
-        return;
+        if (navigator.sendBeacon(ENDPOINT, new Blob([payload], { type: 'text/plain;charset=UTF-8' }))) return;
       }
-      fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {});
+      fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: payload, keepalive: true }).catch(function () {});
     } catch (e) { /* segue o jogo */ }
   }
 
