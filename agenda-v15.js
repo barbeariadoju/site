@@ -269,7 +269,7 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
           <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave Pix · e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
           <button type="button" class="pix-key" data-pix-copy="11967073038"><span>Ou pelo celular</span><b>11967073038</b><small>toque para copiar</small></button>
         </div>
-        <p class="pix-offer-note">No seu banco vai aparecer <b>Juliano Bruno Lopes Padilha</b> — é o titular da Barbearia do Ju. Pode confirmar tranquilo.<br>Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
+        <p class="pix-offer-note">No seu banco vai aparecer <b>Juliano Bruno Lopes Padilha</b>, no <b>PicPay</b> — é o titular da Barbearia do Ju. Pode confirmar tranquilo.<br>Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
         <div class="pix-offer-actions">
           <button type="button" class="btn primary" id="pix-done">✅ Já fiz o Pix</button>
           <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>

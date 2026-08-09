@@ -1,3 +1,10 @@
+## 29.5.0 — QR Code novo e a instituição informada junto da chave
+
+**QR Code gerado do zero** para a chave `contato@barbeariadoju.com.br`, no padrão BR Code do Banco Central (EMV): campos TLV, moeda 986, país BR, recebedor "Barbearia do Ju", cidade BRAGANCA, e CRC16/CCITT-FALSE calculado sobre o payload.
+
+**Como foi validado, e por que isso importa**: gerar QR de Pix na mão é fácil de errar em silêncio — um dígito no CRC e o código simplesmente não abre no banco do cliente, sem nenhum aviso. Então o PNG foi **lido de volta** com um decodificador independente, o CRC recalculado a partir do que foi lido, e a árvore TLV reparseada campo a campo. Só depois disso o Juliano escaneou com o aplicativo real e confirmou que funciona.
+
+**Instituição informada junto do nome** (pedido do Juliano): "aparece o nome Juliano Bruno Lopes Padilha e a instituição PicPay". O raciocínio dele é certeiro — quem paga por Pix confere o nome antes de confirmar, e nome de pessoa física sem contexto gera desconfiança suficiente para a pessoa parar no meio. Aplicado na home, no bloco de agendamento e no prompt da JuIA (testado ao vivo).
 ## 29.4.0 — Chave Pix de e-mail como primeira opção
 
 Decisão do Juliano em 08/08/2026: `contato@barbeariadoju.com.br` (PicPay, pessoa física) passa a ser a **primeira opção** de pagamento em todos os pontos de contato.
