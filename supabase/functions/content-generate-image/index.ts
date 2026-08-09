@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://www.barbeariadoju.com.br',
@@ -29,6 +30,36 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 // 02/10/2026. Se essa function começar a falhar depois dessa data, trocar pra
 // gemini-3.1-flash-image (sucessor, mesmo formato de chamada REST).
 const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image'
+
+// v29.7.0 — carimba a marca REAL (recortada do logo de verdade, não desenhada por IA) por
+// cima de toda arte gerada. A IA nunca escreve texto — ela erra acento e inventa palavra
+// (uma peça do acervo saiu "BAREARIA DO JU"); o texto sempre vem de um arquivo fixo.
+const WATERMARK_URL = 'https://www.barbeariadoju.com.br/assets/marca-selo-transparente.png'
+async function applyWatermark(pngBytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const artwork = await Image.decode(pngBytes)
+    const wmRes = await fetch(WATERMARK_URL)
+    if (!wmRes.ok) return pngBytes
+    const watermark = await Image.decode(new Uint8Array(await wmRes.arrayBuffer()))
+
+    // Marca ocupa ~34% da largura da arte, ancorada no canto inferior direito com
+    // respiro — discreta o bastante pra não competir com o tema do dia.
+    const targetW = Math.round(artwork.width * 0.34)
+    const scale = targetW / watermark.width
+    watermark.resize(targetW, Math.round(watermark.height * scale))
+
+    const margin = Math.round(artwork.width * 0.04)
+    const x = artwork.width - watermark.width - margin
+    const y = artwork.height - watermark.height - margin
+    artwork.composite(watermark, x, y)
+
+    return await artwork.encode()
+  } catch (error) {
+    // Falhar aqui nunca pode derrubar a geração — pior caso, a arte sai sem marca.
+    console.error('[content-generate-image] watermark', error instanceof Error ? error.message : error)
+    return pngBytes
+  }
+}
 
 // v29.6.0 (08/08/2026) — MUDANÇA DE DIREÇÃO, e vale saber o porquê antes de mexer aqui.
 //
@@ -131,7 +162,8 @@ Deno.serve(async (request: Request) => {
       return json({ error: 'O Gemini não devolveu nenhuma imagem (pode ter recusado o prompt).' }, 502)
     }
 
-    const bytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+    const rawBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+    const bytes = await applyWatermark(rawBytes)
     const path = `${post.platform}/${id}-${Date.now()}.png`
     const { error: uploadError } = await admin.storage.from('content-images').upload(path, bytes, {
       contentType: 'image/png',

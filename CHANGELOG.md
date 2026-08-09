@@ -1,3 +1,12 @@
+## 29.7.0 — Marca real carimbada em toda arte gerada
+
+Pedido do Juliano: as artes automáticas deveriam trazer o nome da barbearia. A resposta não podia ser "deixar a IA escrever" — o próprio acervo já provou o risco (uma peça saiu "BAREARIA DO JU").
+
+**A marca vem de um arquivo, não de um prompt.** `assets/marca-selo-transparente.png` foi extraída do logo real (`logo-topo-wide.jpg`, o mesmo do letreiro físico) por flood-fill a partir das bordas: qualquer pixel escuro *conectado à borda* virou transparente; os pretos internos do desenho — contorno, bigode, letras — ficaram intactos, porque não têm caminho até a borda sem cruzar um pixel claro. Resultado: fundo 100% transparente sem perder nenhum traço do desenho original.
+
+**Como entra na arte**: `content-generate-image` e `content-generate-daily` ganharam `applyWatermark()`, usando `imagescript` (Deno, WASM puro — `sharp` não roda no runtime das Edge Functions). Depois que o Gemini devolve a arte, a marca é redimensionada para ~34% da largura e composta no canto inferior direito com 4% de respiro. Se a marca falhar ao buscar ou decodificar, a arte segue sem ela — nunca derruba a geração por causa disso.
+
+**Testado antes do deploy** com Deno local instalado na sessão, rodando a mesma versão exata da biblioteca (`imagescript@1.3.0`) contra uma arte sintética: composição, transparência e posicionamento conferidos visualmente antes de ir para produção.
 ## 29.6.0 — A geração de imagem parou de tentar ser a barbearia
 
 Consequência direta da decisão de 08/08/2026: **pessoa e ambiente = foto real; IA = só o que não tem rosto nem cômodo.**

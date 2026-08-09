@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -117,6 +118,27 @@ O texto da peça é aplicado depois, fora da imagem — deixe espaço negativo g
 
 Formato quadrado, proporção 1:1, composição centrada pra funcionar como post de feed.`
 
+// v29.7.0 — mesmo carimbo de marca real do content-generate-image. Ver o comentário
+// completo naquele arquivo.
+const WATERMARK_URL = 'https://www.barbeariadoju.com.br/assets/marca-selo-transparente.png'
+async function applyWatermark(pngBytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const artwork = await Image.decode(pngBytes)
+    const wmRes = await fetch(WATERMARK_URL)
+    if (!wmRes.ok) return pngBytes
+    const watermark = await Image.decode(new Uint8Array(await wmRes.arrayBuffer()))
+    const targetW = Math.round(artwork.width * 0.34)
+    const scale = targetW / watermark.width
+    watermark.resize(targetW, Math.round(watermark.height * scale))
+    const margin = Math.round(artwork.width * 0.04)
+    artwork.composite(watermark, artwork.width - watermark.width - margin, artwork.height - watermark.height - margin)
+    return await artwork.encode()
+  } catch (error) {
+    console.error('[content-generate-daily] watermark', error instanceof Error ? error.message : error)
+    return pngBytes
+  }
+}
+
 // Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
 // (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
 // Instagram sempre ficava de fora do gerador diário por falta de imagem.
@@ -141,7 +163,8 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
     const imagePart = parts.find((p: any) => p?.inlineData?.data || p?.inline_data?.data)
     const base64Data = imagePart?.inlineData?.data || imagePart?.inline_data?.data
     if (!base64Data) { console.error('[content-generate-daily] gemini sem imagem na resposta'); return null }
-    const bytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+    const rawBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+    const bytes = await applyWatermark(rawBytes)
     const path = `instagram/${postId}-${Date.now()}.png`
     const { error: uploadError } = await admin.storage.from('content-images').upload(path, bytes, { contentType: 'image/png', upsert: true })
     if (uploadError) { console.error('[content-generate-daily] upload', uploadError); return null }
