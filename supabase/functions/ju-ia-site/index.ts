@@ -317,6 +317,15 @@ Deno.serve(async req=>{
  const body=await req.json().catch(()=>({}))
  let message=String(body.message||'').trim().slice(0,500)
  if(!message)return respond({error:'Mensagem vazia.'},400)
+ // v29.2.0 — código de atribuição que viaja no texto quando a pessoa vem do site
+ // pro WhatsApp (ex.: "[#abc12345]"). Tiramos da mensagem ANTES do modelo ver, pra
+ // não poluir a conversa, e guardamos pra creditar o agendamento à visita de origem.
+ let attribToken:string|null=null
+ {
+  const m=message.match(/\[#([a-z0-9]{6,12})\]/i)
+  if(m){attribToken=m[1].toLowerCase();message=message.replace(m[0],'').trim()}
+  if(!message)message='Olá!'
+ }
  const state=body.state&&typeof body.state==='object'?body.state:{}
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
  const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
@@ -360,6 +369,12 @@ Deno.serve(async req=>{
  const verifiedPhone=canonicalPhone(String(body.verified_phone||''))
  const messagePhone=extractPhoneFromMessage(message)
  const knownPhone=canonicalPhone(String(verifiedPhone||state.phone||messagePhone||''))
+ // Amarra o código de atribuição ao telefone desta conversa. A partir daqui, um
+ // agendamento desse telefone sabe de qual visita ao site ele nasceu.
+ if(attribToken&&knownPhone){
+  try{await supabase.from('whatsapp_attribution').update({phone_match:knownPhone,matched_at:new Date().toISOString()}).eq('token',attribToken).is('phone_match',null)}
+  catch(e){console.error('[ju-ia-site] attrib bind',e)}
+ }
  if(knownPhone.length>=12){
   state.phone=knownPhone
   const {data}=await supabase.rpc('get_customer_commercial_context',{p_phone:knownPhone})
@@ -1637,6 +1652,38 @@ Deno.serve(async req=>{
       try{
         await supabase.from('bookings').update({channel:verifiedPhone?'juia_whatsapp':'juia_chat'}).eq('id',bookingId)
       }catch(chErr){console.error('[ju-ia-site] channel',chErr)}
+
+      // v29.2.0 — se esta conversa veio do site com código de atribuição, manda o
+      // agendamento pro GA4 usando o MESMO client_id daquela visita. É isso que faz
+      // o Google Ads conseguir creditar o agendamento ao anúncio que trouxe a pessoa.
+      // Tudo em try/catch: falhar aqui NUNCA pode afetar o agendamento.
+      try{
+        const mpSecret=Deno.env.get('GA4_MP_API_SECRET')
+        if(mpSecret){
+          const {data:attrib}=await supabase.from('whatsapp_attribution')
+            .select('token,ga_client_id,gclid').eq('phone_match',knownPhone).is('booking_id',null)
+            .gte('created_at',new Date(Date.now()-30*24*60*60*1000).toISOString())
+            .order('created_at',{ascending:false}).limit(1).maybeSingle()
+          if(attrib&&attrib.ga_client_id){
+            const productsTotal=selectedProducts.reduce((a:number,p:any)=>a+Number(p.price||0),0)
+            const mpUrl=`https://www.google-analytics.com/mp/collect?measurement_id=G-4XZTP0550B&api_secret=${encodeURIComponent(mpSecret)}`
+            const res=await fetch(mpUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+              client_id:attrib.ga_client_id,
+              non_personalized_ads:false,
+              events:[{name:'booking_confirmed',params:{
+                value:price+productsTotal,
+                currency:'BRL',
+                services:chosen.map((s:any)=>s.name).join(' | '),
+                origem:'juia_whatsapp',
+                engagement_time_msec:1,
+                session_id:attrib.token
+              }}]
+            })})
+            console.log('[ju-ia-site] MP booking_confirmed',res.status)
+            await supabase.from('whatsapp_attribution').update({booking_id:bookingId,converted_at:new Date().toISOString()}).eq('token',attrib.token)
+          }
+        }
+      }catch(mpErr){console.error('[ju-ia-site] MP',mpErr)}
       try{
         const {data:record}=await supabase.from('bookings').select('*').eq('id',bookingId).single()
         const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')

@@ -1,3 +1,17 @@
+## 29.2.0 — Atribuição dos agendamentos que nascem no WhatsApp
+
+Fecha o buraco aberto pela descoberta da v29.1.0: ~90% dos agendamentos vêm da JuIA no WhatsApp, e o Google Ads não enxergava nenhum deles. Quando a pessoa sai do site e abre o WhatsApp, o identificador do clique no anúncio não vai junto — a conversa começa sem vínculo com a visita.
+
+**Como funciona.** Ao clicar em qualquer link de WhatsApp do site, um código curto (`[#abc12345]`) é grudado no fim do texto da mensagem e registrado no servidor junto do `client_id` do GA4, do `gclid` e dos UTMs daquela visita. A JuIA lê o código na primeira mensagem, **remove do texto antes do modelo ver** (pra não poluir a conversa) e amarra ao telefone. Quando aquele telefone agenda, o agendamento é enviado ao GA4 pelo Measurement Protocol com o **mesmo `client_id`** — e é isso que permite ao Google creditar o agendamento ao anúncio de origem.
+
+- Migration 101: `whatsapp_attribution` + `purge_whatsapp_attribution()` (limpa vínculos não convertidos com mais de 30 dias)
+- Nova function pública `whatsapp-attribution` (verify_jwt=false), com validação estrita do formato do código
+- `whatsapp-attrib-v29.js` na home, no catálogo, na agenda e em produtos. Usa `sendBeacon` porque `fetch` nem sempre sobrevive à navegação pro WhatsApp; guarda o `gclid` em localStorage por 90 dias, já que a pessoa pode navegar várias páginas antes de clicar
+- `ju-ia-site` lê o código, amarra ao telefone e dispara o evento no agendamento
+
+**Princípio que guiou o código**: nada disso pode atrapalhar quem quer agendar. Todo o caminho novo está em `try/catch`, o clique no WhatsApp nunca é bloqueado, e se a chave do Measurement Protocol não existir o envio é simplesmente pulado — o agendamento acontece igual.
+
+**Pendência**: criar o segredo `GA4_MP_API_SECRET` (GA4 → Admin → Fluxos de dados → Measurement Protocol). Sem ele o vínculo é registrado mas o evento não é enviado.
 ## 29.1.0 — Canal real do agendamento (site x JuIA x balcão)
 
 **O achado que motivou isto.** Entre 01 e 07/08/2026 o banco registrou **22 agendamentos com `channel='site'`**, mas o GA4 recebeu só **3 eventos `booking_confirmed`** — e um deles foi um teste meu. O evento só dispara no formulário do site; a JuIA usa a mesma `create_public_booking_v15` e também saía marcada como "site", sem passar por navegador nenhum.
