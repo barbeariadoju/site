@@ -1653,6 +1653,23 @@ Deno.serve(async req=>{
         await supabase.from('bookings').update({channel:verifiedPhone?'juia_whatsapp':'juia_chat'}).eq('id',bookingId)
       }catch(chErr){console.error('[ju-ia-site] channel',chErr)}
 
+      // v29.10.0 — fidelidade proativa de verdade: se o cliente tem prêmio disponível,
+      // aplica sozinha no serviço MAIS CARO do combo (o resto continua cobrando e
+      // pontuando normal). Só quando verifiedPhone&&hasCustomer (mesma guarda de sempre —
+      // nunca em telefone digitado em texto livre, que pode ser de outra pessoa). Nunca
+      // bloqueia o agendamento se falhar: best-effort, igual ao canal/GA4/push acima.
+      let rewardApplied=false, freedService:any=null
+      if(verifiedPhone&&hasCustomer&&rewards>0){
+        try{
+          freedService=chosen.reduce((max:any,s:any)=>(!max||s.price>max.price)?s:max,null)
+          if(freedService){
+            const {data:reserveData}=await supabase.rpc('reserve_loyalty_reward',{p_phone:phone,p_booking_id:bookingId,p_discount:freedService.price,p_freed_service_name:freedService.name})
+            const row=Array.isArray(reserveData)?reserveData[0]:reserveData
+            rewardApplied=Boolean(row?.reserved)
+          }
+        }catch(rewardErr){console.error('[ju-ia-site] reward',rewardErr)}
+      }
+
       // v29.2.0 — se esta conversa veio do site com código de atribuição, manda o
       // agendamento pro GA4 usando o MESMO client_id daquela visita. É isso que faz
       // o Google Ads conseguir creditar o agendamento ao anúncio que trouxe a pessoa.
@@ -1701,15 +1718,33 @@ Deno.serve(async req=>{
           if(extPushSecret&&extSupabaseUrl)await fetch(`${extSupabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':extPushSecret},body:JSON.stringify({custom:{title:'⏰ Atendimento estendido marcado',body:`${next.name} — ${formatDateBR(next.date)} às ${next.time} (${chosen.map((s:any)=>s.name).join(' + ')}) termina depois do fechamento. A JuIA confirmou com aviso.`,url:'/admin-agenda.html?app=1',tag:`extended-${bookingId}`}})})
         }
       }catch(extError){console.error('[ju-ia-site] push estendido',extError)}
+      // v29.10.0 — push dedicado quando o agendamento usa um prêmio de fidelidade, pra
+      // você já saber ANTES do cliente chegar que aquele serviço é por conta da casa (o
+      // push genérico acima mostra o preço já descontado, mas não explica o porquê).
+      try{
+        if(rewardApplied&&freedService){
+          const remaining=chosen.filter((s:any)=>s!==freedService)
+          const remainingText=remaining.length?`cobrar só ${remaining.map((s:any)=>s.name).join(' + ')}`:'nada além disso'
+          const rwPushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+          const rwSupabaseUrl=Deno.env.get('SUPABASE_URL')
+          if(rwPushSecret&&rwSupabaseUrl)await fetch(`${rwSupabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':rwPushSecret},body:JSON.stringify({custom:{title:'🎁 Agendamento com bônus de fidelidade',body:`${next.name} — ${formatDateBR(next.date)} às ${next.time}: ${freedService.name} é grátis (fidelidade), ${remainingText}.`,url:'/admin-agenda.html?app=1',tag:`loyalty-${bookingId}`}})})
+        }
+      }catch(rwPushErr){console.error('[ju-ia-site] push fidelidade',rwPushErr)}
       const prodText=selectedProducts.length?` Produtos reservados: ${selectedProducts.map((p:any)=>p.name).join(', ')}.`:''
-      // v28.32.0: fidelidade proativa (pedido do Juliano, 31/07/2026 à noite, item 5) — só
-      // no momento exato da confirmação do agendamento (não em qualquer resposta), e só
-      // quando o telefone já é confirmado pelo canal (WhatsApp) — nunca em telefone digitado
-      // em texto livre no chat do site, que pode ser de outra pessoa. Duas situações: já tem
-      // recompensa disponível (avisa que pode usar), ou este atendimento fecha o cartão de 10
-      // (avisa que o PRÓXIMO corte sai grátis). Fora esses dois casos específicos, continua
-      // calado sobre fidelidade — não vira propaganda a cada agendamento.
-      const loyaltyNote=(verifiedPhone&&hasCustomer)?(rewards>0?` A propósito, você já tem ${rewards} corte(s) grátis disponível(is) pela fidelidade — é só avisar quando quiser usar! 🎁`:points===9?` Ah, e esse atendimento vai completar seu cartão fidelidade — no próximo corte você ganha um grátis! 🎉`:''):''
+      // v28.32.0/v29.10.0: fidelidade proativa (pedido do Juliano) — só no momento exato da
+      // confirmação do agendamento (não em qualquer resposta), e só quando o telefone já é
+      // confirmado pelo canal (WhatsApp) — nunca em telefone digitado em texto livre no chat
+      // do site, que pode ser de outra pessoa. 4 situações, em ordem de prioridade: prêmio
+      // acabou de ser aplicado nesse agendamento; tinha prêmio mas não deu pra aplicar agora
+      // (avisa que pode usar, caminho de segurança); fecha o cartão de 10 com este
+      // atendimento; senão, nota de progresso simples ("faltam N pontos"). Fora esses casos, continua
+      // calado sobre fidelidade (não sabe o contexto pra falar nada com segurança).
+      const loyaltyRemaining=chosen.filter((s:any)=>s!==freedService)
+      const loyaltyNote=!(verifiedPhone&&hasCustomer)?'':
+        rewardApplied&&freedService?(loyaltyRemaining.length?` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')} — e ainda pontua com ele(s) 😄`:` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Obrigada pela preferência 😄`):
+        rewards>0?` A propósito, você já tem ${rewards} corte(s) grátis disponível(is) pela fidelidade — é só avisar quando quiser usar! 🎁`:
+        points===9?` Ah, e esse atendimento vai completar seu cartão fidelidade — no próximo corte você ganha um grátis! 🎉`:
+        ` A propósito, você está com ${points} ponto(s) de fidelidade — faltam ${Math.max(0,10-points)} pra ganhar um serviço grátis. 💈`
       reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
