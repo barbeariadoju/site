@@ -313,20 +313,21 @@
     list.innerHTML = filtered.map(r => {
       const created = new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
       const editable = r.status === 'rascunho';
-      // Responder DM depende da permissão de mensagens (pages_messaging), que o app da Meta
-      // ainda não tem — a API devolve "(#3) Application does not have the capability...".
-      // Antes disso o botão "Aprovar e enviar" aparecia normalmente e o erro só estourava
-      // depois de escrever a resposta. Avisar aqui em cima evita o trabalho perdido.
-      const dmBloqueada = r.kind === 'message';
+      // v29.9.0: a JuIA Social responde sozinha agora (comentário e DM); o que cai aqui
+      // como 'rascunho' são só os 2 casos que precisam de você — mensagem sem texto
+      // (figurinha/mídia, a IA não tem o que responder) ou o envio automático falhou de
+      // verdade (ex. permissão da Meta). O motivo real da falha some no card, mas fica
+      // registrado em context.auto_send_error se precisar investigar.
+      const semTexto = !r.original_text;
       return `<article class="conteudo-card" data-id="${r.id}">
-        <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}</span>
+        <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}${r.status === 'enviado' ? ' · enviado automaticamente' : ''}</span>
         <p class="meta"><strong>${esc(r.sender_name || 'Cliente (a Meta não informou o nome)')}</strong> disse:</p>
         <p class="meta" style="color:var(--text);white-space:pre-wrap">${r.original_text ? esc(r.original_text) : '<em>(mensagem sem texto — provavelmente figurinha, áudio, foto ou reação; abra o Direct/Messenger pra ver o conteúdo antes de responder)</em>'}</p>
-        ${editable && dmBloqueada ? `<p class="meta" style="color:var(--gold);border:1px solid var(--line);border-radius:.7rem;padding:.6rem .8rem;background:rgba(240,201,135,.06)">⚠️ Enviar mensagem direta ainda não está liberado: falta a permissão de mensagens no app da Meta. Responda esta pessoa pelo app do Instagram/Messenger. (Responder <b>comentários</b> por aqui funciona normalmente.)</p>` : ''}
+        ${editable && !semTexto ? `<p class="meta" style="color:var(--gold);border:1px solid var(--line);border-radius:.7rem;padding:.6rem .8rem;background:rgba(240,201,135,.06)">⚠️ A JuIA tentou responder sozinha e não conseguiu enviar — escreva/ajuste a resposta e aprove manualmente abaixo.</p>` : ''}
         <textarea data-role="social-reply" ${editable ? '' : 'readonly'}>${esc(r.reply_text || r.ai_draft || '')}</textarea>
         <p class="meta">Recebido em ${esc(created)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          ${dmBloqueada ? '' : '<button type="button" class="is-primary" data-action="social-send">✅ Aprovar e enviar</button>'}
+          <button type="button" class="is-primary" data-action="social-send">✅ Aprovar e enviar</button>
           <button type="button" data-action="social-ignore">Ignorar</button>
           <button type="button" class="is-danger" data-action="social-reject">Rejeitar</button>
         </div>` : ''}
