@@ -218,18 +218,32 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
       fire('pix_declined',{value:valor});
       box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve! 💈</p>';
     };
-    $('pix-done').onclick=async(e)=>{
-      e.target.disabled=true; e.target.textContent='Registrando…';
-      const {data,error}=await sb.rpc('declare_prepay',{p_booking_code:bookingCode,p_token:managementToken});
-      const row=Array.isArray(data)?data[0]:data;
-      if(error||!row?.ok){
+    // v29.3.0 — passa pela function em vez da RPC direta: ela registra E dispara o push
+    // pro Juliano na hora, dizendo pra qual chave conferir. Antes a declaração morria no
+    // banco e ele só descobria se abrisse o painel.
+    const declarar=async(chave,botao)=>{
+      const antes=botao.textContent;
+      botao.disabled=true; botao.textContent='Registrando…';
+      let ok=false;
+      try{
+        const r=await fetch(`${cfg.supabaseUrl}/functions/v1/prepay-declare`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({booking_code:bookingCode,token:managementToken,key:chave})
+        });
+        ok=(await r.json().catch(()=>({}))).ok===true;
+      }catch{ ok=false }
+      if(!ok){
         statusEl.textContent='Não consegui registrar agora, mas fique tranquilo: leve o comprovante que acertamos na hora.';
-        e.target.disabled=false; e.target.textContent='✅ Já fiz o Pix';
+        botao.disabled=false; botao.textContent=antes;
         return;
       }
-      fire('pix_declared',{value:valor});
-      box.innerHTML='<strong class="pix-offer-title">Obrigado! 🙏</strong><p class="pix-offer-lead">Anotamos aqui que você adiantou o pagamento. O Juliano confere o Pix e, no dia, é só sentar na cadeira — quando terminar, você já sai direto. Até breve! 💈</p>';
+      fire('pix_declared',{value:valor,chave});
+      box.innerHTML='<strong class="pix-offer-title">Recebemos seu aviso! 🙏</strong><p class="pix-offer-lead">Seu horário está garantido. O Juliano confere o Pix e te avisa por aqui quando o pagamento cair — se faltar alguma coisa, a gente fala com você antes. Não precisa fazer mais nada. 💈</p>';
     };
+    $('pix-done').onclick=(e)=>declarar('pagbank',e.target);
+    // Caso raro: quem pediu a chave alternativa à JuIA e pagou no PicPay.
+    const outra=$('pix-outra-chave');
+    if(outra)outra.onclick=(e)=>{e.preventDefault();declarar('picpay',outra)};
   }
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
@@ -259,6 +273,7 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
           <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>
         </div>
         <p class="pix-offer-status" id="pix-status" role="status"></p>
+        <p class="pix-offer-note"><a href="#" id="pix-outra-chave">Paguei no PicPay (e-mail)</a></p>
       </div>`;
     $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?pixHtml:''}`;
     if(result.booking_code&&result.management_token)bindPixOffer(result.booking_code,result.management_token,totalPagar);

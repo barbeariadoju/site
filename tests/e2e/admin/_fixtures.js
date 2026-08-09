@@ -42,6 +42,10 @@ export function makeFixtures(overrides = {}) {
       booking({ status: 'cancelled', booking_date: dayOfMonth(4) }),
       booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Barba', service_price: 35, status: 'confirmed', booking_date: iso(addDays(today, 1)), start_time: '09:00:00', end_time: '09:30:00' }),
       booking({ customer_name: CARLA.name, customer_phone: CARLA.phone, customer_email: null, status: 'pending', booking_date: iso(addDays(today, 2)), start_time: '15:00:00', end_time: '15:30:00' }),
+      // v29.3.0: um com Pix declarado e não confirmado (mostra o botão de confirmar) e
+      // outro já confirmado (mostra o selo verde). Ambos hoje, para caírem na Agenda.
+      booking({ customer_name: 'Pix Declarado', customer_phone: '11955550001', customer_email: null, status: 'confirmed', booking_date: iso(today), start_time: '17:00:00', end_time: '17:30:00', prepay_declared_at: tsOfMonth(1), prepay_key: 'picpay' }),
+      booking({ customer_name: 'Pix Confirmado', customer_phone: '11955550002', customer_email: null, status: 'confirmed', booking_date: iso(today), start_time: '17:30:00', end_time: '18:00:00', prepay_declared_at: tsOfMonth(1), prepay_key: 'pagbank', prepay_confirmed_at: tsOfMonth(1) }),
     ],
 
     // Financeiro (v29.0.0). Receita do mês vem dos bookings acima (R$ 175);

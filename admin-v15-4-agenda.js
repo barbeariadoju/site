@@ -29,8 +29,15 @@
     const total=money(Number(x.service_price||0)+Number(x.products_price||0));
     // v28.68.0: cliente que avisou ter feito o Pix antecipado. É DECLARAÇÃO do cliente, não
     // confirmação de pagamento — por isso o texto pede conferência em vez de afirmar "pago".
-    const prepay=x.prepay_declared_at?`<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix — conferir</span>`:'';
-    const prepayMini=x.prepay_declared_at?'<span class="admin-prepay-dot" title="Pix antecipado declarado">💸</span>':'';
+    // v29.3.0: a declaração agora diz PARA QUAL CHAVE, pra abrir o app certo de primeira,
+    // e ganha o botão de confirmar — que avisa o cliente por WhatsApp.
+    const prepayKeyLabel=x.prepay_key==='picpay'?'PicPay · e-mail contato@barbeariadoju.com.br':'PagBank · celular 11967073038';
+    const prepay=x.prepay_declared_at
+      ? (x.prepay_confirmed_at
+        ? `<span class="admin-prepay-flag is-confirmed" title="Você confirmou o recebimento">✅ Pix recebido e confirmado</span>`
+        : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
+      : '';
+    const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?'Pix confirmado':'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
     return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong><small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){
@@ -61,7 +68,26 @@
     if(error){alert(error.message);if(trigger){trigger.disabled=false;trigger.textContent='🗑 Excluir registro'}return}
     await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
   }
-  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b))}
+  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b));root.querySelectorAll('[data-confirm-prepay]').forEach(b=>b.onclick=()=>confirmPrepay(b.dataset.confirmPrepay,b))}
+
+  // v29.3.0 — confirma que o Pix caiu e avisa o cliente pelo WhatsApp. É o que fecha
+  // o ciclo: até aqui o cliente pagava, avisava, e nunca recebia retorno nenhum.
+  async function confirmPrepay(id,btn){
+    if(!confirm('Confirmar que o Pix deste cliente caiu na conta?\n\nEle vai receber um aviso no WhatsApp.'))return;
+    const antes=btn.textContent; btn.disabled=true; btn.textContent='Confirmando…';
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const r=await fetch(`${cfg.supabaseUrl}/functions/v1/prepay-confirm`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${session?.access_token||''}`},
+        body:JSON.stringify({booking_id:id})
+      });
+      const out=await r.json().catch(()=>({}));
+      if(!out.ok){btn.disabled=false;btn.textContent=antes;alert(out.message||'Não foi possível confirmar.');return}
+      if(!out.avisou)alert('Confirmado! Mas não consegui avisar o cliente pelo WhatsApp — vale mandar uma mensagem manual.');
+      await loadAgendaDay();
+    }catch(e){console.error(e);btn.disabled=false;btn.textContent=antes;alert('Não foi possível confirmar agora.')}
+  }
   // v28.65.0 — caso Moisés: o cancelado era 18:00–18:50 e outro cliente entrou das 17:00 às
   // 18:15 no meio tempo, então reativar batia em 'horario_ocupado' e a única saída oferecida
   // era criar um agendamento do zero por "Novo retorno" — perdendo o registro original.

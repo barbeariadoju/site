@@ -1,3 +1,23 @@
+## 29.3.0 — Pix: o ciclo fechado, sem API e sem taxa
+
+Pedido do Juliano: dar segurança a quem paga adiantado, sem depender da API do PagBank (decisão de não usar a API por ora — ver [[projeto-pix-pagbank-api]]).
+
+**O que faltava.** O cliente pagava, clicava em "Já fiz o Pix", e ficava no vácuo — nunca recebia retorno. Do outro lado, o Juliano só descobria a declaração se abrisse o painel, e ainda tinha que adivinhar em qual aplicativo conferir.
+
+**O ciclo agora:**
+1. Cliente declara → **push na hora** no celular do Juliano, dizendo **para qual chave** conferir (PagBank celular ou PicPay e-mail). Era o pedido literal dele: *"preciso ver pix enviado para picpay, pix enviado para pagbank, assim abro na hora a conta correta"*.
+2. Ele confere o extrato e aperta **"✅ Confirmar que o Pix caiu"** no card da agenda.
+3. O cliente recebe no WhatsApp: *"Pagamento confirmado ✅ ... não precisa fazer mais nada."*
+
+- Migration 102: `bookings.prepay_key` e `prepay_confirmed_at`; `declare_prepay` ganhou o parâmetro da chave (com `DROP` antes, pelo gotcha de sobrecarga da migration 041) e passou a devolver os dados do cliente; nova `confirm_prepay`, protegida por `is_admin()`.
+- Nova function pública `prepay-declare` (verify_jwt=false, autorizada pelo par código+token): registra **e** dispara o push. Antes o site chamava a RPC direto e a declaração morria no banco.
+- Nova function `prepay-confirm`: chama a RPC **com o token do próprio admin** (não com service role) para que `is_admin()` valha de verdade, e só então avisa o cliente pela Evolution.
+- Site: novo texto de retorno ao cliente e link discreto "Paguei no PicPay (e-mail)" para o caso raro de quem pediu a chave alternativa à JuIA.
+- Painel: selo verde quando confirmado, e o botão de confirmar quando ainda não.
+
+**Verificado**: declaração com chave gravando certo (`prepay_key='picpay'`), token inválido recusado, `confirm_prepay` recusando quem não é admin, e `test:admin` 26/26 com os dois estados renderizando na Agenda.
+
+**O que ainda falta e vale mais que tudo isso**: a JuIA oferecer o adiantamento na conversa. Hoje o bloco de Pix só existe no formulário do site, que responde por ~9% dos agendamentos (ver v29.1.0). O Juliano relatou que os clientes chegam na barbearia e demoram para abrir o aplicativo e pagar — oferecer antes, no WhatsApp, resolve isso onde o cliente está.
 ## 29.2.0 — Atribuição dos agendamentos que nascem no WhatsApp
 
 Fecha o buraco aberto pela descoberta da v29.1.0: ~90% dos agendamentos vêm da JuIA no WhatsApp, e o Google Ads não enxergava nenhum deles. Quando a pessoa sai do site e abre o WhatsApp, o identificador do clique no anúncio não vai junto — a conversa começa sem vínculo com a visita.
