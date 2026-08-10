@@ -443,6 +443,26 @@ Deno.serve(async req=>{
  {
   const prevServices=Array.isArray(state?.services)?state.services:[]
   const mentionedLoose=findServicesLoose(message).map((s:any)=>s.name)
+  // v29.11.0: bug real (cliente com "Corte de cabelo" + "Barba Express" já anotados,
+  // pergunta de lavagem pendente respondida com "só o corte") — o merge da linha ~433
+  // SUBSTITUI next.services inteiro pelo array que o modelo devolve, e o modelo às vezes
+  // devolve só o serviço em discussão na pergunta pontual do turno ("Corte de cabelo"),
+  // sem repetir os outros já confirmados — apagando Barba Express silenciosamente.
+  // Repõe qualquer serviço do turno anterior que sumiu do array novo sem ser citado
+  // (nem solto nem por trás de "só"/"sem") nesta mensagem — troca/remoção real continua
+  // funcionando, pois aí o serviço tirado ou o novo aparece em mentionedLoose. Exceção:
+  // não repõe um serviço base já ABSORVIDO por um combo presente no array novo (ex.:
+  // "Corte de cabelo" some porque virou "Corte + Lavagem", "Barba Express" some porque
+  // virou "Corte + Barba Express") — repor duplicaria o serviço (achado testando "quero
+  // com lavagem" depois de corte+barba: sem esta exceção voltava "Corte de cabelo" solto
+  // JUNTO do "Corte + Lavagem"). "Corte + Lavagem" não usa a categoria 'combo' no catálogo
+  // (é 'corte'), por isso a checagem é por nome (partes do nome do combo), não categoria.
+  const supersededByComboNow=(base:string)=>next.services.some((cur:string)=>{
+   if(!comboSignal.test(cur))return false
+   const nb=normalize(base)
+   return cur.split(/\+| e /i).some((part:string)=>{const np=normalize(part.trim());return np&&(np.includes(nb)||nb.includes(np))})
+  })
+  next.services=[...next.services,...prevServices.filter((n:string)=>!next.services.includes(n)&&!mentionedLoose.includes(n)&&!supersededByComboNow(n))]
   const prefRaw=context?.preferred_services
   const prefList=Array.isArray(prefRaw)?prefRaw:(typeof prefRaw==='string'&&prefRaw?[prefRaw]:[])
   const historyServiceNames=[findService(String(context?.last_services||''))?.name,...prefList.map((x:string)=>findService(String(x))?.name)].filter(Boolean)
