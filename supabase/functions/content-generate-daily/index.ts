@@ -157,7 +157,9 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: requestParts }], generationConfig: { responseModalities: ['IMAGE'] } }),
       },
-      45000,
+      // v29.12.0: 45s era apertado — a geração normalmente leva 6-20s, mas num dia lento
+      // estourou e o post do dia saiu sem arte. 90s ainda cabe folgado no cron.
+      90000,
     )
     if (!r.ok) { console.error('[content-generate-daily] gemini', r.status, await r.text().catch(() => '')); return null }
     const d = await r.json().catch(() => ({}))
@@ -339,9 +341,27 @@ Deno.serve(async (request: Request) => {
         console.error('[content-generate-daily] insert instagram', error)
       } else {
         insertedRows.push({ id: inserted.id, platform: 'instagram', caption })
-        const imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+        // v29.12.0 — em 11/08/2026 os 3 rascunhos do dia saíram SEM imagem nenhuma: a
+        // chamada ao Gemini estourou o tempo (a função inteira levou 58s) e o código
+        // simplesmente seguiu com null, em silêncio. Testado depois, o mesmo modelo
+        // respondeu em 6 segundos — ou seja, foi lentidão passageira, não erro de
+        // configuração. Duas correções: uma segunda tentativa antes de desistir, e a
+        // MESMA arte aproveitada no Facebook e no Status do WhatsApp (antes só o
+        // Instagram recebia imagem, e post com foto rende muito mais nos outros dois).
+        let imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+        if (!imageUrl) {
+          console.error('[content-generate-daily] imagem falhou na 1a tentativa, tentando de novo')
+          imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+        }
         if (imageUrl) {
           await admin.from('content_posts').update({ context: { ...context, image_url: imageUrl } }).eq('id', inserted.id)
+          const outrosIds = insertedRows.filter((r) => r.platform !== 'instagram').map((r) => r.id)
+          for (const outroId of outrosIds) {
+            const { data: outro } = await admin.from('content_posts').select('context').eq('id', outroId).maybeSingle()
+            await admin.from('content_posts').update({ context: { ...((outro?.context as Record<string, unknown>) || {}), image_url: imageUrl } }).eq('id', outroId)
+          }
+        } else {
+          console.error('[content-generate-daily] imagem falhou nas 2 tentativas — rascunhos ficam sem arte')
         }
       }
     }
