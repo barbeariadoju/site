@@ -282,6 +282,52 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // v29.12.0 — extras da conclusão (pontos do cartão de papel + "cliente recorrente")
+    // MIGRARAM da tela pra cá. Antes o admin-v15-4-agenda.js chamava admin_apply_completion_extras
+    // direto do navegador logo depois desta function; em 11/08/2026 o Juliano concluiu 3
+    // atendimentos marcando as duas coisas e NADA foi gravado (Caio/Rafael/Deisler seguiram
+    // com 1 ponto e "1ª visita"), sem erro visível pra ele. Chamando aqui, com o MESMO JWT
+    // de admin que já foi validado acima (authClient, não service_role — a RPC exige
+    // is_admin(), que depende do auth.uid() do Juliano), o resultado entra na resposta e o
+    // erro aparece no log da function em vez de morrer num alert que passa batido.
+    const loyaltyDelta = Number(body?.loyalty_delta || 0)
+    const markRecurring = Boolean(body?.mark_recurring)
+    let extras: { attempted: boolean; applied: boolean; error: string } = { attempted: false, applied: false, error: '' }
+    if (hasStatusChange && status === 'completed' && (loyaltyDelta || markRecurring)) {
+      extras.attempted = true
+      const { error: extrasError } = await authClient.rpc('admin_apply_completion_extras', {
+        p_phone: String(current.customer_phone || ''),
+        p_customer_name: String(current.customer_name || ''),
+        p_loyalty_delta: Number.isFinite(loyaltyDelta) ? loyaltyDelta : 0,
+        p_mark_recurring: markRecurring,
+      })
+      extras.applied = !extrasError
+      if (extrasError) {
+        extras.error = extrasError.message || 'Falha ao aplicar os extras.'
+        console.error('[admin-booking-status] completion_extras_failed', JSON.stringify({ requestId, bookingId, loyaltyDelta, markRecurring, dbCode: extrasError.code, dbMessage: extrasError.message, dbDetails: extrasError.details, dbHint: extrasError.hint }))
+      } else {
+        log('completion_extras_applied', { requestId, bookingId, loyaltyDelta, markRecurring })
+      }
+    }
+
+    // v29.12.0 — pesquisa de satisfação NA HORA da conclusão (caso Deisler, 11/08/2026).
+    // O trigger do banco já cria a experience_request com scheduled_for=agora, mas quem
+    // ENVIA é o cron satisfaction-dispatch, que roda de 15 em 15 min — o cliente saía da
+    // cadeira e a pesquisa só chegava até 15 minutos depois (nesse caso, 7 min), tempo
+    // suficiente pro Juliano achar que o mecanismo tinha falhado e mandar o pedido de
+    // avaliação na mão. Agora a conclusão chama o dispatch imediatamente; o cron continua
+    // existindo como rede de segurança (se esta chamada falhar, o próximo ciclo pega).
+    // Fire-and-forget de propósito: nada aqui pode atrasar ou derrubar a resposta da tela.
+    if (hasStatusChange && status === 'completed' && emailSecret) {
+      fetch(`${supabaseUrl}/functions/v1/satisfaction-dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-webhook-secret': emailSecret },
+        body: JSON.stringify({ source: 'admin-booking-status', booking_id: bookingId }),
+      })
+        .then(() => log('satisfaction_dispatch_triggered', { requestId, bookingId }))
+        .catch((dispatchError) => console.error('[admin-booking-status] satisfaction_dispatch', JSON.stringify({ requestId, bookingId, error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError) })))
+    }
+
     let email = { attempted: false, sent: false, skipped: false, error: '' }
 
     if (status === 'cancelled') {
@@ -363,7 +409,7 @@ Deno.serve(async (request: Request) => {
       }
     }
 
-    return json({ ok: true, request_id: requestId, booking: updated, email })
+    return json({ ok: true, request_id: requestId, booking: updated, email, extras })
   } catch (error) {
     return fail('unexpected', error instanceof Error ? error.message : 'Falha ao atualizar o agendamento.', 500, {
       requestId,

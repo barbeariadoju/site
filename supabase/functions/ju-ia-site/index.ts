@@ -197,6 +197,12 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
  return true
 })
 const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':'final do dia'
+// v29.12.0 — caso real 11/08/2026: cliente respondeu "Indiferente" e depois "QQ horário"
+// para a pergunta "manhã, tarde ou final do dia?" e a JuIA repetiu a MESMA pergunta, porque
+// nenhuma dessas respostas casa com um período. "Sem preferência" é uma resposta legítima:
+// significa "me mostra os horários e eu escolho". Cobre abreviações reais de WhatsApp
+// (qq/qq um/qlqr/qualquer) e as formas de "tanto faz"/"você escolhe".
+const noPeriodPreference=(text:string)=>/\bindiferente\b|tanto faz|\bqq\b|\bqqr\b|\bqlqr\b|\bqualquer\b|nao tenho preferencia|sem preferencia|\bvoce escolhe\b|\bvc escolhe\b|voce que sabe|vc que sabe|o que tiver|o que estiver|qualquer um|pode ser qualquer|(^|\s)(qual|quais) (voce|vc) (tem|puder)/.test(text)
 
 // Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
 // em services-catalog-v7.js/products-catalog-v1.js — esta function roda em Deno e não
@@ -1467,7 +1473,14 @@ Deno.serve(async req=>{
  // horário hoje a tarde?" seguido de "corte de cabelo") — sem lembrar isso, a JuIA
  // perguntava de novo "manhã, tarde ou final do dia?" ignorando o que já foi dito.
  if(requestedPeriod)next.period=requestedPeriod
+ // "Indiferente"/"qq horário" = o cliente abriu mão de escolher período. Guardado no estado
+ // porque ele responde isso UMA vez e a conversa continua (upsell, produto, etc.) — sem
+ // guardar, a pergunta de período voltaria no turno seguinte, que é exatamente o loop que
+ // o Juliano viu. Um período dito depois ("prefiro de manhã") desfaz a indiferença.
+ if(requestedPeriod)next.period_any=false
+ else if(noPeriodPreference(normalizedQuestion))next.period_any=true
  const effectivePeriod=requestedPeriod||next.period
+ const anyPeriodOk=Boolean(next.period_any)&&!effectivePeriod
  const requestedTime=extractRequestedTime(message)
  // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
@@ -1618,8 +1631,17 @@ Deno.serve(async req=>{
      {label:'Ver final do dia',message:'Prefiro final do dia'}
     ]
    }
+  }else if(allSlots.length>10&&anyPeriodOk){
+   // Cliente já disse que qualquer horário serve: perguntar período de novo é o loop que
+   // o Juliano flagrou. Mostra uma amostra espalhada do dia inteiro e deixa ele apontar.
+   const spread=[allSlots[0],allSlots[Math.floor(allSlots.length*0.25)],allSlots[Math.floor(allSlots.length/2)],allSlots[Math.floor(allSlots.length*0.75)],allSlots[allSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
+   reply=`Perfeito! Para ${serviceNames} (${duration} min) consigo te atender entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Alguns horários: ${spread.join(', ')}. Qual fica melhor pra você?`
+   actions=spread.map((t:string)=>({label:t,message:t}))
   }else if(allSlots.length>10){
-   reply=`Tenho ${allSlots.length} horários disponíveis para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
+   // v29.12.0: não dizer mais o NÚMERO de horários livres ("Tenho 42 horários disponíveis")
+   // — é a agenda vazia anunciada ao cliente, o mesmo erro que a trava de vacância impede no
+   // conteúdo público. O que ele precisa saber é que dá pra encaixar, não quanto sobra.
+   reply=`Consigo te atender em vários horários para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
    actions=[
     {label:'Manhã',message:'Prefiro manhã'},
     {label:'Tarde',message:'Prefiro tarde'},

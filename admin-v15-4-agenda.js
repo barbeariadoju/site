@@ -359,14 +359,15 @@
       if(completionProducts)body.selected_products=completionProducts;
       if(completionService)body.service=completionService;
       if(typeof completionRequestGoogleReview==='boolean')body.request_google_review=completionRequestGoogleReview;
+      // v29.12.0: extras (pontos antigos + cliente recorrente) vão JUNTO no mesmo pedido.
+      // Antes eram um sb.rpc separado daqui do navegador, e em 11/08/2026 falharam calados
+      // em 3 conclusões seguidas. Agora quem chama a RPC é a própria function, com o JWT de
+      // admin já validado, e devolve em data.extras se aplicou ou o motivo da recusa.
+      if(completionLoyaltyDelta)body.loyalty_delta=completionLoyaltyDelta;
+      if(completionMarkRecurring)body.mark_recurring=true;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
-      // Extras opcionais da conclusão (v29.9.0): pontos de fidelidade avulsos e marcar
-      // "cliente recorrente" — não bloqueiam a conclusão em si se falharem, só avisam.
-      if(status==='completed'&&booking&&(completionLoyaltyDelta||completionMarkRecurring)){
-        const{error:extrasError}=await sb.rpc('admin_apply_completion_extras',{p_phone:booking.customer_phone,p_customer_name:booking.customer_name,p_loyalty_delta:completionLoyaltyDelta,p_mark_recurring:completionMarkRecurring});
-        if(extrasError)alert(`Atendimento concluído, mas não deu pra salvar os extras (fidelidade/recorrente): ${extrasError.message}`)
-      }
+      if(data?.extras?.attempted&&!data.extras.applied){alert(`Atendimento concluído, mas os extras (pontos de fidelidade / cliente recorrente) NÃO foram salvos: ${data.extras.error||'motivo desconhecido'}`)}
       await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
       if(status==='cancelled'){
         if(data?.email?.skipped)alert('Agendamento cancelado. O cliente não recebeu e-mail porque não há e-mail cadastrado.');
@@ -375,7 +376,10 @@
 ${data?.email?.error||'Verifique os registros da função.'}`);
         else if(data?.email?.sent)alert('Agendamento cancelado e e-mail enviado ao cliente.')
       }
-      if(status==='completed'&&booking){alert(booking.customer_email?'Atendimento concluído. A pesquisa de satisfação será enviada automaticamente em aproximadamente 2 horas.':'Atendimento concluído. A pesquisa automática não será enviada porque o cliente não possui e-mail cadastrado.')}
+      // v29.12.0: o texto antigo dizia "em aproximadamente 2 horas" e que sem e-mail não
+      // haveria pesquisa — as duas coisas ficaram falsas: a pesquisa sai pelo WhatsApp e
+      // agora é disparada na hora da conclusão (o cron de 15 min virou só rede de segurança).
+      if(status==='completed'&&booking){alert('Atendimento concluído. A pesquisa de satisfação já foi disparada pelo WhatsApp do cliente.')}
     }finally{if(button&&button.isConnected){button.disabled=false;button.textContent=oldText}}
   }
   async function loadBlocks(){const box=$('agenda-block-list'),{data,error}=await sb.from('schedule_blocks').select('*').eq('block_date',selectedDate).order('start_time',{ascending:true,nullsFirst:true});if(error){box.innerHTML=`<div class="admin-empty">${esc(error.message)}</div>`;return}box.innerHTML=(data||[]).length?data.map(x=>`<div class="admin-block-row"><div><strong>${x.all_day?'Dia inteiro':`${x.start_time.slice(0,5)}–${x.end_time.slice(0,5)}`}</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></div><button data-delete-block="${x.id}">Liberar</button></div>`).join(''):'<div class="admin-empty">Nenhum bloqueio nesta data.</div>';box.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock))}

@@ -165,6 +165,11 @@ const DEBOUNCE_MS = 6000
 // porque o serviço antigo continuava preenchido.
 const STALE_CONVERSATION_MS = 6 * 60 * 60 * 1000
 
+// v29.12.0: intervalo mínimo entre dois pushes de "cliente escreveu durante o takeover"
+// para o MESMO telefone. 10 min é curto o bastante pra não perder uma pergunta e longo
+// o bastante pra uma conversa de várias mensagens não virar chuva de notificação.
+const TAKEOVER_PUSH_COOLDOWN_MS = 10 * 60 * 1000
+
 const isTakeoverActive = (row: { human_takeover?: boolean; human_takeover_at?: string | null } | null | undefined) => {
   if (!row?.human_takeover) return false
   if (!row.human_takeover_at) return true // registro antigo sem timestamp — trata como ativo, expira na próxima vez que for setado de novo
@@ -458,7 +463,55 @@ Deno.serve(async (request: Request) => {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'phone' })
 
-        if (stillActive) return
+        // v29.12.0 — caso Deisler (11/08/2026): o Juliano mandou o pedido de avaliação do
+        // próprio celular (o que liga o human_takeover por 3h) e, 1 minuto depois, o cliente
+        // perguntou quantos cortes faltavam pro corte grátis. A JuIA sabe responder isso
+        // (intent 'loyalty'), mas ficou calada por causa do takeover — CORRETO, porque quem
+        // está conduzindo é o Juliano — só que ninguém avisou ele, e a pergunta morreu ali.
+        // Silêncio continua sendo a regra (a JuIA nunca fala por cima dele), mas agora ele
+        // recebe um push com a pergunta pra decidir se responde. Deduplicado por 10 min em
+        // integration_alerts pra uma conversa animada não virar chuva de notificação.
+        if (stillActive) {
+          try {
+            const alertKey = `takeover_msg_${phone}`
+            const { data: lastAlert } = await admin
+              .from('integration_alerts')
+              .select('last_alerted_at')
+              .eq('alert_key', alertKey)
+              .maybeSingle()
+            const lastAlertMs = lastAlert?.last_alerted_at ? new Date(lastAlert.last_alerted_at).getTime() : 0
+            const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+            if (pushSecret && Date.now() - lastAlertMs > TAKEOVER_PUSH_COOLDOWN_MS) {
+              const { data: profile } = await admin.rpc('get_customer_commercial_context', { p_phone: phone }).then(
+                (r: any) => ({ data: Array.isArray(r?.data) ? r.data[0] : r?.data }),
+                () => ({ data: null }),
+              )
+              const who = profile?.customer_name || phone
+              await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                body: JSON.stringify({
+                  custom: {
+                    title: '💬 Cliente te escreveu (você assumiu a conversa)',
+                    body: `${who}: "${String(text || '[mensagem sem texto]').slice(0, 120)}" — a JuIA está em silêncio porque você respondeu por último.`,
+                    url: '/admin-atendimento.html?app=1',
+                    tag: `takeover-msg-${phone}`,
+                  },
+                }),
+              }).catch((error) => console.error('[whatsapp-webhook] takeover push', error))
+              await admin.from('integration_alerts').upsert({
+                alert_key: alertKey,
+                last_value: { phone, text: String(text || '').slice(0, 200) },
+                last_checked_at: new Date().toISOString(),
+                last_alerted_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'alert_key' })
+            }
+          } catch (takeoverPushError) {
+            console.error('[whatsapp-webhook] takeover push', takeoverPushError)
+          }
+          return
+        }
 
         // v28.32.0: confirmação de presença automática (pedido do Juliano, 31/07/2026 à
         // noite) — checada ANTES da pesquisa de satisfação, mesmo raciocínio do fix do
