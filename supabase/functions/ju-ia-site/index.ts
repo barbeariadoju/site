@@ -202,6 +202,10 @@ const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afterno
 // nenhuma dessas respostas casa com um período. "Sem preferência" é uma resposta legítima:
 // significa "me mostra os horários e eu escolho". Cobre abreviações reais de WhatsApp
 // (qq/qq um/qlqr/qualquer) e as formas de "tanto faz"/"você escolhe".
+// v29.12.0 — "adiar sem marcar data": o cliente avisa que não vem e que fala depois, sem
+// dar dia novo ("eu retorno o contato amanhã", "te aviso", "depois eu marco"). Não é
+// remarcação (não há data) nem é uma pergunta — é motivo pra liberar o horário.
+const postponeSignal=(text:string)=>/retorno o contato|te retorno|retorno depois|volto a falar|entro em contato depois|te aviso|aviso depois|aviso voce|depois eu (falo|vejo|marco|confirmo|aviso|te chamo)|amanha eu (falo|vejo|marco|aviso|te chamo)|vou ver e (te falo|te aviso|falo|aviso)|qualquer coisa eu (chamo|aviso|falo)|deixa (pra|para) (depois|outro dia)|outro dia eu (marco|vejo|falo)|(nao|n) vou (conseguir|poder) (ir|hoje)|fica (pra|para) (a proxima|outro dia)/.test(text)
 const noPeriodPreference=(text:string)=>/\bindiferente\b|tanto faz|\bqq\b|\bqqr\b|\bqlqr\b|\bqualquer\b|nao tenho preferencia|sem preferencia|\bvoce escolhe\b|\bvc escolhe\b|voce que sabe|vc que sabe|o que tiver|o que estiver|qualquer um|pode ser qualquer|(^|\s)(qual|quais) (voce|vc) (tem|puder)/.test(text)
 
 // Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
@@ -896,7 +900,37 @@ Deno.serve(async req=>{
   const rescheduleTarget=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
   const desiredServiceName=chosen.length?chosen.map((s:any)=>s.name).join(' + '):''
   const wantsServiceChange=Boolean(rescheduleTarget)&&Boolean(desiredServiceName)&&normalize(desiredServiceName)!==normalize(String(rescheduleTarget?.service_name||''))
-  if(!verifiedPhone){
+  // v29.12.0 — caso Darlisson (11/08/2026): cliente disse "vamos ter que remarcar" e, na
+  // mensagem seguinte, "Eu retorno o contato amanhã". A JuIA insistiu em oferecer horários
+  // do MESMO dia e o agendamento das 15:45 ficou de pé — cadeira bloqueada por alguém que
+  // já tinha avisado que não vinha. Decisão do Juliano: adiar sem data nova = LIBERAR o
+  // horário na hora e deixar claro que é só chamar quando quiser. Só no WhatsApp
+  // (verifiedPhone), mesma regra do cancelamento.
+  const postponeTarget=verifiedPhone
+    ?(upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)||(upcomingBookings.length===1?upcomingBookings[0]:null))
+    :null
+  const postponedWithoutDate=Boolean(postponeTarget)&&!next.date&&!extractRequestedTime(message)&&postponeSignal(normalizedQuestion)
+  if(postponedWithoutDate){
+   const {data:cancelledRows,error:cancelError}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:postponeTarget.id})
+   const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
+   handoff=false
+   if(cancelError||!cancelled){
+    // Horário já começou (a RPC recusa) ou outra falha: não inventa que liberou.
+    reply=`Sem problema! Vou avisar o Juliano que você precisa remarcar. Quando souber o melhor dia pra você, é só me chamar aqui que eu já vejo os horários. 😊`
+   }else{
+    reply=`Sem problema, imagina! 😊 Já liberei seu horário de ${formatDateBR(postponeTarget.booking_date)} às ${String(postponeTarget.start_time).slice(0,5)} pra você não ficar preso a ele. Quando quiser remarcar, é só me chamar aqui que eu vejo os horários com você.`
+    await notifyWaitlistIfMatch(supabase,postponeTarget.booking_date,postponeTarget.start_time)
+   }
+   const ppSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+   const ppUrl=Deno.env.get('SUPABASE_URL')
+   if(ppSecret&&ppUrl)await fetch(`${ppUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':ppSecret},body:JSON.stringify({custom:{title:cancelled?'🔓 Horário liberado — cliente vai remarcar depois':'⚠️ Cliente quer remarcar, mas o horário não pôde ser liberado',body:`${postponeTarget.customer_name||customerFirstName} — ${formatDateBR(postponeTarget.booking_date)} às ${String(postponeTarget.start_time).slice(0,5)} (${postponeTarget.service_name}). Ele disse que retorna o contato depois.`,url:'/admin-agenda.html?app=1',tag:`postponed-${postponeTarget.id}`}})}).catch(()=>{})
+   next.pending_reschedule_booking_id=null
+   next.pending_reschedule_new_date=null
+   next.pending_reschedule_new_time=null
+   next.date=null
+   next.time=null
+   next.period=null
+  }else if(!verifiedPhone){
    reply='Para remarcar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
    handoff=true
   }else if(next.pending_reschedule_new_date&&next.pending_reschedule_new_time){
