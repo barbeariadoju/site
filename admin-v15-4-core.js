@@ -42,7 +42,12 @@
   // quanto pra reserva futura (vai ser a Nª visita quando o cliente chegar). Soma
   // prior_visits (v29.9.0) — cliente atendido desde antes do sistema existir (12/03/2026),
   // marcado manualmente na conclusão do atendimento, não deve aparecer como "1ª visita".
-  function visitNumber(x){const ph=phoneDigits(x.customer_phone);if(!ph)return 1;const before=allBookings.filter(b=>b.status==='completed'&&phoneDigits(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;const profile=customerProfiles.find(p=>phoneDigits(p.phone)===ph);const prior=Number(profile?.prior_visits||0);return before+prior+1}
+  // v29.12.0 — caso John Maicon: comparar os dígitos exatos fazia '5511974998541' e
+  // '11974998541' parecerem clientes DIFERENTES, então quem tinha sido atendido antes com o
+  // telefone gravado no outro formato voltava a aparecer como "1ª visita". Mesma regra da
+  // função phone_match_key do banco: DDD + os 8 últimos dígitos, ignorando o 55 e o 9.
+  function phoneKey(s=''){const d=phoneDigits(s).replace(/^55/,'');return d.length>=10?d.slice(0,2)+d.slice(-8):d}
+  function visitNumber(x){const ph=phoneKey(x.customer_phone);if(!ph)return 1;const before=allBookings.filter(b=>b.status==='completed'&&phoneKey(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;const profile=customerProfiles.find(p=>phoneKey(p.phone)===ph);const prior=Number(profile?.prior_visits||0);return before+prior+1}
   function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
