@@ -25,7 +25,13 @@ const GRAPH_VERSION = 'v23.0'
 // page_fans etc. dão "must be a valid insights metric"). Reconferir se a API mudar nomes
 // de novo (rodar as métricas uma a uma via GET /{page-id}/insights?metric=X pra isolar
 // qual quebrou, o erro em lote não diz qual é o problema).
-const PAGE_METRICS = ['page_post_engagements', 'page_views_total', 'page_follows']
+// v29.13.0 (11/08/2026) — BUG REAL no primeiro relatório de verdade (segunda 10/08): ele
+// informou "Novos seguidores (Facebook): 35" numa semana em que a Página tem 5 seguidores
+// no TOTAL. A causa: `page_follows` é uma métrica ACUMULADA (o total de seguidores naquele
+// dia), e o código somava os 7 dias — 5 × 7 = 35. Trocada por `page_daily_follows`, que é
+// de fato o ganho do dia e pode ser somada. Regra geral pra não repetir: antes de somar uma
+// métrica da Meta, confirmar se ela é do dia ou um total acumulado.
+const PAGE_METRICS = ['page_post_engagements', 'page_views_total', 'page_daily_follows']
 // v28.55.3 (05/08/2026) — BUG REAL, achado antes do primeiro envio de verdade: as 4 métricas
 // do Instagram eram pedidas num LOTE só, e 3 delas (accounts_engaged, total_interactions,
 // profile_views) exigem `metric_type=total_value`. Sem esse parâmetro a Meta devolve HTTP 400
@@ -61,7 +67,7 @@ const readMetric = (payload: any, metric: string): number | null => {
 const METRIC_LABEL: Record<string, string> = {
   page_post_engagements: 'Interações com posts da Página',
   page_views_total: 'Visitas à Página',
-  page_follows: 'Novos seguidores (Facebook)',
+  page_daily_follows: 'Novos seguidores (Facebook)',
   reach: 'Contas alcançadas (Instagram)',
   accounts_engaged: 'Contas engajadas (Instagram)',
   total_interactions: 'Interações totais (Instagram)',

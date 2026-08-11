@@ -135,12 +135,21 @@ Deno.serve(async (request: Request) => {
       // `juliano-corte.jpg` é quadrada, o 1º vídeo saiu com 720x720 úteis e tarja preta de
       // 280px em cima e embaixo — inútil como Reel. Por isso o quadro inicial pode vir
       // pronto em 9:16 via `imageBase64` (recortado fora daqui) em vez do arquivo do site.
+      // v29.13.0 — geração SEM primeiro quadro (`{"image":"none"}`). Até aqui a função
+      // sempre partia de uma foto real do Juliano trabalhando, pra garantir loja e barbeiro
+      // fiéis. Em 11/08/2026 o Juliano mudou a direção criativa: parar de tentar reproduzir
+      // a loja real e ele mesmo (nunca funcionou — o modelo não mantém identidade) e passar
+      // a fazer cena ilustrativa genérica, rotulada como IA. Sem foto de partida o modelo
+      // respeita o aspectRatio pedido, então o 9:16 sai limpo, sem tarja.
+      const semImagem = String(body?.image || '').trim().toLowerCase() === 'none'
       const inlineImage = typeof body?.imageBase64 === 'string' && body.imageBase64.trim() ? body.imageBase64.trim() : ''
       const firstFrameFile = typeof body?.image === 'string' && body.image.trim() ? body.image.trim() : REFERENCE_JULIANO
-      const firstFrame = inlineImage
-        ? { mimeType: String(body?.imageMimeType || 'image/jpeg'), data: inlineImage }
-        : await fetchImageAsBase64(firstFrameFile)
-      if (!firstFrame) return json({ error: `Não consegui baixar a foto de referência (${firstFrameFile}).` }, 502)
+      const firstFrame = semImagem
+        ? null
+        : inlineImage
+          ? { mimeType: String(body?.imageMimeType || 'image/jpeg'), data: inlineImage }
+          : await fetchImageAsBase64(firstFrameFile)
+      if (!semImagem && !firstFrame) return json({ error: `Não consegui baixar a foto de referência (${firstFrameFile}).` }, 502)
 
       const startResponse = await fetchWithTimeout(
         `${GEMINI_BASE}/models/${VEO_MODEL}:predictLongRunning`,
@@ -150,7 +159,9 @@ Deno.serve(async (request: Request) => {
           body: JSON.stringify({
             // `:predictLongRunning` usa o formato estilo Vertex (bytesBase64Encoded), não
             // o `inlineData` do generateContent — a API recusa inlineData com 400.
-            instances: [{ prompt, image: { bytesBase64Encoded: firstFrame.data, mimeType: firstFrame.mimeType } }],
+            instances: [firstFrame
+              ? { prompt, image: { bytesBase64Encoded: firstFrame.data, mimeType: firstFrame.mimeType } }
+              : { prompt }],
             // `generateAudio` NÃO é aceito por este modelo (400 explícito): o Veo Lite
             // sempre devolve uma faixa de áudio inventada. Como ninguém revisou esse som,
             // ele é removido depois do download (ffmpeg -an) antes de qualquer publicação —
