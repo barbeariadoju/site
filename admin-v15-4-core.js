@@ -77,7 +77,36 @@
     }
     return `<small class="admin-price-summary">Serviços ${money(s)} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}</small>`;
   }
-  async function init(){bindGlobal();if(!sb){showLogin('Configuração do Supabase ausente.');return}const {data,error}=await sb.auth.getSession();if(error){showLogin(error.message);return}session=data.session;renderAuth();sb.auth.onAuthStateChange((_e,s)=>{session=s;renderAuth()})}
+  // v29.12.0 — o admin fica aberto o dia inteiro no celular do Juliano e NUNCA recarrega
+  // sozinho. Em 11/08/2026 isso custou caro: três correções foram publicadas de manhã e à
+  // tarde ele ainda estava concluindo atendimento com a tela velha, perdendo os pontos de
+  // fidelidade que digitava (casos John, Cauã e Fernando). O service worker está certo
+  // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
+  // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
+  // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
+  const ADMIN_VERSION='29.12.0'
+  async function checkForUpdate(){
+    try{
+      const r=await fetch('/admin-version.json',{cache:'no-store'})
+      if(!r.ok)return
+      const {v}=await r.json()
+      if(!v||v===ADMIN_VERSION)return
+      const modalAberto=document.querySelector('.admin-modal:not([hidden])')
+      if(modalAberto){showUpdateBanner();return}
+      location.reload()
+    }catch(e){/* offline ou arquivo ausente: silencioso de propósito */}
+  }
+  function showUpdateBanner(){
+    if(document.getElementById('admin-update-banner'))return
+    const b=document.createElement('button')
+    b.id='admin-update-banner'
+    b.type='button'
+    b.textContent='🔄 Nova versão disponível — toque para atualizar'
+    b.style.cssText='position:fixed;left:12px;right:12px;bottom:88px;z-index:9999;padding:14px;border:none;border-radius:14px;background:var(--gold2,#c9a227);color:#111;font:inherit;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.45)'
+    b.addEventListener('click',()=>location.reload())
+    document.body.appendChild(b)
+  }
+  async function init(){bindGlobal();checkForUpdate();setInterval(checkForUpdate,10*60*1000);if(!sb){showLogin('Configuração do Supabase ausente.');return}const {data,error}=await sb.auth.getSession();if(error){showLogin(error.message);return}session=data.session;renderAuth();sb.auth.onAuthStateChange((_e,s)=>{session=s;renderAuth()})}
   function bindGlobal(){$('admin-signin')?.addEventListener('click',signIn);$('admin-signout')?.addEventListener('click',async()=>{await sb.auth.signOut()});document.querySelectorAll('[data-admin-nav]').forEach(a=>{if(a.dataset.adminNav===page)a.classList.add('is-active')})}
   async function signIn(){const msg=$('admin-message');msg.textContent='Entrando...';const {error}=await sb.auth.signInWithPassword({email:$('admin-email').value,password:$('admin-password').value});msg.textContent=error?(error.message.includes('Invalid login')?'E-mail ou senha incorretos.':error.message):''}
   function showLogin(msg=''){$('admin-login').hidden=false;$('admin-app').hidden=true;if($('admin-message'))$('admin-message').textContent=msg}
@@ -95,14 +124,22 @@
     // Garante que clientes vindos somente de agendamentos também tenham perfil no CRM.
     // Sem isso, o botão de exclusão ficava desativado por falta do id do perfil.
     if(!pe && allBookings.length){
-      const existing=new Set(customerProfiles.map(x=>phoneDigits(x.phone)));
+      // v29.12.0 — ESTA ERA A FÁBRICA DE FICHAS DUPLICADAS (achada em 11/08/2026).
+      // A comparação era por dígitos EXATOS: um agendamento gravado como '11974998541'
+      // não "encontrava" a ficha do mesmo cliente gravada como '5511974998541', e este
+      // upsert criava uma ficha nova — automaticamente, toda vez que o admin abria. Foi
+      // assim que o John voltou a duplicar 3 minutos depois de eu unificar as fichas dele.
+      // Agora a comparação usa a chave canônica (mesma regra do phone_match_key do banco).
+      const existing=new Set(customerProfiles.map(x=>phoneKey(x.phone)));
       const latestByPhone=new Map();
       allBookings.forEach(x=>{
-        const ph=phoneDigits(x.customer_phone);
+        const ph=phoneKey(x.customer_phone);
         if(!ph || existing.has(ph) || latestByPhone.has(ph))return;
         latestByPhone.set(ph,{
           name:String(x.customer_name||'Cliente').trim(),
-          phone:ph,
+          // grava o telefone COMPLETO do agendamento, nunca a chave canônica (que é
+          // truncada em DDD + 8 dígitos e serve só pra comparar)
+          phone:phoneDigits(x.customer_phone),
           email:x.customer_email?String(x.customer_email).trim().toLowerCase():null,
           archived:false,
           updated_at:new Date().toISOString()
