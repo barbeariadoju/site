@@ -121,6 +121,11 @@ verify_jwt = false
 [functions.meta-insights-weekly]
 verify_jwt = false
 
+# v29.13.0 — leitura sob demanda dos números do Instagram. Autentica pelo
+# x-webhook-secret (EMAIL_WEBHOOK_SECRET), igual às outras internas.
+[functions.meta-insights-now]
+verify_jwt = false
+
 [functions.google-reviews-sync]
 verify_jwt = false
 
