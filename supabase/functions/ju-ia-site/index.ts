@@ -489,6 +489,13 @@ Deno.serve(async req=>{
  if(next.completed&&ai.updates?.date&&ai.updates.date!==state.date){next.time=null;next.completed=false}
  const chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
+ // v29.14.0 — vira true quando o CÓDIGO monta uma resposta afirmativa depois de consultar
+ // a agenda de verdade. A trava anti-promessa (lá no fim) precisa disso pra saber a
+ // diferença entre o modelo chutando "temos sim" e o sistema confirmando um horário que
+ // ele realmente checou — sem essa marca, a trava reescrevia a própria verdade conferida e
+ // produzia frases sem sentido como "Sim, 10:00 vou conferir para esse atendimento".
+ // Só as respostas que casam com a regex da trava precisam ser marcadas.
+ let respostaConferidaNaAgenda=false
 
  const normalizedQuestion=normalize(message)
  // Bug real achado no banco de ~150 cenários de teste (31/07/2026): perguntas puras
@@ -1618,6 +1625,7 @@ Deno.serve(async req=>{
     reply=`Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
     actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
     next.time=effectiveTime
+    respostaConferidaNaAgenda=true // horário consultado em allSlots — a trava não pode reescrever
    }else{
     // v28.61.0 — horário estendido (caso Moisés, 06/08/2026): cliente pediu 18:15, o
     // atendimento terminaria depois das 19h e a JuIA recusou friamente com lista de 16
@@ -1631,6 +1639,7 @@ Deno.serve(async req=>{
      const {data:extOk}=await supabase.rpc('extended_close_slot_ok',{p_date:next.date,p_start_time:effectiveTime,p_duration_minutes:duration,p_extend_minutes:60})
      if(extOk===true){
       const isSatX=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6
+      respostaConferidaNaAgenda=true // extended_close_slot_ok já validou colisão e bloqueio
       reply=`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${effectiveTime} sim 😊 Posso confirmar?`
       actions=[{label:`Confirmar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
       next.time=effectiveTime
@@ -1641,8 +1650,28 @@ Deno.serve(async req=>{
     if(!extendedOffered){
      const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')
      const alternatives=(samePeriod.length?samePeriod:allSlots)
-     reply=`${effectiveTime} não está disponível para esse atendimento. Estes são os horários disponíveis no mesmo período: ${alternatives.join(', ')}.`
-     actions=alternatives.map((t:string)=>({label:t,message:t}))
+     // v29.14.0 — caso real 11/08/2026 (print que o Juliano mandou): o cliente pediu 10:00
+     // em TRÊS dias seguidos e nas três recebeu "está reservado" + uma lista despejada de
+     // 8 a 12 horários. Ele insistiu quatro vezes e não fechou. Lista comprida não é
+     // resposta: quem pediu 10:00 quer saber o que tem PERTO das 10:00. Agora a resposta
+     // lidera com os dois horários mais próximos (um antes e um depois, quando existem) e
+     // só então oferece o resto, resumido.
+     const minutos=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
+     const alvo=minutos(effectiveTime)
+     const antes=alternatives.filter((t:string)=>minutos(t)<alvo).pop()
+     const depois=alternatives.find((t:string)=>minutos(t)>alvo)
+     const proximos=[antes,depois].filter(Boolean) as string[]
+     if(proximos.length){
+      const resto=alternatives.filter((t:string)=>!proximos.includes(t))
+      const sobra=resto.length?` Se preferir outro, tenho ainda: ${resto.slice(0,6).join(', ')}.`:''
+      reply=proximos.length===2
+       ? `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} ou ${proximos[1]} — algum desses serve pra você?${sobra}`
+       : `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} — serve pra você?${sobra}`
+      actions=[...proximos,...resto.slice(0,4)].map((t:string)=>({label:t,message:t}))
+     }else{
+      reply=`${effectiveTime} já está reservado nesse dia. Estes são os horários que tenho: ${alternatives.slice(0,8).join(', ')}.`
+      actions=alternatives.slice(0,8).map((t:string)=>({label:t,message:t}))
+     }
     }
    }
   }else if(effectivePeriod){
@@ -1854,8 +1883,19 @@ Deno.serve(async req=>{
  // Trava determinística: só o CÓDIGO confirma horário. Quando a resposta ainda vem do
  // modelo (o sistema não montou confirmação nem lista de horários), qualquer promessa
  // afirmativa é trocada por uma frase que promete apenas a CONSULTA.
- if(!next.completed){
-  const promessaDeHorario=/\b(temos|tem|conseguimos|consigo|posso|dá|da)\s+(sim|s[íi])\b|\best[áa]\s+(livre|dispon[íi]vel)\b|\bconsigo te encaixar\b|\bo ju estica\b/i
+ // v29.14.0 — `!respostaConferidaNaAgenda` é a parte que faltava: a trava só pode tocar no
+ // texto do MODELO. Quando o código já consultou a agenda e afirmou um horário, aquilo é
+ // verdade verificada — reescrever produzia frases quebradas como "Sim, 10:00 vou conferir
+ // para esse atendimento". (Primeira tentativa deste fix comparava a resposta com a
+ // original do modelo, mas isso desligava a trava sempre que qualquer outro trecho do
+ // código encostava no texto — e o "Temos sim!" do caso Walter voltou a passar.)
+ if(!next.completed&&!respostaConferidaNaAgenda){
+  // Além disso, esta trava também
+  // casava com a NEGATIVA. A resposta correta do sistema, "10:00 não está disponível para
+  // esse atendimento", contém "está disponível" — a trava trocava por "vou conferir" e o
+  // cliente lia "10:00 não vou conferir para esse atendimento", que não quer dizer nada.
+  // O `(?<!n[ãa]o\s)` faz a regra ignorar a frase quando ela está negada.
+  const promessaDeHorario=/\b(temos|tem|conseguimos|consigo|posso|dá|da)\s+(sim|s[íi])\b|(?<!n[ãa]o\s)\best[áa]\s+(livre|dispon[íi]vel)\b|\bconsigo te encaixar\b|\bo ju estica\b/i
   if(promessaDeHorario.test(reply)){
    reply=reply
     .replace(/^[^.!?]*\b(temos|tem|conseguimos|consigo|posso|dá|da)\s+(sim|s[íi])\b[^.!?]*[.!?]\s*/i,'')
