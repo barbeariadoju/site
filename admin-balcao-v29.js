@@ -192,18 +192,20 @@
           note = ' Cliente novo, salvo no CRM — a mensagem de boas-vindas não pôde ser enviada agora.';
         }
       }
-      // Extras opcionais (v29.9.0): pontos de fidelidade avulsos e marcar "cliente
-      // recorrente" — mesmo padrão do "Concluir" da Agenda, não bloqueia o registro em si.
+      // Extras opcionais (v29.9.0, campo de nº da visita em v29.15.0): pontos de fidelidade
+      // avulsos e o nº total desta visita — mesmo padrão do "Concluir" da Agenda, não
+      // bloqueia o registro em si. A RPC converte o nº digitado em prior_visits usando a
+      // reserva recém-criada como referência (migration 104).
       const loyaltyDelta = Number($('balcao-loyalty-delta').value) || 0;
-      const markRecurring = $('balcao-mark-recurring').checked;
-      if (loyaltyDelta || markRecurring) {
-        const { error: extrasError } = await sb.rpc('admin_apply_completion_extras', { p_phone: phone, p_customer_name: name, p_loyalty_delta: loyaltyDelta, p_mark_recurring: markRecurring });
-        if (extrasError) note += ` (extras de fidelidade/recorrente não salvos: ${extrasError.message})`;
+      const visitNumberTyped = Math.floor(Number($('balcao-visit-number').value)) || 0;
+      if (loyaltyDelta || visitNumberTyped >= 1) {
+        const { error: extrasError } = await sb.rpc('admin_apply_completion_extras', { p_phone: phone, p_customer_name: name, p_loyalty_delta: loyaltyDelta, p_visit_number: visitNumberTyped >= 1 ? visitNumberTyped : null, p_booking_id: row?.booking_id || null });
+        if (extrasError) note += ` (extras de fidelidade/nº da visita não salvos: ${extrasError.message})`;
       }
       msg.textContent = 'Atendimento registrado.' + note;
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
-      $('balcao-loyalty-delta').value = ''; $('balcao-mark-recurring').checked = false;
+      $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = '';
       document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; });
       linkedCustomerId = null;
       renderCustomerTag(null);

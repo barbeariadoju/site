@@ -292,21 +292,28 @@ Deno.serve(async (request: Request) => {
     // erro aparece no log da function em vez de morrer num alert que passa batido.
     const loyaltyDelta = Number(body?.loyalty_delta || 0)
     const markRecurring = Boolean(body?.mark_recurring)
+    // v29.15.0: a tela manda o Nº TOTAL da visita (contando esta) digitado pelo Juliano;
+    // a RPC converte pra prior_visits usando esta reserva como referência (migration 104).
+    // mark_recurring segue aceito pra JS antigo em cache (?v= atrasado no PWA dele).
+    const visitNumberRaw = Number(body?.visit_number)
+    const visitNumber = Number.isFinite(visitNumberRaw) && visitNumberRaw >= 1 ? Math.floor(visitNumberRaw) : null
     let extras: { attempted: boolean; applied: boolean; error: string } = { attempted: false, applied: false, error: '' }
-    if (hasStatusChange && status === 'completed' && (loyaltyDelta || markRecurring)) {
+    if (hasStatusChange && status === 'completed' && (loyaltyDelta || markRecurring || visitNumber !== null)) {
       extras.attempted = true
       const { error: extrasError } = await authClient.rpc('admin_apply_completion_extras', {
         p_phone: String(current.customer_phone || ''),
         p_customer_name: String(current.customer_name || ''),
         p_loyalty_delta: Number.isFinite(loyaltyDelta) ? loyaltyDelta : 0,
         p_mark_recurring: markRecurring,
+        p_visit_number: visitNumber,
+        p_booking_id: bookingId,
       })
       extras.applied = !extrasError
       if (extrasError) {
         extras.error = extrasError.message || 'Falha ao aplicar os extras.'
-        console.error('[admin-booking-status] completion_extras_failed', JSON.stringify({ requestId, bookingId, loyaltyDelta, markRecurring, dbCode: extrasError.code, dbMessage: extrasError.message, dbDetails: extrasError.details, dbHint: extrasError.hint }))
+        console.error('[admin-booking-status] completion_extras_failed', JSON.stringify({ requestId, bookingId, loyaltyDelta, markRecurring, visitNumber, dbCode: extrasError.code, dbMessage: extrasError.message, dbDetails: extrasError.details, dbHint: extrasError.hint }))
       } else {
-        log('completion_extras_applied', { requestId, bookingId, loyaltyDelta, markRecurring })
+        log('completion_extras_applied', { requestId, bookingId, loyaltyDelta, markRecurring, visitNumber })
       }
     }
 

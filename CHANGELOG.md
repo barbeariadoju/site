@@ -1,3 +1,10 @@
+## 29.15.0 — Campo "Nº desta visita" substitui o checkbox de cliente recorrente
+
+O checkbox "já é cliente recorrente" (v29.9.0) chutava `prior_visits=6` pra qualquer cliente antigo — foi o que deu etiqueta errada no caso John Maicon, e no caso Tatiane (12/08) a palavra do Juliano ("é a 2ª visita") era o dado certo que a tela não tinha como receber.
+
+**Como funciona agora.** Na conclusão (Agenda/Atendimento) e no Balcão, o campo pergunta exatamente o que o Juliano sabe: o número TOTAL desta visita, contando desde antes do sistema. O placeholder mostra o que o sistema já conta ("o sistema conta 3ª") — só se digita algo se estiver errado. A RPC `admin_apply_completion_extras` (migration 104) converte: `prior_visits = nº digitado − concluídos no sistema antes desta reserva − 1`, com trava em 0 se o número digitado for menor que o histórico já registrado (o histórico vence). A comparação de "antes desta" usa a MESMA regra estrita de data/hora do `visitNumber()` do front, e o dedupe de telefone usa `phone_match_key` (com/sem 55, com/sem 9).
+
+`p_mark_recurring` continua aceito na RPC (comportamento antigo) porque o PWA do Juliano pode rodar JS antigo em cache por horas. Assinatura antiga dropada antes de recriar (gotcha da migration 041 — sobrecarga). Testado com cliente descartável no banco (3 concluídos, digitou 6 → prior 3 → etiqueta 6ª; digitou 2 → trava em 0), dados apagados. Suíte do admin 26/26 verde; `?v=` bumpado em todos os HTML que carregam `admin-v15-4-agenda.js` e no balcão.
 ## 29.8.0 — Paleta real da barbearia no gerador de imagens
 
 Depois da aprovação da peça still-life genérica (v29.6-29.7), o Juliano propôs um teste: mandar fotos reais da barbearia, eu descrever só os materiais/objetos/cores (nunca o ambiente inteiro como cena, nunca texto — mesma regra de sempre) e usar isso pra enriquecer o prompt.

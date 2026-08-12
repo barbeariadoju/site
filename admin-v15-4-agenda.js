@@ -206,7 +206,7 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label class="admin-checkbox-row"><input type="checkbox" data-mark-recurring><small>Já é cliente recorrente (atende com você desde antes do sistema) — marca aqui uma vez, não precisa de novo</small></label><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
@@ -215,7 +215,11 @@
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
       modal.querySelector('[data-loyalty-delta]').value='';
-      modal.querySelector('[data-mark-recurring]').checked=false;
+      // Placeholder mostra o que o sistema já conta pra esta reserva — o Juliano só digita
+      // se discordar (caso Tatiane 12/08: a palavra dele é o dado, o checkbox chutava 6).
+      const visitInput=modal.querySelector('[data-visit-number]');
+      visitInput.value='';
+      visitInput.placeholder=booking.id?`o sistema conta ${visitNumber(booking)}ª`:'';
       let selectedPayment='',selectedProductsPayment='';
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
@@ -245,7 +249,7 @@
           service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
           request_google_review:modal.querySelector('[data-request-google-review]').checked,
           loyalty_delta:Number(modal.querySelector('[data-loyalty-delta]').value)||0,
-          mark_recurring:modal.querySelector('[data-mark-recurring]').checked,
+          visit_number:Math.floor(Number(modal.querySelector('[data-visit-number]').value))||0,
         });
       };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
@@ -334,7 +338,7 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionLoyaltyDelta=0,completionMarkRecurring=false;
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionLoyaltyDelta=0,completionVisitNumber=0;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
@@ -345,7 +349,7 @@
       completionProductsPayment=choice.products_payment_method;
       completionRequestGoogleReview=choice.request_google_review;
       completionLoyaltyDelta=choice.loyalty_delta||0;
-      completionMarkRecurring=Boolean(choice.mark_recurring);
+      completionVisitNumber=choice.visit_number||0;
     }else{
       const prompts={no_show:'Registrar ausência?',cancelled:'Cancelar e liberar o horário? O cliente receberá um e-mail de aviso caso tenha e-mail cadastrado.'};
       if(prompts[status]&&!confirm(prompts[status]))return;
@@ -364,10 +368,10 @@
       // em 3 conclusões seguidas. Agora quem chama a RPC é a própria function, com o JWT de
       // admin já validado, e devolve em data.extras se aplicou ou o motivo da recusa.
       if(completionLoyaltyDelta)body.loyalty_delta=completionLoyaltyDelta;
-      if(completionMarkRecurring)body.mark_recurring=true;
+      if(completionVisitNumber>=1)body.visit_number=completionVisitNumber;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
-      if(data?.extras?.attempted&&!data.extras.applied){alert(`Atendimento concluído, mas os extras (pontos de fidelidade / cliente recorrente) NÃO foram salvos: ${data.extras.error||'motivo desconhecido'}`)}
+      if(data?.extras?.attempted&&!data.extras.applied){alert(`Atendimento concluído, mas os extras (pontos de fidelidade / nº da visita) NÃO foram salvos: ${data.extras.error||'motivo desconhecido'}`)}
       await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
       if(status==='cancelled'){
         if(data?.email?.skipped)alert('Agendamento cancelado. O cliente não recebeu e-mail porque não há e-mail cadastrado.');
