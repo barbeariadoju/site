@@ -313,13 +313,9 @@ function serviceSuggestions(chosen:any[]){
  if(chosen.some(s=>s.category==='quimica')&&!names.some(n=>n.includes('Hidratação')))out.unshift(findService('Hidratação / Reconstrução Capilar'))
  return out.filter(Boolean).slice(0,3)
 }
-function productSuggestions(chosen:any[],ctx:any){
- const tags=new Set(chosen.flatMap(s=>[s.category,s.category==='combo'?'corte':'']))
- let result=products.filter(p=>p.tags.includes('all')||p.tags.some(t=>tags.has(t)))
- const last=Array.isArray(ctx?.last_products)?ctx.last_products.map((x:any)=>x.name):[]
- result.sort((a,b)=>(last.includes(b.name)?1:0)-(last.includes(a.name)?1:0))
- return result.slice(0,4)
-}
+// v29.16.0: productSuggestions foi removida — produto deixou de ser pergunta (virou aviso
+// passivo dentro da oferta única). O modelo continua respondendo sobre produtos quando o
+// cliente pergunta, e updates.products segue funcionando pra quem pede produto por texto.
 
 Deno.serve(async req=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors})
@@ -422,7 +418,7 @@ Deno.serve(async req=>{
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
   :'O telefone informado no chat não é verificado como sendo de quem está digitando, então só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
  const isFirstMessage=!Array.isArray(body.history)||body.history.length===0
- const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Nunca combine dois nomes de serviço do catálogo como se juntos formassem um único serviço/combo (ex.: não diga "Corte de cabelo + Sobrancelha Masculina" como se fosse um item do catálogo) — se quiser sugerir os dois juntos, cite-os separadamente, cada um com seu próprio preço. Nunca reafirme um agendamento já existente (da lista de agendamentos futuros) como se fosse a resposta a um pedido novo — se o cliente pede um dia/horário/serviço diferente do que já está confirmado, trate como um pedido novo (agendar, remarcar, trocar serviço) e nunca copie os dados do agendamento antigo na resposta. Nunca assuma o serviço que o cliente quer com base no histórico dele (last_services) a não ser que ele peça explicitamente para repetir/manter o mesmo de sempre — se ele não disser o serviço, pergunte qual serviço antes de agendar ou remarcar. Nunca inclua saudação (Bom dia/Boa tarde/Boa noite) na sua resposta, nem mesmo na primeira mensagem — isso é adicionado automaticamente pelo sistema antes de enviar, já com o nome do cliente quando disponível. Comece sua resposta direto pelo conteúdo. Se esta for a primeira mensagem desta conversa (indicado abaixo) e fizer sentido, mencione que o cliente também pode ver todos os serviços, consultar horários disponíveis e agendar sozinho pelo nosso site https://www.barbeariadoju.com.br/agendar/ — sem repetir essa menção do site nas mensagens seguintes. Não confirme horário sem consultar o sistema. NUNCA responda "temos sim", "conseguimos sim", "esse horário está livre" ou qualquer variação afirmativa sobre um horário específico antes de o sistema confirmar a disponibilidade — nem para ganhar tempo enquanto pergunta o serviço. Se o cliente pedir um horário e ainda faltar o serviço, pergunte o serviço SEM prometer o horário (ex.: "Qual serviço você prefere? Assim eu confiro certinho se esse horário está livre."). E se o horário pedido estiver FORA do funcionamento (terça a sexta 08:00–19:00, sábado 08:00–15:00, domingo e segunda fechado), diga isso na hora, com clareza e simpatia, oferecendo o horário possível mais próximo — nunca deixe o cliente achar que dá. Se houver "Dias excepcionalmente fechados" listados abaixo e o cliente perguntar se a barbearia abre, o horário de funcionamento, ou disponibilidade numa data que está nessa lista, informe claramente que nesse(s) dia(s) está fechado excepcionalmente (cite o motivo, se houver) e que o atendimento normal retoma depois disso — NUNCA informe o horário padrão de funcionamento pra essas datas nem sugira agendar nelas, mesmo que seja um dia normalmente aberto (ex.: sábado). Se o cliente avisar que chegou, está a caminho, vai se atrasar um pouco, ou está terminando algo (comendo, no trabalho etc.) antes de vir para um horário já marcado, responda breve e acolhedora confirmando que está tudo certo — não peça esclarecimento, não repita dados do agendamento, isso não é um pedido novo. Uma saudação isolada no meio da conversa (ex.: "oi", "boa tarde", "bom dia"), sem nenhum pedido novo junto, nunca deve reabrir uma checagem de disponibilidade nem repetir a última pergunta/resposta que você já tinha dado — apenas cumprimente de volta e pergunte como pode ajudar. Se a mensagem do cliente for só um emoji de reação/encerramento (aperto de mão 🤝, joia 👍, palminhas 👏, coração etc.) ou uma palavra curta de confirmação ("ok", "beleza", "valeu", "obrigado") logo depois de você já ter resolvido o que ele pediu (respondido a pergunta, confirmado agendamento etc.), NÃO reintroduza a conversa do zero nem repita a saudação/lista de serviços/link do site de novo — responda só com um agradecimento breve e caloroso (1 frase curta, sem reapresentação), como se estivesse encerrando naturalmente. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho. Se o cliente pedir para mudar o dia/horário de um agendamento que já existe (ex.: "posso mudar pra sexta às 15h?", "quero remarcar", "dá pra trocar meu horário?"), use intent "reschedule" — não trate como um agendamento novo nem diga que vai cancelar e recriar, o sistema identifica o agendamento, confirma o novo horário disponível e reagenda sozinho, preservando o mesmo registro. Se o cliente pedir para trocar o SERVIÇO de um agendamento que já existe, sem mudar dia/horário (ex.: "pode trocar o serviço pra mim?", "marquei corte mas quero mudar pra barba", "muda esse agendamento pra Barba Express"), use intent "change_service" e preencha updates.services com o nome exato do novo serviço desejado — o sistema identifica o agendamento, confirma o serviço novo e troca sozinho, preservando dia, horário e o resto do registro.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito somente à vista (1x) — NÃO parcelamos no cartão de crédito; se perguntarem sobre parcelamento, informe com clareza e simpatia que o crédito é apenas em 1x. CHAVE PIX (pode passar sempre que o cliente pedir o Pix, quiser pagar antecipado ou perguntar como pagar, sem precisar chamar o Juliano): a chave PRINCIPAL da barbearia é o E-MAIL contato@barbeariadoju.com.br — passe SEMPRE essa primeiro, e sozinha, no formato "Chave Pix (e-mail): contato@barbeariadoju.com.br". Ao passar a chave, avise na mesma mensagem que no aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay" (titular da Barbearia do Ju) — informar a instituição junto do nome é importante: sem isso o cliente desconfia que digitou a chave errada, para no meio e desiste de pagar. Só ofereça a segunda chave se o cliente disser que prefere celular, tem dificuldade com a de e-mail, ou pedir outra opção: aí informe o CELULAR 11967073038. NUNCA passe as duas de uma vez — duas chaves na mesma mensagem confundem e derrubam o pagamento. NUNCA invente uma terceira chave. NUNCA invente outra chave, nem confirme pagamento recebido: se o cliente disser que já pagou ou mandar comprovante, agradeça e avise que o Juliano confere. Ambiente climatizado, café cortesia (por nossa conta), Wi-Fi gratuito e TV — as demais bebidas (água, refrigerante, energético, bebida gelada) são vendidas à parte, nunca diga que são cortesia. GARANTIA DE ACABAMENTO: se o acabamento não ficar como o cliente queria, ele pode voltar e a barbearia ajusta sem cobrar nada. Informe isso com naturalidade quando o cliente demonstrar receio de não gostar do resultado, estiver inseguro por nunca ter vindo, ou perguntar diretamente o que acontece se não gostar. NUNCA prometa devolução de dinheiro nem estorno — a garantia é de ajuste do acabamento, não de reembolso. Zona Azul nas proximidades. Instagram oficial: @barbeariadoju_ (com underscore no final — copie esse @ exatamente assim, nunca invente ou escreva sem o underscore).\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Saudação correta agora: ${greetingNow()}. Primeira mensagem desta conversa: ${isFirstMessage}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}. Dias excepcionalmente fechados nas próximas semanas: ${closures.length?JSON.stringify(closures):'nenhum'}.${campaigns?`\nCampanha da barbearia em andamento agora (contexto interno, NÃO é tabela de preços):\n${campaigns}\nUse a campanha só como contexto: se o cliente perguntar sobre promoção, data comemorativa ou algo ligado a ela, responda com o que está escrito acima, sem inventar desconto, brinde, preço ou condição que não esteja ali. Se a campanha não prevê desconto, não invente um — o convite é a ocasião, não preço menor. NUNCA puxe a campanha espontaneamente em toda mensagem nem repita ela: no máximo uma menção, e só quando encaixar com naturalidade no que o cliente está falando.`:''}\n\nSe o cliente reagir ao PREÇO (ex.: "tá caro", "achei salgado", "nossa, caro", "mais barato ali na esquina", "por que tão caro?"), nunca peça desculpa pelo valor, nunca insista e NUNCA ofereça, invente ou insinue desconto, condição especial ou negociação — desconto é decisão exclusiva do Juliano e não existe como padrão. Responda em 2-3 linhas explicando o que sustenta o valor, usando só o que é verdade aqui: horário marcado e respeitado (o cliente não fica esperando em fila), atendimento sem pressa, acabamento caprichado, ambiente climatizado com café e Wi-Fi, garantia de ajuste sem custo se o acabamento não ficar como ele queria, e cartão fidelidade (a cada 10 cortes, 1 grátis). Encerre com um convite leve, sem pressão, do tipo "se quiser, posso ver um horário pra você".\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|reschedule|change_service|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Se o cliente mencionar mais de um horário possível na mesma frase (ex.: "às 16h ou 17h", "pode ser de manhã ou à tarde"), NÃO preencha updates.time com nenhum dos dois — pergunte qual horário ele prefere antes de continuar. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. Após o cliente escolher o serviço, ofereça no máximo 3 complementos relevantes uma única vez. Depois, ofereça no máximo 4 produtos relevantes uma única vez. Se ele disser não, avance sem insistir. Quando o cliente perguntar o que é um serviço, como ele funciona, o que está incluído, ou por que vale a pena, USE o "argumento de venda" daquele serviço no catálogo acima — explique o BENEFÍCIO com suas palavras, de forma natural e conversada, nunca colando o texto igual nem repetindo preço e duração como se fossem a resposta. Preço e duração são complemento, não explicação. Se o serviço não tiver argumento de venda cadastrado, responda com o que sabe do catálogo, sem inventar benefício. Depois de responder uma pergunta informativa sobre preço, duração ou detalhes de um serviço, termine com uma oferta breve pra consultar horário ou agendar (ex.: "Se quiser, posso checar um horário pra você.") — mas não repita essa oferta se você já tiver feito isso há pouco na mesma conversa, pra não parecer repetitivo. Se ele perguntar fidelidade e houver telefone, use o contexto. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
+ const prompt=`Você é JuIA, atendente e consultora comercial oficial da Barbearia do Ju. Seja extremamente educada, acolhedora, objetiva e eficiente. Responda em português do Brasil, normalmente em até 4 linhas. Seu objetivo é resolver a necessidade e converter em agendamento sem pressionar. Nunca invente preço, serviço, produto, fidelidade ou disponibilidade. Nunca combine dois nomes de serviço do catálogo como se juntos formassem um único serviço/combo (ex.: não diga "Corte de cabelo + Sobrancelha Masculina" como se fosse um item do catálogo) — se quiser sugerir os dois juntos, cite-os separadamente, cada um com seu próprio preço. Nunca reafirme um agendamento já existente (da lista de agendamentos futuros) como se fosse a resposta a um pedido novo — se o cliente pede um dia/horário/serviço diferente do que já está confirmado, trate como um pedido novo (agendar, remarcar, trocar serviço) e nunca copie os dados do agendamento antigo na resposta. Nunca assuma o serviço que o cliente quer com base no histórico dele (last_services) a não ser que ele peça explicitamente para repetir/manter o mesmo de sempre — se ele não disser o serviço, pergunte qual serviço antes de agendar ou remarcar. Nunca inclua saudação (Bom dia/Boa tarde/Boa noite) na sua resposta, nem mesmo na primeira mensagem — isso é adicionado automaticamente pelo sistema antes de enviar, já com o nome do cliente quando disponível. Comece sua resposta direto pelo conteúdo. Se esta for a primeira mensagem desta conversa (indicado abaixo) e fizer sentido, mencione que o cliente também pode ver todos os serviços, consultar horários disponíveis e agendar sozinho pelo nosso site https://www.barbeariadoju.com.br/agendar/ — sem repetir essa menção do site nas mensagens seguintes. Não confirme horário sem consultar o sistema. NUNCA responda "temos sim", "conseguimos sim", "esse horário está livre" ou qualquer variação afirmativa sobre um horário específico antes de o sistema confirmar a disponibilidade — nem para ganhar tempo enquanto pergunta o serviço. Se o cliente pedir um horário e ainda faltar o serviço, pergunte o serviço SEM prometer o horário (ex.: "Qual serviço você prefere? Assim eu confiro certinho se esse horário está livre."). E se o horário pedido estiver FORA do funcionamento (terça a sexta 08:00–19:00, sábado 08:00–15:00, domingo e segunda fechado), diga isso na hora, com clareza e simpatia, oferecendo o horário possível mais próximo — nunca deixe o cliente achar que dá. Se houver "Dias excepcionalmente fechados" listados abaixo e o cliente perguntar se a barbearia abre, o horário de funcionamento, ou disponibilidade numa data que está nessa lista, informe claramente que nesse(s) dia(s) está fechado excepcionalmente (cite o motivo, se houver) e que o atendimento normal retoma depois disso — NUNCA informe o horário padrão de funcionamento pra essas datas nem sugira agendar nelas, mesmo que seja um dia normalmente aberto (ex.: sábado). Se o cliente avisar que chegou, está a caminho, vai se atrasar um pouco, ou está terminando algo (comendo, no trabalho etc.) antes de vir para um horário já marcado, responda breve e acolhedora confirmando que está tudo certo — não peça esclarecimento, não repita dados do agendamento, isso não é um pedido novo. ATRASO: a barbearia tem tolerância de 10 minutos — se o cliente avisar atraso de ATÉ 10 minutos (ou não disser quanto, ex. "vou me atrasar um pouquinho"), confirme na hora que está tudo bem e que o horário dele segue garantido (ex.: "Tranquilo, temos tolerância de 10 minutos — seu horário está garantido, pode vir!"). Se o atraso indicado for MAIOR que 10 minutos (ex.: "vou atrasar meia hora"), continue acolhedora, agradeça o aviso e diga que vai passar pro Ju ver o melhor encaixe — e use handoff true nesse caso; NUNCA prometa que o atendimento atrasado está garantido além dos 10 minutos, nunca reagende sozinha por causa de atraso. Uma saudação isolada no meio da conversa (ex.: "oi", "boa tarde", "bom dia"), sem nenhum pedido novo junto, nunca deve reabrir uma checagem de disponibilidade nem repetir a última pergunta/resposta que você já tinha dado — apenas cumprimente de volta e pergunte como pode ajudar. Se a mensagem do cliente for só um emoji de reação/encerramento (aperto de mão 🤝, joia 👍, palminhas 👏, coração etc.) ou uma palavra curta de confirmação ("ok", "beleza", "valeu", "obrigado") logo depois de você já ter resolvido o que ele pediu (respondido a pergunta, confirmado agendamento etc.), NÃO reintroduza a conversa do zero nem repita a saudação/lista de serviços/link do site de novo — responda só com um agradecimento breve e caloroso (1 frase curta, sem reapresentação), como se estivesse encerrando naturalmente. Se pedirem Juliano, houver reclamação, dúvida complexa ou pedido humano, faça handoff. Se o cliente pedir para cancelar um agendamento, disser que já marcou em outro lugar/outro dia, ou não vai mais poder ir no horário marcado, use intent "cancel" — nunca diga que já cancelou nem que vai encaminhar para a equipe, o sistema confirma com o cliente e executa o cancelamento sozinho. Se o cliente pedir para mudar o dia/horário de um agendamento que já existe (ex.: "posso mudar pra sexta às 15h?", "quero remarcar", "dá pra trocar meu horário?"), use intent "reschedule" — não trate como um agendamento novo nem diga que vai cancelar e recriar, o sistema identifica o agendamento, confirma o novo horário disponível e reagenda sozinho, preservando o mesmo registro. Se o cliente pedir para trocar o SERVIÇO de um agendamento que já existe, sem mudar dia/horário (ex.: "pode trocar o serviço pra mim?", "marquei corte mas quero mudar pra barba", "muda esse agendamento pra Barba Express"), use intent "change_service" e preencha updates.services com o nome exato do novo serviço desejado — o sistema identifica o agendamento, confirma o serviço novo e troca sozinho, preservando dia, horário e o resto do registro.\n\nEndereço: Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista. Agenda: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. Pagamentos: Pix, dinheiro, débito e crédito somente à vista (1x) — NÃO parcelamos no cartão de crédito; se perguntarem sobre parcelamento, informe com clareza e simpatia que o crédito é apenas em 1x. CHAVE PIX (pode passar sempre que o cliente pedir o Pix, quiser pagar antecipado ou perguntar como pagar, sem precisar chamar o Juliano): a chave PRINCIPAL da barbearia é o E-MAIL contato@barbeariadoju.com.br — passe SEMPRE essa primeiro, e sozinha, no formato "Chave Pix (e-mail): contato@barbeariadoju.com.br". Ao passar a chave, avise na mesma mensagem que no aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay" (titular da Barbearia do Ju) — informar a instituição junto do nome é importante: sem isso o cliente desconfia que digitou a chave errada, para no meio e desiste de pagar. Só ofereça a segunda chave se o cliente disser que prefere celular, tem dificuldade com a de e-mail, ou pedir outra opção: aí informe o CELULAR 11967073038. NUNCA passe as duas de uma vez — duas chaves na mesma mensagem confundem e derrubam o pagamento. NUNCA invente uma terceira chave. NUNCA invente outra chave, nem confirme pagamento recebido: se o cliente disser que já pagou ou mandar comprovante, agradeça e avise que o Juliano confere. Ambiente climatizado, café cortesia (por nossa conta), Wi-Fi gratuito e TV — as demais bebidas (água, refrigerante, energético, bebida gelada) são vendidas à parte, nunca diga que são cortesia. GARANTIA DE ACABAMENTO: se o acabamento não ficar como o cliente queria, ele pode voltar e a barbearia ajusta sem cobrar nada. Informe isso com naturalidade quando o cliente demonstrar receio de não gostar do resultado, estiver inseguro por nunca ter vindo, ou perguntar diretamente o que acontece se não gostar. NUNCA prometa devolução de dinheiro nem estorno — a garantia é de ajuste do acabamento, não de reembolso. Zona Azul nas proximidades. Instagram oficial: @barbeariadoju_ (com underscore no final — copie esse @ exatamente assim, nunca invente ou escreva sem o underscore).\nServiços:\n${catalog}\nProdutos:\n${productCatalog}\nHoje: ${today()}. Saudação correta agora: ${greetingNow()}. Primeira mensagem desta conversa: ${isFirstMessage}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}. Dias excepcionalmente fechados nas próximas semanas: ${closures.length?JSON.stringify(closures):'nenhum'}.${campaigns?`\nCampanha da barbearia em andamento agora (contexto interno, NÃO é tabela de preços):\n${campaigns}\nUse a campanha só como contexto: se o cliente perguntar sobre promoção, data comemorativa ou algo ligado a ela, responda com o que está escrito acima, sem inventar desconto, brinde, preço ou condição que não esteja ali. Se a campanha não prevê desconto, não invente um — o convite é a ocasião, não preço menor. NUNCA puxe a campanha espontaneamente em toda mensagem nem repita ela: no máximo uma menção, e só quando encaixar com naturalidade no que o cliente está falando.`:''}\n\nSe o cliente reagir ao PREÇO (ex.: "tá caro", "achei salgado", "nossa, caro", "mais barato ali na esquina", "por que tão caro?"), nunca peça desculpa pelo valor, nunca insista e NUNCA ofereça, invente ou insinue desconto, condição especial ou negociação — desconto é decisão exclusiva do Juliano e não existe como padrão. Responda em 2-3 linhas explicando o que sustenta o valor, usando só o que é verdade aqui: horário marcado e respeitado (o cliente não fica esperando em fila), atendimento sem pressa, acabamento caprichado, ambiente climatizado com café e Wi-Fi, garantia de ajuste sem custo se o acabamento não ficar como ele queria, e cartão fidelidade (a cada 10 cortes, 1 grátis). Encerre com um convite leve, sem pressão, do tipo "se quiser, posso ver um horário pra você".\n\nRetorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability|book|cancel|reschedule|change_service|upsell_services|upsell_products|loyalty|handoff|other","updates":{"name":null,"phone":null,"email":null,"services":[],"products":[],"date":null,"time":null,"sales_stage":null},"handoff":false}. Preserve dados conhecidos. Serviços e produtos devem usar nomes exatos. Quando o cliente já citar o serviço explicitamente (ex.: "barba e pezinho", "corte de cabelo"), preencha updates.services com o(s) nome(s) exato(s) do catálogo — não responda com a lista genérica de mais procurados nesse caso. Se o cliente pedir para "raspar a cabeça", "raspar com máquina/navalha", "deixar no zero", "carequinha" ou termos parecidos referindo-se ao cabelo (não à barba), entenda como o serviço "Raspar a cabeça" — não pergunte se é cabeça ou barba quando o cliente já disse que é a cabeça/cabelo. Se o cliente mencionar corte para filho(a), criança ou "corte infantil", entenda como o serviço "Corte de cabelo infantil". Datas YYYY-MM-DD e horários HH:MM. Se o cliente mencionar mais de um horário possível na mesma frase (ex.: "às 16h ou 17h", "pode ser de manhã ou à tarde"), NÃO preencha updates.time com nenhum dos dois — pergunte qual horário ele prefere antes de continuar. Para agendar, colete nome, WhatsApp (a menos que o telefone já esteja confirmado, ver nota abaixo), serviço(s), data e horário. NUNCA faça pergunta de venda por conta própria (complemento, upgrade de serviço ou produto): o SISTEMA faz uma única oferta numerada, no momento em que confirma a disponibilidade do horário, e essa é a ÚNICA oferta da conversa inteira. Se o cliente recusar qualquer oferta ou disser que quer só o que pediu, nunca mais ofereça nada nesta conversa — siga direto pra fechar o agendamento, sem desvios. Responder dúvida sobre produto que o CLIENTE puxou continua normal. Quando o cliente perguntar o que é um serviço, como ele funciona, o que está incluído, ou por que vale a pena, USE o "argumento de venda" daquele serviço no catálogo acima — explique o BENEFÍCIO com suas palavras, de forma natural e conversada, nunca colando o texto igual nem repetindo preço e duração como se fossem a resposta. Preço e duração são complemento, não explicação. Se o serviço não tiver argumento de venda cadastrado, responda com o que sabe do catálogo, sem inventar benefício. Depois de responder uma pergunta informativa sobre preço, duração ou detalhes de um serviço, termine com uma oferta breve pra consultar horário ou agendar (ex.: "Se quiser, posso checar um horário pra você.") — mas não repita essa oferta se você já tiver feito isso há pouco na mesma conversa, pra não parecer repetitivo. Se ele perguntar fidelidade e houver telefone, use o contexto. ${phoneTrustNote} Se o cliente disser "o mesmo", "igual da última vez" ou "repetir meu último atendimento", use last_services e ajude a repetir (isso é um pedido explícito, pode usar). Em recomendações, priorize preferred_services ou last_services e explique em uma frase, só quando o cliente pedir uma recomendação. Se perguntado sobre fidelidade, humanize a resposta: informe pontos, quantos faltam e recompensas disponíveis. Se houver last_products ou favorite_products, ofereça repetir o produto somente quando isso for relevante e o cliente já estiver interagindo sobre produtos. Use preferências, produtos favoritos e intervalo de retorno apenas para personalizar quando já em contexto de agendamento, sem expor observações internas, etiquetas ou dados privados.`
  let ai:any=null
  if(key){
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-5.6-luna',reasoning:{effort:'low'},max_output_tokens:550,instructions:prompt,input:`Histórico recente: ${JSON.stringify(body.history||[])}\nMensagem: ${message}`})})
@@ -1431,14 +1427,26 @@ Deno.serve(async req=>{
  // cliente na lista de espera do dia original — o oposto do que ele pediu.
  const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion
 
- // Pedido do Juliano: "Corte de cabelo" sozinho (R$40) sempre oferece o upgrade pro
- // "Corte + Lavagem" (R$50, lavagem profissional incluída) antes de seguir — melhora o
- // ticket médio. Só pergunta uma vez por conversa (next.haircut_wash_asked) e não
- // dispara se já for combo ou já tiver a lavagem escolhida.
- let hairWashJustAsked=false
- const hasPlainHaircut=chosen.some((s:any)=>s.name==='Corte de cabelo')
- const hasWashOrCombo=chosen.some((s:any)=>['Corte + Lavagem','Corte + Barboterapia','Corte + Barba Express'].includes(s.name))
- if(notSpecialFlow&&activelyBooking&&hasPlainHaircut&&!hasWashOrCombo&&!next.haircut_wash_asked){
+ // v29.16.0 — FIM DA ESTEIRA DE VENDAS (12/08/2026, caso real do print do Juliano): o
+ // fluxo antigo fazia até 3 perguntas de venda em série (upgrade da lavagem → complementos
+ // → produto) ANTES de fechar o horário. O cliente respondeu "Não" e levou OUTRA pergunta
+ // de venda na sequência — parou de responder, quase desistiu, e o Juliano teve que assumir
+ // (um corte de R$40 quase perdido por causa de um complemento de R$15). Regras novas,
+ // aprovadas por ele:
+ //   1. UMA única oferta de venda por conversa, com opções NUMERADAS (o WhatsApp nunca
+ //      mostra os botões de actions), feita JUNTO da confirmação de disponibilidade —
+ //      o cliente ouve "sim, tem horário" ANTES de qualquer oferta (a oferta é montada
+ //      no bloco de disponibilidade, mais abaixo).
+ //   2. Qualquer "não" encerra TODA venda da conversa e vai direto pro fechamento.
+ //   3. Produto deixou de ser pergunta: virou aviso passivo no fim da mesma mensagem.
+ //   4. Se o cliente ignorar a oferta e falar de outra coisa, a venda morre ali. Nunca insistir.
+ // next.upsell_offer_options = nomes na ordem numerada ('__none__' = "não quero nada");
+ // next.upsell_offer_done = oferta já feita (ou dispensada) nesta conversa. Conversas
+ // antigas em andamento com os flags legados contam como oferta já feita.
+ const upsellOfferDone=Boolean(next.upsell_offer_done||next.upsell_services_done||next.upsell_products_done)
+ // Quem responde "com lavagem"/"só o corte" (ex.: à pergunta do bareCabeloAsk) continua
+ // entendido, mesmo sem a pergunta antiga do upgrade existir mais.
+ if(notSpecialFlow&&chosen.some((s:any)=>s.name==='Corte de cabelo')){
   if(includesAny(normalizedQuestion,['com lavagem','quero lavagem','pode ser com lavagem','corte e lavagem','corte com lavagem'])){
    next.services=next.services.map((n:string)=>n==='Corte de cabelo'?'Corte + Lavagem':n)
    const idx=chosen.findIndex((s:any)=>s.name==='Corte de cabelo')
@@ -1446,67 +1454,76 @@ Deno.serve(async req=>{
    next.haircut_wash_asked=true
   }else if(includesAny(normalizedQuestion,['so o corte','só o corte','sem lavagem','so corte','apenas o corte','nao quero lavagem'])){
    next.haircut_wash_asked=true
+  }
+ }
+ let offerTurn=false // true = esta resposta é a reação à oferta — o "retomar fluxo" abaixo não pode atropelar
+ const pendingOffer=Array.isArray(next.upsell_offer_options)&&next.upsell_offer_options.length?next.upsell_offer_options as string[]:null
+ if(pendingOffer&&notSpecialFlow){
+  // Palavra-chave de cada opção pra reconhecer resposta por extenso ("quero a barba").
+  const offerKeyword=(n:string)=>{
+   const k=normalize(n)
+   if(k.includes('sobrancelha'))return 'sobrancelha'
+   if(k.includes('barba'))return 'barba'
+   if(k.includes('nasal'))return 'nasal'
+   if(k.includes('lavagem'))return 'lavagem'
+   if(k.includes('hidratacao'))return 'hidratacao'
+   return k.split(' ')[0]
+  }
+  const bareAnswer=normalizedQuestion.trim().replace(/[\s!.,]+$/,'')
+  const pickedIdx=/^[1-9]$/.test(bareAnswer)?Number(bareAnswer)-1:-1
+  let addName='',declined=false,resolved=false
+  if(pickedIdx>=0&&pickedIdx<pendingOffer.length){
+   if(pendingOffer[pickedIdx]==='__none__')declined=true
+   else addName=pendingOffer[pickedIdx]
+   resolved=true
   }else{
-   next.haircut_wash_asked=true
-   hairWashJustAsked=true
-   // v28.31.2: preço do "só o corte" só existia no label do botão (actions), que o
-   // WhatsApp NUNCA envia (só o texto de reply chega lá) — cliente no WhatsApp via o
-   // preço do Corte + Lavagem mas não o do corte sozinho. Achado testando de propósito.
-   // v28.31.5: quando o cliente pediu MAIS serviços junto do corte (ex.: "corte e barba
-   // express"), esta pergunta atropelava a resposta sem reconhecer os outros — o cliente
-   // podia achar que a barba foi ignorada, mesmo estando anotada no state. Agora abre
-   // confirmando o que já foi anotado antes de perguntar do corte.
-   const others=chosen.filter((s:any)=>s.name!=='Corte de cabelo').map((s:any)=>s.name)
-   reply=`${others.length?`Anotei ${others.join(' + ')}! Sobre o corte: `:''}Prefere só o corte (R$ 40,00) ou o Corte + Lavagem — com lavagem profissional incluída para um acabamento mais completo — por R$ 50,00?`
-   actions=[{label:'Só o corte · R$ 40',message:'Só o corte'},{label:'Corte + Lavagem · R$ 50',message:'Quero com lavagem'}]
-   intent='other';handoff=false
+   // Serviço citado por extenso: o modelo geralmente já mapeia pra updates.services (a
+   // diferença em relação ao state anterior é o sinal mais confiável, cobre "não, só a
+   // sobrancelha"); a palavra-chave é o plano B quando a mensagem não tem negação.
+   const previousServices=Array.isArray(state?.services)?state.services:[]
+   const modelAdded=pendingOffer.find(n=>n!=='__none__'&&next.services.includes(n)&&!previousServices.includes(n))
+   const keywordPick=/(^|\s)nao(\s|$)/.test(normalizedQuestion)?null:pendingOffer.find(n=>n!=='__none__'&&normalizedQuestion.includes(offerKeyword(n)))
+   if(modelAdded||keywordPick){addName=String(modelAdded||keywordPick);resolved=true}
+   else if(simpleNo){declined=true;resolved=true}
+   else if(simpleYes){
+    // "sim, quero" sem dizer o quê — repete só o pedido do número, sem reabrir a lista inteira.
+    reply='Qual deles você quer incluir? Pode me responder só com o número 😊'
+    intent='other';handoff=false;offerTurn=true
+   }else{
+    // Mudou de assunto — a venda morre aqui (regra 4), a mensagem segue o fluxo normal.
+    next.upsell_offer_options=null
+   }
+  }
+  if(resolved){
+   next.upsell_offer_options=null
+   if(declined){
+    // Fecha na hora: data+hora+serviço já estão travados. A única pergunta que ainda pode
+    // aparecer é a confirmação de nome do bloco de book — que também faz o papel de
+    // confirmação final do agendamento.
+    intent='book';handoff=false
+   }else if(addName){
+    if(addName==='Corte + Lavagem'){
+     next.services=next.services.filter((n:string)=>n!=='Corte de cabelo')
+     if(!next.services.includes('Corte + Lavagem'))next.services.push('Corte + Lavagem')
+    }else if(!next.services.includes(addName))next.services.push(addName)
+    const newChosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+    const total=newChosen.reduce((a:number,s:any)=>a+s.price,0),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
+    reply=`Boa escolha! Então fica ${newChosen.map((s:any)=>s.name).join(' + ')} — ${money(total)} (${dur} min)${next.date&&next.time?`, ${formatDateBR(next.date)} às ${next.time}`:''}. Posso confirmar?`
+    actions=[{label:'Confirmar',message:'Sim, pode confirmar'}]
+    intent='other';handoff=false;offerTurn=true
+   }
   }
  }
-
- // Pedido do Juliano: sempre perguntar por complementos (barba, sobrancelha, depilação
- // nasal etc.) antes de concluir o agendamento. Antes disso dependia do modelo escolher
- // sozinho intent "upsell_services", ou de next.sales_stage==='services_selected' — que
- // nunca era setado em lugar nenhum do código, então essa pergunta praticamente nunca
- // aparecia de forma confiável. Agora dispara de forma determinística, uma única vez
- // (next.upsell_services_done), sem repetir a pergunta do corte+lavagem no mesmo turno.
- let servicesUpsellJustAsked=false
- if(chosen.length&&!next.upsell_services_done&&!hairWashJustAsked&&activelyBooking&&notSpecialFlow){
-  const sug=serviceSuggestions(chosen)
-  next.upsell_services_done=true
-  if(sug.length){
-   reply=`Quer aproveitar e incluir algum complemento, como ${sug.map((s:any)=>s.name).join(', ')}?`
-   actions=sug.map((s:any)=>({label:`${s.name} · +${money(s.price)}`,message:`Adicionar ${s.name}`}))
-   actions.push({label:'Não, só isso',message:'Não quero serviço adicional'})
-   intent='other';handoff=false
-   servicesUpsellJustAsked=true
-  }
- }
- let productsUpsellJustAsked=false
- if(chosen.length&&next.upsell_services_done&&!next.upsell_products_done&&!hairWashJustAsked&&!servicesUpsellJustAsked&&activelyBooking&&notSpecialFlow){
-  const sug=productSuggestions(chosen,context)
-  next.upsell_products_done=true
-  if(sug.length){
-   reply='Posso deixar algum produto separado para você retirar no atendimento?'
-   actions=sug.map(p=>({label:`${p.name} · ${money(p.price)}`,message:`Adicionar produto ${p.name}`}))
-   actions.push({label:'Não, continuar',message:'Não quero produto'})
-   intent='other';handoff=false
-   productsUpsellJustAsked=true
-  }
- }
- // Depois de resolvidas as perguntas de corte+lavagem/complementos/produtos (nenhuma
- // delas perguntou nada neste turno), retoma o fluxo normal de agendamento sozinha —
- // sem isso, a conversa ficava parada esperando o modelo "adivinhar" que devia seguir
- // pra checar disponibilidade depois de um simples "não, só isso"/"não quero produto".
- // v28.31.3: bug real achado testando de propósito — com data/hora já confirmados e os
- // upsells resolvidos, um "sim" do cliente confirmando o horário reabria a MESMA pergunta
- // "quer reservar esse horário?" em loop, em vez de concluir o agendamento (dependia do
- // modelo "adivinhar" sozinho intent=book, o que só funcionava por sorte). Especialmente
- // grave no WhatsApp: o cliente nunca vê o botão "Reservar" (actions não chegam lá), só
- // digitando "sim"/"pode"/"confirmo" — se isso não vira agendamento de verdade, a conversa
- // trava pra sempre. Com data+hora+serviço já conhecidos, uma resposta curta de sim/não
- // (afirmando ou só recusando o último upsell) sempre significa "pode seguir" aqui.
- if(chosen.length&&next.upsell_services_done&&next.upsell_products_done&&!hairWashJustAsked&&!servicesUpsellJustAsked&&!productsUpsellJustAsked&&activelyBooking&&notSpecialFlow&&intent!=='book'){
-  intent=(next.date&&next.time&&(simpleYes||simpleNo))?'book':'availability'
+ // Depois da oferta única resolvida (ou dispensada), retoma o fluxo sozinha — sem isso a
+ // conversa ficava parada esperando o modelo "adivinhar" que devia seguir (v28.31.3).
+ // Especialmente grave no WhatsApp: o cliente nunca vê botões, só digita "sim" — se isso
+ // não vira agendamento, a conversa trava pra sempre. Diferença pro código antigo: só o
+ // "sim" fecha (simpleNo não vira mais book — no fluxo novo, o "não" que fecha é o da
+ // oferta, tratado acima com intent='book' explícito; um "não" solto depois disso, ex.
+ // respondendo "Posso confirmar?" da opção adicionada, não pode criar agendamento).
+ if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'){
+  if(next.date&&next.time&&simpleYes)intent='book'
+  else if(!(next.date&&next.time&&(simpleYes||simpleNo)))intent='availability'
  }
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
@@ -1622,10 +1639,39 @@ Deno.serve(async req=>{
     actions=[]
     handoff=false
    }else if(allSlots.includes(effectiveTime)){
-    reply=`Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
-    actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
     next.time=effectiveTime
     respostaConferidaNaAgenda=true // horário consultado em allSlots — a trava não pode reescrever
+    // v29.16.0 — a oferta ÚNICA de venda entra aqui, colada na confirmação de
+    // disponibilidade: primeiro o cliente ouve "sim, tem horário" (o que ele quer saber),
+    // depois UMA pergunta opcional com números (WhatsApp não mostra botões) e o aviso
+    // passivo de produtos/bebidas — que deixou de ser pergunta. Ver regras no bloco da
+    // oferta, mais acima. O upgrade da lavagem só entra se ainda não foi assunto na
+    // conversa (haircut_wash_asked cobre a pergunta do bareCabeloAsk).
+    const offerOpts:string[]=[]
+    if(!upsellOfferDone&&!next.upsell_offer_done){
+     if(chosen.some((s:any)=>s.name==='Corte de cabelo')&&!chosen.some((s:any)=>['Corte + Lavagem','Corte + Barboterapia','Corte + Barba Express'].includes(s.name))&&!next.haircut_wash_asked)offerOpts.push('Corte + Lavagem')
+     for(const s of serviceSuggestions(chosen)){if(offerOpts.length<3&&!offerOpts.includes(s.name))offerOpts.push(s.name)}
+    }
+    if(offerOpts.length){
+     const optionLabel=(n:string)=>{
+      const s=findService(n)
+      if(!s)return n
+      if(n==='Corte + Lavagem')return `Corte + Lavagem (vira ${money(s.price)}, com lavagem profissional)`
+      return `${n} (+ ${money(s.price)})`
+     }
+     const lines=offerOpts.map((n,i)=>`*${i+1}* — ${optionLabel(n)}`).join('\n')
+     const noneNumber=offerOpts.length+1
+     reply=`Sim! ✅ ${effectiveTime} está disponível para ${serviceNames}. Quer aproveitar e incluir mais alguma coisa? É só me responder com o número:\n${lines}\n*${noneNumber}* — Não, pode fechar assim 😊\n\nAh, e se quiser deixar algum produto de estética ou bebida gelada separado pra retirar na hora, é só me avisar.`
+     actions=[...offerOpts.map((n,i)=>({label:optionLabel(n),message:String(i+1)})),{label:'Não, pode fechar',message:String(noneNumber)}]
+     next.upsell_offer_options=[...offerOpts,'__none__']
+     next.upsell_offer_done=true
+     next.upsell_services_done=true // compat com estados antigos ainda em andamento
+     next.upsell_products_done=true
+    }else{
+     next.upsell_offer_done=true
+     reply=`Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
+     actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
+    }
    }else{
     // v28.61.0 — horário estendido (caso Moisés, 06/08/2026): cliente pediu 18:15, o
     // atendimento terminaria depois das 19h e a JuIA recusou friamente com lista de 16
@@ -1640,6 +1686,9 @@ Deno.serve(async req=>{
      if(extOk===true){
       const isSatX=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6
       respostaConferidaNaAgenda=true // extended_close_slot_ok já validou colisão e bloqueio
+      // v29.16.0: horário estendido nunca leva oferta de venda (o atendimento já vai varar
+      // o fechamento) — marca a oferta como dispensada pro "sim" seguinte fechar direto.
+      next.upsell_offer_done=true
       reply=`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${effectiveTime} sim 😊 Posso confirmar?`
       actions=[{label:`Confirmar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
       next.time=effectiveTime
