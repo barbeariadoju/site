@@ -66,25 +66,33 @@ Deno.serve(async(req:Request)=>{
     .eq('status','sent').lt('sent_at',new Date(Date.now()-72*3600*1000).toISOString())
 
   const today=spDate(Date.now())
-  const yesterday=spDate(Date.now()-24*3600*1000)
+  // v29.17.0 — caso Robson (13/08/2026): o convite saía com a pesquisa de satisfação de
+  // ontem ainda SEM resposta — duas perguntas numéricas pendentes ao mesmo tempo, e o "1"
+  // do cliente (que era da pesquisa) virou uma reserva de retorno errada. Regra nova:
+  // enquanto a pesquisa daquele telefone estiver pendente (janela de 48h do
+  // find_pending_experience_by_phone), o convite ESPERA — sem gravar linha, pra tentar de
+  // novo no cron do dia seguinte. Por isso a janela de candidatos vai a 3 dias: no pior
+  // caso (pesquisa nunca respondida), ela sai da janela de 48h e o convite sai no 3º dia.
+  const candidateDays=[1,2,3].map(d=>spDate(Date.now()-d*24*3600*1000))
 
   const {data:completedRows,error:completedError}=await admin.from('bookings')
     .select('id,customer_name,customer_phone,booking_date,start_time,service_name,service_price,duration_minutes')
-    .eq('status','completed').eq('booking_date',yesterday)
+    .eq('status','completed').in('booking_date',candidateDays)
   if(completedError) return json({error:completedError.message},500)
 
   const {data:futureRows}=await admin.from('bookings')
     .select('customer_phone').gte('booking_date',today).in('status',['pending','confirmed'])
   const futurePhones=new Set((futureRows||[]).map((b:any)=>canonicalPhone(b.customer_phone)).filter(Boolean))
 
-  // 1 convite por telefone por dia — se a pessoa teve 2 atendimentos ontem (ex.: pai e
-  // filho no mesmo número), fica o mais tarde do dia.
+  // 1 convite por telefone por rodada — se a pessoa teve 2 atendimentos na janela (ex.: pai
+  // e filho no mesmo número), fica o mais RECENTE (dia + horário, já que agora a janela de
+  // candidatos cobre 3 dias).
   const byPhone=new Map<string,any>()
   for(const b of completedRows||[]){
     const phone=canonicalPhone(String(b.customer_phone||''))
     if(phone.length<12||phone===TEST_PHONE)continue
     const prev=byPhone.get(phone)
-    if(!prev||String(b.start_time)>String(prev.start_time))byPhone.set(phone,b)
+    if(!prev||`${b.booking_date} ${b.start_time}`>`${prev.booking_date} ${prev.start_time}`)byPhone.set(phone,b)
   }
 
   let sent=0,skipped=0,failed=0
@@ -111,6 +119,12 @@ Deno.serve(async(req:Request)=>{
       await skip('conversa_com_humano');continue
     }
 
+    // v29.17.0 — pesquisa de satisfação pendente: o convite espera (SEM gravar linha em
+    // return_invites, pra este mesmo booking ser reconsiderado no cron de amanhã).
+    const {data:pendingExpRows}=await admin.rpc('find_pending_experience_by_phone',{p_phone:phone})
+    const pendingSurvey=Array.isArray(pendingExpRows)?pendingExpRows[0]:pendingExpRows
+    if(pendingSurvey){skipped++;continue}
+
     // Sugestão: mesmo dia da semana e horário, 4 semanas depois. Se o dia +28 não tiver
     // agenda (fechado/lotado), tenta até +35 dias; escolhe sempre o horário mais próximo
     // do original. get_available_slots valida bloqueios e dias fechados sozinha.
@@ -131,7 +145,9 @@ Deno.serve(async(req:Request)=>{
 
     const first=String(b.customer_name||'').trim().split(/\s+/)[0]||''
     const weekday=new Date(suggestedDate+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
-    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer a visita de ontem 🙏 Quer já deixar seu retorno reservado? Tenho ${weekday}, ${formatDateBR(suggestedDate)} às ${suggestedTime} (${b.service_name}) — daqui a 4 semanas.\n*1* — Pode reservar ✅\n*2* — Prefiro outro dia/horário 🔄\n*3* — Agora não, obrigado\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
+    // "de ontem" só quando é verdade — convite adiado pela pesquisa pode sair 2-3 dias depois.
+    const visitWord=b.booking_date===candidateDays[0]?'a visita de ontem':'sua visita'
+    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer ${visitWord} 🙏 Quer já deixar seu retorno reservado? Tenho ${weekday}, ${formatDateBR(suggestedDate)} às ${suggestedTime} (${b.service_name}) — daqui a 4 semanas.\n*1* — Pode reservar ✅\n*2* — Prefiro outro dia/horário 🔄\n*3* — Agora não, obrigado\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
     try{
       const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
         method:'POST',

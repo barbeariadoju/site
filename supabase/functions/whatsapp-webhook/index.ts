@@ -238,6 +238,31 @@ Deno.serve(async (request: Request) => {
     const messageId = String(data?.key?.id || '')
     let text = String(data?.message?.conversation || data?.message?.extendedTextMessage?.text || '').trim()
 
+    // v29.17.0 — caso Robson (13/08/2026): o cliente respondeu CITANDO (reply do WhatsApp)
+    // a pergunta específica — "Sim" citando o "quer cancelar? responda sim ou não" e "1"
+    // citando a pesquisa de satisfação — e nós ignorávamos a citação: o "Sim" foi engolido
+    // pela pesquisa pendente ("Não entendi 🙂") e o cancelamento nunca rodou, deixando um
+    // agendamento errado de pé. A citação diz EXATAMENTE a qual pergunta o cliente está
+    // respondendo, então ela roteia a resposta: cada interceptador abaixo só age se a
+    // mensagem não citar a pergunta de OUTRO fluxo. Citação de pergunta da JuIA
+    // ("Responda sim ou não"/"Confirmando:") derruba todos os interceptadores e deixa a
+    // mensagem chegar nela. Mensagem sem citação segue o comportamento de sempre.
+    const quotedRaw = data?.message?.extendedTextMessage?.contextInfo?.quotedMessage
+    const quotedText = String(quotedRaw?.conversation || quotedRaw?.extendedTextMessage?.text || '').trim()
+    const quotedTarget = !quotedText
+      ? null
+      : (/satisfeito/i.test(quotedText) && /insatisfeito/i.test(quotedText))
+        ? 'survey'
+        : /deixar seu retorno reservado|Pode reservar|retorno está reservado/i.test(quotedText)
+          ? 'invite'
+          : /Confirmo presen|vaga foi liberada|Confirmo presença/i.test(quotedText)
+            ? 'presence'
+            : /lista de espera|abriu uma vaga|vaga aberta/i.test(quotedText)
+              ? 'waitlist'
+              : /Responda sim ou não|Confirmando:|Só confirmando/i.test(quotedText)
+                ? 'juia'
+                : null
+
     const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
     const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
@@ -453,6 +478,21 @@ Deno.serve(async (request: Request) => {
           .eq('phone', phone)
           .maybeSingle()
 
+        // v29.17.0 — caso Robson: a pergunta mais recente do PRÓPRIO bot tem prioridade.
+        // Se a JuIA está no meio de uma confirmação crítica (cancelar/remarcar/trocar
+        // serviço/produtos — os pending_* do state dela), a resposta curta do cliente
+        // ("sim"/"não") pertence a ELA: a pesquisa de satisfação, o convite de retorno,
+        // a lista de espera e a pesquisa de lead não podem atropelar. Sem isso, o "Sim"
+        // do cancelamento caiu na pesquisa pendente e o agendamento errado ficou de pé.
+        const aiState = (conversation?.state || {}) as Record<string, unknown>
+        const juiaAwaitingAnswer = !!(
+          aiState.pending_cancel_booking_id ||
+          aiState.pending_reschedule_booking_id ||
+          aiState.pending_reschedule_new_date ||
+          aiState.pending_products_summary ||
+          aiState.pending_change_service_new_name
+        )
+
         const stillActive = isTakeoverActive(conversation)
         await admin.from('whatsapp_conversations').upsert({
           phone,
@@ -522,7 +562,7 @@ Deno.serve(async (request: Request) => {
         const { data: pendingConfirmationRows } = await admin.rpc('find_pending_confirmation_by_phone', { p_phone: phone })
         const pendingConfirmation = Array.isArray(pendingConfirmationRows) ? pendingConfirmationRows[0] : pendingConfirmationRows
 
-        if (pendingConfirmation) {
+        if (pendingConfirmation && (!quotedTarget || quotedTarget === 'presence')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           const ambiguousShortReply = trimmedNormalized.length <= 40
@@ -595,7 +635,7 @@ Deno.serve(async (request: Request) => {
         // de confirmação e existe um cancelamento AUTOMÁTICO recente (últimas 3h, com
         // pedido de confirmação pendente, horário ainda futuro), o horário é reativado
         // na hora — desde que ninguém tenha ocupado (a RPC valida colisão e bloqueio).
-        if (!pendingConfirmation) {
+        if (!pendingConfirmation && (!quotedTarget || quotedTarget === 'presence')) {
           const reactivateReply = normalize(text)
           const wantsBack = /^1[\s!.,]*$/.test(reactivateReply.trim()) || (/\bsim\b|confirmo|confirmado|ainda quero|ainda vou|consigo ir|vou conseguir|pode manter|reativa/.test(reactivateReply) && !/\bnao\b/.test(reactivateReply))
           if (wantsBack) {
@@ -638,7 +678,7 @@ Deno.serve(async (request: Request) => {
         const { data: pendingWaitlistOfferRows } = await admin.rpc('find_pending_waitlist_offer_by_phone', { p_phone: phone })
         const pendingWaitlistOffer = Array.isArray(pendingWaitlistOfferRows) ? pendingWaitlistOfferRows[0] : pendingWaitlistOfferRows
 
-        if (pendingWaitlistOffer) {
+        if (pendingWaitlistOffer && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'waitlist')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           const ambiguousShortReply = trimmedNormalized.length <= 40
@@ -701,7 +741,7 @@ Deno.serve(async (request: Request) => {
           .order('sent_at', { ascending: false })
           .limit(1)
         const returnInvite = returnInviteRows && returnInviteRows.length ? returnInviteRows[0] : null
-        if (returnInvite) {
+        if (returnInvite && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'invite')) {
           const inviteReply = normalize(text)
           const inviteTrimmed = inviteReply.trim()
           // Ordem importa: "não, prefiro outro dia" tem negação E pedido de outro horário —
@@ -779,7 +819,7 @@ Deno.serve(async (request: Request) => {
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
-        if (pending) {
+        if (pending && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
@@ -810,11 +850,17 @@ Deno.serve(async (request: Request) => {
           // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:
           // prejuízo direto. Elogio em texto livre agora conta como satisfeito.
           const praise = /elogi|gostei|gostamos|amei|adorei|perfeit|excelent|maravilh|sensacional|nota ?10|recomend|parabens|caprichad|impec|top\b|show\b|massa\b|daora|curti|melhor|satisfeit|otimo|otima|muito bo[am]|ficou bo[am]|arrasou|show de bola|gratid/.test(normalizedReply)
+          // v29.17.0 — caso Robson: "O 1 é relativo a pesquisa." é metafala SOBRE a pesquisa
+          // e caía no "não entendi". Quem cita a pesquisa/avaliação e diz 1 ou 2 no meio da
+          // frase está respondendo a ela, mesmo sem o número vir sozinho no início.
+          const refersToSurvey = /pesquis|avaliacao/.test(normalizedReply)
           const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
+            || (refersToSurvey && /\b2\b/.test(normalizedReply) && !/\b1\b/.test(normalizedReply))
           // `&& !isUnsatisfied` é essencial: "não gostei" contém "gostei" e cairia como
           // elogio, mandando pedido de avaliação pra quem reclamou.
           const isSatisfied = !isUnsatisfied && !asksSomethingElse
-            && (praise || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized))
+            && (praise || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
+              || (refersToSurvey && /\b1\b/.test(normalizedReply)))
           // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
           // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
           // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
@@ -902,7 +948,7 @@ Deno.serve(async (request: Request) => {
         // não sequestrar um pedido novo de verdade ("quero agendar amanhã às 15h" não devia
         // virar "motivo: outro"). Mensagem longa ou sem lead pendente cai pro fluxo normal.
         const trimmedText = text.trim()
-        if (trimmedText.length <= 60) {
+        if (trimmedText.length <= 60 && !juiaAwaitingAnswer && !quotedTarget) {
           const { data: pendingLead } = await admin
             .from('conversation_leads')
             .select('phone')
