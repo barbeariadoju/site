@@ -106,6 +106,15 @@ Deno.serve(async (request: Request) => {
     // avaliou antes. Só um booleano puro, sem "trim" (não é string).
     const hasGoogleReviewChange = typeof body?.request_google_review === 'boolean'
     const requestGoogleReview = hasGoogleReviewChange ? Boolean(body.request_google_review) : true
+    // v29.20.0 — caixinha (gorjeta) e cortesia, vindas do modal "Concluir atendimento".
+    // Caixinha fica FORA do faturamento (é do barbeiro), só registrada. Cortesia zera o
+    // serviço na receita do Financeiro (tela trata) e o trigger de fidelidade pula o ponto.
+    const tipAmountRaw = Number(body?.tip_amount)
+    const hasTipAmount = Number.isFinite(tipAmountRaw) && tipAmountRaw > 0
+    const tipAmount = hasTipAmount ? Math.round(tipAmountRaw * 100) / 100 : null
+    const hasCourtesyChange = typeof body?.courtesy === 'boolean'
+    const courtesy = hasCourtesyChange ? Boolean(body.courtesy) : false
+    const courtesyReason = String(body?.courtesy_reason || '').trim().slice(0, 120)
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
@@ -156,7 +165,8 @@ Deno.serve(async (request: Request) => {
     // Concluir um atendimento sempre exige a forma de pagamento — é o que alimenta o
     // relatório financeiro. Validado aqui também (não só na tela) porque o admin-booking-status
     // é chamado com a sessão do dono, mas nada impede outra chamada direta à function.
-    if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange) {
+    // v29.20.0: cortesia é a exceção — atendimento por conta da casa não tem pagamento.
+    if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange && !courtesy) {
       return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
     }
 
@@ -197,6 +207,11 @@ Deno.serve(async (request: Request) => {
     if (hasPaymentMethodChange) updatePayload.payment_method = paymentMethod
     if (hasProductsPaymentMethodChange) updatePayload.products_payment_method = productsPaymentMethod
     if (hasGoogleReviewChange) updatePayload.request_google_review = requestGoogleReview
+    if (hasTipAmount) updatePayload.tip_amount = tipAmount
+    if (hasCourtesyChange) {
+      updatePayload.courtesy = courtesy
+      updatePayload.courtesy_reason = courtesy ? (courtesyReason || null) : null
+    }
     if (hasStatusChange && status === 'cancelled') {
       rebookingToken = newToken()
       updatePayload.rebooking_token_hash = await hash(rebookingToken)

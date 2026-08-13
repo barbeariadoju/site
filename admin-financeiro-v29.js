@@ -76,7 +76,7 @@
     $('fin-next').disabled = atCurrent;
 
     const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 6); sevenAgo.setHours(0, 0, 0, 0);
-    const bookingCols = 'booking_date,service_price,products_price,payment_method,fee_passed_to_customer';
+    const bookingCols = 'booking_date,service_price,products_price,payment_method,fee_passed_to_customer,tip_amount,courtesy';
 
     const [entriesRes, bookingsRes, recentRes] = await Promise.all([
       sb.from('finance_entries').select('*').gte('entry_date', start).lte('entry_date', end).order('entry_date', { ascending: false }),
@@ -95,7 +95,12 @@
 
   // ---------- cálculo ----------
   function totals() {
-    const revenue = bookings.reduce((s, b) => s + Number(b.service_price || 0) + Number(b.products_price || 0), 0);
+    // v29.20.0 — cortesia (por conta da casa) zera o SERVIÇO na receita (produto vendido
+    // junto continua contando); caixinha fica FORA do faturamento, somada à parte.
+    const revenue = bookings.reduce((s, b) => s + bookingValue(b), 0);
+    const tips = bookings.reduce((s, b) => s + Number(b.tip_amount || 0), 0);
+    const courtesyCount = bookings.filter(b => b.courtesy).length;
+    const courtesyValue = bookings.filter(b => b.courtesy).reduce((s, b) => s + Number(b.service_price || 0), 0);
     let fixo = 0, variavel = 0, retirada = 0;
     for (const e of entries) {
       const v = Number(e.amount || 0);
@@ -107,14 +112,14 @@
     variavel += taxaAbsorvida;
 
     const expenses = fixo + variavel;
-    return { revenue, fixo, variavel, retirada, taxaAbsorvida, expenses, profit: revenue - expenses, net: revenue - expenses - retirada, count: bookings.length };
+    return { revenue, tips, courtesyCount, courtesyValue, fixo, variavel, retirada, taxaAbsorvida, expenses, profit: revenue - expenses, net: revenue - expenses - retirada, count: bookings.length };
   }
 
   // dia em que a receita acumulada passou a cobrir as despesas do mês
   function breakEvenDay(expenses) {
     if (expenses <= 0) return null;
     const byDay = {};
-    for (const b of bookings) byDay[b.booking_date] = (byDay[b.booking_date] || 0) + Number(b.service_price || 0) + Number(b.products_price || 0);
+    for (const b of bookings) byDay[b.booking_date] = (byDay[b.booking_date] || 0) + bookingValue(b);
     let acc = 0;
     for (const day of Object.keys(byDay).sort()) {
       acc += byDay[day];
@@ -147,7 +152,8 @@
   }
 
   // ---------- taxa da maquininha ----------
-  const bookingValue = (b) => Number(b.service_price || 0) + Number(b.products_price || 0);
+  // v29.20.0: cortesia não tem valor de serviço cobrado (produtos vendidos junto contam)
+  const bookingValue = (b) => (b.courtesy ? 0 : Number(b.service_price || 0)) + Number(b.products_price || 0);
   const feeOf = (b) => {
     const r = feeRates[b.payment_method];
     if (!r || !r.rate) return 0;
@@ -204,7 +210,11 @@
   function render() {
     const t = totals();
     $('fin-metric-revenue').textContent = money(t.revenue);
-    $('fin-metric-revenue-detail').textContent = `${t.count} atendimento${t.count === 1 ? '' : 's'} concluído${t.count === 1 ? '' : 's'}`;
+    // v29.20.0: caixinhas (fora do faturamento) e cortesias aparecem no detalhe da receita
+    const extraBits = [];
+    if (t.tips > 0) extraBits.push(`💰 ${money(t.tips)} em caixinhas`);
+    if (t.courtesyCount > 0) extraBits.push(`🎁 ${t.courtesyCount} cortesia${t.courtesyCount === 1 ? '' : 's'} (${money(t.courtesyValue)} não cobrados)`);
+    $('fin-metric-revenue-detail').textContent = `${t.count} atendimento${t.count === 1 ? '' : 's'} concluído${t.count === 1 ? '' : 's'}${extraBits.length ? ' · ' + extraBits.join(' · ') : ''}`;
     $('fin-metric-expense').textContent = money(t.expenses);
     $('fin-metric-expense-detail').textContent = `${money(t.fixo)} fixos · ${money(t.variavel)} variáveis`;
     $('fin-metric-profit').textContent = money(t.profit);
