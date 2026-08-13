@@ -463,6 +463,10 @@ Deno.serve(async (request: Request) => {
         // A partir daqui, qualquer mensagem NOVA do cliente torna esta resposta obsoleta.
         obsoleteCutoffMs = Date.now()
         await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
+        // v29.17.1 — caso Helder (13/08/2026): mensagem morreu em silêncio total entre o ack e a
+        // chamada da IA, sem UM log sequer pra dizer onde. Marcos de log baratos no caminho feliz:
+        // se o silêncio se repetir, o último marco presente diz exatamente onde parou.
+        console.log('[whatsapp-webhook] marco:processando', phone, 'chars', String(text || '').length)
 
         // v28.31.1: checagem de human_takeover MOVIDA pra cá, antes de tudo — bug real
         // (Lucas, 31/07/2026): o Juliano assumiu a conversa pessoalmente (respondeu do
@@ -993,6 +997,7 @@ Deno.serve(async (request: Request) => {
 
         // A partir daqui a resposta é gerada e enviada — trava por telefone para não
         // processar duas mensagens do mesmo cliente em paralelo (ver acquireLock acima).
+        console.log('[whatsapp-webhook] marco:interceptadores-ok', phone)
         const locked = await acquireLock(admin, phone)
         try {
           // Relê o estado mais recente: se esperamos pela trava, outra mensagem pode
@@ -1026,6 +1031,7 @@ Deno.serve(async (request: Request) => {
             .slice(0, -1)
             .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.body }))
 
+          console.log('[whatsapp-webhook] marco:chamando-ia', phone)
           const aiResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/ju-ia-site`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceRoleKey}` },
