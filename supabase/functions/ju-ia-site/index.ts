@@ -552,6 +552,25 @@ Deno.serve(async req=>{
  const simpleNo=includesAny(normalizedQuestion,['nao','não','deixa assim','mantem','manter','deixa pra la']) && normalizedQuestion.length<35
  const keepBothRequest=includesAny(normalizedQuestion,['manter os dois','manter ambos','deixa os dois','quero os dois'])
 
+ // v29.18.0 — caso Paulo Spina (13/08/2026): cliente recorrente perguntou "consigo um
+ // horário hoje 16h30?" e levou interrogatório ("qual serviço?"), mesmo com o histórico
+ // dizendo que ele sempre faz Corte de cabelo. Pedido do Juliano: pra quem já é de casa,
+ // consultar a base e ASSUMIR o serviço de sempre — dito com transparência na resposta
+ // (nota no fim) e fácil de corrigir (citar outro serviço troca normalmente). Só vale com
+ // telefone VERIFICADO (WhatsApp), cadastro real e pelo menos 1 atendimento concluído;
+ // cliente novo continua ouvindo a pergunta. NÃO confunde com a trava v28.30.4: aquela
+ // impede o MODELO de presumir em silêncio (e continua valendo); aqui é o CÓDIGO
+ // assumindo deterministicamente, com aviso explícito ao cliente. Também pula a oferta
+ // de upsell (upsell_services_done) — quem pediu só um horário do serviço de sempre não
+ // quer responder mais perguntas (motivo do pedido do Juliano).
+ let assumedUsualService=''
+ if((intent==='availability'||intent==='book')&&!chosen.length&&verifiedPhone&&hasCustomer&&lastService&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest){
+  next.services=[lastService.name]
+  chosen.push(lastService)
+  next.upsell_services_done=true
+  assumedUsualService=lastService.name
+ }
+
  if(hasCustomer && repeatRequest){
   if(lastService){
    next.services=[lastService.name]
@@ -2005,6 +2024,13 @@ Deno.serve(async req=>{
     await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
    }
   }
+ }
+
+ // v29.18.0 — transparência da suposição do serviço de sempre (ver bloco assumedUsualService
+ // acima): o cliente precisa SABER que o sistema assumiu por ele, senão vira o mesmo erro da
+ // v28.30.4 (presumir em silêncio). Nota única, no fim, sem repetir se a resposta já disser.
+ if(assumedUsualService&&!handoff&&(intent==='availability'||intent==='book')&&!/de sempre/i.test(reply)){
+  reply+=`\n\n(Anotei ${assumedUsualService}, o seu de sempre 😉 Se quiser outro serviço ou incluir algo, é só dizer.)`
  }
 
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})
