@@ -56,6 +56,11 @@ Deno.serve(async(req:Request)=>{
   if((req.headers.get('x-webhook-secret')||'')!==webhookSecret) return json({error:'Não autorizado.'},401)
   if(!evolutionApiUrl||!evolutionApiKey||!evolutionInstance) return json({error:'Evolution API não configurada.'},500)
 
+  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): convite não sai entre
+  // 20h e 8h (Brasília). O cron roda 10h BRT; a guarda protege disparo manual fora de hora.
+  const quietHour=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
+  if(quietHour>=20||quietHour<8) return json({ok:true,quiet_hours:true})
+
   const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
   const nowIso=new Date().toISOString()
 

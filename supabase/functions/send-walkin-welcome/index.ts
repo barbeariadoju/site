@@ -70,6 +70,15 @@ Deno.serve(async (request: Request) => {
       return json({ ok: true, sent: false, skipped: true, error: 'Integração do WhatsApp não configurada.' })
     }
 
+    // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): boas-vindas de balcão
+    // registrado depois das 20h não manda WhatsApp (o "foi um prazer te atender hoje" de
+    // madrugada incomoda mais do que ajuda; e de manhã, fora de contexto, também não vale
+    // reenviar). O cliente segue no CRM normalmente.
+    const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+    if (quietHour >= 20 || quietHour < 8) {
+      return json({ ok: true, sent: false, skipped: true, quiet_hours: true, error: 'Fora do horário de mensagens (20h–8h) — boas-vindas não enviada.' })
+    }
+
     const first = name.split(/\s+/)[0]
     const text = `Olá, ${first}! Foi um prazer te atender hoje na Barbearia do Ju 💈\n\nVocê sabia que da próxima vez pode agendar seu horário de um jeito bem mais simples? Se preferir, é só responder aqui mesmo neste WhatsApp que já agendamos pra você — ou, se preferir, acesse www.barbeariadoju.com.br/agendar e escolha o dia e horário com toda liberdade.\n\nTe esperamos em breve!`
 

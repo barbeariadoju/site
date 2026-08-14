@@ -74,7 +74,11 @@
     errorEl.textContent = '';
     const platform = $('conteudo-new-platform').value;
     const caption = $('conteudo-new-caption').value.trim();
-    const imageUrl = $('conteudo-new-image').value.trim();
+    // v29.21.0 — carrossel: o campo de imagem aceita vários links (um por linha, ou
+    // separados por espaço/vírgula). 2+ links no feed do Instagram = carrossel.
+    const imageLinks = $('conteudo-new-image').value.trim().split(/[\s,]+/).filter(Boolean);
+    const imageUrl = imageLinks.length === 1 ? imageLinks[0] : '';
+    const isCarousel = imageLinks.length > 1;
     // v28.57.0 — campo de vídeo (Reels/Status de vídeo). Espelha o de imagem; quando os
     // dois estão preenchidos, o vídeo é o que vai publicado e a imagem fica só como capa
     // de referência aqui no admin.
@@ -82,11 +86,16 @@
     const videoUrl = videoField ? videoField.value.trim() : '';
     const mediaUrl = videoUrl || imageUrl;
     if (!caption) { errorEl.textContent = 'Escreva o texto do post.'; return; }
-    if (PLATFORMS_REQUIRE_IMAGE.has(platform) && !mediaUrl) { errorEl.textContent = `${PLATFORM_LABEL[platform]} exige um link de imagem ou de vídeo.`; return; }
+    if (isCarousel && platform !== 'instagram') { errorEl.textContent = 'Vários links de imagem = carrossel, e carrossel só existe no feed do Instagram. Deixe um link só, ou mude a plataforma.'; return; }
+    if (isCarousel && videoUrl) { errorEl.textContent = 'Carrossel é só de imagens — tire o link do vídeo ou deixe uma imagem só.'; return; }
+    if (isCarousel && imageLinks.length > 10) { errorEl.textContent = 'O carrossel aceita no máximo 10 imagens.'; return; }
+    if (PLATFORMS_REQUIRE_IMAGE.has(platform) && !mediaUrl && !isCarousel) { errorEl.textContent = `${PLATFORM_LABEL[platform]} exige um link de imagem ou de vídeo.`; return; }
     // A Meta busca a mídia pelos próprios servidores dela, não pelo navegador — um link
     // relativo (ex. "/assets/foto.jpg") funciona aqui no admin mas falha silenciosamente
     // na hora de publicar. Exige link completo com https:// pra evitar esse bug.
-    if (imageUrl && !/^https?:\/\//i.test(imageUrl)) { errorEl.textContent = 'O link da imagem precisa ser completo, começando com https:// (não funciona um caminho relativo).'; return; }
+    for (const link of imageLinks) {
+      if (!/^https?:\/\//i.test(link)) { errorEl.textContent = 'Todos os links de imagem precisam ser completos, começando com https:// (não funciona um caminho relativo).'; return; }
+    }
     if (videoUrl && !/^https?:\/\//i.test(videoUrl)) { errorEl.textContent = 'O link do vídeo precisa ser completo, começando com https:// (não funciona um caminho relativo).'; return; }
     if (videoUrl && !/\.(mp4|mov)(\?|$)/i.test(videoUrl)) { errorEl.textContent = 'O vídeo precisa ser um arquivo .mp4 ou .mov — é o que o Instagram e o WhatsApp aceitam.'; return; }
     const submitBtn = $('conteudo-new-form').querySelector('button[type="submit"]');
@@ -97,8 +106,12 @@
       caption,
       status: 'rascunho',
       source: 'manual',
-      context: (imageUrl || videoUrl)
-        ? { ...(imageUrl ? { image_url: imageUrl } : {}), ...(videoUrl ? { video_url: videoUrl } : {}) }
+      context: (imageUrl || videoUrl || isCarousel)
+        ? {
+            ...(imageUrl ? { image_url: imageUrl } : {}),
+            ...(videoUrl ? { video_url: videoUrl } : {}),
+            ...(isCarousel ? { carousel_urls: imageLinks } : {}),
+          }
         : null,
     });
     submitBtn.disabled = false;
@@ -166,6 +179,9 @@
       // v28.57.0 — vídeo (Reel/Status de vídeo). Quando existe, ele é a mídia publicada e
       // a prévia vira um player, pro Juliano assistir antes de aprovar.
       const videoUrl = r.context && typeof r.context.video_url === 'string' ? r.context.video_url : '';
+      // v29.21.0 — carrossel (só feed do Instagram): a prévia mostra todas as imagens na
+      // ordem em que vão sair, pro Juliano conferir a sequência antes de aprovar.
+      const carouselUrls = r.context && Array.isArray(r.context.carousel_urls) ? r.context.carousel_urls : [];
       const platformLabel = PLATFORM_LABEL[r.platform] || r.platform;
       const noImageNote = PLATFORMS_REQUIRE_IMAGE.has(r.platform)
         ? `${platformLabel} exige uma imagem ou vídeo — este rascunho ainda não tem mídia definida.`
@@ -175,18 +191,20 @@
       // Story não tem legenda de verdade na Meta (o texto precisa estar na própria
       // imagem) — o campo de texto aqui é só anotação interna, não sai publicado.
       const isStoryPlatform = r.platform === 'facebook_story' || r.platform === 'instagram_story';
-      return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}">
+      return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}" data-carousel="${carouselUrls.length || ''}">
         <span class="badge ${r.status === 'aprovado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
-        ${videoUrl
+        ${carouselUrls.length
+          ? `<div class="conteudo-preview"><p class="meta">Prévia — vai como <strong>carrossel de ${carouselUrls.length} imagens</strong> no Instagram, nesta ordem, com o texto como legenda:</p><div style="display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.4rem">${carouselUrls.map((u, i) => `<figure style="margin:0;flex:0 0 auto;text-align:center"><img src="${esc(u)}" alt="Imagem ${i + 1} do carrossel" loading="lazy" style="max-height:180px;border-radius:.6rem"><figcaption class="meta">${i + 1}ª</figcaption></figure>`).join('')}</div></div>`
+          : videoUrl
           ? `<div class="conteudo-preview"><p class="meta">${r.platform === 'instagram' ? 'Prévia — este vídeo vai como <strong>Reel</strong> no Instagram, com o texto abaixo como legenda:' : isStoryPlatform ? 'Prévia — este vídeo vai pro Story (sem legenda):' : 'Prévia — este vídeo é publicado com o texto como legenda:'}</p><video src="${esc(videoUrl)}" controls playsinline preload="metadata"></video></div>`
           : imageUrl ? `<div class="conteudo-preview"><p class="meta">${isStoryPlatform ? 'Prévia — é exatamente essa imagem que vai pro Story (sem legenda, a Meta não permite texto sobreposto por API):' : 'Prévia — a imagem abaixo é publicada junto, com o texto como legenda:'}</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
         <textarea data-role="caption" ${editable ? '' : 'readonly'}>${esc(r.caption)}</textarea>
         ${isStoryPlatform ? '<p class="meta">Esse texto é só anotação interna — o Story não tem legenda, sai só a imagem.</p>' : ''}
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          ${videoUrl ? '' : !imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
+          ${(videoUrl || carouselUrls.length) ? '' : !imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
           <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}
@@ -248,8 +266,11 @@
     // aconteceu na prática numa chamada de Story), o navegador ficava esperando pra
     // sempre e o botão nunca saía de "Publicando...". 100s cobre com folga o pior caso
     // real (Instagram com espera de imagem) sem deixar a tela travada indefinidamente.
+    // v29.21.0: carrossel processa cada imagem em sequência na Meta — com 8-10 imagens
+    // pode passar dos 100s tranquilamente; espera 4min antes de desistir.
+    const isCarouselCard = Boolean(card.dataset.carousel);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 100000);
+    const timeout = setTimeout(() => controller.abort(), isCarouselCard ? 240000 : 100000);
     try {
       const fnName = PLATFORM_FN[platform] || 'content-publish-whatsapp';
       const res = await fetch(`${cfg.supabaseUrl}/functions/v1/${fnName}`, {

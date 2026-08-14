@@ -120,9 +120,30 @@ Deno.serve(async (request: Request) => {
     // valer só como capa/thumbnail de referência no admin).
     const videoUrl = typeof post.context?.video_url === 'string' ? post.context.video_url : ''
     const mediaUrl = videoUrl || imageUrl
+    // v29.21.0 — carrossel do Instagram: context.carousel_urls com 2 a 10 links de imagem.
+    // Fluxo da Graph API validado em produção nas pontes de 13/08/2026 (carrossel do guia
+    // de manutenção): cada imagem vira um container filho (is_carousel_item=true), o pai
+    // (media_type=CAROUSEL) junta os filhos + legenda e é ele que se publica. Só existe no
+    // FEED do Instagram — Story e página do Facebook não têm carrossel por API.
+    const carouselUrls: string[] = Array.isArray(post.context?.carousel_urls)
+      ? post.context.carousel_urls.map((u: unknown) => String(u || '').trim()).filter(Boolean)
+      : []
+    if (carouselUrls.length) {
+      if (post.platform !== 'instagram') {
+        return json({ error: 'Carrossel só existe no feed do Instagram — nas outras plataformas use uma imagem ou um vídeo.' }, 400)
+      }
+      if (carouselUrls.length < 2 || carouselUrls.length > 10) {
+        return json({ error: 'O carrossel precisa de 2 a 10 imagens (a Meta não aceita fora disso).' }, 400)
+      }
+      for (const url of carouselUrls) {
+        if (!/^https?:\/\//i.test(url)) {
+          return json({ error: 'Todos os links do carrossel precisam ser completos (começando com https://).' }, 400)
+        }
+      }
+    }
     // Story de qualquer rede e post do Instagram exigem mídia — só o feed do Facebook
     // aceita texto puro. Barrado antes da trava de publicação pra não gastar a lease à toa.
-    if (post.platform !== 'facebook' && !mediaUrl) {
+    if (post.platform !== 'facebook' && !mediaUrl && !carouselUrls.length) {
       return json({ error: 'Esse tipo de post exige uma imagem ou um vídeo (context.image_url ou context.video_url).' }, 400)
     }
     // Defesa em profundidade: o formulário do admin já bloqueia link relativo, mas um
@@ -258,29 +279,61 @@ Deno.serve(async (request: Request) => {
       }
       metaPostId = String(storyData?.post_id || storyData?.id || '') || null
     } else if (post.platform === 'instagram' || post.platform === 'instagram_story') {
-      const createParams = new URLSearchParams({ access_token: pageToken })
-      if (videoUrl) createParams.set('video_url', videoUrl)
-      else createParams.set('image_url', imageUrl)
+      let creationId = ''
 
-      // Feed do Instagram usa legenda; Story do Instagram não tem campo de legenda (o
-      // texto precisa já estar na própria mídia) — por isso caption só entra no feed.
-      // v28.57.0: vídeo no FEED do Instagram só existe como REELS (a Meta aposentou o
-      // post de vídeo comum) — sem media_type=REELS a criação do container falha.
-      // Story aceita vídeo com o mesmo media_type=STORIES da imagem.
-      if (post.platform === 'instagram') {
-        createParams.set('caption', finalCaption)
-        if (videoUrl) createParams.set('media_type', 'REELS')
+      if (carouselUrls.length) {
+        // Carrossel: primeiro os filhos, um a um (cada imagem processa no servidor da
+        // Meta antes de o pai poder referenciá-la), depois o container pai com a legenda.
+        const childIds: string[] = []
+        for (let index = 0; index < carouselUrls.length; index++) {
+          const childParams = new URLSearchParams({ access_token: pageToken, image_url: carouselUrls[index], is_carousel_item: 'true' })
+          const child = await createAndWaitInstagramContainer(igUserId, pageToken, childParams, false)
+          if ('error' in child) {
+            await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+            return json({ error: `Imagem ${index + 1} do carrossel: ${child.error}` }, 502)
+          }
+          childIds.push(child.creationId)
+        }
+        // O pai agrega até 10 mídias e processa mais devagar que imagem única — usa a
+        // espera longa (a mesma de vídeo) pra não desistir antes da Meta terminar.
+        const parentParams = new URLSearchParams({
+          access_token: pageToken,
+          media_type: 'CAROUSEL',
+          children: childIds.join(','),
+          caption: finalCaption,
+        })
+        const parent = await createAndWaitInstagramContainer(igUserId, pageToken, parentParams, true)
+        if ('error' in parent) {
+          await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+          return json({ error: `Montagem do carrossel: ${parent.error}` }, 502)
+        }
+        creationId = parent.creationId
       } else {
-        createParams.set('media_type', 'STORIES')
+        const createParams = new URLSearchParams({ access_token: pageToken })
+        if (videoUrl) createParams.set('video_url', videoUrl)
+        else createParams.set('image_url', imageUrl)
+
+        // Feed do Instagram usa legenda; Story do Instagram não tem campo de legenda (o
+        // texto precisa já estar na própria mídia) — por isso caption só entra no feed.
+        // v28.57.0: vídeo no FEED do Instagram só existe como REELS (a Meta aposentou o
+        // post de vídeo comum) — sem media_type=REELS a criação do container falha.
+        // Story aceita vídeo com o mesmo media_type=STORIES da imagem.
+        if (post.platform === 'instagram') {
+          createParams.set('caption', finalCaption)
+          if (videoUrl) createParams.set('media_type', 'REELS')
+        } else {
+          createParams.set('media_type', 'STORIES')
+        }
+
+        const container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
+        if ('error' in container) {
+          await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
+          return json({ error: container.error }, 502)
+        }
+        creationId = container.creationId
       }
 
-      const container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
-      if ('error' in container) {
-        await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
-        return json({ error: container.error }, 502)
-      }
-
-      const publishParams = new URLSearchParams({ access_token: pageToken, creation_id: container.creationId })
+      const publishParams = new URLSearchParams({ access_token: pageToken, creation_id: creationId })
       const publishResponse = await fetchWithTimeout(`https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media_publish`, {
         method: 'POST',
         body: publishParams,

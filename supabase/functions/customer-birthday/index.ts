@@ -36,6 +36,11 @@ Deno.serve(async (request: Request) => {
   const provided = request.headers.get('x-webhook-secret') || ''
   if (!expected || provided !== expected) return json({ error: 'Não autorizado.' }, 401)
 
+  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): nada de mensagem
+  // proativa entre 20h e 8h (Brasília). O cron roda 9h BRT; a guarda protege disparo manual.
+  const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+  if (quietHour >= 20 || quietHour < 8) return json({ ok: true, quiet_hours: true })
+
   const supabaseUrl = requiredSecret('SUPABASE_URL')
   const serviceRoleKey = requiredSecret('SUPABASE_SERVICE_ROLE_KEY')
   const admin = createClient(supabaseUrl, serviceRoleKey, {

@@ -33,6 +33,11 @@ Deno.serve(async(req:Request)=>{
   if(!supabaseUrl||!serviceRole||!emailSecret) return json({error:'Secrets obrigatórios ausentes.'},500)
   if(provided!==emailSecret) return json({error:'Não autorizado.'},401)
 
+  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): pesquisa não chega
+  // entre 20h e 8h (Brasília). As linhas ficam 'pending' e saem na rodada das 8h.
+  const quietHour=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
+  if(quietHour>=20||quietHour<8) return json({ok:true,quiet_hours:true})
+
   const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
   const evolutionApiUrl=Deno.env.get('EVOLUTION_API_URL')?.trim()||''
   const evolutionApiKey=Deno.env.get('EVOLUTION_API_KEY')?.trim()||''

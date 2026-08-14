@@ -23,6 +23,12 @@ Deno.serve(async (request: Request) => {
   const secret = Deno.env.get('EMAIL_WEBHOOK_SECRET')?.trim() || ''
   if (!secret || request.headers.get('x-webhook-secret') !== secret) return json({ error: 'Não autorizado.' }, 401)
 
+  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): mensagem proativa de
+  // robô não chega pra cliente entre 20h e 8h (Brasília). O dedupe daqui só marca DEPOIS
+  // de enviar, então nada se perde — a primeira rodada do cron depois das 8h entrega.
+  const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+  if (quietHour >= 20 || quietHour < 8) return json({ ok: true, quiet_hours: true })
+
   try {
     const url = Deno.env.get('SUPABASE_URL')!
     const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
