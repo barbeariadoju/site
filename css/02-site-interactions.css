@@ -535,3 +535,7 @@ footer a:hover,
 }
 
 
+
+/* v29.23.0 - hierarquia no hero: so o Agendar e dourado; os demais viram contorno discreto */
+.hero-ctas .hero-btn-ghost{background:rgba(22,16,10,.38);color:var(--gold);border:1px solid rgba(200,155,85,.55);box-shadow:none}
+.hero-ctas .hero-btn-ghost:hover{background:rgba(200,155,85,.14);box-shadow:none}

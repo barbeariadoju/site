@@ -1,3 +1,14 @@
+## 29.23.0 — Home no nível dos benchmarks: 1 CTA, avaliações reais e fim do "premium"
+
+Auditoria comparativa de 15/08 (Corleone, Hermanos, KE Barbearia — os "tops" do mercado) + incômodo do Juliano com a palavra "premium" no site. Aprovado por ele: "aplique todas as melhorias que vc achar boas" / "escolhe a frase vc".
+
+- **Hero**: headline nova — "Cuidar da sua imagem é o meu trabalho." (a voz do Juliano, tirada da própria seção sobre; sai o "MAIS QUE UM CORTE!" gritado em caixa alta que destoava dos benchmarks). Subtítulo com hora marcada + Bragança. **Um só CTA dourado ("Agendar horário")**; Produtos/WhatsApp/Blog viraram contorno discreto (`hero-btn-ghost`, css 02). Antes os 4 botões disputavam o olho com o mesmo peso.
+- **Faixa de avaliações**: morreu o autoelogio "padrão premium" (origem da reclamação). Entrou prova social REAL colhida do Google Maps em 15/08: **nota 5,0 · 80 avaliações** + duas citações verbatim com primeiro nome (Rogerio: "A melhor barbearia da região!"; Alfredo: "O corte ficou 10/10!! recomendo 1000%"). Regra: citação de cliente é sempre verbatim e nunca inventada; quando a tabela `google_reviews` passar a sincronizar (hoje está vazia), dá pra automatizar a rotação.
+- **Preços na home**: linha com os 3 serviços âncora (Corte R$ 40 · Barboterapia R$ 40 · Corte+Barboterapia R$ 80) na seção do catálogo — benchmark KE mostra preços; barbearia local com preço honesto é argumento, não segredo.
+- **"Premium" varrido do texto visível do site inteiro**: faixa da home, e-book (home + 7 páginas de blog: badge virou "📘 E-book"), descrição do Corte+Barboterapia ("acabamento caprichado") no catálogo v7 e no /agendar estático, badge de produto ("⭐ Destaque"). Classes CSS com "premium" no nome ficaram (invisíveis ao usuário, renomear só arriscaria regressão).
+- Cache: `02-site-interactions.css` e `style.css` bumpados pra 29.23.0 no index (o import do style.css mudou).
+- **Novo `PLANO-ASSINATURA-BRIEFING.md`**: o Juliano vai implantar o clube de assinatura esta semana (no notebook da barbearia) — o arquivo deixa mastigado: dados reais pra precificar, estrutura de planos sugerida, cobrança em 2 fases (link mensal já; API Pagamento Recorrente depois — precisa ser ADICIONADA ao chamado 1430398600), esqueleto de banco e ordem de implementação. Decisões abertas marcadas com ⚖️ pra fechar com ele.
+
 ## 29.22.1 — Fallback do pagamento avisa que o cartão online está chegando
 
 Pedido do Juliano (15/08): enquanto a allowlist do PagBank não sai, quem toca em "Pagar agora — Pix ou cartão" cai no bloco só de Pix — quebra de expectativa momentânea. O bloco de fallback ganhou uma linha explicando: cartão online está chegando; por enquanto Pix pela chave, ou no local (maquininha aceita cartão normal). A linha morre sozinha junto com o fallback quando a API liberar.
