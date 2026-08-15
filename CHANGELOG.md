@@ -1,3 +1,7 @@
+## 29.23.2 — "Mais de 80 avaliações" (número fixo envelhece)
+
+Observação do Juliano: a contagem de avaliações só cresce (80 → 90 → 100…), e o número exato na home ficaria defasado em semanas. Virou "mais de 80 avaliações" — verdadeiro por muito tempo, retoque só quando valer o próximo patamar ("mais de 100"). **Pendência registrada**: quando a sincronização do Perfil da Empresa preencher a `google_reviews` (tabela existe e está vazia — checar autorização da API), automatizar nota + contagem + rotação das citações na faixa, via cron, no lugar do texto fixo.
+
 ## 29.23.1 — Título do hero parava de clipar no celular
 
 Bug antigo confirmado em screenshot real: com `white-space:nowrap` no `.hero-title-line`, a fonte em `10.7vw` estourava a largura da tela e o título cortava na lateral ("CONTA SUA HISTÓR…" no texto antigo; "SUA IMAG…" no novo). Coeficiente reduzido pra `8.6vw` (e `8.2vw` no ajuste iOS) — cabe até em 320px. `?v=` do css 03 e do style.css bumpados.
