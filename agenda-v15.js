@@ -246,22 +246,13 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
     const outra=$('pix-outra-chave');
     if(outra)outra.onclick=(e)=>{e.preventDefault();declarar('pagbank',outra)};
   }
-  async function submit(){
-    const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
-    $('agenda-submit').disabled=true;$('agenda-submit').textContent='Confirmando...';
-    const {data:result,error}=await sb.functions.invoke('create-public-booking',{body:{customer_name:$('agenda-name').value.trim(),customer_phone:$('agenda-phone').value.replace(/\D/g,''),customer_email:email,birth_date:$('agenda-birth')?.value||null,service_name:names.join(' + '),service_price:t.servicePrice,duration_minutes:t.duration,booking_date:$('agenda-date').value,start_time:selectedTime,notes:$('agenda-notes').value.trim()||null,selected_products:products}});
-    const bookingError=error?.message||result?.error||'';
-    if(error||!result?.ok){alert(bookingError.includes('indisponível')||bookingError.includes('bloqueado')||bookingError.includes('antecedência')?bookingError:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Confirmar agendamento';$('agenda-submit').disabled=false;await loadSlots();return}
-    fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
-    sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
-    const manageUrl=result.manage_url||'';
-    // v28.68.0 — Pix antecipado (Fase 1). Aparece SÓ depois do horário confirmado: pedir
-    // pagamento antes de garantir a vaga derrubaria agendamento. O apelo é TEMPO, não
-    // desconto — num serviço de R$40 desconto corrói margem, e o ganho real pro cliente é
-    // sair da cadeira e seguir a rotina sem parar pra pagar. Recusar é um clique, sem
-    // fricção: a ideia é oferecer, nunca impor.
-    const totalPagar=t.servicePrice+t.productPrice;
-    const pixHtml=`<div class="pix-offer" id="pix-offer">
+  // v29.22.0 — Fase 2: Checkout PagBank. O botão leva pra página segura do PagBank
+  // (Pix, crédito ou débito à vista) e a confirmação volta AUTOMÁTICA pelo webhook:
+  // o cliente recebe no WhatsApp sem o Juliano conferir extrato. Se a API não responder
+  // (conta fora da allowlist, token ausente, erro), caímos no fluxo manual da Fase 1 —
+  // a chave copiável abaixo — sem o cliente perceber quebra.
+  function pixFallbackHtml(totalPagar){
+    return `<div class="pix-offer" id="pix-offer">
         <strong class="pix-offer-title">Quer já deixar pago?</strong>
         <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
@@ -277,8 +268,63 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
         <p class="pix-offer-status" id="pix-status" role="status"></p>
         <p class="pix-offer-note"><a href="#" id="pix-outra-chave">Paguei pela chave do celular</a></p>
       </div>`;
-    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?pixHtml:''}`;
-    if(result.booking_code&&result.management_token)bindPixOffer(result.booking_code,result.management_token,totalPagar);
+  }
+  function payOfferHtml(totalPagar){
+    return `<div class="pix-offer" id="pay-offer">
+        <strong class="pix-offer-title">Quer já deixar pago?</strong>
+        <p class="pix-offer-lead">Pagando agora, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
+        <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
+        <p class="pix-offer-note">Você paga na página segura do <b>PagBank</b> — Pix, crédito ou débito — e a confirmação chega no seu WhatsApp na hora, automática.</p>
+        <div class="pix-offer-actions">
+          <button type="button" class="btn primary" id="pay-now">💳 Pagar agora — Pix ou cartão</button>
+          <button type="button" class="btn ghost" id="pay-later">Prefiro pagar no local</button>
+        </div>
+        <p class="pix-offer-status" id="pay-status" role="status"></p>
+      </div>`;
+  }
+  function bindPayOffer(bookingCode,managementToken,valor){
+    const box=$('pay-offer'); if(!box)return;
+    $('pay-later').onclick=()=>{
+      fire('pix_declined',{value:valor});
+      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve! 💈</p>';
+    };
+    $('pay-now').onclick=async(e)=>{
+      const b=e.target; b.disabled=true; b.textContent='Abrindo pagamento…';
+      let resp=null;
+      try{
+        const r=await fetch(`${cfg.supabaseUrl}/functions/v1/pagbank-checkout`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({booking_code:bookingCode,token:managementToken})
+        });
+        resp=await r.json().catch(()=>null);
+      }catch{ resp=null }
+      if(resp&&resp.ok&&resp.pay_url){ fire('checkout_opened',{value:valor}); location.href=resp.pay_url; return }
+      if(resp&&resp.ok&&resp.already_paid){ box.innerHTML='<strong class="pix-offer-title">Pagamento já confirmado ✅</strong><p class="pix-offer-lead">Está tudo certo — não precisa fazer mais nada. 💈</p>'; return }
+      // Fase 1 como fallback: troca o bloco inteiro pela chave copiável.
+      box.outerHTML=pixFallbackHtml(valor);
+      bindPixOffer(bookingCode,managementToken,valor);
+    };
+  }
+  async function submit(){
+    const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
+    $('agenda-submit').disabled=true;$('agenda-submit').textContent='Confirmando...';
+    const {data:result,error}=await sb.functions.invoke('create-public-booking',{body:{customer_name:$('agenda-name').value.trim(),customer_phone:$('agenda-phone').value.replace(/\D/g,''),customer_email:email,birth_date:$('agenda-birth')?.value||null,service_name:names.join(' + '),service_price:t.servicePrice,duration_minutes:t.duration,booking_date:$('agenda-date').value,start_time:selectedTime,notes:$('agenda-notes').value.trim()||null,selected_products:products}});
+    const bookingError=error?.message||result?.error||'';
+    if(error||!result?.ok){alert(bookingError.includes('indisponível')||bookingError.includes('bloqueado')||bookingError.includes('antecedência')?bookingError:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Confirmar agendamento';$('agenda-submit').disabled=false;await loadSlots();return}
+    fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
+    sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
+    const manageUrl=result.manage_url||'';
+    // v28.68.0 — Pix antecipado (Fase 1). Aparece SÓ depois do horário confirmado: pedir
+    // pagamento antes de garantir a vaga derrubaria agendamento. O apelo é TEMPO, não
+    // desconto — num serviço de R$40 desconto corrói margem, e o ganho real pro cliente é
+    // sair da cadeira e seguir a rotina sem parar pra pagar. Recusar é um clique, sem
+    // fricção: a ideia é oferecer, nunca impor.
+    const totalPagar=t.servicePrice+t.productPrice;
+    // v29.22.0 — a oferta agora é o Checkout PagBank (Pix ou cartão, confirmação
+    // automática). O HTML da Fase 1 virou pixFallbackHtml() e só entra se a API falhar.
+    const payHtml=payOfferHtml(totalPagar);
+    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?payHtml:''}`;
+    if(result.booking_code&&result.management_token)bindPayOffer(result.booking_code,result.management_token,totalPagar);
     const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
     document.body.classList.add('booking-complete');
     $('agenda-status').classList.add('is-success');

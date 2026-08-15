@@ -32,9 +32,13 @@
     // v29.3.0: a declaração agora diz PARA QUAL CHAVE, pra abrir o app certo de primeira,
     // e ganha o botão de confirmar — que avisa o cliente por WhatsApp.
     const prepayKeyLabel=x.prepay_key==='picpay'?'PicPay · e-mail contato@barbeariadoju.com.br':'PagBank · celular 11967073038';
+    // v29.22.0: prepay_key='checkout' é pagamento pela API PagBank, confirmado por
+    // webhook — nasce já confirmado, sem botão de conferência (nada a conferir).
     const prepay=x.prepay_declared_at
       ? (x.prepay_confirmed_at
-        ? `<span class="admin-prepay-flag is-confirmed" title="Você confirmou o recebimento">✅ Pix recebido e confirmado</span>`
+        ? (x.prepay_key==='checkout'
+          ? `<span class="admin-prepay-flag is-confirmed" title="Pago pelo Checkout PagBank — confirmação automática">✅ Pago online (PagBank) — automático</span>`
+          : `<span class="admin-prepay-flag is-confirmed" title="Você confirmou o recebimento">✅ Pix recebido e confirmado</span>`)
         : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
       : '';
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?'Pix confirmado':'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
