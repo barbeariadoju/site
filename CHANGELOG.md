@@ -1,3 +1,7 @@
+## 29.22.1 — Fallback do pagamento avisa que o cartão online está chegando
+
+Pedido do Juliano (15/08): enquanto a allowlist do PagBank não sai, quem toca em "Pagar agora — Pix ou cartão" cai no bloco só de Pix — quebra de expectativa momentânea. O bloco de fallback ganhou uma linha explicando: cartão online está chegando; por enquanto Pix pela chave, ou no local (maquininha aceita cartão normal). A linha morre sozinha junto com o fallback quando a API liberar.
+
 ## 29.22.0 — Fase 2 do pagamento antecipado: Checkout PagBank (Pix + cartão, confirmação automática)
 
 Decisão do Juliano em 15/08/2026, revertendo conscientemente a escolha da v29.3.0 (sem API): o cliente merece confirmação automática, e cartão de crédito/débito entra como opção. Caminho escolhido: **Checkout PagBank** (página hospedada) em vez de formulário de cartão no site — uma integração só serve o site E, depois, o link que a JuIA pode mandar no WhatsApp, onde nascem ~90% dos agendamentos (v29.1.0). Pix por chave (0%) sai do fluxo do site; o Pix da API custa ~0,99%, o preço de ninguém mais conferir extrato.

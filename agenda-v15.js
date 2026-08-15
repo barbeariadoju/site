@@ -255,6 +255,7 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
     return `<div class="pix-offer" id="pix-offer">
         <strong class="pix-offer-title">Quer já deixar pago?</strong>
         <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
+        <p class="pix-offer-note">💳 O pagamento com <b>cartão online</b> está chegando — por enquanto é Pix pela chave abaixo, ou pague no local (lá o cartão passa normal na maquininha).</p>
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
         <div class="pix-keys">
           <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave Pix · e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
