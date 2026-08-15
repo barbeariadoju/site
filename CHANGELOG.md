@@ -1,3 +1,7 @@
+## 29.23.1 — Título do hero parava de clipar no celular
+
+Bug antigo confirmado em screenshot real: com `white-space:nowrap` no `.hero-title-line`, a fonte em `10.7vw` estourava a largura da tela e o título cortava na lateral ("CONTA SUA HISTÓR…" no texto antigo; "SUA IMAG…" no novo). Coeficiente reduzido pra `8.6vw` (e `8.2vw` no ajuste iOS) — cabe até em 320px. `?v=` do css 03 e do style.css bumpados.
+
 ## 29.23.0 — Home no nível dos benchmarks: 1 CTA, avaliações reais e fim do "premium"
 
 Auditoria comparativa de 15/08 (Corleone, Hermanos, KE Barbearia — os "tops" do mercado) + incômodo do Juliano com a palavra "premium" no site. Aprovado por ele: "aplique todas as melhorias que vc achar boas" / "escolhe a frase vc".

@@ -46,8 +46,10 @@
     width:100% !important;
     max-width:100% !important;
     padding:0 2px !important;
-    font-size:clamp(2.15rem,10.7vw,3.15rem) !important;
-    line-height:.98 !important;
+    /* v29.23.1: 10.7vw estourava a largura com white-space:nowrap — o título clipava
+       na lateral (acontecia com o texto antigo também). 8.6vw cabe até em 320px. */
+    font-size:clamp(1.9rem,8.6vw,2.9rem) !important;
+    line-height:1 !important;
     letter-spacing:.012em !important;
   }
 }
@@ -57,7 +59,7 @@
 @supports (-webkit-touch-callout:none){
   @media (max-width:430px){
     .hero-title{
-      font-size:clamp(2.05rem,10.25vw,2.95rem) !important;
+      font-size:clamp(1.8rem,8.2vw,2.7rem) !important;
       letter-spacing:0 !important;
     }
     .hero-title-line{
