@@ -1,3 +1,14 @@
+## 29.24.0 — Rodada 2 dos benchmarks: benefícios em destaque, vale-presente, galeria real e CTA fixo
+
+Segunda auditoria comparativa (Confraria da Barba, QOD + os três da rodada 1). Aprovação integral do Juliano: "quero que vc implemente tudo adorei todas as ideias".
+
+- **Seção "Por que a Barbearia do Ju"**: a trust-bar de chips minúsculos virou 5 cards de peso (reuso das classes previsit — zero CSS novo): ajuste sem custo, **fidelidade** (todo atendimento soma 1 ponto; no 10º o serviço é por nossa conta — o programa existia no sistema mas era invisível pra visitante novo), hora marcada, conforto, vale-presente.
+- **Vale-presente à venda** (pedido do Juliano, versão 1 sem API): seção própria + card no acesso rápido. Fluxo: Pix na chave PicPay → comprovante no WhatsApp com o nome do presenteado → Juliano envia o vale digital. Quando o Checkout PagBank liberar, pode virar cobrança online (registrado no briefing da assinatura).
+- **Galeria "Resultados de verdade"**: 4 fotos REAIS de clientes (posts de junho do Instagram, antes da era das artes de IA — cuidado: as artes recentes com "antes/depois" são simulações rotuladas e NÃO podem ir pra galeria). Privacidade: os clientes autorizaram o Instagram mas não o site, então cada foto foi **recortada para excluir o rosto** (fica cabelo/fade/orelha — curadoria visual manual foto a foto, recorte de 66% da largura + resize 900px). Originais: taper, mullet low fade, black power e cachos. As 4 fotos de ambiente continuam depois delas.
+- **CTA fixo no mobile**: barra dourada "Agendar horário" fixa no rodapé (≤620px, classe .mobile-agendar no css 02) — o padrão de conversão que os benchmarks só entregam via app.
+- Function temporária ig-media-tmp criada pra listar a mídia do Instagram via Graph API (secrets já existentes) — APAGAR depois de o Juliano aprovar a galeria.
+- Ideia de negócio aceita e pendente de decisão de prazo: garantia com prazo ("até 7 dias"?) e "pezinho grátis entre cortes" — Juliano decide depois.
+
 ## 29.23.2 — "Mais de 80 avaliações" (número fixo envelhece)
 
 Observação do Juliano: a contagem de avaliações só cresce (80 → 90 → 100…), e o número exato na home ficaria defasado em semanas. Virou "mais de 80 avaliações" — verdadeiro por muito tempo, retoque só quando valer o próximo patamar ("mais de 100"). **Pendência registrada**: quando a sincronização do Perfil da Empresa preencher a `google_reviews` (tabela existe e está vazia — checar autorização da API), automatizar nota + contagem + rotação das citações na faixa, via cron, no lugar do texto fixo.

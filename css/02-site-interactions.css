@@ -539,3 +539,10 @@ footer a:hover,
 /* v29.23.0 - hierarquia no hero: so o Agendar e dourado; os demais viram contorno discreto */
 .hero-ctas .hero-btn-ghost{background:rgba(22,16,10,.38);color:var(--gold);border:1px solid rgba(200,155,85,.55);box-shadow:none}
 .hero-ctas .hero-btn-ghost:hover{background:rgba(200,155,85,.14);box-shadow:none}
+
+/* v29.24.0 - CTA fixo de agendamento no celular (padrao de conversao dos benchmarks) */
+.mobile-agendar{display:none}
+@media(max-width:620px){
+  .mobile-agendar{position:fixed;left:0;right:0;bottom:0;z-index:80;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;font-weight:900;font-size:1rem;text-decoration:none;box-shadow:0 -8px 30px rgba(0,0,0,.45)}
+  body:has(.mobile-agendar){padding-bottom:64px}
+}
