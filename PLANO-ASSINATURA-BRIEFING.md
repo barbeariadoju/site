@@ -9,21 +9,10 @@ pra iniciar o trabalho — decisões abertas estão marcadas com ⚖️ (decidir
   (R$ 34,90–199,89/mês, "Planos Infinite") — modelo provado no mercado desde 2018.
 - Receita recorrente amortece a sazonalidade e aumenta frequência de visita.
 
-## Dados reais pra calibrar preço (do banco, agosto/2026)
-- Corte avulso R$ 40 · Corte+Barboterapia R$ 80 · Barboterapia R$ 40 (catálogo v7).
-- Ticket médio de agendamento: ~R$ 45–55. Faturamento ~R$ 4.100/quinzena.
-- Ciclo típico de retorno: ~4 semanas (o convite de retorno da v29.16.0 usa +28 dias).
-- Clientes semanais existem (avaliação no Google: "cortar o cabelo e fazer a barba toda semana").
-
-## ⚖️ Estrutura de planos sugerida (PONTO DE PARTIDA, não decisão)
-| Plano | Inclui | Preço sugerido | Lógica |
-|---|---|---|---|
-| Corte Mensal | 1 corte/mês + prioridade de agenda | R$ 35/mês | ~12% off vs avulso; converte o cliente de 4 semanas |
-| Corte Quinzenal | 2 cortes/mês | R$ 70/mês | ~12% off; cliente de manutenção |
-| Barba em Dia | corte + barboterapia 1x/mês | R$ 70/mês | ~12% off vs R$ 80 avulso |
-- Perguntas pro Juliano: quer plano "ilimitado"? (risco com cliente semanal: 4-5 cortes/mês
-  por R$ X — precisa preço >R$ 120 pra não canibalizar). Benefícios extras (desconto em
-  produto? prioridade? cortesia no aniversário — já existe o robô de aniversário).
+## Precificação e estrutura dos planos
+JÁ DEFINIDAS entre o Juliano e você (Claude do notebook) na conversa original do projeto —
+recupere do seu histórico/memória. Este briefing deliberadamente NÃO sugere planos nem
+preços (pedido do Juliano em 15/08): aqui é só a parte técnica/infraestrutura.
 
 ## Cobrança — decisão técnica em 2 fases
 - **FASE A (dá pra lançar esta semana, sem depender do PagBank):** assinatura = registro
