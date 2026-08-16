@@ -1,0 +1,49 @@
+<!doctype html><html lang="pt-BR"><head><title>Vales-presente | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.25.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<style>
+.vales-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px;flex-wrap:wrap}
+.vales-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.vales-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
+.vale-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;padding:14px 16px}
+.vale-card:hover{border-color:rgba(240,201,135,.35)}
+.vale-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.vale-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.05rem;font-weight:800;color:var(--gold2);letter-spacing:.06em}
+.vale-status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.72rem;font-weight:700;white-space:nowrap}
+.vale-status[data-status="pending_payment"]{color:#f1d675}
+.vale-status[data-status="active"]{color:#7ee2aa}
+.vale-status[data-status="used"]{color:#8fbfe0}
+.vale-status[data-status="expired"],.vale-status[data-status="cancelled"]{color:#888}
+.vale-meta{color:var(--muted);font-size:.85rem;margin:6px 0 0;line-height:1.6}
+.vale-items{color:var(--text);font-size:.9rem;margin:8px 0 0}
+.vale-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.vale-actions button,.vale-actions a{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.45rem .9rem;border-radius:10px;cursor:pointer;text-decoration:none}
+.vale-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
+.vale-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
+.vale-actions button[disabled]{opacity:.4;cursor:not-allowed}
+.vale-redeem{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+.vale-redeem input{padding:.6rem .8rem;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit;text-transform:uppercase}
+@media(max-width:700px){.vale-actions{flex-direction:column}.vale-actions button,.vale-actions a{width:100%;text-align:center}}
+</style>
+</head><body data-admin-page="vales"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="vales" class="is-active" href="admin-vales.html"><span>🎁</span>Vales-presente</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="financeiro" href="admin-financeiro.html"><span>💰</span>Financeiro</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="avaliacoes" href="admin-avaliacoes.html"><span>⭐</span>Avaliações Google</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a><a data-admin-nav="leads" href="admin-leads.html"><span>🔥</span>Funil de Reativação</a><a data-admin-nav="conteudo" href="admin-conteudo.html"><span>🗂️</span>Central de Conteúdo</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><p class="eyebrow">Vales-presente</p><h1>Confirmou o Pix, o código sai na hora.</h1><p>O código do vale só existe depois que você confirma o pagamento — e vai direto pro WhatsApp de quem comprou.</p></div></header>
+
+<section class="admin-metrics"><article><span>Aguardando Pix</span><strong id="vales-metric-pending">0</strong><small>confira e libere</small></article><article><span>Ativos</span><strong id="vales-metric-active">0</strong><small>ainda não usados</small></article><article><span>Vendidos no mês</span><strong id="vales-metric-month">R$ 0</strong><small>vales pagos</small></article></section>
+
+<section class="admin-surface">
+  <div class="vale-redeem">
+    <input id="vale-redeem-code" placeholder="BDJ-XXXXXX" maxlength="12">
+    <button class="btn primary" id="vale-redeem-btn" type="button">Validar e dar baixa</button>
+    <span class="field-help" id="vale-redeem-msg"></span>
+  </div>
+  <div class="vales-tabs">
+    <button data-vales-tab="pending_payment" class="is-active" type="button">Aguardando Pix</button>
+    <button data-vales-tab="active" type="button">Ativos</button>
+    <button data-vales-tab="used" type="button">Usados</button>
+    <button data-vales-tab="all" type="button">Todos</button>
+  </div>
+  <div id="vales-list"></div>
+</section>
+
+</main></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=29.25.0"></script><script src="admin-vales-v29.js?v=29.25.0"></script><script src="admin-pwa.js?v=28.58.0"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>

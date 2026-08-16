@@ -1,3 +1,15 @@
+## 29.25.0 — Vale-presente de verdade: escolhe, monta, paga por Pix e recebe o código
+
+Crítica certeira do Juliano ao texto da v29.24.0: *"esquece, a pessoa não me conhece, vai desconfiar"*. Quem compra um vale muitas vezes nunca pisou na barbearia — mandar essa pessoa fazer um Pix "às cegas" e depois explicar o que ela levou é o inverso da ordem certa. Agora ela **é conduzida pelas telas**: escolhe → vê o total → só então paga.
+
+- **Nova página `/vale-presente/`** em 3 etapas: (1) três vales prontos (Corte + Lavagem R$ 50, Barboterapia R$ 40, Corte + Barboterapia R$ 80) **ou** monta o próprio somando serviços do catálogo v7; (2) quem compra e quem ganha (+ mensagem); (3) pagamento com **Pix copia e cola gerado pelo sistema** (BR Code EMV com valor já embutido — o comprador não digita chave nem valor) e botão pra mandar o comprovante no WhatsApp.
+- **Migration 107**: tabela `gift_cards` (código, itens, valor, comprador, presenteado, validade de 12 meses), coluna `bookings.gift_card_id`, `generate_gift_code()` (alfabeto sem O/0/I/1 — o cliente vai ditar isso no balcão) e `check_gift_card()` pública pra validar no agendamento.
+- **Migration 108**: `confirm_gift_card()` e `redeem_gift_card()`, ambas com `is_admin()`. **Regra central: o código só nasce quando o Juliano confirma o Pix** — código gerado antes do pagamento é código que circula sem ter sido pago. Confirmação idempotente (reconfirmar devolve o mesmo código, nunca gera outro).
+- **Functions**: `gift-card-create` (pedido + Pix, push pro Juliano) e `gift-card-confirm` (verify_jwt=true + is_admin na RPC; libera o código e **avisa o comprador no WhatsApp na hora**).
+- **Nova tela `admin-vales.html`**: pendentes/ativos/usados, botão "Confirmar Pix e liberar código", campo de baixa por código no balcão, métricas (aguardando, ativos, vendido no mês). Link "🎁 Vales-presente" na sidebar das 14 telas do admin.
+- **Galeria**: a 2ª e a 4ª fotos foram trocadas a pedido do Juliano por um **clássico social (slick back, "old money")** e um **low fade na régua** — mesma curadoria de privacidade (recorte que exclui o rosto).
+- **Políticas novas na seção de benefícios**: "Ajuste sem custo **em até 7 dias**" (prazo definido, como a Confraria) e **"Pezinho por nossa conta"** entre cortes. O card de hora marcada virou **"Hora marcada, com bom senso"** com a **tolerância de 10 minutos dos dois lados** — o Juliano notou que prometer "sem espera" podia virar propaganda enganosa num dia em que o atendimento estende.
+
 ## 29.24.0 — Rodada 2 dos benchmarks: benefícios em destaque, vale-presente, galeria real e CTA fixo
 
 Segunda auditoria comparativa (Confraria da Barba, QOD + os três da rodada 1). Aprovação integral do Juliano: "quero que vc implemente tudo adorei todas as ideias".

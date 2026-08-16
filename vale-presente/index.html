@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Vale-presente | Barbearia do Ju</title>
+<meta content="Presenteie com corte, barba ou combo na Barbearia do Ju, em Bragança Paulista. Escolha um vale pronto ou monte o seu, pague por Pix e receba o código na hora." name="description"/>
+<meta content="index, follow" name="robots"/>
+<meta content="#0b0b0b" name="theme-color"/>
+<link href="https://www.barbeariadoju.com.br/vale-presente/" rel="canonical"/>
+<link href="/assets/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<meta content="pt_BR" property="og:locale"/>
+<meta content="website" property="og:type"/>
+<meta content="Vale-presente | Barbearia do Ju" property="og:title"/>
+<meta content="Presenteie com um momento de cuidado: corte, barba ou combo. Pague por Pix e receba o código na hora." property="og:description"/>
+<meta content="https://www.barbeariadoju.com.br/assets/og-barbearia-do-ju.jpg" property="og:image"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="/style.css?v=29.25.0" rel="stylesheet"/>
+<style>
+.vp-wrap{max-width:960px;margin:0 auto;padding:28px 18px 90px}
+.vp-steps{display:flex;gap:8px;justify-content:center;margin:0 0 22px;flex-wrap:wrap}
+.vp-step{font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid rgba(240,201,135,.22);border-radius:999px;padding:7px 14px}
+.vp-step.is-on{color:#16100a;background:linear-gradient(135deg,var(--gold),var(--gold2));border-color:transparent}
+.vp-panel{display:none}
+.vp-panel.is-on{display:block}
+.vp-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:18px 0}
+.vp-card{border:1px solid rgba(240,201,135,.22);background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.vp-card h3{margin:0;color:var(--gold2);font-size:1.12rem}
+.vp-card p{margin:0;color:var(--muted);line-height:1.5;font-size:.95rem;flex:1}
+.vp-price{font-size:1.5rem;font-weight:900;color:#fff}
+.vp-list{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.vp-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(240,201,135,.16);border-radius:14px;padding:12px 14px;background:rgba(20,20,20,.7)}
+.vp-item b{display:block;color:#fff;font-size:.98rem}
+.vp-item small{color:var(--muted)}
+.vp-cart{position:sticky;bottom:0;background:rgba(12,12,12,.97);border-top:1px solid rgba(240,201,135,.22);padding:14px 0;margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.vp-total{font-size:1.25rem;font-weight:900;color:var(--gold2)}
+.vp-form{display:grid;gap:14px;margin:18px 0}
+.vp-form label{display:block;font-weight:700;color:#fff;margin-bottom:6px;font-size:.95rem}
+.vp-form input,.vp-form textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid rgba(240,201,135,.22);background:rgba(16,16,16,.9);color:#fff;font:inherit}
+.vp-form textarea{min-height:84px;resize:vertical}
+.vp-pix{border:1px solid rgba(240,201,135,.3);border-radius:18px;padding:18px;background:rgba(20,20,20,.8);margin:16px 0}
+.vp-pix code{display:block;word-break:break-all;background:rgba(0,0,0,.55);border-radius:12px;padding:12px;color:var(--gold2);font-size:.78rem;line-height:1.5;margin:10px 0}
+.vp-help{color:var(--muted);font-size:.92rem;line-height:1.6}
+.vp-selected{color:var(--gold2);font-weight:800}
+@media(max-width:620px){.vp-cart{position:sticky}}
+</style>
+</head>
+<body>
+<header class="site-header">
+<a class="brand" href="/"><b>Barbearia do Ju</b></a>
+<nav class="site-nav"><a href="/agendar/">Agendar</a><a href="/produtos.html">Produtos</a><a href="/">Início</a></nav>
+</header>
+
+<main class="vp-wrap">
+<section class="section-head" style="text-align:center">
+<p class="eyebrow">Vale-presente</p>
+<h1>Presenteie com um momento de cuidado.</h1>
+<p class="vp-help">Escolha um vale pronto ou monte o seu com os serviços que quiser. No fim você paga por Pix e recebe o código para entregar a quem vai ganhar.</p>
+</section>
+
+<div class="vp-steps">
+<span class="vp-step is-on" data-step-label="1">1 · Escolher</span>
+<span class="vp-step" data-step-label="2">2 · Para quem é</span>
+<span class="vp-step" data-step-label="3">3 · Pagamento</span>
+</div>
+
+<!-- ETAPA 1 — pacotes prontos ou monte o seu -->
+<section class="vp-panel is-on" id="step-1">
+<h2 style="text-align:center;font-size:1.15rem;margin:6px 0 0">Vales prontos</h2>
+<div class="vp-cards" id="vp-packages"></div>
+
+<h2 style="text-align:center;font-size:1.15rem;margin:26px 0 0">Ou monte o seu vale</h2>
+<p class="vp-help" style="text-align:center">Junte os serviços que quiser — o valor do vale é a soma deles.</p>
+<div class="vp-list" id="vp-services"></div>
+
+<div class="vp-cart">
+<div><span class="vp-help">Seu vale:</span> <span class="vp-selected" id="vp-summary">nada escolhido ainda</span></div>
+<div style="display:flex;align-items:center;gap:14px"><span class="vp-total" id="vp-total">R$ 0,00</span>
+<button class="btn primary" disabled="" id="vp-go-2" type="button">Continuar</button></div>
+</div>
+</section>
+
+<!-- ETAPA 2 — dados de quem compra e quem ganha -->
+<section class="vp-panel" id="step-2">
+<h2 style="font-size:1.15rem">Para quem é o presente?</h2>
+<div class="vp-form">
+<div><label for="vp-buyer">Seu nome *</label><input autocomplete="name" id="vp-buyer" type="text"/></div>
+<div><label for="vp-phone">Seu WhatsApp * <small class="vp-help">(é nele que o código chega)</small></label><input autocomplete="tel" id="vp-phone" inputmode="tel" placeholder="11 90000-0000" type="tel"/></div>
+<div><label for="vp-recipient">Nome de quem vai ganhar</label><input id="vp-recipient" type="text"/></div>
+<div><label for="vp-message">Mensagem no vale (opcional)</label><textarea id="vp-message" maxlength="300" placeholder="Parabéns! Aproveite 💈"></textarea></div>
+</div>
+<p class="vp-help" id="vp-form-status" role="status"></p>
+<div class="vp-cart">
+<button class="btn ghost" id="vp-back-1" type="button">Voltar</button>
+<div style="display:flex;align-items:center;gap:14px"><span class="vp-total" id="vp-total-2">R$ 0,00</span>
+<button class="btn primary" id="vp-go-3" type="button">Ir para o pagamento</button></div>
+</div>
+</section>
+
+<!-- ETAPA 3 — Pix copia e cola -->
+<section class="vp-panel" id="step-3">
+<h2 style="font-size:1.15rem">Pagamento por Pix</h2>
+<div class="vp-pix">
+<p class="vp-help">Copie o código abaixo e cole no seu aplicativo do banco, na opção <b>Pix copia e cola</b>. O valor já vai preenchido.</p>
+<code id="vp-pix-code">…</code>
+<button class="btn primary" id="vp-copy" type="button">📋 Copiar código Pix</button>
+<p class="vp-help" style="margin-top:12px">No banco vai aparecer <b>Juliano Bruno Lopes Padilha</b> — é o titular da Barbearia do Ju.</p>
+</div>
+<p class="vp-help">Depois de pagar, toque no botão abaixo para nos enviar o comprovante. Assim que confirmarmos (geralmente em minutos, no horário de atendimento), <b>o código do vale chega no seu WhatsApp</b>.</p>
+<div class="vp-cart">
+<button class="btn ghost" id="vp-back-2" type="button">Voltar</button>
+<a class="btn primary" href="#" id="vp-whats" rel="noopener" target="_blank">✅ Já paguei — enviar comprovante</a>
+</div>
+</section>
+</main>
+
+<script src="/products-catalog-v1.js?v=29.25.0"></script>
+<script src="/services-catalog-v7.js?v=29.25.0"></script>
+<script src="/agenda-config-v6.js?v=29.25.0"></script>
+<script src="/vale-presente-v29.js?v=29.25.0"></script>
+</body>
+</html>
