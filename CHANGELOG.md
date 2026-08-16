@@ -1,3 +1,18 @@
+## 29.36.0 — Seis páginas de serviço estavam órfãs, e o blog não levava a lugar nenhum
+
+Auditoria de SEO feita com três modelos (GPT, Gemini e Claude). Boa parte do que as três apontaram **já estava feito** — schema `LocalBusiness`+`HairSalon` correto, `fetchpriority`/`poster`/`lazy`/`width`/`height` nas imagens, 23 páginas de serviço com preço, FAQ e autor. O que sobrou depois de conferir arquivo por arquivo foi isto:
+
+- **6 páginas de serviço não recebiam um único link interno**: `barboterapia-ozonio` (R$ 50), `corte-mais-lavagem` (R$ 50), `aparacao-corporal` (R$ 120), `pigmentacao-capilar` (R$ 50), `raspar-a-cabeca` e `freestyle-risquinho`. Existiam, estavam no sitemap e ninguém apontava pra elas — o Google chega pelo sitemap, mas não distribui autoridade pra página que nada linka. Outras 8 tinham só 1 link.
+- **`servicos.html` era um stub de redirect `noindex` com zero links de entrada.** Virou o hub real: `CollectionPage` + `ItemList` com os 23 serviços agrupados por categoria, preço e duração. Resolve as órfãs e cria uma página indexável para "serviços de barbearia em Bragança Paulista", sem precisar de landing page por bairro — que seria doorway page.
+- **8 dos 12 artigos do blog não linkavam pra nenhuma página de serviço.** Um artigo sobre barba encravada que não leva à barboterapia é tráfego que não vira cliente. Cada um recebeu o link do serviço correspondente, com âncora comercial.
+- **`/index.html` → `/` em 29 links internos.** Duas URLs pra mesma página dividem o link equity da página mais importante do site.
+- **`geo` no schema da home.** As coordenadas foram tiradas do place real do Google Maps (`-22.9540382, -46.5420126`) — as que dois dos modelos "estimaram" erravam ~150 m.
+- **Bug pego de raspão na verificação de links:** `/agendar/horario/` linkava `produtos.html` em caminho relativo, resolvendo pra `/agendar/horario/produtos.html`. Link quebrado, na etapa final do funil, onde é oferecido o upsell de produto. Agora é `/produtos.html`.
+
+⚠️ **Um alarme falso que vale registrar:** a auditoria inicial marcou como P0 um possível loop entre `/agendar/#servicos` e `/agendar/horario/`. Não existe — `/agendar/` renderiza o catálogo pra carrinho vazio e `/agendar/horario/` tem estado vazio tratado ("Nenhum serviço selecionado"), o que o `routes.spec.js` já cobria. O erro veio de auditar por rastreamento externo em vez de ler o código.
+
+Validado com `npm test`: 17 unit + 33 e2e passando, 0 links internos quebrados, 0 páginas de serviço órfãs.
+
 ## 29.35.0 — Reprecificação com base no preço público do fabricante, e a fibra vira serviço
 
 Pergunta do Juliano que derrubou a primeira proposta: *"o cliente vai no mercado livre e compra tudo pelo preço que eu também compro"*. Ele estava certo — e a proposta anterior, de subir os cosméticos, colocaria vários itens 30–45% acima do que o cliente acha em três toques no celular.
