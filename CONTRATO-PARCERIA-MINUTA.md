@@ -103,6 +103,22 @@ apurada.
 4.4. A cota-parte destinada ao SALÃO-PARCEIRO **não constitui receita do PROFISSIONAL-PARCEIRO**,
 e vice-versa, para todos os fins fiscais e contábeis.
 
+4.5. **Recebimentos em espécie e adiantamento da cota-parte.** Os valores pagos em dinheiro
+pelos clientes integram, como todos os demais, a centralização financeira de que trata a
+Cláusula 4.1. Fica facultado ao PROFISSIONAL-PARCEIRO **reter em espécie**, a título de
+**adiantamento** da sua cota-parte, os valores recebidos em dinheiro, observadas
+**cumulativamente** as condições:
+  a) o atendimento correspondente deve estar **registrado no sistema no ato**, com serviços e
+     forma de pagamento — o registro é condição do recebimento, não formalidade posterior;
+  b) a retenção é limitada ao **valor da cota-parte já acumulada** pelo PROFISSIONAL-PARCEIRO no
+     período de apuração em curso;
+  c) o valor que exceder esse limite é depositado no local indicado pelo SALÃO-PARCEIRO e
+     registrado no sistema no mesmo dia.
+
+4.6. Os valores retidos na forma da Cláusula 4.5 são **abatidos do repasse** do fechamento
+semanal, constando expressamente do extrato do período. Eventual saldo devedor apurado é
+compensado no fechamento seguinte.
+
 ### CLÁUSULA 5ª — DOS TRIBUTOS E OBRIGAÇÕES FISCAIS
 5.1. O SALÃO-PARCEIRO efetuará a **retenção e o recolhimento dos tributos e contribuições
 sociais e previdenciárias** devidos pelo PROFISSIONAL-PARCEIRO em decorrência desta parceria,

@@ -166,9 +166,97 @@ de caixa e agenda vazia, produto que sumiu do estoque sem venda, cliente que nã
 comprovante. **Você olha exceções, não vídeos.** Leva minutos por semana, funciona igual quando
 você está viajando, é barato e não cria um único indício de subordinação.
 
-⚖️ Decisão sua. Mas se me pergunta: implantar vigilância por IA para validar honestidade é
-trocar um risco pequeno e controlável (fraude, já coberta pela centralização do pagamento) por
-um risco grande e caro (vínculo empregatício reconhecido + exposição na LGPD).
+### A versão que EU faria (escopo reduzido — decisão do Juliano em 16/08)
+
+O Juliano reduziu o pedido depois do alerta: *"nem que fosse pra IA analisar quantas pessoas
+sentaram na cadeira, isso já me daria segurança... é pra meu controle, não usaria isso
+juridicamente"*. **Com esse escopo, muda tudo — e dá para fazer bem.** Contar ocupação é
+métrica de operação; classificar serviços executados por uma pessoa identificada é vigilância
+de desempenho. A distância entre as duas coisas é toda a diferença jurídica.
+
+**As quatro condições que tornam isso seguro:**
+
+1. **A saída é número, não imagem.** A IA responde apenas *"a cadeira X foi ocupada N vezes
+   hoje, nestes horários"*. Nada de reconhecimento facial, identificação de cliente,
+   classificação de serviço ou avaliação de tempo de execução por pessoa.
+2. **Mede as DUAS cadeiras — inclusive a sua.** Essa é a mitigação mais importante e a mais
+   barata: se o painel mostra a ocupação de todas as estações, incluindo a do dono, o sistema é
+   **indicador operacional do negócio** (como contador de fluxo de loja), não fiscalização de um
+   profissional. Medir só a cadeira dele é o que descaracterizaria.
+3. **Processamento local, não em nuvem.** Ver "como fazer" abaixo — é mais barato, e imagem de
+   cliente que não sai do estabelecimento é exposição que não existe.
+4. **Segue valendo o que o contrato diz** (Cláusula 8.5): câmeras existem para segurança, e as
+   imagens não são usadas para controle de jornada ou avaliação de desempenho. A contagem
+   agregada é indicador de ocupação do espaço — e é assim que deve ser tratada e nomeada,
+   inclusive na conversa com ele.
+
+**⚠️ O alerta honesto que preciso deixar registrado:** o Juliano diz — e eu acredito — que não
+usaria isso juridicamente. Mas numa eventual reclamação **quem usa a existência do sistema é o
+outro lado**: "ele monitorava meus atendimentos por câmera". Não é o uso que ele faria; é o uso
+que fariam contra ele. Por isso as condições 1 e 2 não são detalhe de implementação — são o que
+sustenta a resposta "isso é indicador de ocupação das estações, aplicado igualmente a todas,
+inclusive à minha".
+
+**Como fazer, na prática (e barato):**
+
+| Etapa | Recomendação | Por quê |
+|---|---|---|
+| Detecção | **Recurso nativo da câmera** (people counting / linha virtual / zona de detecção — Intelbras, Hikvision e Dahua têm) ou **Frigate** (open source) num mini PC no local | Já resolve "pessoa entrou na zona da cadeira". Custo zero ou muito baixo |
+| Processamento | **Local**, no próprio equipamento/mini PC. A imagem é analisada e descartada; sai só o evento | Imagem de cliente não trafega nem fica armazenada em serviço externo. Menos custo, menos risco de LGPD |
+| Envio | Webhook/MQTT do detector → uma Edge Function nova (`chair-events`) → tabela `chair_occupancy` (estação, horário do evento) | Padrão que o sistema já usa (o webhook do PagBank funciona assim) |
+| Uso | O **Painel de Integridade** cruza: ocupações detectadas × atendimentos registrados, **por estação e por faixa de horário** | Diferença consistente vira alerta discreto. Diferença pontual é ruído (cliente que só esperou sentado, alguém que sentou pra conversar) — o painel precisa mostrar tendência, não incidente |
+
+**Expectativa realista:** a contagem vai errar para mais (gente que senta e não é atendido) e
+ocasionalmente para menos. Ela serve como **indicador de tendência** — "a cadeira foi ocupada
+consistentemente mais vezes do que os atendimentos lançados, três semanas seguidas" —, nunca
+como acusação de um dia específico. E, como o Juliano mesmo disse, a ação diante de um padrão
+ruim é agradecer e encerrar a parceria, o que o contrato já permite com 30 dias de aviso.
+
+**Nuvem:** se ainda quiser gravação em nuvem (útil para segurança, se levarem o gravador), use
+o serviço do próprio fabricante com **retenção curta** (7–15 dias) e acesso só seu. Mas a
+**análise** não precisa de nuvem — e é melhor que não passe por lá.
+
+⚖️ Decisão sua, agora com o escopo certo: **contagem de ocupação por estação, processada
+localmente, aplicada a todas as cadeiras** — isso eu implemento tranquilo, e é o que dá a
+segurança que você quer sem trocar um risco pequeno por um grande.
+
+## 3.6. O cliente da porta e o dinheiro em espécie (o ponto mais sensível de todos)
+
+O Juliano identificou com precisão onde mora o risco (16/08): *"meu medo não é ele dar um
+migué no pessoal que vem da agenda, mas no pessoal que vem da porta"*. Está certíssimo — o
+walk-in é o único atendimento que **não deixa rastro antes de acontecer**. Ninguém marcou,
+ninguém confirmou, o cliente não existe no sistema.
+
+E aí veio a proposta: *"atendimento em dinheiro ele já pode ficar com o recebido, a ser
+descontado do total da semana"*. **A intenção é ótima (menos dinheiro parado, menos dependência
+de você estar presente), mas do jeito puro ela remove justamente o controle do walk-in:**
+
+1. **Junta oportunidade e incentivo no mesmo ato.** Cliente da porta + dinheiro na mão + "esse
+   dinheiro já é meu" = o único cenário em que não registrar o atendimento não dói em nada.
+   Todos os outros controles (conciliação de extrato, comprovante ao cliente) **dependem do
+   registro**; sem registro, não existe nada para conciliar.
+2. **Inverte o fluxo contra você.** Numa semana com muito dinheiro, ele pode reter mais do que
+   a cota-parte dele — e no fechamento **você vira credor**, cobrando de quem já gastou.
+3. **Fragiliza o modelo do salão-parceiro.** A Lei nº 13.352/2016 estrutura a parceria sobre a
+   **centralização dos recebimentos pelo salão** (Cláusula 4.1 do contrato). Dinheiro que nunca
+   passa pelo caixa enfraquece exatamente o que sustenta a tese de que não há vínculo.
+
+### O desenho que dá a mesma praticidade sem abrir a brecha
+
+| Camada | Como funciona | Por que resolve |
+|---|---|---|
+| **1. Pix como padrão, inclusive no balcão** | O sistema gera o **Pix copia e cola com o valor exato** (mesma tecnologia do vale-presente, v29.25.0) ou QR na bancada. Cai direto na sua conta | Hoje a maioria paga por Pix. Isso sozinho tira o dinheiro da equação em boa parte dos walk-ins |
+| **2. Registrar na chegada, não no fim** | Cliente da porta entra no sistema **antes** de sentar (20 segundos: nome + telefone + serviço). O check-out só fecha o que já existe | Registro deixa de ser burocracia pós-atendimento e vira a porta de entrada. Some o "esqueci de lançar" |
+| **3. O cliente vira o auditor (sem saber)** | Placa no balcão: *"Todo atendimento gera um comprovante no seu WhatsApp. Não recebeu em 5 minutos? Avise: (11) 96707-3038"* | Genial pela simplicidade: atendimento não registrado = cliente sem mensagem = você fica sabendo. E, para o cliente, isso não parece controle — parece capricho |
+| **4. Dinheiro com teto** | Ele **pode reter dinheiro**, sim — desde que **o atendimento esteja registrado no ato** e até o limite da **cota-parte já acumulada na semana**. O excedente vai pro cofre/envelope, também registrado | Dá a praticidade que o Juliano quer, mantém o registro como condição inegociável e nunca deixa você na posição de credor |
+| **5. Fechamento acerta a diferença** | O extrato semanal já traz "retido em espécie" como adiantamento. Se reteve menos que a cota, recebe a diferença no Pix de segunda; se reteve o limite, o acerto é zero | Simples de conferir, sem discussão |
+
+**A regra em uma frase, para o contrato e para a conversa com ele:** *"Reter dinheiro é
+permitido; deixar de registrar o atendimento, não."* O que o sistema controla é o **registro** —
+o dinheiro é só a forma de adiantar a cota-parte.
+
+⚠️ **Se ainda assim você quiser liberar dinheiro sem teto**, dá para fazer — mas então
+implemente antes as camadas 1, 2 e 3, que são as que realmente protegem o walk-in.
 
 ## 4. A sua tela de auditoria e fechamento
 
