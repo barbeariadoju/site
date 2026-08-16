@@ -1051,8 +1051,8 @@ Deno.serve(async (request: Request) => {
             return
           }
 
-          const reply = String(ai.reply)
-          const handoff = Boolean(ai.handoff)
+          let reply = String(ai.reply)
+          let handoff = Boolean(ai.handoff)
 
           // v28.44.4: anti-papagaio — caso real (Juliano, 02/08/2026): ele encaminhou 3
           // mensagens de divulgação com a palavra "barba" (link + textos do lançamento do
@@ -1069,9 +1069,37 @@ Deno.serve(async (request: Request) => {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
+          // v29.27.0 — BURACO REAL (caso Vitoria, 15/08/2026, 11:07): o anti-papagaio acima
+          // engoliu uma resposta a uma pergunta NOVA e o cliente ficou no vácuo — perdemos a
+          // venda. Ela pediu "corte + barba express", a JuIA respondeu "não encontrei
+          // horário"; ela emendou "então quero somente corte / para hoje" (com 12:15, 12:30,
+          // 14:15 e 14:30 livres!), a IA regerou a MESMA frase, o anti-papagaio suprimiu e
+          // ninguém falou mais nada. A cliente nunca foi respondida.
+          //
+          // A distinção que faltava: repetir resposta para o cliente que repetiu a mensagem é
+          // papagaio (suprimir é certo). Repetir resposta para quem perguntou algo NOVO é a IA
+          // travada — e aí silêncio é o pior desfecho possível. Nesse caso não calamos: a
+          // JuIA assume que empacou, responde curto e honesto, e chama o Juliano.
           if (lastOut && lastOut.body === reply && Date.now() - new Date(lastOut.created_at).getTime() < 10 * 60 * 1000) {
-            console.log('[whatsapp-webhook] resposta idêntica à anterior (<10min), suprimida', phone)
-            return
+            const { data: ultimasEntradas } = await admin
+              .from('whatsapp_messages')
+              .select('body')
+              .eq('phone', phone)
+              .eq('direction', 'in')
+              .order('created_at', { ascending: false })
+              .limit(2)
+            const norm = (s: string) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim()
+            const clienteRepetiu =
+              (ultimasEntradas?.length ?? 0) >= 2 && norm(ultimasEntradas![0].body) === norm(ultimasEntradas![1].body)
+
+            if (clienteRepetiu) {
+              console.log('[whatsapp-webhook] anti-papagaio: cliente repetiu a mesma mensagem, resposta suprimida', phone)
+              return
+            }
+
+            console.warn('[whatsapp-webhook] IA repetiu resposta para pergunta nova — contornando em vez de calar', phone)
+            reply = 'Desculpe, me embolei aqui. 🙏 Já estou vendo isso certinho com o Juliano e te respondo em instantes.'
+            handoff = true
           }
 
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
