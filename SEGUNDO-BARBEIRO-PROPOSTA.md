@@ -39,17 +39,27 @@ O sistema já tem `finance_fee_rates` (migration 098/099) — é ela que aliment
 por meio de pagamento. **A taxa nunca é digitada na mão no fechamento**: sai do registro do
 atendimento.
 
-### Casos que precisam de regra ⚖️ (a maior fonte de discussão depois)
+### As regras dos casos especiais — recomendação fechada (16/08/2026)
 
-| Situação | Pergunta | Sugestão |
+O Juliano pediu recomendação, não cardápio. Segue o que eu defenderia, com o porquê. O
+princípio que orienta tudo: **o barbeiro nunca perde dinheiro por causa de um benefício que
+quem decidiu dar foi a casa.** Benefício que ele não escolheu, ele não financia — senão ele
+passa a torcer contra o próprio programa (deixa de estimular fidelidade, "esquece" de
+oferecer o pezinho, empurra o vale pra outro dia).
+
+| Situação | Recomendação | Por quê |
 |---|---|---|
-| Fidelidade: 10º serviço grátis | Quem paga o barbeiro? | A casa paga 50% do valor cheio ao barbeiro (o benefício é seu, não dele) |
-| Vale-presente | Comissão quando? | Na **execução** do atendimento, sobre o valor do serviço (o dinheiro entrou antes, mas o trabalho é agora) |
-| Ajuste sem custo (7 dias) / pezinho cortesia | Recebe? | Não gera comissão — é retrabalho/cortesia. Se o ajuste for de corte feito por VOCÊ, também não onera ele |
-| Falta do cliente (no-show) | Recebe algo? | Não. Mas o sistema deve **registrar** para você ver se as faltas se concentram na agenda dele |
-| Desconto dado no balcão | Sobre o quê incide? | Sobre o valor efetivamente cobrado — e o sistema marca **quem** deu o desconto |
-| Produto vendido | Percentual? | 15% (padrão de mercado 10–20%) |
-| Gorjeta | De quem é? | 100% de quem atendeu, fora do rateio |
+| **Fidelidade (10º grátis)** | A casa paga **integral**: ele recebe 50% do valor cheio, como se o cliente tivesse pago | O programa é ferramenta de retenção **sua**. Custo real: 1 em 10 atendimentos ≈ **5% do faturamento dele** em comissão sobre serviço não faturado. É o preço do programa, e é previsível. Se ele "perde" no 10º, ganha incentivo a sabotar a fidelidade |
+| **Vale-presente** | Comissão **normal na execução**, sobre o valor do serviço | O dinheiro entrou antes, mas o trabalho é agora. E a taxa é zero (Pix), então é 50/50 limpo — inclusive melhor pra ele que crédito |
+| **Ajuste sem custo (7 dias)** | **Sem comissão** — e a regra é: **ajuste é sempre de quem cortou** | É retrabalho, custo de qualidade de quem executou. Se por indisponibilidade o outro tiver que fazer, aí sim a casa paga 50% a quem executou (ninguém deve consertar corte alheio de graça) |
+| **Pezinho cortesia** | **Sem comissão**, mas **registrado** como atendimento e só em horário vago | É rápido (5–10 min) e traz o cliente de volta — quem ganha com isso é a casa e ele, no próximo corte. Reavaliar em 60 dias com o volume real: se virar peso na agenda dele, vira valor fixo simbólico |
+| **Produto vendido** | **15% sobre o valor da venda**, só do que ele vendeu no atendimento dele | Padrão de mercado é 10–20%, menor que serviço porque a margem do produto é diferente. 15% é o meio, e é o suficiente pra ele querer vender |
+| **Desconto no balcão** | **Zero no primeiro mês.** Depois, até **10%** com motivo obrigatório registrado; acima disso, só com seu OK | Desconto é o vazamento de margem mais fácil de acontecer e mais difícil de auditar. No 50/50 ele já perde metade do desconto — o incentivo natural ajuda, mas controle no começo é sensato. O sistema marca **quem** deu |
+| **Falta do cliente (no-show)** | Ninguém recebe, mas **registra por profissional** | Não é culpa dele, mas se as faltas se concentrarem na agenda dele, é um sinal (confirmação, atraso, atendimento) que só aparece com dado |
+| **Gorjeta** | **100% de quem atendeu**, fora do rateio | Gorjeta é do trabalho, não da estrutura. Entrar no rateio azeda rápido |
+| **Produto usado no serviço** (pomada, toalha, lâmina) | Custo **integral da casa**, nunca descontado dele | Já está no combinado "você dá tudo". Descontar insumo depois é o clássico que quebra a confiança |
+| **Assinatura (quando o plano existir)** | ⚖️ **Decisão dependente do plano**: pagar **valor fixo por atendimento de assinante**, não 50% do preço cheio | Assinante paga mensalidade fixa e pode usar muito. Se o barbeiro receber 50% do valor cheio a cada visita, um assinante intenso vira prejuízo. Fixar o valor por atendimento (ex.: plano R$ 70 com 2 cortes → R$ 35/corte → R$ 17,50 pra ele) mantém a conta em pé. Fechar isso junto com a precificação do plano |
+| **Cliente da casa × cliente dele** | **Não diferenciar** no início — 50% em tudo | Alguns modelos pagam menos por cliente que veio do marketing da casa. É mais justo na teoria e uma fonte de discussão infinita na prática. Registrar a origem do cliente desde o dia 1 (o sistema já faz) permite rever isso depois com dados, se fizer falta |
 
 ---
 
@@ -69,8 +79,34 @@ completo, Financeiro da casa, relatórios gerais, marketing, conteúdo ou config
 
 **O que ele NÃO pode fazer** (regra técnica, não confiança): ver dados de clientes de outros
 profissionais, cancelar/editar atendimento já fechado, alterar preços do catálogo, aplicar
-desconto acima de um limite ⚖️ (sugestão: até 10%; acima disso pede sua liberação), ver
-faturamento da casa.
+desconto acima do limite, ver faturamento da casa.
+
+**Formato:** o mesmo Barbearia OS que já existe, instalado como app no celular dele (o admin
+já é PWA). Não é um app separado — é o mesmo sistema com o menu filtrado pelo papel. Menos
+código para manter, e ele nunca vê um item de menu que não pode abrir.
+
+### Gerenciar equipe: entrar em 2 minutos, sair em 1 clique
+
+Pedido literal do Juliano: *"eventualmente vem um cara, não dá certo, troco por outro — preciso
+ter a segurança que com um clique eu exclua tudo o que ele acessa, e com muita facilidade
+inclua outro"*. Isso vira a aba **Equipe** no admin:
+
+- **Adicionar profissional**: nome, apelido que aparece pro cliente, e-mail de acesso,
+  percentuais (serviço/produto), dias e horários que ele atende. O sistema cria o acesso e
+  manda a senha provisória. ~2 minutos.
+- **Desativar (o botão de pânico)**: um clique e o acesso morre **na hora** — as regras de
+  segurança do banco (RLS) passam a negar tudo em nome dele, a sessão aberta no celular dele
+  para de funcionar na próxima ação, e o nome dele some do site e da JuIA.
+- **O que NÃO some**: o histórico de atendimentos, comissões e fechamentos dele. Isso é
+  registro financeiro — você vai precisar dele para conferência, contabilidade e para saber
+  quanto aquela cadeira rendeu. **"Cortar o acesso" e "apagar os dados" são coisas diferentes,
+  e só a primeira deve ser de um clique.**
+- **Transferir agenda** (o detalhe que evita a dor de cabeça): ao desativar, o sistema
+  pergunta o que fazer com os agendamentos futuros dele — passar pra você, passar pro
+  substituto, ou avisar os clientes para remarcar. Sem isso, sair um barbeiro no meio da
+  semana vira telefonema para cada cliente.
+- **Reativar / substituir**: cadastrar o próximo é o mesmo fluxo de 2 minutos. A cadeira
+  continua existindo; muda quem senta nela.
 
 ---
 
@@ -122,20 +158,36 @@ coração do sistema, e é onde um erro aparece como "cliente agendou em horári
 
 ---
 
-## 6. Antes de contratar: os números que decidem ⚖️
+## 6. A demanda já existe — e está sendo perdida na porta
 
-Vale a pena rodar com os dados que já temos, antes de qualquer linha de código:
+Informação do Juliano em 16/08/2026, que muda a natureza da decisão: **ele dispensa cliente
+na porta em terça, sexta e sábado.** Salva o contato, entrega o cartão, mas *"não consigo
+converter sozinho"*. Ou seja: a segunda cadeira não precisa **criar** demanda — ela precisa
+**parar de recusar** a que já bate na porta. Some a isso o plano por assinatura, que aumenta
+a frequência de visita dos mesmos clientes.
 
-- **Ocupação atual**: agosto teve ~51 agendamentos online (~R$ 2.400/quinzena em serviços).
-  Quantos clientes você recusa ou empurra para outro dia por falta de horário? Se a resposta
-  for "poucos", a segunda cadeira não nasce cheia — ela precisa de demanda nova (anúncios,
-  assinatura), não só de espaço.
-- **Ponto de equilíbrio**: com 50% líquido, cada corte de R$ 40 no dinheiro deixa R$ 20 para
-  a casa. Estrutura, produtos, energia, aluguel proporcional e as suas horas de gestão saem
-  daí. ⚖️ Vale calcular quantos atendimentos/semana ele precisa fazer para a cadeira se pagar.
-- **Formalização**: 50/50 sem vínculo empregatício é comum no setor, mas o modelo importa
-  (autônomo com contrato de parceria, MEI prestador etc.). Isso é conversa com seu contador —
-  não é decisão de software, e escrever o combinado antes evita 90% dos problemas depois.
+**Ação para começar hoje, antes de qualquer código novo:** o sistema já tem **Lista de espera**
+(`admin-espera.html`, v28.x) e ela está subutilizada. Toda vez que alguém for dispensado,
+cadastrar ali (nome + WhatsApp + o que queria). Isso resolve três coisas de uma vez:
+
+1. **Converte agora**: quando abre uma vaga (falta, cancelamento), o sistema avisa quem está
+   na fila — em vez de o horário morrer vazio.
+2. **Mede a demanda perdida**: em 3–4 semanas você tem o número exato de quantos clientes por
+   semana batem na porta e voltam. Esse número **é** o faturamento da segunda cadeira, com
+   nome e telefone.
+3. **Enche a agenda do novo barbeiro no dia 1**: a lista vira a primeira leva de convites
+   ("abriu horário novo, com o profissional X"). Ninguém começa em cadeira vazia — que é o
+   que costuma matar a segunda cadeira no primeiro mês.
+
+**Ponto de equilíbrio, para ter na cabeça**: com 50% líquido, cada corte de R$ 40 em dinheiro
+deixa R$ 20 para a casa. Estrutura, energia, produtos, aluguel proporcional e a sua gestão
+saem daí. ⚖️ Com o número de dispensados em mãos, dá para calcular em uma conta só quantos
+atendimentos/semana a cadeira precisa para se pagar — e provavelmente ela já se paga.
+
+**Formalização**: 50/50 sem vínculo empregatício é comum no setor, mas o modelo importa
+(autônomo com contrato de parceria, MEI prestador etc.). Isso é conversa com seu contador —
+não é decisão de software, e escrever o combinado antes evita 90% dos problemas depois.
+O que o sistema faz é dar o extrato: cada real, com data, meio de pagamento e taxa.
 
 ---
 
