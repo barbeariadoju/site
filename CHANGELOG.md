@@ -1,3 +1,18 @@
+## 29.41.0 — Quatro artigos com referência real, no território que só nós temos
+
+Os quatro que ocupam o terreno que nenhum concorrente de Bragança consegue disputar, porque exigem as duas formações. **Todas as referências foram levantadas na fonte** — PubMed e canais oficiais da ANVISA — com DOI ou link direto, e nenhuma foi escrita de memória.
+
+- **`blog-barba-falhada.html`** — por que a barba falha. Sustentado em dois trabalhos: o do *FASEB Journal* que cultivou folículos humanos e mostrou que folículos **geneticamente idênticos** respondem de formas diferentes ao mesmo androgênio conforme a região ([10.1096/fj.201700260RR](https://doi.org/10.1096/fj.201700260RR)), e o do *J Invest Dermatol* sobre regulação local da sensibilidade androgênica ([10.1038/sj.jid.5700883](https://doi.org/10.1038/sj.jid.5700883)). Conclusão que dá para dizer em voz alta na cadeira: a distribuição da barba foi decidida antes de o cliente ter opinião sobre ela — não é falta de cuidado.
+- **`blog-pigmentacao-barba-como-funciona.html`** — o dado forte é de 2025: série de casos na *Contact Dermatitis* com produto **rotulado como "livre de PPD"** que, em análise química, continha PPD acima do limite ([10.1111/cod.14813](https://doi.org/10.1111/cod.14813)). Somado ao levantamento do NACDG, em que 5,6% dos testados reagiram à PPD ([10.1016/j.jaad.2020.10.086](https://doi.org/10.1016/j.jaad.2020.10.086)). É o que justifica o teste 48h antes deixar de ser formalidade.
+- **`blog-platinado-masculino-o-que-acontece-com-o-fio.html`** — explica por que cabelo descolorido fica elástico e quebra, com o estudo de microscopia eletrônica e proteômica redox que mediu a conversão de pontes dissulfeto de cistina em **ácido cisteico** ([10.1111/ics.12495](https://doi.org/10.1111/ics.12495)).
+- **`blog-quimica-capilar-masculina-seguranca.html`** — o mais valioso comercialmente, porque é local e regulatório. Baseado no **Informe de Segurança GGMON nº 03/2025 da ANVISA** (07/07/2025), buscado direto na fonte: formol é permitido só como conservante até 0,2% (concentração em que **não alisa**), e **o ácido glioxílico também está entre os não permitidos para alisamento** — o que derruba o argumento de "alternativa segura ao formol" que ainda se vende por aí.
+
+Os quatro entraram no sitemap, nos cards e no schema do blog, e a **pilar da barba teve seus ganchos de texto convertidos em links** agora que os artigos existem. CTAs usando `?servico=` com slug validado contra o catálogo real.
+
+Corrigido também um teste **flaky**: `service_selected` falhava de forma intermitente porque o hook instalado via `evaluate()` morria no reload que o service worker dispara sozinho. Passou a usar `addInitScript` + `sessionStorage`, que sobrevivem à navegação. Rodado 3x isolado e na suíte completa.
+
+`npm test`: 17 unit + 46 e2e. 0 JSON-LD inválido, 0 links quebrados.
+
 ## 29.40.0 — Guia da barba como página pilar, e o Wi-Fi/Pix sai da home
 
 - **`/guia-barba-masculina.html`**: a página pilar que faltava. Os 7 artigos de barba existiam soltos — bons, mas sem hierarquia, cada um competindo sozinho. Agora o guia organiza o assunto inteiro (formato, falhas, encravado, irritação, produtos, manutenção), aponta para cada artigo **e** para os 5 serviços de barba, e os 7 artigos apontam de volta. Isso é o que transforma uma pilha de posts em autoridade temática. Com `Article` schema, FAQ de 4 perguntas e fontes citadas (SBD e DermNet).

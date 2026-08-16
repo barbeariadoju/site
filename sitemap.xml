@@ -69,4 +69,24 @@
   <url><loc>https://www.barbeariadoju.com.br/blog-ingredientes-produtos-barba-cabelo.html</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
   <url><loc>https://www.barbeariadoju.com.br/blog-como-funciona-agendamento-juia.html</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
   <url><loc>https://www.barbeariadoju.com.br/blog-cuidados-barba-pele-inverno.html</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
+  <url>
+    <loc>https://www.barbeariadoju.com.br/blog-barba-falhada.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.barbeariadoju.com.br/blog-pigmentacao-barba-como-funciona.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.barbeariadoju.com.br/blog-platinado-masculino-o-que-acontece-com-o-fio.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.barbeariadoju.com.br/blog-quimica-capilar-masculina-seguranca.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>

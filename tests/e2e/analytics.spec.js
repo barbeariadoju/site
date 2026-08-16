@@ -74,24 +74,37 @@ test.describe('eventos de funil no dataLayer', () => {
   });
 
   test('adicionar serviço dispara service_selected com nome e valor', async ({ page }) => {
-    await page.goto('/agendar/');
-    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
-
-    // captura do lado do Node: o service worker pode recarregar a página no
-    // 'controllerchange' e destruir o contexto no meio da leitura do dataLayer.
-    const eventos = [];
-    await page.exposeFunction('__registra', e => eventos.push(e));
-    await page.evaluate(() => {
+    // addInitScript reinstala o hook a cada navegação, inclusive no reload que
+    // o service worker dispara sozinho; o acumulado vai pro sessionStorage,
+    // que sobrevive ao reload.
+    await page.addInitScript(() => {
+      const guardar = (e) => {
+        const atual = JSON.parse(sessionStorage.getItem('__bdjEventos') || '[]');
+        atual.push(e);
+        sessionStorage.setItem('__bdjEventos', JSON.stringify(atual));
+      };
       const dl = window.dataLayer || (window.dataLayer = []);
       const push = dl.push.bind(dl);
-      dl.push = (...args) => { args.forEach(a => a && a.event && window.__registra(a)); return push(...args); };
+      dl.push = (...args) => { args.forEach(a => a && a.event && guardar(a)); return push(...args); };
     });
+
+    await page.goto('/agendar/');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
     const card = page.locator('.service-card', { hasText: 'Corte de cabelo' }).first();
     await card.getByRole('button', { name: 'Adicionar' }).click();
 
-    await expect.poll(() => eventos.map(e => e.event)).toContain('service_selected');
-    const evento = eventos.find(e => e.event === 'service_selected');
+    // Lê do sessionStorage, e não de uma variável de página: o service worker
+    // recarrega em 'controllerchange' e qualquer hook instalado via evaluate()
+    // morre junto com o contexto — foi a origem de flakiness aqui.
+    await expect.poll(async () =>
+      (await page.evaluate(() => JSON.parse(sessionStorage.getItem('__bdjEventos') || '[]')))
+        .map(e => e.event)
+    ).toContain('service_selected');
+
+    const evento = (await page.evaluate(() =>
+      JSON.parse(sessionStorage.getItem('__bdjEventos') || '[]')))
+      .find(e => e.event === 'service_selected');
     expect(evento.item_name).toContain('Corte de cabelo');
     expect(evento.value).toBeGreaterThan(0);
   });
