@@ -6,6 +6,13 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
   const agendaServicesKey = 'bdj_selected_services_v15';
   const agendaProductsKey = 'bdj_selected_products_v15';
 
+  // Mesmo formato usado em agenda-v15.js: empurra pro dataLayer e o GTM
+  // encaminha pro GA4. Sem isso, a etapa 1 do funil (escolher o serviço) era
+  // invisível — só existia o booking_confirmed lá no fim.
+  const fire = (event, data = {}) => {
+    try { window.dataLayer = window.dataLayer || []; window.dataLayer.push({ event, ...data }); } catch (_) {}
+  };
+
   const readStoredMap = key => {
     const merged = new Map();
     for (const storage of [localStorage, sessionStorage]) {
@@ -119,6 +126,7 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
     item.duration = duration;
     selectedServices.set(name, item);
     panelHidden = true;
+    fire('service_selected', {item_name:name, value:price});
     feedback(button);
     render();
   }
@@ -143,6 +151,11 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
     });
     sessionStorage.setItem(agendaServicesKey, JSON.stringify(services));
     sessionStorage.setItem(agendaProductsKey, JSON.stringify(products));
+    fire('checkout_step_horario', {
+      services: services.map(s => s.name).join(' | '),
+      value: services.reduce((sum, s) => sum + Number(s.price || 0), 0),
+      items_count: services.length
+    });
     window.location.href = '/agendar/horario/';
   }
 

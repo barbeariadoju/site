@@ -1,3 +1,19 @@
+## 29.38.0 — O funil tinha fim mas não tinha começo: instrumentação da entrada
+
+Antes de mexer, fui olhar o que já existia no GA4 — e o quadro era diferente do que eu tinha suposto na auditoria.
+
+**O que já estava certo:** o `agenda-v15.js` já empurra um funil rico pro dataLayer (`date_selected`, `time_selected`, `upsell_service_added`, `product_added_booking`, `checkout_opened`, `pix_*`, `booking_confirmed`) e o `vale-presente-v29.js` faz o mesmo pros vales. `booking_confirmed` e `clique_whatsapp` chegam no GA4 e estão marcados como eventos principais.
+
+**O que estava quebrado:**
+
+- **`clique_agendamento` estava declarado como evento principal no GA4 e nenhuma linha do site disparava.** Tínhamos o fim do funil sem o começo — e sem o começo não existe taxa de conversão, só contagem de agendamentos. Agora um listener delegado no `script.js` dispara na entrada do funil, com `origem_pagina` e `posicao_cta`. **Cliques feitos de dentro de `/agendar/` são ignorados de propósito**: contar "Ir direto à agenda" como entrada inflaria o topo e faria a taxa parecer pior do que é.
+- **A etapa 1 (escolher o serviço) era invisível.** O `service-cart-v22-5.js` não tinha `fire()` nenhum: existia `upsell_service_added` para os adicionais, mas nada para a escolha principal. Agora dispara `service_selected` (nome e valor) e `checkout_step_horario` (serviços, total e quantidade) antes do redirect.
+- **Teste que faltava.** `clique_agendamento` ficou morto sabe-se lá quanto tempo porque nada verificava. `tests/e2e/analytics.spec.js` cobre os quatro casos, incluindo o negativo (clique interno **não** conta como entrada).
+
+⚠️ **Achado de conversão, ainda não resolvido:** o teste do CTA da home só passou depois de fechar o popup de boas-vindas — ele aparece 1,2s após o load e **intercepta o clique no botão principal do hero** para quem chega pela primeira vez. Ou seja, o visitante novo vindo do Google encontra um popup entre ele e o agendamento. Precisa de decisão: adiar, reposicionar ou remover.
+
+⚠️ **Falta a metade do GTM.** Todos esses eventos vivem no dataLayer; quem os leva pro GA4 é a tag no GTM, e hoje só existe tag para `booking_confirmed` e `clique_whatsapp`. Sem isso, o que foi instrumentado aqui continua sendo descartado.
+
 ## 29.37.0 — Hero com preço e garantia, página-mãe de corte, e titles reescritos
 
 Segunda rodada da auditoria. O Juliano apontou, com razão, que a primeira só tinha atacado a camada estrutural. Conferindo o resto item a item, **mais coisas já estavam prontas**: `Article` schema com `datePublished`/`dateModified` **e** as datas visíveis no HTML dos posts, que eu tinha listado como pendência.

@@ -34,3 +34,25 @@ document.querySelectorAll('a, button, .link-card, .product-card, .product-photo,
 // inteira em contact-form-v24-5.js — não duplicar aqui, senão os dois
 // listeners de 'submit' competem e o status/botão pisca com texto errado.
 
+// clique_agendamento: entrada no funil. O evento já estava declarado como
+// evento principal no GA4, mas nada no site disparava — ou seja, tínhamos o
+// fim do funil (booking_confirmed) sem o começo, e sem começo não dá pra
+// calcular onde as pessoas desistem. Só conta quem ENTRA no funil: cliques
+// feitos de dentro de /agendar/ são ignorados, senão "Ir direto à agenda"
+// e os botões internos inflariam o topo do funil.
+document.addEventListener('click',(event)=>{
+  const link=event.target.closest('a[href]');
+  if(!link)return;
+  let alvo;
+  try{alvo=new URL(link.getAttribute('href'),window.location.href)}catch(e){return}
+  if(alvo.host!==window.location.host)return;
+  if(!/^\/agendar(\/|\.html|$)/.test(alvo.pathname))return;
+  if(/^\/agendar\//.test(window.location.pathname))return;
+  window.dataLayer=window.dataLayer||[];
+  window.dataLayer.push({
+    event:'clique_agendamento',
+    origem_pagina:window.location.pathname,
+    posicao_cta:(link.closest('[id]')||{}).id||'sem-secao'
+  });
+});
+
