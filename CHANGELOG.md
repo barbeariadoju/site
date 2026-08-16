@@ -1,3 +1,57 @@
+## 29.35.0 — Reprecificação com base no preço público do fabricante, e a fibra vira serviço
+
+Pergunta do Juliano que derrubou a primeira proposta: *"o cliente vai no mercado livre e compra tudo pelo preço que eu também compro"*. Ele estava certo — e a proposta anterior, de subir os cosméticos, colocaria vários itens 30–45% acima do que o cliente acha em três toques no celular.
+
+- **A regra passou a ser assimétrica**, porque os dois grupos não são comparáveis. **Cosmético é conferível**: preço = referência pública do fabricante + prêmio de conveniência (leva agora, sem frete), nunca acima de ~15%. **Bebida não é conferível**: ninguém compara preço de energético com sede, sentado na cadeira — margem alvo ~50%, referência é o mercado da esquina. Em resumo: **subir onde ninguém compara, segurar onde todo mundo compara.**
+- **Correções que só apareceram com a pesquisa** (sharkbarber.com.br vende direto ao consumidor, com 10% no Pix): fibra capilar **90 → 85** (estava 37% acima do fabricante, 52% acima do Pix dele; R$ 85 equivale ao preço do site + frete, então é defensável em voz alta); **pomada em pó 35 → 38** e **Caspbell 42,99 → 48**, que estavam *abaixo* do mercado — dinheiro deixado na mesa; **Pasta Matte 34 → 36**, abaixo do próprio fabricante.
+- **Leave-in 44,99 → 33 é alerta de COMPRA, não de preço.** O custo (26,90) é praticamente o que o consumidor paga no Pix do fabricante (26,91): não há espaço de revenda. E-mail enviado à Shark Barber pedindo tabela de atacado do item, que não aparece na página de atacado deles.
+- **Serviço novo: "Aplicação de Fibra Capilar", R$ 30 / 15 min.** A jogada para vender *mais* fibra, não mais caro: serviço não tem página no Mercado Livre para comparar, o insumo por aplicação custa ~R$ 2,50 (pote de 25g rende ~15) e quem gosta do resultado leva o pote. Deixa de ser uma venda de R$ 85 uma vez e vira recorrência.
+- Margem média subiu de 45% para **50%**, com quase todo o ganho vindo de onde o cliente não compara.
+- **Sincronizados os três lugares onde o preço vive**: tabela `products`, `products-catalog-v1.js` e `produtos.html`. ⚠️ Bug pego na conferência final: o script de sincronização gravou `data-price="8,00"` (vírgula, locale pt-BR do PowerShell) em 13 produtos — `Number("8,00")` é `NaN`, e o carrinho somaria errado com o preço *certo* aparecendo na tela. Refeito em Node, com verificação independente card a card.
+
+## 29.34.0 — Preço e custo editáveis no painel, com botão de gravar
+
+Dois pedidos do Juliano depois de digitar os 26 custos: faltou um botão de gravar, e faltou poder reajustar preço sozinho.
+
+- **Salvamento visível.** A versão anterior salvava ao sair do campo e funcionava — os 26 custos entraram certinho — mas ele digitou tudo sem nenhum sinal de que tinha gravado, e **salvamento invisível é indistinguível de salvamento que não aconteceu**. Agora as alterações ficam pendentes, o botão mostra quantas são, o campo salvo fica verde e a mensagem diz quantos foram e a que horas.
+- **O lucro recalcula enquanto se digita** e fica vermelho se o preço cair abaixo do custo. A RPC recusa esse caso: erro de digitação viraria cota-parte sobre lucro negativo e só apareceria no fechamento da semana.
+- **O preço vivia em DOIS lugares** — a tabela `products` e o `products-catalog-v1.js`, que é o que o site, a agenda e o balcão realmente leem. Liberar a edição só no banco deixaria o cliente pagando um valor e o sistema calculando outro, com a diferença caindo no repasse do parceiro. O catálogo estático passou a **buscar os preços da tabela ao carregar** e atualizar o array in-place: como todos os consumidores leem o mesmo `window.BDJ_PRODUCTS`, isso alcança os cinco sem tocar em nenhum. A lista do arquivo continua como **fallback** — se a rede cair, vende pelo preço de ontem em vez de não vender.
+
+## 29.33.0 — Recibo de quitação do repasse
+
+Pedido do Juliano: *"caso ele venha a alegar que não o pagamos"*. O comprovante do Pix prova que saiu dinheiro da conta; **não prova que aquele dinheiro se refere àquela semana e àquele extrato**. Quem fecha essa lacuna é a quitação dada pelo próprio profissional, com o extrato à vista.
+
+- Marcar como pago **emite o recibo numerado** (`BDJ-R-2026-0001`), congela o extrato num snapshot, calcula o SHA-256 do conteúdo e manda o link no WhatsApp dele. Ele abre no celular, confere o detalhamento completo e confirma.
+- **O extrato inteiro aparece antes do botão.** Recibo que só diz "você recebeu R$ X" não protege ninguém — nem ele, nem a barbearia.
+- **O hash sela o conteúdo conferido**: sem ele, sobra espaço para alegar que o extrato mudou depois da confirmação.
+- **A quitação só registra uma vez.** Reconfirmar não move a data original, que é o dado com valor probatório (testado: segunda tentativa não sobrescreve IP nem horário).
+- Só o **hash** do token fica no banco; o token vai no link. Emitir e enviar são separados: se a Evolution estiver fora, o recibo já existe e o link volta na resposta.
+- ⚠️ **Fix v29.33.1**: revogar `EXECUTE` de `PUBLIC` derrubou também o `service_role`, que acessava por ali. Além do recibo, isso teria quebrado `record_booking_shares` na conclusão do atendimento — **e em silêncio**, porque aquela chamada só loga o erro para não travar o atendimento: a cota-parte não seria gerada e ninguém notaria até a semana fechar vazia. É o espelho do bug das migrations 087/088.
+- ⚠️ **Fix v29.33.3**: a v29.32.0 criou uma tabela `payment_method_fees` sem verificar que **`finance_fee_rates` já existia** desde 09/08, preenchida pelo Juliano no Financeiro (crédito 4,61%, débito 2,12%, Pix 0%). Ele percebeu ao ver o painel pedir as taxas de novo. Duas tabelas de taxa é como divergência nasce: reajusta num lugar, o repasse continua calculando pelo outro, e o erro aparece no bolso do parceiro. Tabela duplicada removida.
+
+## 29.32.0 — Fase 1 do sistema do 2º profissional: cadastro, cota-parte e fechamento
+
+Até aqui o banco não sabia **quem** atendeu: `bookings` guardava serviço, valor e cliente, e o barbeiro era implícito porque só existia um.
+
+- **Migration 113**: `professionals` (com `share_percent` **por pessoa**, e não constante no código — permite acordo diferente sem migration), `bookings.professional_id` com backfill dos 142 atendimentos históricos para o dono, e `products.cost_price`. RLS fechada em `professionals`: a tabela guarda CPF, CNPJ e chave Pix.
+- **Migration 114 — a conta corrente**: `professional_ledger` (crédito = cota-parte, débito = consumo e ressarcimento) com a **memória de cálculo gravada em cada linha** — bruto, taxa, custo, base, percentual. Numa relação em que o dinheiro passa todo pela mão de um dos dois, "confia em mim" não é resposta.
+- **Espécie não entra na conta corrente**, de propósito. Pela Cláusula 4.5 do contrato v2.0 (decisão do Juliano, revertendo a v1), tudo é entregue no mesmo dia: o sistema apura **quanto** entregar e registra a conferência, sem misturar adiantamento com receita da casa.
+- **Regras do contrato codificadas, e não deixadas na memória de alguém**: base = pago menos a taxa da maquininha, só isso (3.1.1); produto rateia **lucro**, não faturamento (3.2); cortesia comercial paga cota normal, refação por erro próprio não (10.2); fidelidade e vale-presente não reduzem a cota (10.3); todo débito é discriminado e contestável antes de ser compensado (4.6).
+- **Produto sem custo cadastrado entra como pendência com valor zero**, em vez de virar cota sobre o preço cheio — que pagaria ao profissional o dinheiro gasto na compra.
+- **A cota é gerada na conclusão do atendimento**, e não numa rotina noturna: é neste instante que existem juntos o valor final, a forma de pagamento e os produtos. Idempotente por índice único — reabrir e concluir de novo não paga duas vezes.
+- **Aba Equipe** no painel: extrato com memória de cálculo, fechamento que **passa por conferência antes do pagamento**, cadastro, e o **encerramento com um clique** que o Juliano pediu — com aviso explícito de que o acesso cai e o histórico fica (é ele que comprova os repasses feitos).
+- Validado com cenário real e revertido: corte de R$ 40 no crédito a 3,5% → base 38,60 → cota 19,30; produto de R$ 36 com custo 18 → lucro 16,74 → cota 8,37; consumo de item de R$ 35 com custo 18 → cobrado 26,50; barba de R$ 30 em dinheiro → R$ 30 na entrega de espécie.
+
+## 29.31.0 — Conteúdo de domingo e segunda, e o bug que escondia a direção de arte
+
+Pedido do Juliano: aproveitar os valores de domingo (missa, descanso, família) e de segunda no marketing, com post **todos os dias** — inclusive nos dois em que a barbearia está fechada. Perfil que some perde alcance, e some justamente quando o cliente está em casa, com o celular na mão.
+
+- **O bug (v29.31.6), encontrado depois de CINCO artes de domingo saírem escuras**: a direção de arte de domingo existia e estava correta, mas **nunca era acionada**. O gatilho é a palavra "domingo" dentro do `themeText`, e nenhum caso do switch a produzia — domingo caía no texto genérico ("acolhimento, café, poltrona, ambiente premium"), que é exatamente a imagem escura com poltrona e xícara que voltava toda vez. Não era o modelo desobedecendo o prompt; era **o prompt certo nunca chegando ao modelo**.
+- **Modo `only_image`**: refaz só a arte dos rascunhos do dia e preserva a legenda. Nasceu de um caso concreto — a frase de domingo saiu do jeito que o Juliano queria e a arte não. Regerar o dia inteiro jogaria fora um texto aprovado, e **texto bom é mais raro que arte boa**.
+- **Trava contra texto vazio**: em dia emocional a legenda passa por modo exigente (três versões, escolhe a melhor) e é reprovada se cair em clichê, repetir "domingo" três vezes ou revelar a data de fundação da barbearia. Link de agendamento não entra em dia emocional — em post que fala de descanso, link é cobrança.
+- **Regra permanente de arte**, a pedido do Juliano: nada imoral, ilegal ou inapropriado para qualquer público — sem bebida alcoólica, cigarro ou objeto que os sugira, em nenhuma arte.
+- **Marcação das contas pessoais** (@julianoblpadilha e @nicolefpadilha): na legenda via `content-generate-daily` e **na foto** via `user_tags` da Graph API em `content-publish-meta` — a marcação na foto é a que coloca o post na aba "Marcados" e dá o caminho curto pro repost no story. Só em foto de feed (story e Reels usam outro formato). Se a Meta recusar as tags, publica sem elas: post no ar sem tag é contorno; post que não subiu por causa de uma tag é prejuízo.
+
 ## 29.26.0 — Janela de contato da JuIA: domingo, feriado e sábado após 15h também são silêncio
 
 Pedido do Juliano (16/08): a guarda de 20h–8h da v29.21.0 virou uma **janela de contato** completa. A JuIA só **inicia** conversa **seg–sex 8h–20h** e **sábado 8h–15h**; **domingo e feriado, nunca**. Responder a quem escreveu continua liberado a qualquer hora — silêncio é sobre não incomodar, não sobre deixar cliente falando sozinho.
