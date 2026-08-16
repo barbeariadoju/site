@@ -1,3 +1,14 @@
+## 29.37.0 — Hero com preço e garantia, página-mãe de corte, e titles reescritos
+
+Segunda rodada da auditoria. O Juliano apontou, com razão, que a primeira só tinha atacado a camada estrutural. Conferindo o resto item a item, **mais coisas já estavam prontas**: `Article` schema com `datePublished`/`dateModified` **e** as datas visíveis no HTML dos posts, que eu tinha listado como pendência.
+
+- **Hero da home refeito.** Três informações que decidem a escolha estavam abaixo da dobra: o preço (R$ 40), a garantia de ajuste em 7 dias e o fato de o barbeiro também ser farmacêutico. Subiram. E os **4 CTAs de peso igual viraram 2** (Agendar + WhatsApp) — "Ver produtos" e "Blog" saíram do hero porque competiam com o agendamento e já estão linkados em card próprio e em seção dedicada mais abaixo, então nada ficou inacessível.
+- **`servico-corte-masculino.html`**, a única lacuna real de página que sobrou. Não é mais uma página de corte: é a **mãe** das cinco que já existiam (degradê, social, infantil, raspar, corte+lavagem), com o conteúdo que nenhuma delas tinha — o que está incluso nos R$ 40, como pedir o corte sem errar, de quanto em quanto tempo voltar. Sem isso seria só canibalizar o degradê, que é o erro que a própria auditoria mandava evitar.
+- **Titles e metas reescritos** em home, blog, produtos e sobre-o-juliano, nos três lugares de cada uma (`<title>`, `og:title`, `twitter:title` e as descriptions). Todos dentro do limite. O da home passou a carregar "Centro" e "Hora Marcada"; o do blog trocou "Centro de Conhecimento" — nome bonito, zero busca — por "Cuidados com Barba e Cabelo Masculino".
+- **`VERSAO.md` estava em 29.26.0** enquanto o CHANGELOG ia em 29.35.0. Nenhum arquivo lê esse `.md` (só documenta), então foi sincronizado. ⚠️ **`admin-version.json` NÃO foi tocado**: os `29.12.0` dele e da constante `ADMIN_VERSION` casam de propósito — é a comparação que decide se o painel aberto há horas se recarrega sozinho. Mexer ali sem bumpar os dois juntos forçaria reload em cima de atendimento.
+
+Validado: 17 unit + 33 e2e passando, 0 JSON-LD inválido em 26 páginas, 0 links quebrados, 0 órfãs, 24/24 no `ItemList` do hub.
+
 ## 29.36.0 — Seis páginas de serviço estavam órfãs, e o blog não levava a lugar nenhum
 
 Auditoria de SEO feita com três modelos (GPT, Gemini e Claude). Boa parte do que as três apontaram **já estava feito** — schema `LocalBusiness`+`HairSalon` correto, `fetchpriority`/`poster`/`lazy`/`width`/`height` nas imagens, 23 páginas de serviço com preço, FAQ e autor. O que sobrou depois de conferir arquivo por arquivo foi isto:
