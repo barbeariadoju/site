@@ -46,7 +46,7 @@ Deno.serve(async(req:Request)=>{
 
   const {data:rows,error}=await admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
     .limit(50)
@@ -61,7 +61,56 @@ Deno.serve(async(req:Request)=>{
 
     let whatsappOk=false
     if(phone.length>=12 && evolutionApiUrl && evolutionApiKey && evolutionInstance){
-      const waText=`Olá, ${first}! Aqui é da Barbearia do Ju 💈 Muito obrigado por vir nos visitar! Como foi sua experiência?\n\nDigite *1* para 😊 Satisfeito\nDigite *2* para 🙁 Insatisfeito`
+      // v29.30.0 — a pesquisa virou COMPROVANTE + pesquisa numa mensagem só (pedido do
+      // Juliano, 16/08/2026). Duas razões, e a segunda vale mais que a primeira:
+      //   1. o cliente ganha um recibo de verdade do que pagou — capricho que passa confiança;
+      //   2. vira auditoria automática do walk-in: atendimento não registrado = cliente sem
+      //      comprovante = alguém percebe. Com a placa no balcão ("todo atendimento gera
+      //      comprovante; não recebeu? avise"), é o próprio cliente quem fecha essa brecha —
+      //      sem vigilância, sem câmera, sem constranger ninguém.
+      // Produtos entram quando existirem (o check-out lança bebida/pomada junto), e cada
+      // parte mostra sua forma de pagamento quando forem diferentes.
+      const money=(v:unknown)=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
+      const metodoLabel=(m:unknown)=>{
+        const k=String(m||'').toLowerCase()
+        return k==='pix'?'no Pix':k==='debito'?'no débito':k==='credito'?'no crédito'
+          :k==='dinheiro'?'em dinheiro':k==='cortesia'?'por cortesia':''
+      }
+      const servico=String(booking?.service_name||'Atendimento')
+      const servicoValor=Number(booking?.service_price||0)
+      const produtos=Array.isArray(booking?.selected_products)?booking.selected_products:[]
+      const produtosValor=Number(booking?.products_price||0)
+      const desconto=Number(booking?.loyalty_discount||0)
+      const hora=String(booking?.start_time||'').slice(0,5)
+      const pagServico=metodoLabel(booking?.payment_method)
+      const pagProdutos=metodoLabel(booking?.products_payment_method)||pagServico
+      const total=servicoValor+produtosValor-desconto
+
+      const linhas:string[]=[]
+      linhas.push(`✂️ ${servico} — ${money(servicoValor)}`)
+      for(const p of produtos){
+        const nome=String((p as Record<string,unknown>)?.name||'Produto')
+        const preco=Number((p as Record<string,unknown>)?.price||0)
+        linhas.push(`🛍️ ${nome} — ${money(preco)}`)
+      }
+      if(desconto>0) linhas.push(`🎁 Desconto fidelidade — ${money(desconto)}`)
+      // Só detalha as duas formas de pagamento quando forem realmente diferentes.
+      const pagamentoLinha=produtos.length>0 && pagProdutos && pagServico && pagProdutos!==pagServico
+        ? `💳 Serviço ${pagServico} · Produtos ${pagProdutos}`
+        : pagServico ? `💳 Pago ${pagServico}` : ''
+
+      const waText=[
+        `Olá, ${first}! Muito obrigado pela visita à Barbearia do Ju 💈`,
+        '',
+        `Segue seu comprovante${hora?` — hoje às ${hora}`:''}:`,
+        ...linhas,
+        `*Total: ${money(total)}*`,
+        ...(pagamentoLinha?[pagamentoLinha]:[]),
+        '',
+        'Como foi seu atendimento?',
+        'Digite *1* para 😊 Satisfeito',
+        'Digite *2* para 🙁 Insatisfeito',
+      ].join('\n')
       try{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',
