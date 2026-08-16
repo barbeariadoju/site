@@ -63,6 +63,7 @@
     $('eq-mark-paid').onclick = markPaid;
     $('eq-add-entry').onclick = addEntry;
     $('eq-new-save').onclick = saveProfessional;
+    $('eq-products-save').onclick = saveProducts;
 
     await Promise.all([loadProfessionals(), loadFees(), loadProducts()]);
   }
@@ -279,30 +280,99 @@
       </div>`).join('');
   }
 
+  // v29.34.0 — preço e custo editáveis, com botão de gravar explícito.
+  //
+  // A versão anterior salvava sozinha ao sair do campo. Funcionava — os 26 custos entraram
+  // certinho — mas o Juliano digitou tudo sem nenhum sinal de que tinha gravado, e salvamento
+  // invisível é indistinguível de salvamento que não aconteceu. Agora as alterações ficam
+  // pendentes na tela, o botão mostra quantas são, e o resultado aparece linha a linha.
+  const INPUT_STYLE = 'width:92px;padding:.3rem .5rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit;text-align:right';
+  let produtos = [];
+  const alteracoes = new Map(); // id -> { price?, cost? }
+
   async function loadProducts() {
     const { data, error } = await sb.from('products').select('id,name,price,cost_price,active').eq('active', true).order('name');
-    if (error) { return; }
+    if (error) return;
+    produtos = data || [];
+    alteracoes.clear();
+    renderProducts();
+    renderSetupAlert();
+  }
+
+  function renderProducts() {
     const tbody = $('eq-products').querySelector('tbody');
-    tbody.innerHTML = `<tr><th>Produto</th><th class="num">Venda</th><th class="num">Custo</th><th class="num">Lucro</th></tr>`
-      + (data || []).map(p => `
-      <tr data-pending="${p.cost_price == null ? 1 : 0}">
+    tbody.innerHTML = `<tr><th>Produto</th><th class="num">Preço de venda</th><th class="num">Custo</th><th class="num">Lucro</th></tr>`
+      + produtos.map(p => `
+      <tr data-pending="${p.cost_price == null ? 1 : 0}" data-row="${p.id}">
         <td>${esc(p.name)}</td>
-        <td class="num">${money(p.price)}</td>
-        <td class="num"><input type="number" step="0.01" min="0" style="width:90px;padding:.3rem .5rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit;text-align:right" value="${p.cost_price != null ? Number(p.cost_price) : ''}" data-eq-cost="${p.id}"></td>
-        <td class="num">${p.cost_price != null ? money(Number(p.price) - Number(p.cost_price)) : '—'}</td>
+        <td class="num"><input type="number" step="0.01" min="0" style="${INPUT_STYLE}" value="${Number(p.price)}" data-eq-price="${p.id}"></td>
+        <td class="num"><input type="number" step="0.01" min="0" style="${INPUT_STYLE}" value="${p.cost_price != null ? Number(p.cost_price) : ''}" data-eq-cost="${p.id}"></td>
+        <td class="num" data-profit="${p.id}">${p.cost_price != null ? money(Number(p.price) - Number(p.cost_price)) : '—'}</td>
       </tr>`).join('');
 
-    tbody.querySelectorAll('[data-eq-cost]').forEach(input => {
-      input.onchange = async () => {
-        if (input.value === '') return;
-        const { error: err } = await sb.rpc('admin_set_product_cost', {
-          p_product_id: input.dataset.eqCost, p_cost: Number(input.value),
-        });
-        if (err) { alert(err.message); return; }
-        await loadProducts(); renderSetupAlert();
+    tbody.querySelectorAll('[data-eq-price],[data-eq-cost]').forEach(input => {
+      input.oninput = () => {
+        const id = input.dataset.eqPrice || input.dataset.eqCost;
+        const campo = input.dataset.eqPrice ? 'price' : 'cost';
+        const pendente = alteracoes.get(id) || {};
+        pendente[campo] = input.value === '' ? null : Number(input.value);
+        alteracoes.set(id, pendente);
+        input.style.borderColor = 'var(--gold2)';
+
+        // Lucro recalcula enquanto ele digita: errar o custo e só descobrir depois de salvar
+        // é o tipo de coisa que faz reajuste virar retrabalho.
+        const linha = document.querySelector(`[data-row="${id}"]`);
+        const preco = Number(linha.querySelector('[data-eq-price]').value);
+        const custo = linha.querySelector('[data-eq-cost]').value;
+        const celula = linha.querySelector(`[data-profit="${id}"]`);
+        celula.textContent = custo === '' ? '—' : money(preco - Number(custo));
+        celula.style.color = custo !== '' && preco < Number(custo) ? '#e6a0a0' : '';
+
+        updateSaveButton();
       };
     });
-    renderSetupAlert();
+    updateSaveButton();
+  }
+
+  function updateSaveButton() {
+    const btn = $('eq-products-save');
+    const n = alteracoes.size;
+    btn.disabled = n === 0;
+    btn.textContent = n === 0 ? 'Nenhuma alteração para salvar' : `Salvar ${n} alteração${n > 1 ? 'ões' : ''}`;
+  }
+
+  async function saveProducts() {
+    const btn = $('eq-products-save');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    const falhas = [];
+    let ok = 0;
+
+    for (const [id, campos] of alteracoes) {
+      const { error } = await sb.rpc('admin_update_product', {
+        p_product_id: id,
+        p_price: campos.price ?? null,
+        p_cost: campos.cost ?? null,
+      });
+      if (error) {
+        const nome = produtos.find(p => p.id === id)?.name || 'Produto';
+        falhas.push(`${nome}: ${error.message}`);
+      } else {
+        ok++;
+        // Confirmação linha a linha: o que gravou fica visivelmente gravado.
+        const linha = document.querySelector(`[data-row="${id}"]`);
+        if (linha) linha.querySelectorAll('input').forEach(i => { i.style.borderColor = '#7ee2aa'; });
+      }
+    }
+
+    $('eq-products-msg').textContent = falhas.length
+      ? `${ok} salvo(s). ${falhas.length} com erro: ${falhas.join(' · ')}`
+      : `${ok} produto(s) salvo(s) às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`;
+    $('eq-products-msg').style.color = falhas.length ? '#e6a0a0' : '#7ee2aa';
+
+    await loadProducts();
+    // O site lê o preço da mesma tabela desde a v29.34.0, então o reajuste já vale lá — mas
+    // só depois que o navegador do cliente recarregar a página.
+    if (ok && !falhas.length) $('eq-products-msg').textContent += ' O novo preço já vale no site e no balcão.';
   }
 
   // Um aviso só, no topo, com o que ainda falta para o repasse sair correto. Vale mais que

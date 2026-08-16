@@ -44,3 +44,37 @@ window.BDJ_PRODUCTS = [
   { name: 'Cerveja sem Álcool Heineken Long Neck 330mL', price: 12, category: 'Bebidas frias', for: [] },
   { name: 'Cerveja Pilsen Budweiser Lata 350ml', price: 8, category: 'Bebidas frias', for: [] },
 ];
+
+// v29.34.0 — os preços acima passam a ser FALLBACK, não a verdade.
+//
+// A partir da aba Equipe o Juliano reajusta preço sozinho, e o reajuste é gravado na tabela
+// `products`. Sem esta sincronização, o site, a agenda e o balcão continuariam vendendo
+// pelo preço deste arquivo — cliente pagando um valor, sistema calculando outro, e a
+// diferença aparecendo no repasse do parceiro. Preço em dois lugares só funciona enquanto
+// ninguém mexe em nenhum dos dois.
+//
+// A lista estática continua existindo de propósito: é ela que segura a tela quando a rede
+// falha ou o Supabase está fora. Melhor vender pelo preço de ontem do que não vender.
+(() => {
+  const cfg = window.BDJ_AGENDA_CONFIG || {};
+  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return;
+
+  fetch(`${cfg.supabaseUrl}/rest/v1/products?select=name,price&active=eq.true`, {
+    headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${cfg.supabaseAnonKey}` },
+  })
+    .then(r => (r.ok ? r.json() : null))
+    .then(rows => {
+      if (!Array.isArray(rows) || !rows.length) return;
+      const porNome = new Map(rows.map(r => [String(r.name).trim().toLowerCase(), Number(r.price)]));
+      let mudou = 0;
+      // Atualização in-place: todos os consumidores leem o MESMO array (agenda, balcão,
+      // reagendamento, vale-presente), então mutar aqui alcança todos sem tocar em nenhum.
+      window.BDJ_PRODUCTS.forEach(p => {
+        const novo = porNome.get(String(p.name).trim().toLowerCase());
+        if (Number.isFinite(novo) && novo !== p.price) { p.price = novo; mudou++; }
+      });
+      // Quem já renderizou a lista antes da resposta chegar pode se redesenhar ouvindo isto.
+      if (mudou) document.dispatchEvent(new CustomEvent('bdj:products-updated', { detail: { changed: mudou } }));
+    })
+    .catch(() => { /* silêncio proposital: preço de fallback é melhor que tela quebrada */ });
+})();
