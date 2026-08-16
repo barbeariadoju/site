@@ -332,6 +332,35 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // v29.32.0 — cota-parte do profissional-parceiro, gerada na conclusão do atendimento.
+    //
+    // Fica aqui, e não numa rotina noturna, por um motivo concreto: é neste instante que
+    // existem juntos o valor final, a forma de pagamento e os produtos vendidos. Qualquer
+    // apuração posterior teria que reconstruir isso, e é exatamente onde erro de repasse
+    // nasce — dinheiro do parceiro calculado sobre dado remontado depois.
+    //
+    // record_booking_shares é idempotente (índice único por booking+tipo+produto), então
+    // reabrir e concluir de novo o mesmo atendimento não paga duas vezes. Roda com
+    // service_role porque a função é revogada de `authenticated`: quem calcula repasse é o
+    // sistema, nunca uma sessão de navegador.
+    //
+    // Falha aqui NÃO derruba a conclusão do atendimento: o cliente já está de pé, e o
+    // lançamento pode ser refeito depois pela aba Equipe. Some no log, não na cara do
+    // Juliano no meio do expediente.
+    let shares: { attempted: boolean; entries: number; error: string } = { attempted: false, entries: 0, error: '' }
+    if (hasStatusChange && status === 'completed') {
+      shares.attempted = true
+      try {
+        const { data: sharesData, error: sharesError } = await admin.rpc('record_booking_shares', { p_booking_id: bookingId })
+        if (sharesError) throw sharesError
+        shares.entries = Number(sharesData || 0)
+        log('shares_recorded', { requestId, bookingId, entries: shares.entries })
+      } catch (sharesErr) {
+        shares.error = String((sharesErr as { message?: string })?.message || sharesErr)
+        console.error('[admin-booking-status] shares_failed', JSON.stringify({ requestId, bookingId, error: shares.error }))
+      }
+    }
+
     // v29.12.0 — pesquisa de satisfação NA HORA da conclusão (caso Deisler, 11/08/2026).
     // O trigger do banco já cria a experience_request com scheduled_for=agora, mas quem
     // ENVIA é o cron satisfaction-dispatch, que roda de 15 em 15 min — o cliente saía da
@@ -431,7 +460,7 @@ Deno.serve(async (request: Request) => {
       }
     }
 
-    return json({ ok: true, request_id: requestId, booking: updated, email, extras })
+    return json({ ok: true, request_id: requestId, booking: updated, email, extras, shares })
   } catch (error) {
     return fail('unexpected', error instanceof Error ? error.message : 'Falha ao atualizar o agendamento.', 500, {
       requestId,
