@@ -875,6 +875,25 @@ Deno.serve(async (request: Request) => {
           // Pedido concreto nunca fica preso no "não entendi" da pesquisa.
           const ambiguousShortReply = trimmedNormalized.length <= 40 && !asksSomethingElse
 
+          // v29.28.0 — "3 = já avaliei no Google" (pedido do Juliano, 16/08/2026). A varredura
+          // semanal oferece essa saída explícita, e ela precisa valer para SEMPRE: pedir
+          // avaliação a quem já avaliou é o jeito mais rápido de cansar bom cliente. Aceita o
+          // número puro e também a frase ("já avaliei", "já fiz a avaliação").
+          const jaAvaliou = /^3[\s!.,]*$/.test(trimmedNormalized)
+            || /ja avaliei|ja fiz a avaliacao|ja deixei a avaliacao|ja avaliamos|ja tinha avaliado|avaliei voces/.test(normalizedReply)
+          if (jaAvaliou) {
+            await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: 'Cliente informou que já avaliou no Google' })
+            await admin.from('experience_requests').update({ opted_out: true, updated_at: new Date().toISOString() }).eq('token', pending.token)
+            if (pending.customer_id) {
+              await admin.from('customer_profiles').update({
+                google_review_declared_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }).eq('id', pending.customer_id)
+            }
+            await sendWhatsapp(phone, 'Muito obrigado mesmo! 🙏 Já anotei aqui e não te pergunto mais sobre isso. Sua avaliação ajuda demais a gente. Até a próxima! 💈')
+            return
+          }
+
           if (pending.status === 'feedback') {
             const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
             if (submitResult?.ok) {
