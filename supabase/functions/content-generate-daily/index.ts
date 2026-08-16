@@ -45,7 +45,10 @@ const stripSiteUrls = (text: string) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-const withBookingLink = (caption: string, utmSource: string) => {
+// v29.31.4 — em dia emocional (domingo/segunda) o link de agendamento NAO entra: o post nao
+// vende, e um link de agendar no meio de uma mensagem de domingo desmonta a mensagem.
+const withBookingLink = (caption: string, utmSource: string, semLink = false) => {
+  if (semLink) return stripSiteUrls(caption).replace(/[\s.:;,-]+$/g, '')
   const clean = stripSiteUrls(caption).replace(/[\s.:;,-]+$/g, '')
   return `${clean}\n${bookingLink(utmSource)}`
 }
@@ -78,20 +81,29 @@ const textFromResponses = (d: any): string =>
     ? d.output_text.trim()
     : (d?.output || []).flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text).join('\n').trim()
 
-async function generateCaption(openaiKey: string | undefined, prompt: string): Promise<string> {
+// v29.31.3 — texto de post agora é escrito com esforço de verdade (crítica do Juliano,
+// 16/08/2026: "vazio", "parece algo pra encher linguiça", "quero algo EXCEPCIONAL").
+// O que mudou e por quê:
+//   • reasoning 'low' → 'medium': texto que emociona exige o modelo pensar antes de escrever;
+//   • pede 3 versões e escolhe a melhor — a primeira ideia é quase sempre a mais óbvia;
+//   • tokens maiores, porque o rascunho interno consome orçamento antes da resposta final.
+async function generateCaption(openaiKey: string | undefined, prompt: string, exigente = false): Promise<string> {
   if (!openaiKey) return ''
   try {
+    const pedido = exigente
+      ? 'Escreva TRÊS versões bem diferentes entre si do texto de hoje. Depois releia as três com olhar crítico, pergunte-se qual delas faria alguém parar de rolar o feed e sentir alguma coisa, descarte as outras duas e devolva SOMENTE a melhor — sem numeração, sem títulos, sem comentário nenhum, apenas o texto final pronto pra publicar.'
+      : 'Escreva o texto de hoje.'
     const r = await fetchWithTimeout('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-5.6-luna',
-        reasoning: { effort: 'low' },
-        max_output_tokens: 220,
+        reasoning: { effort: exigente ? 'medium' : 'low' },
+        max_output_tokens: exigente ? 1400 : 220,
         instructions: prompt,
-        input: [{ role: 'user', content: [{ type: 'input_text', text: 'Escreva o texto de hoje.' }] }],
+        input: [{ role: 'user', content: [{ type: 'input_text', text: pedido }] }],
       }),
-    }, 20000)
+    }, exigente ? 45000 : 20000)
     if (!r.ok) return ''
     const d = await r.json().catch(() => ({}))
     return textFromResponses(d)
@@ -99,6 +111,27 @@ async function generateCaption(openaiKey: string | undefined, prompt: string): P
     console.error('[content-generate-daily] openai', error instanceof Error ? error.message : error)
     return ''
   }
+}
+
+// Trava determinística contra texto vazio — mesma ideia do SCARCITY_VIOLATION, mas para
+// qualidade em vez de estratégia. O modelo pode desobedecer uma instrução de estilo; não
+// pode desobedecer um filtro. Se a legenda cair em clichê de cartão ou virar lista de
+// objetos, ela é descartada e outra é pedida.
+const CLICHE_VAZIO = /que a semana comece leve|disposi[çc][ãa]o renovada|novos? recome[çc]os?|energias? renovadas?|recarregar as energias|momentos? especiais|o visual em dia|sua melhor vers[ãa]o|aproveite o dia em fam[íi]lia|dia de descanso e renova[çc][ãa]o|desejamos a todos/i
+// v29.31.5 — nunca revelar quando a barbearia abriu (decisão do Juliano, 16/08/2026).
+// Um texto emocionou de verdade dizendo "comecei do zero em março" — mas datar o começo
+// entrega a quem ainda não é cliente que a casa é recente, e isso trabalha contra a
+// percepção de autoridade sem acrescentar nada à emoção. A memória ("lembro do silêncio
+// daquela cadeira") emociona igual e não revela idade.
+const REVELA_IDADE = /\b(em|desde|no in[íi]cio de|come[çc]o de)\s+(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b|\bh[áa]\s+\d+\s+(meses|anos|semanas)\b|\bdesde\s+20\d\d\b|\b20\d\d\b|\bnossos?\s+primeiros?\s+(meses|anos)\b|\brec[ée]m[- ]inaugurad/i
+const textoRaso = (t: string) => {
+  const txt = String(t || '').trim()
+  if (!txt) return true
+  if (CLICHE_VAZIO.test(txt)) return true
+  if (REVELA_IDADE.test(txt)) return true
+  // "domingo" repetido 3+ vezes = texto girando em torno de si mesmo, sem conteúdo.
+  if ((txt.toLowerCase().match(/domingo/g) || []).length >= 3) return true
+  return false
 }
 
 // Modelo "Nano Banana" — mesmo usado em content-generate-image. Aposenta 02/10/2026,
@@ -114,7 +147,9 @@ PALETA E MATERIAIS REAIS desta barbearia (use como ingredientes de uma composiç
 
 OBJETOS EM PRIMEIRO PLANO (still life, poucos por vez): navalha de barbeiro fechada, pente, tesoura de barbeiro, pincel de barba, frasco de produto em vidro âmbar, toalha dobrada — dispostos sobre uma superfície escura (madeira ou mármore preto), com espaço negativo generoso ao redor.
 
-PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas; o ambiente inteiro da barbearia como uma sala reconhecível (nada de porta, layout, múltiplos móveis simultâneos, televisão, cadeira de barbeiro dentro de um cômodo); qualquer texto, letra, número, frase, logotipo ou marca d'água na imagem — nunca tente escrever "Barbearia do Ju" nem nenhuma frase; estética de banco de imagens.
+PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas — EM NENHUMA FORMA: nem como pessoa real, nem como silhueta, sombra, reflexo em espelho, figura dentro de quadro/pôster/pintura pendurado na parede, manequim, busto ou boneco. Se houver um quadro na parede, ele deve ser abstrato, geométrico ou vazio; o ambiente inteiro da barbearia como uma sala reconhecível (nada de porta, layout, múltiplos móveis simultâneos, televisão, cadeira de barbeiro dentro de um cômodo); qualquer texto, letra, número, frase, logotipo ou marca d'água na imagem — nunca tente escrever "Barbearia do Ju" nem nenhuma frase; estética de banco de imagens.
+
+PROIBIDO TAMBÉM, SEM EXCEÇÃO (regra permanente da marca, definida pelo Juliano em 16/08/2026 — ele repudia o estímulo, mesmo inconsciente, a drogas legalizadas): qualquer bebida alcoólica ou objeto que a sugira — copo de whisky/uísque, dose, taça de vinho, garrafa ou decanter de licor, rótulo de destilado, rolha, saca-rolhas, balde de gelo com garrafa, chope, cerveja; qualquer produto de tabaco ou fumo — cigarro, charuto, cachimbo, cinzeiro, isqueiro, fósforo aceso, narguilé, vaporizador, fumaça de cigarro; e qualquer outro elemento imoral, ilegal ou inadequado para público de todas as idades (armas, jogos de azar, apostas, conteúdo sensual). O frasco âmbar permitido é SEMPRE de produto de barbearia (tônico, óleo de barba, loção pós-barba) — nunca com aparência de garrafa de bebida. Na dúvida entre um objeto ambíguo e nenhum objeto, escolha nenhum.
 
 A marca é aplicada depois, por fora, como carimbo — deixe o canto inferior direito com espaço limpo para isso.
 
@@ -144,6 +179,39 @@ async function applyWatermark(pngBytes: Uint8Array): Promise<Uint8Array> {
 // Fase 2 (v28.51.0): gera a arte do Instagram sozinho, mesma lógica de content-generate-image
 // (função separada, admin-triggered) mas chamada aqui direto pelo cron — sem isso o
 // Instagram sempre ficava de fora do gerador diário por falta de imagem.
+// v29.31.6 — BUG REAL encontrado em 16/08/2026, depois de CINCO artes de domingo saírem
+// escuras. A direção de arte de domingo existia e estava certa, mas NUNCA era acionada: o
+// gatilho é a palavra "domingo" dentro deste texto, e nenhum dos casos abaixo a produzia.
+// Domingo caía no texto genérico — "acolhimento, café, poltrona, ambiente premium" — que é
+// exatamente a imagem escura com poltrona e xícara que voltava toda vez. Não era o modelo
+// desobedecendo o prompt; era o prompt certo nunca chegando ao modelo.
+// Virou função à parte porque o modo de regerar só a arte (abaixo) precisa do mesmo texto.
+// Contas pessoais do Juliano e da esposa. Marcadas na legenda do Instagram para que eles
+// possam repostar no story — o alcance do post deixa de ser só o da barbearia.
+const CONTAS_PARCEIRAS = ['@julianoblpadilha', '@nicolefpadilha']
+const comMarcacoes = (caption: string) => {
+  const texto = String(caption || '').trimEnd()
+  const faltando = CONTAS_PARCEIRAS.filter((c) => !texto.toLowerCase().includes(c.toLowerCase()))
+  return faltando.length ? `${texto}\n\n${faltando.join(' ')}` : texto
+}
+
+function themeTextFor(context: Record<string, unknown>, campanha = ''): string {
+  switch (context.tipo) {
+    case 'domingo':
+      return 'domingo de manhã: a barbearia em repouso, luz clara de sol, silêncio e descanso, sem texto na imagem.'
+    case 'segunda':
+      return 'começo de semana: ferramentas limpas e organizadas, casa preparada para receber, luz clara de manhã, sem texto na imagem.'
+    case 'servico_destaque':
+      return `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
+    case 'campanha':
+      return `clima da campanha ativa da barbearia (${campanha.slice(0, 200)}) — transmitir o clima em imagem, sem escrever nenhum texto.`
+    case 'fidelidade':
+      return 'clima de recompensa e cuidado contínuo — detalhes do ambiente e do ritual de barbearia, sem texto na imagem.'
+    default:
+      return 'a experiência de ser bem atendido — acolhimento, café, poltrona, ambiente premium, sem texto na imagem.'
+  }
+}
+
 async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
   if (!geminiKey) return null
   try {
@@ -152,9 +220,43 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
     // energia comercial do resto da semana. Mantém a identidade da marca (mesma paleta,
     // mesmos materiais, sem pessoas) e muda só a atmosfera — manhã calma em vez de
     // barbearia em movimento.
+    // v29.31.4 — o domingo ganhou prompt PRÓPRIO em vez de "estilo padrão + exceções".
+    // Motivo: o BRAND_STYLE é longo e insiste em "sombras profundas / clima cinematográfico",
+    // e o modelo obedecia a ele mesmo com o override — três tentativas seguidas voltaram
+    // escuras, com objetos demais e até texto na arte. Empilhar exceção sobre instrução
+    // contrária não funciona; escrever a instrução certa desde a primeira linha, sim.
+    const DOMINGO_STYLE = `Fotografia still life editorial de altíssimo padrão para o Instagram de uma barbearia masculina sofisticada em Bragança Paulista/SP. Estética "quiet luxury": elegante, silenciosa, contemplativa.
+
+A IDEIA: a barbearia em repouso numa manhã de domingo. O trabalho parou. É o retrato do silêncio de um lugar que trabalhou a semana inteira.
+
+LUZ — O ELEMENTO MAIS IMPORTANTE DA IMAGEM, e o que diferencia o post de domingo de todo o resto do feed (que é escuro e amadeirado): esta foto é CLARA, ENSOLARADA E ALEGRE. Sol de manhã de verdade entrando por uma janela, feixe de luz visível cruzando a cena, respingos de sol na superfície, sombras longas e suaves, brancos limpos e luminosos, high key, exposição generosa. O clima é de manhã bonita, otimista, com ar de recomeço — não é uma foto sóbria.
+PALETA DE DOMINGO (diferente da paleta padrão da marca, de propósito, para criar contraste no feed): predominam tons CLAROS — creme, areia, off-white, madeira clara, dourado do sol. Marrom escuro e preto entram só como detalhe pequeno, nunca como fundo dominante.
+É PROIBIDO: imagem escura, marrom-escura, penumbra, ambiente noturno, luz artificial amarelada como fonte principal, néon, LED aceso, clima sombrio ou pesado.
+
+COMPOSIÇÃO — MÁXIMO 3 ELEMENTOS NA IMAGEM INTEIRA, e pelo menos 45% de espaço vazio: um objeto herói em foco nítido e no máximo dois apoios discretos e desfocados. Escolha UMA composição: (a) uma navalha de barbeiro fechada, de cabo escuro, repousando sobre uma toalha creme dobrada; (b) uma xícara branca de café sobre uma bancada de madeira escura vazia; (c) uma tesoura e um pente alinhados sobre couro preto; (d) um pincel de barba em pé, sozinho, sobre mármore claro. NUNCA misture louça de café com ferramentas de barbear na mesma superfície — não faz sentido narrativo.
+
+MATERIAIS PERMITIDOS: madeira escura, mármore claro, couro preto, latão, aço polido, algodão creme, vidro âmbar liso e SEM RÓTULO. Fundo: parede de tijolo aparente muito desfocada ou parede lisa clara.
+
+ÓPTICA: 85mm, abertura f/2.0, profundidade de campo rasa, câmera na altura da superfície, composição assimétrica com o objeto fora do centro.
+
+PROIBIDO ABSOLUTAMENTE (a arte é descartada se aparecer): qualquer letra, palavra, número, rótulo escrito, logotipo, marca d'água, assinatura ou texto de qualquer tipo — inclusive em frascos, potes e etiquetas, que devem ser LISOS; pessoas, rostos, mãos, corpos, silhuetas, reflexos ou figuras humanas em quadros; bebida alcoólica ou qualquer objeto que a sugira (copo de whisky, taça, garrafa de destilado, decanter); cigarro, charuto, cinzeiro, isqueiro ou fumaça de tabaco; ambiente escuro, penumbra, luz noturna, néon, anel de LED aceso; poltrona, sofá, espelho ou planta como assunto principal; mesa cheia de objetos.
+
+Deixe o canto inferior direito limpo e desimpedido — a marca é aplicada depois, por fora. Formato quadrado 1:1.`
+
+    // A direção clara vale para os dois dias de porta fechada. Domingo é a barbearia em
+    // repouso; segunda é a casa arrumada esperando terça — mesma luz, mesma contenção,
+    // ideia diferente. O resto da semana continua no BRAND_STYLE escuro de sempre; é o
+    // contraste entre os dois que o Juliano quis ver no feed.
     const isDomingo = /domingo/i.test(themeText)
-    const MOOD_DOMINGO = `ATMOSFERA DE DOMINGO (obrigatória hoje): luz natural suave de manhã de domingo entrando de lado, clima calmo, silencioso e contemplativo, ferramentas de trabalho em REPOUSO e organizadas (guardadas, fechadas, alinhadas — nunca em uso), xícara de café sobre a bancada, sensação de descanso e casa. NÃO use luz noturna, néon, contraste dramático nem qualquer elemento que sugira movimento ou trabalho acontecendo. Nada de símbolos religiosos explícitos (cruz, igreja, terço, vela de altar).`
-    const prompt = [BRAND_STYLE, isDomingo ? MOOD_DOMINGO : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
+    const isSegunda = /começo de semana/i.test(themeText)
+    const prompt = isDomingo || isSegunda
+      ? DOMINGO_STYLE.replace(
+          'A IDEIA: a barbearia em repouso numa manhã de domingo. O trabalho parou. É o retrato do silêncio de um lugar que trabalhou a semana inteira.',
+          isSegunda
+            ? 'A IDEIA: a barbearia arrumada e pronta, esperando a semana começar. Ferramentas limpas e alinhadas, tudo no lugar. É o retrato de quem se preparou antes de abrir a porta.'
+            : 'A IDEIA: a barbearia em repouso numa manhã de domingo. O trabalho parou. É o retrato do silêncio de um lugar que trabalhou a semana inteira.',
+        )
+      : [BRAND_STYLE, `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
@@ -195,6 +297,24 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
 // Instagram também ganha arte automática via Gemini (generateAndUploadImage) — se a
 // geração de imagem falhar por qualquer motivo, o rascunho de texto ainda é criado
 // normalmente; o botão manual "Gerar imagem com IA" no admin cobre esse caso.
+
+// v29.31.3 — escreve com esforço e NÃO aceita a primeira resposta se ela vier rasa.
+// Dias de conteúdo emocional (domingo/segunda) usam o modo exigente e ganham uma segunda
+// chance com aviso explícito do que deu errado — em vez de publicar texto morno.
+async function captionComQualidade(openaiKey: string | undefined, prompt: string, emocional: boolean): Promise<string> {
+  if (!emocional) return await generateCaption(openaiKey, prompt)
+  let texto = await generateCaption(openaiKey, prompt, true)
+  if (textoRaso(texto)) {
+    console.warn('[content-generate-daily] 1a versao rasa, pedindo de novo')
+    const promptDuro = `${prompt}
+
+ATENÇÃO — sua tentativa anterior foi REPROVADA por soar vazia: clichê de cartão, repetição da palavra do dia ou lista de objetos. Recomece do zero. Abra com uma pessoa ou uma verdade sobre quem lê, não com um cenário. Nada de frase que caberia em qualquer negócio.`
+    const segunda = await generateCaption(openaiKey, promptDuro, true)
+    if (!textoRaso(segunda)) texto = segunda
+  }
+  return texto
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
 
@@ -208,6 +328,36 @@ Deno.serve(async (request: Request) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
 
     const todaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+
+    // v29.31.6 — { "only_image": true } refaz SÓ a arte dos rascunhos de hoje e preserva a
+    // legenda. Nasceu de um caso concreto: a frase de domingo saiu do jeito que o Juliano
+    // queria ("encheu meus olhos de lágrimas") e a arte não. Regerar o dia inteiro para
+    // consertar a imagem jogaria fora um texto aprovado — e texto bom é mais raro que arte boa.
+    const body = await request.json().catch(() => ({} as Record<string, unknown>))
+    if (body?.only_image === true) {
+      const inicio = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
+      const { data: posts } = await admin
+        .from('content_posts')
+        .select('id, platform, context')
+        .eq('source', 'ia')
+        .gte('created_at', inicio)
+      if (!posts || posts.length === 0) return json({ ok: false, message: 'Nenhum rascunho de hoje para trocar a arte.' })
+
+      const ctx = (posts[0].context as Record<string, unknown>) || {}
+      const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
+      const alvo = posts.find((p) => p.platform === 'instagram') || posts[0]
+      let novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id)
+      if (!novaArte) novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id)
+      if (!novaArte) return json({ ok: false, message: 'Gemini não devolveu imagem.' }, 502)
+
+      for (const p of posts) {
+        await admin
+          .from('content_posts')
+          .update({ context: { ...((p.context as Record<string, unknown>) || {}), image_url: novaArte } })
+          .eq('id', p.id)
+      }
+      return json({ ok: true, only_image: true, image_url: novaArte, posts: posts.length })
+    }
     const dow = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay()
     // v29.31.1 — CONTEÚDO TODO DIA, inclusive com a barbearia fechada (decisão do Juliano,
     // 16/08/2026: "o ideal é que tenha posts todos os dias"). O guard antigo pulava domingo e
@@ -272,18 +422,45 @@ Deno.serve(async (request: Request) => {
     // A fé aparece com leveza e acolhimento — nunca prega, nunca exclui quem não é religioso:
     // o cliente da barbearia é de todo tipo, e "descanso, família e recomeço" fala com todos.
     const dowSP = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay() // 0 = domingo
-    const NO_HARD_SELL = 'Hoje é DOMINGO e a barbearia está FECHADA. É PROIBIDO: falar de agenda, horário, preço, promoção, ou usar CTA de venda ("agende agora", "corra", "últimas vagas"). No máximo, uma assinatura leve no fim, tipo "até segunda 💈" ou "semana nova, visual novo — te esperamos". O post é sobre a PESSOA, não sobre o serviço.'
+    // ERRO REAL cometido no primeiro post de domingo (16/08/2026): o texto fechou com "até
+    // segunda 💈", mas a barbearia NÃO abre segunda — fecha domingo E segunda, reabre TERÇA.
+    // Mandar o cliente na segunda é mandá-lo bater na porta fechada e gerar falsa expectativa.
+    const NO_HARD_SELL = 'Hoje é DOMINGO e a barbearia está FECHADA — e segue fechada na segunda. É PROIBIDO: falar de agenda, horário, preço, promoção, ou usar CTA de venda ("agende agora", "corra", "últimas vagas"). ATENÇÃO AO DIA DE REABERTURA: a barbearia reabre na TERÇA-FEIRA. Nunca escreva "até segunda", "nos vemos segunda" nem nada que sugira atendimento na segunda — isso cria falsa expectativa e manda o cliente numa porta fechada. Se quiser fechar com assinatura leve, use "até terça 💈" ou simplesmente "bom domingo 💈". O post é sobre a PESSOA, não sobre o serviço.'
 
     if (dowSP === 0) {
       const semanaDoMes = Math.ceil(Number(todaySP.slice(-2)) / 7)
+      // v29.31.2 — reescrito depois da crítica do Juliano ao primeiro post ("ficou pobre, não
+      // emociona, não toca quem lê"). Ele estava certo: eu tinha dado CONCEITOS abstratos ao
+      // modelo ("fale sobre o valor de parar") e recebi frase de cartão de banco.
+      // Emoção não mora no conceito, mora na CENA CONCRETA — o cheiro do almoço, a mesa cheia,
+      // o barulho da casa. Agora cada ângulo entrega cenas específicas, exemplos de tom e uma
+      // lista explícita de clichês proibidos.
       const anguloDomingo = [
-        'DESCANSO E FAMÍLIA: domingo é o dia de desacelerar, almoçar com quem se ama, ficar em casa sem pressa. Fale sobre o valor de parar — a semana inteira a gente corre, hoje não.',
-        'GRATIDÃO: olhe pra semana que passou e agradeça — pelo trabalho, pela família, pelos clientes que passaram pela cadeira. Tom simples e sincero, sem grandiloquência.',
-        'RECOMEÇO: domingo é o primeiro dia da semana, a página em branco. Fale de começar bem, com disposição e o visual em dia — sem virar propaganda.',
-        'FÉ E PAZ: domingo de missa, de igreja, de casa cheia. Deseje um domingo de paz e bênçãos, com respeito e leveza — sem pregar, sem citar versículo, acolhendo quem crê e quem não crê.',
+        'O ESFORÇO DA SEMANA, RECONHECIDO. Fale com quem trabalhou a semana inteira e chegou no domingo cansado. Reconheça o que ninguém viu: acordar cedo, resolver o que não aparece, aguentar calado. Hoje ele merece parar. Exemplo do nível esperado: "Você acordou cedo cinco dias seguidos. / Resolveu o que ninguém viu, aguentou o que ninguém soube. / Hoje não. Hoje é de ficar. / Bom domingo — você merece esse."',
+        'UMA HISTÓRIA DA CADEIRA. Conte uma micro-história verdadeira do tipo que acontece numa barbearia de bairro: o pai que trouxe o filho pro primeiro corte, o rapaz que se arrumou pra entrevista, o noivo na véspera, o senhor que vem toda semana mais pela conversa. Duas ou três frases, com um detalhe humano que faça o leitor ver a cena. Exemplo do nível esperado: "Semana passada um pai trouxe o filho pro primeiro corte. / O menino chorou. O pai segurou a mão dele. / No fim, os dois se olharam no espelho e riram. / É por causa desses cinco minutos que eu abro todo dia. Bom domingo."',
+        'GRATIDÃO DE QUEM COMEÇOU DO ZERO. Fale do que é ver a cadeira ocupada por gente que confia no seu trabalho, sem drama e sem se gabar. NUNCA cite data, mês, ano ou tempo de casa ("em março", "abrimos há 5 meses", "no começo do ano") — a emoção mora na memória da cadeira vazia, não no calendário, e datar o começo entrega ao cliente novo que a casa é recente. Use memória sem data: "lembro do silêncio dessa cadeira", "no começo", "quando tudo era só uma cadeira e uma ideia". Exemplo do nível esperado: "Eu ainda lembro do silêncio dessa cadeira. / Dias inteiros esperando alguém sentar. / Hoje eu perco a conta das histórias que passam por ela toda semana. / Não é sobre cabelo. É sobre confiança. Obrigado por isso."',
+        'FÉ, PAZ E O QUE SE OUVE NA CADEIRA. Domingo de igreja, de família reunida, de silêncio bom. Pode partir do que as pessoas contam enquanto cortam: quem vai casar, quem vai ser pai, quem conseguiu o emprego, quem está passando por dificuldade. Deseje paz com respeito — sem pregar, sem versículo, acolhendo quem crê e quem não crê. Exemplo do nível esperado: "Tem gente que senta aqui e conta que vai casar. Outro que vai ser pai. / Um que finalmente conseguiu o emprego. / Essa cadeira já ouviu mais oração do que muita gente imagina. / Que o seu domingo seja de paz."',
       ][(semanaDoMes - 1) % 4]
 
-      contextFact = `Tema de hoje: DOMINGO na voz da Barbearia do Ju. Ângulo desta semana — ${anguloDomingo} Escreva curto (2 a 4 linhas), caloroso, em primeira pessoa do plural, como quem manda uma mensagem de bom domingo pra um amigo. ${NO_HARD_SELL}`
+      contextFact = `Tema de hoje: DOMINGO, na voz do JULIANO — o dono da Barbearia do Ju, barbeiro e farmacêutico de formação, em Bragança Paulista, que atende sozinho, um cliente por vez. IMPORTANTE: nunca revele há quanto tempo a barbearia existe, nem cite mês/ano de abertura — isso não acrescenta emoção e sinaliza casa recente para quem ainda não é cliente. Ângulo desta semana — ${anguloDomingo}
+
+A REGRA QUE MAIS IMPORTA: o texto tem que EMOCIONAR. O leitor precisa sentir alguma coisa — reconhecimento, gratidão, saudade, orgulho, acolhimento. Se ele lê e não sente nada, o texto falhou e você tem que reescrever antes de entregar.
+
+COMO SE CONSEGUE ISSO (e como se perde):
+• Fale de GENTE, nunca de móveis. Café, sofá, televisão e almoço são cenário — cenário não emociona. Pessoa emociona: o pai, o filho, o cliente cansado, o noivo, o senhor de toda semana, VOCÊ que lê.
+• Escreva em PRIMEIRA PESSOA DO SINGULAR (eu, o Juliano). Nada de "nós da Barbearia do Ju" — voz de empresa não toca ninguém.
+• Traga uma VERDADE que a pessoa reconheça em si, ou uma MICRO-HISTÓRIA com um detalhe específico (o menino que chorou, a mão que segurou).
+• Use CONTRASTE: a semana inteira correndo / hoje não. A cadeira vazia em março / cheia hoje.
+• DÊ algo (reconhecimento, agradecimento sincero), nunca peça nada.
+• Frases curtas, uma por linha, com respiro. 3 a 5 linhas no total.
+
+PROIBIDO — se aparecer, reescreva do zero:
+• Repetir "domingo" mais de duas vezes, ou terminar com "hoje ainda é domingo" / "bom domingo" quando o texto inteiro já é sobre isso (fica repetitivo e vazio).
+• Enumerar objetos ("café, jogo na TV e o sofá") — isso é encher linguiça, não é conteúdo.
+• Clichê de cartão: "que a semana comece leve", "disposição renovada", "novos recomeços", "energias renovadas", "recarregar as energias", "momentos especiais", "o visual em dia", "sua melhor versão", "aproveite o dia em família".
+• Qualquer frase que serviria igual para uma loja de colchões, uma pizzaria ou um banco. Se serve pra qualquer negócio, não serve pra este.
+
+${NO_HARD_SELL}`
       context = { tipo: 'domingo', angulo: semanaDoMes, dia: todaySP }
     } else if (dowSP === 1) {
       // SEGUNDA — a barbearia fecha, mas é o dia de MAIOR intenção da semana: é quando as
@@ -330,6 +507,9 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // Domingo e segunda são os dias de conteúdo emocional (a barbearia está fechada e o post
+    // constrói marca, não vende) — vale o custo de gerar com mais esforço e revisar.
+    const diaEmocional = context.tipo === 'domingo' || context.tipo === 'segunda'
     const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
     // Fallbacks escritos à mão, garantidamente seguros, um por tema.
     const FALLBACK_BASE: Record<string, string> = {
@@ -341,7 +521,7 @@ Deno.serve(async (request: Request) => {
       // Fallback de domingo: sem venda, sem agenda — só o recado do dia. Também rotaciona,
       // pra que uma falha de IA em dois domingos seguidos não repita a mesma frase.
       domingo: [
-        '🙏 Bom domingo! Que hoje seja de descanso, mesa cheia e tempo com quem a gente ama. Até segunda 💈',
+        '🙏 Bom domingo! Que hoje seja de descanso, mesa cheia e tempo com quem a gente ama. até terça 💈',
         '🙏 Domingo é dia de agradecer. Obrigado por cada visita e cada confiança desta semana. Bom descanso a todos! 💈',
         '☀️ Domingo, primeiro dia da semana — página em branco. Que a sua comece leve e com o pé direito. Até logo mais! 💈',
         '🙏 Que seu domingo seja de paz, fé e família. A gente se vê na semana! 💈',
@@ -363,7 +543,7 @@ Deno.serve(async (request: Request) => {
 
     if (platformsToGenerate.includes('whatsapp_business')) {
       const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
-      const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaption, 'whatsapp_business'), 'whatsapp_status')
+      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaption, 'whatsapp_business'), 'whatsapp_status', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'whatsapp_business', caption, status: 'rascunho', source: 'ia', context })
@@ -375,7 +555,7 @@ Deno.serve(async (request: Request) => {
 
     if (platformsToGenerate.includes('facebook')) {
       const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
-      const caption = withBookingLink(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionFacebook, 'facebook'), 'facebook')
+      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaptionFacebook, 'facebook'), 'facebook', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'facebook', caption, status: 'rascunho', source: 'ia', context })
@@ -389,15 +569,13 @@ Deno.serve(async (request: Request) => {
       const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
       // Instagram: sem URL nenhuma na legenda (não é clicável) — só "link na bio". Por isso
       // passa por stripSiteUrls sem receber link de volta, diferente das outras plataformas.
-      const caption = stripSiteUrls(safeCaption(await generateCaption(openaiKey, prompt), fallbackCaptionInstagram, 'instagram'))
+      // v29.31.7 — marcação do Juliano e da Nicole em toda legenda do Instagram (pedido dele,
+      // 16/08/2026): eles repostam no story e o post alcança duas redes pessoais além da
+      // barbearia. Só no Instagram — @ de Instagram não vira link no Facebook nem no Status.
+      // Vai numa linha separada, depois de uma linha em branco, para não atropelar o texto.
+      const caption = comMarcacoes(stripSiteUrls(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaptionInstagram, 'instagram')))
       const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
-      const themeText = context.tipo === 'servico_destaque'
-        ? `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
-        : context.tipo === 'campanha' && campaign
-        ? `clima da campanha ativa da barbearia (${String(campaign.content).slice(0, 200)}) — transmitir o clima em imagem, sem escrever nenhum texto.`
-        : context.tipo === 'fidelidade'
-        ? 'clima de recompensa e cuidado contínuo — detalhes do ambiente e do ritual de barbearia, sem texto na imagem.'
-        : 'a experiência de ser bem atendido — acolhimento, café, poltrona, ambiente premium, sem texto na imagem.'
+      const themeText = themeTextFor(context, campaign ? String(campaign.content) : '')
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'instagram', caption, status: 'rascunho', source: 'ia', context })
