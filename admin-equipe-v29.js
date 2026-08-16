@@ -266,22 +266,17 @@
   }
 
   // ---------------------------------------------------------------- custos e taxas
+  // v29.33.3 — as taxas vêm do Financeiro (finance_fee_rates), onde o Juliano já as mantém
+  // desde 09/08/2026. Aqui elas só APARECEM: dois lugares para editar a mesma taxa é como
+  // divergência nasce — reajusta num, o repasse continua calculando pelo outro, e o erro
+  // aparece no bolso do parceiro.
   async function loadFees() {
-    const { data, error } = await sb.from('payment_method_fees').select('*').order('method');
+    const { data, error } = await sb.from('finance_fee_rates').select('*').order('method');
     if (error) { $('eq-fees').innerHTML = `<p class="eq-hint">${esc(error.message)}</p>`; return; }
-    $('eq-fees').innerHTML = (data || []).filter(f => !['dinheiro', 'cortesia'].includes(f.method)).map(f => `
-      <label>${esc(f.label)} (%)${f.configured ? '' : ' <span style="color:#f1c69a">— não configurado</span>'}
-        <input type="number" step="0.01" min="0" max="99" value="${Number(f.fee_percent)}" data-eq-fee="${esc(f.method)}">
-      </label>`).join('');
-    $('eq-fees').querySelectorAll('[data-eq-fee]').forEach(input => {
-      input.onchange = async () => {
-        const { error: err } = await sb.rpc('admin_set_payment_fee', {
-          p_method: input.dataset.eqFee, p_percent: Number(input.value || 0),
-        });
-        if (err) { alert(err.message); return; }
-        await loadFees(); renderSetupAlert();
-      };
-    });
+    $('eq-fees').innerHTML = (data || []).map(f => `
+      <div><span style="display:block;color:var(--muted);font-size:.78rem;font-weight:600">${esc(f.label)}</span>
+        <strong style="font-size:1.15rem;font-variant-numeric:tabular-nums">${Number(f.rate_percent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%</strong>
+      </div>`).join('');
   }
 
   async function loadProducts() {
@@ -320,8 +315,11 @@
     const { count: semCusto } = await sb.from('products').select('id', { count: 'exact', head: true }).is('cost_price', null).eq('active', true);
     if (semCusto) pendencias.push(`<strong>${semCusto} produto(s) sem custo cadastrado</strong> — a cota de produto fica pendente até você preencher (aba "Custos e taxas")`);
 
-    const { data: fees } = await sb.from('payment_method_fees').select('label, configured').eq('configured', false);
-    if (fees && fees.length) pendencias.push(`<strong>Taxa não configurada</strong> em: ${fees.map(f => esc(f.label)).join(', ')} — sem isso a cota sai sobre o valor cheio, incluindo o que a maquininha reteve`);
+    // Taxa zerada em cartão é suspeita (maquininha nenhuma cobra 0%); em Pix é normal,
+    // porque Pix por chave cai direto na conta sem taxa.
+    const { data: fees } = await sb.from('finance_fee_rates').select('method, label, rate_percent');
+    const zeradas = (fees || []).filter(f => Number(f.rate_percent) === 0 && f.method !== 'pix');
+    if (zeradas.length) pendencias.push(`<strong>Taxa zerada</strong> em: ${zeradas.map(f => esc(f.label)).join(', ')} — confira no <a href="admin-financeiro.html">Financeiro</a>, senão a cota sai sobre o valor cheio, incluindo o que a maquininha reteve`);
 
     const vencidos = professionals.filter(p => p.cnpj_pendente);
     if (vencidos.length) pendencias.push(`<strong>CNPJ vencido</strong>: ${vencidos.map(p => esc(p.display_name || p.name)).join(', ')} — prazo da Cláusula 5.3 passou`);

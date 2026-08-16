@@ -23,31 +23,16 @@
 --   Cl. 4.6    todo débito é discriminado e contestável antes de ser compensado
 
 -- ============================================================================
--- 1. Taxas por meio de pagamento
+-- 1. Taxas por meio de pagamento — ATENÇÃO: ver migration 117
 -- ============================================================================
--- Sem isto o valor-base sairia igual ao valor cheio e o Juliano pagaria cota-parte sobre
--- dinheiro que a maquininha reteve. Nasce tudo zerado DE PROPÓSITO: taxa é dinheiro real,
--- e chutar um percentual plausível seria pior que mostrar "não configurado" no painel.
-create table if not exists public.payment_method_fees (
-  method text primary key,
-  fee_percent numeric(5,2) not null default 0 check (fee_percent >= 0 and fee_percent < 100),
-  label text not null,
-  configured boolean not null default false,
-  updated_at timestamptz not null default now()
-);
-
-insert into public.payment_method_fees (method, label) values
-  ('dinheiro', 'Dinheiro'),
-  ('pix', 'Pix'),
-  ('debito', 'Débito'),
-  ('credito', 'Crédito'),
-  ('cortesia', 'Cortesia')
-on conflict (method) do nothing;
-
--- Dinheiro e cortesia não têm maquininha; já nascem configurados em 0.
-update public.payment_method_fees set configured = true where method in ('dinheiro', 'cortesia');
-
-alter table public.payment_method_fees enable row level security;
+-- Esta migration criou uma tabela `payment_method_fees` que foi REMOVIDA na 117, e o
+-- registro do erro fica aqui porque ele é fácil de repetir: `finance_fee_rates` já existia
+-- desde 09/08/2026, preenchida pelo Juliano no Financeiro (crédito 4,61%, débito 2,12%,
+-- Pix 0%), e eu criei uma segunda tabela sem procurar antes. Duas tabelas de taxa é como
+-- divergência nasce: um dia ele reajusta num lugar, o repasse continua calculando pelo
+-- outro, e o erro aparece no bolso do parceiro.
+--
+-- Fonte única de taxa neste projeto: public.finance_fee_rates.
 
 -- ============================================================================
 -- 2. Razão (conta corrente) do profissional
