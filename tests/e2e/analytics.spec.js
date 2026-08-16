@@ -77,13 +77,21 @@ test.describe('eventos de funil no dataLayer', () => {
     await page.goto('/agendar/');
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
+    // captura do lado do Node: o service worker pode recarregar a página no
+    // 'controllerchange' e destruir o contexto no meio da leitura do dataLayer.
+    const eventos = [];
+    await page.exposeFunction('__registra', e => eventos.push(e));
+    await page.evaluate(() => {
+      const dl = window.dataLayer || (window.dataLayer = []);
+      const push = dl.push.bind(dl);
+      dl.push = (...args) => { args.forEach(a => a && a.event && window.__registra(a)); return push(...args); };
+    });
+
     const card = page.locator('.service-card', { hasText: 'Corte de cabelo' }).first();
     await card.getByRole('button', { name: 'Adicionar' }).click();
 
-    await expect.poll(() => nomesNoDataLayer(page)).toContain('service_selected');
-
-    const evento = await page.evaluate(() =>
-      (window.dataLayer || []).find(e => e && e.event === 'service_selected'));
+    await expect.poll(() => eventos.map(e => e.event)).toContain('service_selected');
+    const evento = eventos.find(e => e.event === 'service_selected');
     expect(evento.item_name).toContain('Corte de cabelo');
     expect(evento.value).toBeGreaterThan(0);
   });
@@ -111,5 +119,30 @@ test.describe('eventos de funil no dataLayer', () => {
     expect(checkout, 'checkout_step_horario deveria ser disparado antes do redirect').toBeTruthy();
     expect(checkout.value).toBeGreaterThan(0);
     expect(checkout.items_count).toBeGreaterThan(0);
+  });
+});
+
+// Regressão do popup de boas-vindas: ele era um modal com fundo escuro aberto
+// 1,2s depois do load e interceptava o clique no CTA do hero. Agora é um card
+// ancorado embaixo, que só aparece depois que a pessoa rola além do hero.
+test.describe('popup de boas-vindas', () => {
+  test('não bloqueia o CTA do hero de quem acabou de chegar', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+    await page.waitForTimeout(2500); // bem depois do 1,2s do comportamento antigo
+
+    const cta = page.locator('#topo a[href*="/agendar"]').first();
+    await expect(cta).toBeVisible();
+    // clique real, sem force: falha se qualquer camada estiver por cima
+    await cta.click({ trial: true });
+  });
+
+  test('aparece depois de rolar além do hero', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+    await expect(page.locator('#welcome-pop')).not.toHaveClass(/open/);
+
+    await page.locator('#duvidas-frequentes').scrollIntoViewIfNeeded();
+    await expect(page.locator('#welcome-pop')).toHaveClass(/open/);
   });
 });

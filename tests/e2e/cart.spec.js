@@ -35,3 +35,41 @@ test.describe('carrinho de serviços', () => {
     await expect(page.locator('#service-total')).toHaveText('R$ 0,00');
   });
 });
+
+test.describe('pré-seleção por ?servico=', () => {
+  test('?servico=barboterapia já entra com o serviço no carrinho', async ({ page }) => {
+    await page.goto('/agendar/?servico=barboterapia');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+
+    await expect(page.locator('#service-items')).toContainText('Barboterapia');
+    await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+  });
+
+  test('slug com acento e pontuação casa mesmo assim', async ({ page }) => {
+    // "Barboterapia com vaporizador de ozônio" -> slug sem acento
+    await page.goto('/agendar/?servico=barboterapia-com-vaporizador-de-ozonio');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+
+    await expect(page.locator('#service-items')).toContainText('ozônio');
+    await expect(page.locator('#service-total')).toHaveText('R$ 50,00');
+  });
+
+  test('slug inexistente não quebra a página nem adiciona nada', async ({ page }) => {
+    await page.goto('/agendar/?servico=corte-de-unha-de-jacare');
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+
+    await expect(page.locator('#service-total')).toHaveText('R$ 0,00');
+    await expect(page.locator('.service-card').first()).toBeVisible();
+  });
+});
+
+test('recarregar com ?servico= não duplica o serviço no carrinho', async ({ page }) => {
+  // O service worker recarrega a página no controllerchange e o carrinho
+  // persiste em storage: sem guarda, a segunda carga somava de novo.
+  await page.goto('/agendar/?servico=barboterapia');
+  await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+  await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+
+  await page.reload();
+  await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+});

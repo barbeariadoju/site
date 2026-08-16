@@ -203,6 +203,33 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
     if(added) showCart();
   }
 
+  // ?servico=slug: quem chega de uma página de serviço (ex.: barboterapia) já
+  // cai no catálogo com aquele serviço no carrinho, em vez de ter que procurar
+  // na lista o que acabou de ler. Elimina uma etapa inteira do funil pra quem
+  // vem do orgânico, que é justamente o tráfego que estamos tentando crescer.
+  // Casa por slug do data-name (sem acento, minúsculo), pra não depender de o
+  // link repetir o nome exato do serviço com pontuação e maiúsculas.
+  const slugificar = (texto = '') => texto
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  function applyServicoParam(){
+    const alvo = slugificar((new URLSearchParams(location.search).get('servico') || '').trim());
+    if(!alvo) return;
+    const btn = [...document.querySelectorAll('.service-btn')]
+      .find(b => slugificar(b.dataset.name) === alvo);
+    if(!btn) return;
+    // Idempotente de propósito: o service worker recarrega a página no
+    // 'controllerchange' (ver script.js) e o carrinho persiste em storage —
+    // sem esta guarda, a segunda carga somava o mesmo serviço de novo e o
+    // cliente via 2x Barboterapia, R$ 80, sem ter pedido. Vale também pra
+    // quem recarrega na mão ou volta pelo histórico.
+    if(selectedServices.has(btn.dataset.name)){ showCart(); return; }
+    addService(btn);
+    showCart();
+    fire('service_preselecionado', { item_name: btn.dataset.name, value: Number(btn.dataset.price || 0) });
+  }
+
   clearBtn?.addEventListener('click', () => {
     selectedServices.clear();
     selectedProducts.clear();
@@ -219,5 +246,6 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
   openBtn?.addEventListener('click', showCart);
   scheduleBtn?.addEventListener('click', prepareAgenda);
   applyRepeatParam();
+  applyServicoParam();
   render();
 })();

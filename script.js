@@ -5,13 +5,44 @@ if(backTop){
   window.addEventListener('scroll',()=>backTop.classList.toggle('show',window.scrollY>500));
   backTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
 }
+// O popup abria 1,2s depois do load, em cima do hero, e interceptava o clique
+// no CTA principal de quem chegava pela primeira vez. Agora só aparece depois
+// que a pessoa rola além do hero SEM ter clicado em agendar — ou seja, pega
+// justamente quem não converteu de primeira, que é o público que ele deveria
+// ter desde o começo. Mantém o limite de 1 exibição a cada 30 dias.
 const welcome=document.getElementById('welcome-pop');
 if(welcome){
   const popupKey='bdj_welcome_seen_at';
   const lastSeen=Number(localStorage.getItem(popupKey)||0);
   const thirtyDays=30*24*60*60*1000;
   if(!lastSeen || Date.now()-lastSeen>thirtyDays){
-    setTimeout(()=>{welcome.classList.add('open');welcome.setAttribute('aria-hidden','false');localStorage.setItem(popupKey,String(Date.now()))},1200);
+    const hero=document.getElementById('topo');
+    let jaMostrou=false;
+    const mostrar=()=>{
+      if(jaMostrou)return;
+      jaMostrou=true;
+      welcome.classList.add('open');
+      welcome.setAttribute('aria-hidden','false');
+      localStorage.setItem(popupKey,String(Date.now()));
+      window.dataLayer=window.dataLayer||[];
+      window.dataLayer.push({event:'popup_boas_vindas_exibido'});
+    };
+    // quem clica em agendar antes de rolar nunca vê o popup: já converteu.
+    document.addEventListener('click',(e)=>{
+      if(e.target.closest('a[href*="/agendar"]'))jaMostrou=true;
+    },true);
+    if(hero&&'IntersectionObserver' in window){
+      const heroObs=new IntersectionObserver((entries)=>{
+        entries.forEach((entry)=>{
+          if(!entry.isIntersecting){heroObs.disconnect();mostrar()}
+        });
+      },{threshold:0});
+      heroObs.observe(hero);
+    }else{
+      // sem hero ou sem suporte: cai pro tempo, mas generoso o bastante pra
+      // não atropelar a primeira decisão.
+      setTimeout(mostrar,15000);
+    }
   }
 }
 document.querySelector('.welcome-close')?.addEventListener('click',()=>{welcome?.classList.remove('open');welcome?.setAttribute('aria-hidden','true')});

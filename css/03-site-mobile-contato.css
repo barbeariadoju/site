@@ -255,3 +255,17 @@
   .panel.pix > img{width:min(100%,290px) !important;max-width:290px !important;max-height:290px !important;margin-left:auto;margin-right:auto}
 }
 
+
+/* Bloco de avaliações reais na home (v29.39.0).
+   Antes, a única prova social era o rating-strip com 2 frases e um link que
+   levava o visitante PRA FORA do site — vazamento de funil bem na hora da
+   decisão. Estas são transcrições literais de avaliações públicas do Google,
+   com nome e data; o link continua existindo, mas como verificação, não como
+   caminho único. NÃO existe AggregateRating no schema: a nota é do Google e
+   autodeclarar violaria as diretrizes. */
+.reviews-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:18px}
+.review-card{background:linear-gradient(180deg,#161616,#0d0d0d);border:1px solid var(--line);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.review-card .review-stars{color:var(--gold2);letter-spacing:.08em;font-size:1rem}
+.review-card blockquote{margin:0;color:var(--text);font-size:.96rem;line-height:1.55}
+.review-card figcaption{color:var(--muted);font-size:.86rem;font-weight:700}
+.reviews-note{margin-top:16px;color:var(--muted);font-size:.9rem;text-align:center}

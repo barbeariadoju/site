@@ -1,3 +1,15 @@
+## 29.39.0 — Popup que não bloqueia, pré-seleção de serviço, avaliações reais e FAQ
+
+- **O popup de boas-vindas parou de brigar com o próprio objetivo.** Era um modal com fundo escuro cobrindo a tela, aberto 1,2s depois do load, e **interceptava o clique no CTA do hero** de quem chegava pela primeira vez — um popup que existe pra incentivar agendamento e bloqueia o agendamento se anula. Virou card ancorado embaixo, sem fundo bloqueante, que **só aparece depois que a pessoa rola além do hero sem ter clicado em agendar**: pega justamente quem não converteu de primeira. Quem clica no CTA antes de rolar nunca vê. Mantido o limite de 1 exibição a cada 30 dias.
+- **`?servico=slug` pré-seleciona o serviço.** As 24 páginas de serviço agora levam pra `/agendar/?servico=...` e o cliente cai no catálogo com o item já no carrinho, em vez de procurar na lista o que acabou de ler. Casa por slug do `data-name` (sem acento), pra não depender de o link repetir nome com pontuação e maiúsculas. ⚠️ **Bug pego em teste:** o service worker recarrega a página no `controllerchange` e o carrinho persiste — sem guarda, a segunda carga somava o mesmo serviço de novo e o cliente via *2x Barboterapia, R$ 80* sem ter pedido. A pré-seleção é idempotente agora.
+- **Bloco de 6 avaliações reais na home.** Transcrições literais de avaliações públicas do Google, com nome. Antes a única prova social era o rating-strip com 2 frases e um link que mandava o visitante **pra fora do site** bem na hora da decisão. O link continua, como verificação. **Sem `AggregateRating` no schema** — a nota é do Google, autodeclarar violaria as diretrizes.
+- **FAQ da home foi de 8 para 12 perguntas**, com preço, duração, sábado e crianças — as que têm busca real. Visível e schema batendo item a item.
+- **Não mexi na "canibalização" da barboterapia.** Reavaliando com o código na mão: das 10 menções na home, só ~4 são texto visível — o resto é meta e schema, todas legítimas. Tirar a palavra da home enfraqueceria a home sem fortalecer a página de serviço. O que resolve é link interno com âncora comercial, que já foi feito no blog e agora também no card da home.
+
+⚠️ **Achado ainda em aberto:** `corte infantil` e `raspar a cabeça` têm página própria mas **não existem como item no catálogo de agendamento** (20 itens para 24 páginas). O cliente lê sobre e acaba marcando "Corte de cabelo" — mesmo preço e duração, mas a agenda não registra o que ele veio fazer.
+
+`npm test`: 17 unit + 46 e2e.
+
 ## 29.38.1 — A instrumentação existia e não chegava: tag no GTM, cache e cobertura
 
 A v29.38.0 instrumentou o código, mas ao verificar no site publicado o evento **não apareceu**. Três causas independentes, todas encontradas na conferência:
