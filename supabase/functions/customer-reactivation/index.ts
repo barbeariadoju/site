@@ -35,9 +35,10 @@ Deno.serve(async (request: Request) => {
   const expected = Deno.env.get('WHATSAPP_WEBHOOK_SECRET')?.trim() || ''
   const provided = request.headers.get('x-webhook-secret') || ''
   if (!expected || provided !== expected) return json({ error: 'Não autorizado.' }, 401)
-
-  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): nada de mensagem
-  // proativa entre 20h e 8h (Brasília). O cron roda 14h BRT; a guarda protege disparo manual.
+  // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
+  // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
+  // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
+  // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
   const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
   if (quietHour >= 20 || quietHour < 8) return json({ ok: true, quiet_hours: true })
 

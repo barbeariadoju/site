@@ -115,13 +115,10 @@ Deno.serve(async (request: Request) => {
   const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
   const nudgeText = `${greetingNow()}! 😊 Ainda estou por aqui se precisar de algo. Se preferir, também dá pra ver os serviços, consultar horários disponíveis e agendar direto pelo nosso site: www.barbeariadoju.com.br`
   let skippedCount = 0
-
-  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): entre 20h e 8h
-  // (Brasília) a JuIA é REATIVADA normalmente (pra responder quem escrever de novo),
-  // mas o "cochicho" proativo de "ainda estou por aqui" não sai — cliente de noite não
-  // recebe cutucada de robô. Sem reenvio de manhã de propósito: um "ainda estou aqui"
-  // 10h depois da conversa soaria fora de contexto; se o cliente precisar, ele escreve
-  // e a JuIA (já reativada) responde na hora.
+  // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
+  // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
+  // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
+  // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
   const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
   const quietHours = quietHour >= 20 || quietHour < 8
 

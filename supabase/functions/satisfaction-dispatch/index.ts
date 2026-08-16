@@ -32,11 +32,12 @@ Deno.serve(async(req:Request)=>{
   const provided=req.headers.get('x-webhook-secret')||''
   if(!supabaseUrl||!serviceRole||!emailSecret) return json({error:'Secrets obrigatórios ausentes.'},500)
   if(provided!==emailSecret) return json({error:'Não autorizado.'},401)
-
-  // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): pesquisa não chega
-  // entre 20h e 8h (Brasília). As linhas ficam 'pending' e saem na rodada das 8h.
-  const quietHour=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
-  if(quietHour>=20||quietHour<8) return json({ok:true,quiet_hours:true})
+  // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
+  // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
+  // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
+  // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
+  const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+  if (quietHour >= 20 || quietHour < 8) return json({ok:true,quiet_hours:true})
 
   const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
   const evolutionApiUrl=Deno.env.get('EVOLUTION_API_URL')?.trim()||''

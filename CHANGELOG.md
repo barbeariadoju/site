@@ -1,3 +1,13 @@
+## 29.26.0 — Janela de contato da JuIA: domingo, feriado e sábado após 15h também são silêncio
+
+Pedido do Juliano (16/08): a guarda de 20h–8h da v29.21.0 virou uma **janela de contato** completa. A JuIA só **inicia** conversa **seg–sex 8h–20h** e **sábado 8h–15h**; **domingo e feriado, nunca**. Responder a quem escreveu continua liberado a qualquer hora — silêncio é sobre não incomodar, não sobre deixar cliente falando sozinho.
+
+- **Migration 109**: tabela `holidays` (nacionais 2026–2027 já cadastrados) + `juia_quiet_now()` e `juia_next_send_time()`. A regra passou a viver **em um lugar só**, no banco. ⚠️ **Faltam os feriados municipais de Bragança Paulista** — o Juliano precisa conferir e cadastrar; não inventamos data de feriado.
+- **Migration 110 — a decisão de arquitetura**: em vez de repetir a regra dentro de nove Edge Functions (e redeployar todas a cada ajuste), a guarda entrou no **próprio agendador**. Os 7 crons proativos viraram `select case when not juia_quiet_now() then net.http_post(...) end` — se não é hora de falar, a function **nem é chamada**: mais barato, imediato (sem deploy) e auditável num lugar só. Idempotente, não embrulha duas vezes.
+- **Ficaram deliberadamente SEM guarda**: `bdj-booking-confirmation` (confirmação é resposta a uma ação do cliente) e `Satisfaction Dispatch` (comprovante/pesquisa logo após o atendimento — o cliente acabou de sair da cadeira). Os demais crons não falam com cliente.
+- **Como o "envia na próxima hora útil" acontece sem fila**: os crons proativos rodam a cada 15 min (ou diariamente); bloqueados agora, o próprio ciclo seguinte dentro da janela envia. Mensagem adiada não se perde — ela espera. Validado: sábado 19h → **segunda 8h**; domingo 10h → **segunda 8h**; terça 21h → quarta 8h; 7 de setembro → dia 8 às 8h.
+- Nas 10 functions, só o **comentário** foi atualizado, apontando que a janela completa vive no agendador. O cálculo local de 20h–8h permanece como rede de segurança para disparo manual.
+
 ## 29.25.0 — Vale-presente de verdade: escolhe, monta, paga por Pix e recebe o código
 
 Crítica certeira do Juliano ao texto da v29.24.0: *"esquece, a pessoa não me conhece, vai desconfiar"*. Quem compra um vale muitas vezes nunca pisou na barbearia — mandar essa pessoa fazer um Pix "às cegas" e depois explicar o que ela levou é o inverso da ordem certa. Agora ela **é conduzida pelas telas**: escolhe → vê o total → só então paga.

@@ -69,14 +69,13 @@ Deno.serve(async (request: Request) => {
     if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstance) {
       return json({ ok: true, sent: false, skipped: true, error: 'Integração do WhatsApp não configurada.' })
     }
-
-    // v29.21.0 — horário de silêncio (pedido do Juliano, 14/08/2026): boas-vindas de balcão
-    // registrado depois das 20h não manda WhatsApp (o "foi um prazer te atender hoje" de
-    // madrugada incomoda mais do que ajuda; e de manhã, fora de contexto, também não vale
-    // reenviar). O cliente segue no CRM normalmente.
+  // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
+  // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
+  // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
+  // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
     const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
     if (quietHour >= 20 || quietHour < 8) {
-      return json({ ok: true, sent: false, skipped: true, quiet_hours: true, error: 'Fora do horário de mensagens (20h–8h) — boas-vindas não enviada.' })
+      return json({ ok: true, sent: false, skipped: true, quiet_hours: true, error: 'Fora da janela de contato da JuIA — boas-vindas não enviada.' })
     }
 
     const first = name.split(/\s+/)[0]
