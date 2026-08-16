@@ -217,16 +217,35 @@
     } finally { btn.disabled = false; btn.textContent = 'Fechar período e conferir'; }
   }
 
+  // Marcar como pago e emitir o recibo são o mesmo gesto, de propósito. Separar viraria
+  // "depois eu mando o recibo" — e o recibo que não sai é exatamente o que falta no dia em
+  // que alguém alega não ter recebido.
   async function markPaid() {
     if (!lastSettlementId) return;
-    if (!confirm('Confirmar que o Pix do repasse já foi feito?')) return;
+    if (!confirm('Confirmar que o Pix do repasse já foi feito?\n\nO recibo vai pro WhatsApp dele para confirmação de recebimento.')) return;
     const referencia = prompt('Referência do Pix (opcional — end-to-end, ou deixe em branco):', '') || null;
-    const { error } = await sb.rpc('admin_mark_settlement_paid', {
-      p_settlement_id: lastSettlementId, p_method: 'pix', p_reference: referencia,
-    });
-    if (error) { alert(error.message); return; }
-    $('eq-mark-paid').disabled = true;
-    alert('Repasse marcado como pago.');
+    const btn = $('eq-mark-paid'); btn.disabled = true; btn.textContent = 'Registrando…';
+    try {
+      const { error } = await sb.rpc('admin_mark_settlement_paid', {
+        p_settlement_id: lastSettlementId, p_method: 'pix', p_reference: referencia,
+      });
+      if (error) { alert(error.message); btn.disabled = false; btn.textContent = 'Marcar como pago (Pix)'; return; }
+
+      const { data, error: recErr } = await sb.functions.invoke('settlement-receipt', {
+        body: { action: 'emitir', settlement_id: lastSettlementId },
+      });
+      // O pagamento já está registrado; falha no recibo não pode parecer falha no repasse.
+      if (recErr || data?.error) {
+        alert(`Repasse marcado como pago.\n\nMas o recibo NÃO foi emitido: ${data?.error || recErr?.message}\n\nTente de novo pelo botão de recibo.`);
+        return;
+      }
+      alert(data.whatsapp_sent
+        ? `Recibo ${data.receipt_number} enviado no WhatsApp dele.\n\nEle confirma o recebimento pelo link, e a quitação fica arquivada.`
+        : `Recibo ${data.receipt_number} emitido, mas o WhatsApp não saiu (${data.whatsapp_error || 'motivo desconhecido'}).\n\nMande este link pra ele:\n${data.link}`);
+      await loadStatement();
+    } finally {
+      if (btn.isConnected) btn.textContent = 'Marcar como pago (Pix)';
+    }
   }
 
   async function addEntry() {
