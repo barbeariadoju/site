@@ -1,3 +1,15 @@
+## 29.38.1 — A instrumentação existia e não chegava: tag no GTM, cache e cobertura
+
+A v29.38.0 instrumentou o código, mas ao verificar no site publicado o evento **não apareceu**. Três causas independentes, todas encontradas na conferência:
+
+- **O GTM não tinha tag pra quase nada.** O container tinha 3 tags: a do Google, `booking_confirmed` e `clique_whatsapp`. Todo o resto que o site empurra pro dataLayer há meses — `date_selected`, `time_selected`, `upsell_service_added`, `product_added_booking`, `checkout_opened`, `pix_*`, `gift_*` — era descartado. Criado o acionador **"Eventos do funil (dataLayer)"** (evento personalizado com regex) e a tag **"GA4 - Eventos do funil"**, que encaminha `{{Event}}` com `value` e `currency`. Publicado como Versão 12. `booking_confirmed` ficou **de fora do regex de propósito**: já tem tag própria e entraria duplicado.
+- **Cache serviu o arquivo velho.** Os scripts são versionados por query string e eu editei `script.js` e `service-cart-v22-5.js` **sem bumpar o `?v=`** — navegador e service worker continuavam entregando a versão anterior, e o evento novo simplesmente não existia na página. Ambos foram para `?v=29.38.0`. É o tipo de erro que não aparece em teste local, só no site publicado.
+- **O listener cobria 3 páginas de 37.** `clique_agendamento` nasceu dentro do `script.js`, que só é carregado em `index.html`, `produtos.html` e `agendar/index.html`. **As 34 páginas de serviço, blog e o hub — exatamente o tráfego de SEO que queremos medir — não disparavam nada.** Extraído para `funnel-events-v29.js`, com guarda contra dupla inclusão, e incluído em todas as páginas públicas.
+
+Três testes novos em `analytics.spec.js` cobrem o CTA a partir de página de serviço, do hub e de artigo do blog — que era o buraco. `npm test`: 17 unit + 40 e2e.
+
+⚠️ Segue pendente a decisão sobre o popup de boas-vindas, que intercepta o clique no CTA do hero para quem chega pela primeira vez.
+
 ## 29.38.0 — O funil tinha fim mas não tinha começo: instrumentação da entrada
 
 Antes de mexer, fui olhar o que já existia no GA4 — e o quadro era diferente do que eu tinha suposto na auditoria.

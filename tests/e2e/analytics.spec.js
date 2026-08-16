@@ -36,6 +36,31 @@ test.describe('eventos de funil no dataLayer', () => {
     expect(evento.origem_pagina).toBeTruthy();
   });
 
+  // Regressão: o listener morava no script.js, que só é carregado em 3 páginas.
+  // As 34 páginas de serviço e blog — justamente o tráfego de SEO — ficavam sem
+  // medição nenhuma. Agora vive em funnel-events-v29.js, incluído em todas.
+  for (const pagina of ['/servico-corte-masculino.html', '/servicos.html', '/blog-barboterapia.html']) {
+    test(`CTA em ${pagina} dispara clique_agendamento`, async ({ page }) => {
+      await page.goto(pagina);
+      await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+
+      const eventos = [];
+      await page.exposeFunction('__registra', e => eventos.push(e));
+      await page.evaluate(() => {
+        const dl = window.dataLayer || (window.dataLayer = []);
+        const push = dl.push.bind(dl);
+        dl.push = (...args) => { args.forEach(a => a && a.event && window.__registra(a)); return push(...args); };
+      });
+
+      await page.locator('a[href*="/agendar/"]').first().click({ noWaitAfter: true });
+      await expect.poll(() => eventos.map(e => e.event)).toContain('clique_agendamento');
+      // o servidor local (`npx serve`, cleanUrls) serve /servicos em vez de
+      // /servicos.html; em produção a extensão aparece. Compara sem ela.
+      const slug = pagina.replace('/', '').replace('.html', '');
+      expect(eventos.find(e => e.event === 'clique_agendamento').origem_pagina).toContain(slug);
+    });
+  }
+
   test('de dentro de /agendar/ o clique NAO conta como entrada no funil', async ({ page }) => {
     await page.goto('/agendar/');
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
