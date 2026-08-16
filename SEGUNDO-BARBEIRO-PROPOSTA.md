@@ -53,13 +53,14 @@ oferecer o pezinho, empurra o vale pra outro dia).
 | **Vale-presente** | Comissão **normal na execução**, sobre o valor do serviço | O dinheiro entrou antes, mas o trabalho é agora. E a taxa é zero (Pix), então é 50/50 limpo — inclusive melhor pra ele que crédito |
 | **Ajuste sem custo (7 dias)** | **Sem comissão** — e a regra é: **ajuste é sempre de quem cortou** | É retrabalho, custo de qualidade de quem executou. Se por indisponibilidade o outro tiver que fazer, aí sim a casa paga 50% a quem executou (ninguém deve consertar corte alheio de graça) |
 | **Pezinho cortesia** | **Sem comissão**, mas **registrado** como atendimento e só em horário vago | É rápido (5–10 min) e traz o cliente de volta — quem ganha com isso é a casa e ele, no próximo corte. Reavaliar em 60 dias com o volume real: se virar peso na agenda dele, vira valor fixo simbólico |
-| **Produto vendido** | **15% sobre o valor da venda**, só do que ele vendeu no atendimento dele | Padrão de mercado é 10–20%, menor que serviço porque a margem do produto é diferente. 15% é o meio, e é o suficiente pra ele querer vender |
-| **Desconto no balcão** | **Zero no primeiro mês.** Depois, até **10%** com motivo obrigatório registrado; acima disso, só com seu OK | Desconto é o vazamento de margem mais fácil de acontecer e mais difícil de auditar. No 50/50 ele já perde metade do desconto — o incentivo natural ajuda, mas controle no começo é sensato. O sistema marca **quem** deu |
+| **Produto vendido** | ✅ **DECIDIDO (16/08): 50% do lucro líquido** — `(preço de venda − custo do produto − taxa do meio de pagamento) ÷ 2` | Mais generoso que o mercado (10–20% da venda) e mais justo: ele ganha metade do que a operação realmente lucra, igual ao serviço. **Exige cadastrar o custo de cada produto** — sem isso o sistema não sabe calcular (ver seção 5) |
+| **Desconto no balcão** | ✅ **DECIDIDO (16/08): não existe desconto.** Preço de tabela, ponto | Decisão do Juliano: *"se colocar desconto vira bagunça"*. Simplifica o sistema (não existe campo de desconto pra ninguém), elimina a auditoria mais chata e acaba com qualquer discussão de rateio sobre valor reduzido |
+| **Isenção por insatisfação** | ✅ **DECIDIDO (16/08): só o Juliano isenta**, e o sistema pergunta o motivo: **(a) cortesia/insatisfação** → a casa absorve e o barbeiro **recebe normal**; **(b) refação de serviço dele** → sem nova comissão | O Juliano já isentou cliente quando errou, e vai continuar podendo. A separação por motivo é o que mantém a justiça: erro da casa não sai do bolso dele, e refação do próprio trabalho não é atendimento novo |
 | **Falta do cliente (no-show)** | Ninguém recebe, mas **registra por profissional** | Não é culpa dele, mas se as faltas se concentrarem na agenda dele, é um sinal (confirmação, atraso, atendimento) que só aparece com dado |
 | **Gorjeta** | **100% de quem atendeu**, fora do rateio | Gorjeta é do trabalho, não da estrutura. Entrar no rateio azeda rápido |
 | **Produto usado no serviço** (pomada, toalha, lâmina) | Custo **integral da casa**, nunca descontado dele | Já está no combinado "você dá tudo". Descontar insumo depois é o clássico que quebra a confiança |
-| **Assinatura (quando o plano existir)** | ⚖️ **Decisão dependente do plano**: pagar **valor fixo por atendimento de assinante**, não 50% do preço cheio | Assinante paga mensalidade fixa e pode usar muito. Se o barbeiro receber 50% do valor cheio a cada visita, um assinante intenso vira prejuízo. Fixar o valor por atendimento (ex.: plano R$ 70 com 2 cortes → R$ 35/corte → R$ 17,50 pra ele) mantém a conta em pé. Fechar isso junto com a precificação do plano |
-| **Cliente da casa × cliente dele** | **Não diferenciar** no início — 50% em tudo | Alguns modelos pagam menos por cliente que veio do marketing da casa. É mais justo na teoria e uma fonte de discussão infinita na prática. Registrar a origem do cliente desde o dia 1 (o sistema já faz) permite rever isso depois com dados, se fizer falta |
+| **Assinatura** | ✅ **DECIDIDO (16/08): 50% sobre o valor recebido por atendimento do plano**, não sobre o preço de tabela. `valor do plano ÷ nº de atendimentos = valor do atendimento` | Confirmado pelo Juliano: *"se o cliente paga 70 por 2 cortes, logo recebemos 35 por corte"* → R$ 17,50 pra ele. É o único jeito de a conta não virar prejuízo com assinante intenso. **O sistema calcula sozinho** a partir do plano do cliente — o barbeiro nunca precisa saber de qual plano é |
+| **De quem é o cliente** | ✅ **DECIDIDO (16/08): o cliente é da barbearia.** Vira política escrita e cláusula contratual (8ª e 9ª da minuta) | Todo cliente é captado pela marca, pelo marketing e pelo sistema da casa. Isso não é só discurso: a base de clientes é do CNPJ (inclusive para a LGPD), o agendamento passa só pelos canais oficiais, e o contrato veda extrair a base e aliciar clientes ⚖️ (prazo de 6 ou 12 meses a definir) |
 
 ---
 
@@ -94,6 +95,14 @@ inclua outro"*. Isso vira a aba **Equipe** no admin:
 - **Adicionar profissional**: nome, apelido que aparece pro cliente, e-mail de acesso,
   percentuais (serviço/produto), dias e horários que ele atende. O sistema cria o acesso e
   manda a senha provisória. ~2 minutos.
+- **Primeiro acesso = aceite do contrato** (decisão do Juliano em 16/08): antes de qualquer
+  tela de trabalho, ele lê o **Contrato de Parceria** integral (rolagem obrigatória até o
+  fim), **assina com o dedo** na tela, tira uma **foto de conferência**, marca "li e concordo"
+  e só então o módulo abre. O sistema guarda assinatura, foto, data/hora, IP, dispositivo e o
+  **hash do texto do contrato** (prova de que o documento não mudou depois), e manda a via
+  dele por WhatsApp/e-mail. Minuta e detalhes técnicos: `CONTRATO-PARCERIA-MINUTA.md`.
+  ⚠️ Nomear como *foto de conferência*, **nunca** reconhecimento facial — biometria é dado
+  sensível na LGPD e traz exigências que não precisamos assumir.
 - **Desativar (o botão de pânico)**: um clique e o acesso morre **na hora** — as regras de
   segurança do banco (RLS) passam a negar tudo em nome dele, a sessão aberta no celular dele
   para de funcionar na próxima ação, e o nome dele some do site e da JuIA.
@@ -146,12 +155,19 @@ Ordem sugerida:
    dos horários) ou escolher. É o item de maior risco de regressão: os testes e2e existentes
    (26 no admin) precisam cobrir os dois profissionais.
 4. **RLS por staff**: o barbeiro só enxerga as próprias linhas. Regra no banco, não na tela.
-5. **Cálculo de comissão** no check-out: grava `service_net_cents`, `fee_cents`,
-   `commission_cents` no atendimento — **congelado no momento do atendimento** (mudar a taxa
-   ou o percentual depois não pode reescrever o passado).
-6. **`payouts`**: fechamentos semanais (período, staff, totais, status, pago_em).
-7. **Módulo do barbeiro** (as 4 telas) + **aba Equipe** no seu admin.
-8. **JuIA**: saber responder "com quem você quer agendar?" e distribuir a agenda.
+5. **Custo dos produtos** (novo, por causa da decisão de 16/08): o catálogo hoje só tem preço
+   de venda. Entra `cost_cents` por produto — sem custo cadastrado, o sistema **não** calcula
+   comissão de produto e avisa você. Ex.: pomada a R$ 50, custo R$ 28, no crédito (3,5% =
+   R$ 1,75) → lucro R$ 20,25 → **R$ 10,12 para cada**.
+6. **Cálculo de comissão** no check-out: grava `service_net_cents`, `fee_cents`,
+   `commission_cents` no atendimento — **congelado no momento do atendimento** (mudar a taxa,
+   o custo do produto ou o percentual depois não pode reescrever o passado).
+7. **`payouts`**: fechamentos semanais (período, staff, totais, status, pago_em).
+8. **Aceite do contrato**: tabela `staff_agreements` (versão do contrato, hash do texto,
+   assinatura em imagem, foto de conferência, IP, dispositivo, data/hora). Acesso restrito a
+   você — é documento de proteção, não dado de operação.
+9. **Módulo do barbeiro** (as 4 telas) + **aba Equipe** no seu admin.
+10. **JuIA**: saber responder "com quem você quer agendar?" e distribuir a agenda.
 
 **Estimativa honesta:** os itens 1–2 e 5–7 são diretos. O item 3 é o que exige cuidado — é o
 coração do sistema, e é onde um erro aparece como "cliente agendou em horário ocupado".
