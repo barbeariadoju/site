@@ -20,7 +20,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="/style.css?v=29.25.0" rel="stylesheet"/>
 <style>
-.vp-wrap{max-width:960px;margin:0 auto;padding:28px 18px 90px}
+.vp-header{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:960px;margin:0 auto;padding:18px;flex-wrap:wrap}
+.vp-brand{font-weight:900;font-size:1.05rem;color:var(--gold2);text-decoration:none;letter-spacing:.02em}
+.vp-nav{display:flex;gap:16px}
+.vp-nav a{color:var(--muted);text-decoration:none;font-weight:700;font-size:.92rem}
+.vp-nav a:hover{color:var(--gold2)}
+.vp-wrap{max-width:960px;margin:0 auto;padding:8px 18px 90px}
 .vp-steps{display:flex;gap:8px;justify-content:center;margin:0 0 22px;flex-wrap:wrap}
 .vp-step{font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid rgba(240,201,135,.22);border-radius:999px;padding:7px 14px}
 .vp-step.is-on{color:#16100a;background:linear-gradient(135deg,var(--gold),var(--gold2));border-color:transparent}
@@ -49,9 +54,9 @@
 </style>
 </head>
 <body>
-<header class="site-header">
-<a class="brand" href="/"><b>Barbearia do Ju</b></a>
-<nav class="site-nav"><a href="/agendar/">Agendar</a><a href="/produtos.html">Produtos</a><a href="/">Início</a></nav>
+<header class="vp-header">
+<a class="vp-brand" href="/">💈 Barbearia do Ju</a>
+<nav class="vp-nav"><a href="/agendar/">Agendar</a><a href="/">Início</a></nav>
 </header>
 
 <main class="vp-wrap">
