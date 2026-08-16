@@ -820,6 +820,27 @@ Deno.serve(async (request: Request) => {
           await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
         }
 
+        // v29.29.0 — ETAPA 2 da avaliação: o cliente já respondeu a pesquisa (1 = satisfeito),
+        // recebeu o pedido de avaliação no Google e agora responde. "1" aqui significa
+        // *já avaliei, não peça mais* — e vale para sempre, em todos os atendimentos futuros.
+        // Checado ANTES da pesquisa de satisfação porque é a pergunta mais recente que a JuIA
+        // fez a este cliente (mesmo raciocínio dos outros interceptadores).
+        if (!juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
+          const { data: openAskRows } = await admin.rpc('find_open_google_ask_by_phone', { p_phone: phone })
+          const openAsk = Array.isArray(openAskRows) ? openAskRows[0] : openAskRows
+          if (openAsk) {
+            const askReply = normalize(text).trim()
+            const jaAvaliou = /^1[\s!.,]*$/.test(askReply)
+              || /ja avaliei|ja fiz a avaliacao|ja deixei a avaliacao|ja tinha avaliado|ja avaliamos|avaliei voces|ja fiz/.test(askReply)
+            if (jaAvaliou) {
+              await admin.rpc('declare_already_reviewed', { p_token: openAsk.token })
+              await sendWhatsapp(phone, 'Muito obrigado mesmo! 🙏 Já anotei aqui e não peço mais. Sua avaliação ajuda demais a gente a crescer. Até a próxima! 💈')
+              return
+            }
+            // Qualquer outra coisa (sugestão, novo pedido, agradecimento) segue o fluxo normal.
+          }
+        }
+
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
@@ -875,25 +896,6 @@ Deno.serve(async (request: Request) => {
           // Pedido concreto nunca fica preso no "não entendi" da pesquisa.
           const ambiguousShortReply = trimmedNormalized.length <= 40 && !asksSomethingElse
 
-          // v29.28.0 — "3 = já avaliei no Google" (pedido do Juliano, 16/08/2026). A varredura
-          // semanal oferece essa saída explícita, e ela precisa valer para SEMPRE: pedir
-          // avaliação a quem já avaliou é o jeito mais rápido de cansar bom cliente. Aceita o
-          // número puro e também a frase ("já avaliei", "já fiz a avaliação").
-          const jaAvaliou = /^3[\s!.,]*$/.test(trimmedNormalized)
-            || /ja avaliei|ja fiz a avaliacao|ja deixei a avaliacao|ja avaliamos|ja tinha avaliado|avaliei voces/.test(normalizedReply)
-          if (jaAvaliou) {
-            await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'satisfied', p_feedback: 'Cliente informou que já avaliou no Google' })
-            await admin.from('experience_requests').update({ opted_out: true, updated_at: new Date().toISOString() }).eq('token', pending.token)
-            if (pending.customer_id) {
-              await admin.from('customer_profiles').update({
-                google_review_declared_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              }).eq('id', pending.customer_id)
-            }
-            await sendWhatsapp(phone, 'Muito obrigado mesmo! 🙏 Já anotei aqui e não te pergunto mais sobre isso. Sua avaliação ajuda demais a gente. Até a próxima! 💈')
-            return
-          }
-
           if (pending.status === 'feedback') {
             const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
             if (submitResult?.ok) {
@@ -924,12 +926,27 @@ Deno.serve(async (request: Request) => {
               // pedir avaliação no Google — desmarcado quando já sabe que aquele cliente já
               // avaliou (a checagem automática abaixo só cobre quem clicou no nosso link antes).
               const skipGoogleAsk = alreadyReviewed || pending.request_google_review === false
+              // v29.29.0 — ETAPA 2 (correção do Juliano, 16/08/2026): a pesquisa de satisfação
+              // é 1/2 e termina aqui. O pedido de avaliação no Google é um segundo momento,
+              // com sua própria saída: "1 = já avaliei, não peça mais". Antes eu tinha jogado
+              // essa opção dentro da pesquisa — confunde o cliente e polui a medição de
+              // satisfação, que é outra coisa.
+              //
+              // O link agora é RASTREADO (go-review): em 60 dias, 65 clientes disseram
+              // "satisfeito" e o sistema registrou zero cliques — porque o link direto nunca
+              // deu pra medir. Quem clica é marcado como avaliado e nunca mais é cobrado.
+              const trackedReviewLink = `${supabaseUrl}/functions/v1/go-review?t=${pending.token}`
               const reply = alreadyReviewed
                 ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
-                  : 'Que ótimo saber disso! 😊 Ficamos muito felizes que você tenha saído satisfeito.\n\nSe puder dedicar um minutinho pra deixar sua avaliação no Google, isso nos ajuda demais a continuar crescendo — ficaríamos muito gratos com sua ajuda! 🙏\n⭐ https://g.page/r/CaQfC5axIQQIEBM/review\n\n(Se você já nos avaliou antes, pode desconsiderar — muito obrigado!)\n\nE se tiver alguma 💬 sugestão pra melhorarmos ainda mais, pode deixar aqui.'
+                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
               await sendWhatsapp(phone, reply)
+              // Marca que a etapa 2 saiu — é isso que permite interpretar um "1" seguinte
+              // como "já avaliei" em vez de resposta solta.
+              if (!alreadyReviewed && !skipGoogleAsk) {
+                await admin.rpc('mark_google_ask_sent', { p_token: pending.token })
+              }
               return
             }
           } else if (isUnsatisfied) {

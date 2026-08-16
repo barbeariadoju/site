@@ -65,8 +65,10 @@ Deno.serve(async (req) => {
 
       // Tom: curto, humilde, com a saída explícita. Nada de "sua opinião é muito importante
       // para nós" — soa a robô de call center. E promete não insistir de novo, porque é verdade.
+      // v29.29.0: aqui é ETAPA 1 — pesquisa de satisfação, só 1 ou 2. O pedido de avaliação
+      // no Google (e a saída "já avaliei") vem depois, para quem responder 1.
       const nome = firstName(t.customer_name)
-      const texto = `Oi${nome ? `, ${nome}` : ''}! 😊 Desculpe incomodar de novo — é rapidinho e prometo não insistir mais.\n\nComo foi seu último atendimento aqui na Barbearia do Ju?\n\n*1* — Satisfeito 👍\n*2* — Insatisfeito 👎\n*3* — Já avaliei vocês no Google (aí não te pergunto mais 🙏)\n\nObrigado! 💈`
+      const texto = `Oi${nome ? `, ${nome}` : ''}! 😊 Desculpe incomodar de novo — é rapidinho e prometo não insistir mais.\n\nComo foi seu último atendimento aqui na Barbearia do Ju?\n\n*1* — Satisfeito 👍\n*2* — Insatisfeito 👎\n\nObrigado! 💈`
 
       try {
         const res = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
