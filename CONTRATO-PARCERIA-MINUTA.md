@@ -155,7 +155,7 @@ oficiais** do estabelecimento (site, WhatsApp oficial e sistema de gestão), ved
 direcionamento para canais pessoais do PROFISSIONAL-PARCEIRO.
 
 ### CLÁUSULA 9ª — DO NÃO ALICIAMENTO
-9.1. Durante a vigência e pelo prazo de **[6 a 12] meses** ⚖️ após o término, o
+9.1. Durante a vigência e pelo prazo de **12 (doze) meses** após o término, o
 PROFISSIONAL-PARCEIRO compromete-se a **não aliciar** clientes do SALÃO-PARCEIRO, assim
 entendido o contato ativo, direto ou por interposta pessoa, com o objetivo de atraí-los para
 atendimento em outro local.
@@ -329,9 +329,16 @@ coletor apropriado, nunca no lixo comum.
 
 4.3. **Toalhas e capas**: uma por cliente, sem reaproveitamento. Encaminhar as usadas ao cesto.
 
-4.4. **Higiene pessoal**: mãos higienizadas antes de cada atendimento; unhas curtas e limpas;
-apresentação asseada. Trabalhar com o cliente a poucos centímetros do rosto exige cuidado com
-hálito e odor — não é exigência de etiqueta, é respeito básico.
+4.4. **Higiene e apresentação pessoal**: mãos higienizadas antes de cada atendimento; unhas
+curtas e limpas; **roupa limpa e em bom estado**; banho, higiene bucal e uso de desodorante em
+dia. Trabalhar com o cliente a poucos centímetros do rosto exige cuidado redobrado com **odor
+corporal e hálito** — não é etiqueta, é respeito básico com quem está pagando pelo serviço.
+
+4.4.1. *(Nota de redação — proteção mútua)* Este item trata de **higiene e asseio**, que são
+exigências legítimas de saúde e de padrão de atendimento. Ele **não** autoriza exigências sobre
+características pessoais — cabelo, barba, tatuagem, piercing, estilo de vestir, aparência
+física — que são livres e cuja imposição pode configurar discriminação. Sugestão de vestimenta
+é bem-vinda; imposição, não.
 
 4.5. **Saúde**: quem estiver com quadro infeccioso (gripe forte, conjuntivite, lesão de pele
 nas mãos) não atende, comunica e reorganiza a agenda. Ninguém deve se sentir pressionado a
@@ -372,10 +379,17 @@ durante atendimento, não.
 5.8. **Estacionamento e vagas** — as vagas em frente são **prioridade do cliente**. Profissionais
 estacionam de forma a não ocupá-las.
 
-5.9. **Fumo e álcool** — proibido fumar (inclusive vaporizador) nas dependências internas.
-Nenhum atendimento é feito sob efeito de álcool ou de substância que comprometa a segurança do
-cliente. Este item é de segurança, e o descumprimento autoriza a interrupção imediata do
-atendimento.
+5.9. **Fumo — proibição total.** É **completamente proibido fumar em qualquer dependência da
+barbearia**, incluindo área de atendimento, copa, sanitário, depósito e área externa coberta
+de uso comum — vale para cigarro, cigarro eletrônico/vaporizador, narguilé ou qualquer outro
+produto fumígeno, conforme a Lei nº 12.546/2011. A proibição alcança **todos**: profissionais,
+clientes, visitantes e o próprio SALÃO-PARCEIRO. Quem fizer uso deve fazê-lo fora do
+estabelecimento e retornar sem odor perceptível — cheiro de cigarro no atendimento é percebido
+imediatamente pelo cliente.
+
+5.10. **Álcool e substâncias** — nenhum atendimento é feito sob efeito de álcool ou de
+substância que comprometa a coordenação, o julgamento ou a segurança do cliente. Item de
+segurança: autoriza a interrupção imediata do atendimento.
 
 ## 6. Convivência entre profissionais
 
@@ -396,8 +410,10 @@ outro recebe a cota-parte normalmente, conforme o contrato.
 
 ## 7. Imagem, redes sociais e dados
 
-7.1. **Foto ou vídeo de cliente só com autorização dele**, sempre. Não existe "vai que ele não
-liga".
+7.1. **Foto ou vídeo de cliente só com autorização dele**, sempre — e a autorização é **pedida
+na hora, de viva voz, explicando onde vai ser publicado**. Não existe "vai que ele não liga", e
+não vale supor consentimento porque o cliente é conhecido ou porque não aparece o rosto. Cliente
+que disser não continua sendo atendido exatamente igual.
 
 7.2. Conteúdo produzido dentro da barbearia (fotos de trabalhos, ambiente, bastidores) pode ser
 publicado no perfil pessoal do profissional **desde que não exponha cliente sem autorização, não
@@ -413,17 +429,39 @@ fotografados nem usados fora do sistema** (contrato, Cláusula 8.3 — LGPD).
 
 ## 8. Chaves, abertura e patrimônio
 
-8.1. ⚖️ *(Definir com o profissional)* Se receber chave/acesso, é de uso pessoal e
-intransferível, para o horário de funcionamento acordado. Não é permitido franquear entrada a
-terceiros fora do expediente.
+8.1. **Chave e alarme.** O PROFISSIONAL-PARCEIRO recebe **chave do estabelecimento e código do
+alarme**, de uso **pessoal e intransferível**, para que possa exercer sua atividade com
+autonomia — inclusive em dias e horários em que o SALÃO-PARCEIRO não esteja presente. É vedado
+emprestar a chave, repassar o código, franquear entrada a terceiros ou permitir permanência de
+pessoas estranhas ao atendimento no estabelecimento.
 
-8.2. Último a sair: conferir equipamentos desligados, ar-condicionado, luzes, e trancar.
+8.1.1. O código do alarme é **individual e rastreável**: cada armar/desarmar fica registrado com
+identificação e horário. Perda ou suspeita de conhecimento do código por terceiro deve ser
+comunicada **imediatamente**, para troca.
+
+8.1.2. Ao encerrar a parceria, chave e acesso ao alarme são devolvidos no mesmo dia, e o código
+é trocado.
+
+8.2. **Abertura e fechamento.** Quem abrir confere o ambiente; **o último a sair** desliga
+equipamentos, ar-condicionado e luzes, confere janelas, **arma o alarme e tranca**. Falha no
+fechamento deve ser comunicada na hora, sem receio — o problema é o prejuízo, não o erro
+admitido.
 
 8.3. **Visitas pessoais** (amigos, familiares) não permanecem na área de atendimento durante o
 expediente — o espaço é do cliente.
 
 8.4. Valores em espécie recebidos ficam no local combinado e são registrados no sistema no ato,
 conforme o contrato (Cláusula 6.4).
+
+8.5. **Sistema de câmeras.** O estabelecimento possui câmeras de segurança em funcionamento nas
+áreas comuns e de atendimento, com **finalidade exclusiva de segurança patrimonial e das
+pessoas**, sinalizada por aviso visível ao público. **Não há câmera em sanitário, área de troca
+ou qualquer espaço de privacidade.** As imagens são de acesso restrito ao SALÃO-PARCEIRO,
+guardadas por prazo determinado e consultadas apenas em situações concretas de segurança
+(furto, dano, acidente, incidente com cliente) ou por requisição legal. As partes reconhecem
+que as imagens **não se destinam ao controle de jornada, à fiscalização de produtividade ou à
+avaliação do desempenho** do PROFISSIONAL-PARCEIRO, que atua com autonomia nos termos da
+Cláusula 2ª do contrato.
 
 ## 9. Como este anexo é tratado
 

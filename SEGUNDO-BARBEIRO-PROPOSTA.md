@@ -69,14 +69,17 @@ oferecer o pezinho, empurra o vale pra outro dia).
 Princípio: **ele vê o trabalho dele e o dinheiro dele. Nada mais.** Nenhum acesso a CRM
 completo, Financeiro da casa, relatórios gerais, marketing, conteúdo ou configurações.
 
-**Telas (4, só o essencial):**
+**Telas (5, só o essencial):**
 1. **Minha agenda** — dia/semana, só os atendimentos dele. Bloquear horário pessoal.
 2. **Novo agendamento** — encaixar cliente na cadeira dele (walk-in incluso).
 3. **Atendimento / check-out** — concluir, registrar serviços + produtos + meio de pagamento.
    É o passo que alimenta a comissão; sem check-out não há comissão calculada.
-4. **Meus ganhos** — semana corrente: atendimentos, bruto, taxas, líquido, **quanto ele
-   recebe na segunda**. Histórico dos fechamentos anteriores. É esta tela que elimina a
-   desconfiança.
+4. **Meus ganhos** — semana corrente: atendimentos, bruto, taxas, líquido, consumos
+   descontados, **quanto ele recebe na segunda**. Histórico dos fechamentos anteriores. É esta
+   tela que elimina a desconfiança.
+5. **Meus consumos** — ele registra o que pegou (bebida do frigobar, produto para uso pessoal).
+   O sistema calcula pelo preço de venda menos a comissão dele, dá baixa no estoque e desconta
+   no fechamento. Transparente para os dois e sem constrangimento de "pedir" toda vez.
 
 **O que ele NÃO pode fazer** (regra técnica, não confiança): ver dados de clientes de outros
 profissionais, cancelar/editar atendimento já fechado, alterar preços do catálogo, aplicar
@@ -119,6 +122,54 @@ inclua outro"*. Isso vira a aba **Equipe** no admin:
 
 ---
 
+## 3.5. Auditoria por câmera + IA: por que eu NÃO recomendo, e o que faz o mesmo trabalho melhor
+
+O Juliano propôs (16/08) usar as câmeras IP para uma IA contar atendimentos e identificar
+serviços, cruzando com a agenda para "validar a honestidade do cara" — especialmente nos dias
+em que ele não estiver presente (segundas, viagens). **A necessidade é absolutamente legítima.
+A solução por vídeo é a mais arriscada possível — e, ironicamente, a menos eficaz.**
+
+**Por que é arriscada:**
+
+1. **Destrói o contrato de parceria.** Fiscalizar produtividade por câmera é um dos indícios
+   mais fortes de **subordinação** — o elemento central do vínculo empregatício. Todo o esforço
+   das Cláusulas 2ª e 8.5 (autonomia, câmera só para segurança patrimonial) vai por água abaixo
+   se existir um sistema que monitora quantos cortes ele fez e a que horas. Numa reclamação
+   trabalhista, isso não é um detalhe: é **a prova** de que ele era fiscalizado como empregado.
+2. **LGPD.** Câmera para segurança patrimonial tem base legal tranquila. Processar imagem por
+   IA para inferir atividade de uma pessoa identificada é **outra finalidade**, com outro nível
+   de exigência — e ainda envolve os **clientes**, que foram filmados sem imaginar que sua
+   imagem seria analisada por um sistema. Isso é risco jurídico com terceiro inocente no meio.
+3. **É cara, frágil e não prova nada.** Distinguir "corte + barba" de "corte + sobrancelha" em
+   vídeo, com ângulo de câmera de segurança, exige visão computacional bem treinada — e ainda
+   assim erra. E o erro é caro nos dois sentidos: acusar um profissional honesto por leitura
+   errada da IA destrói a relação; e quem quiser fraudar aprende o ângulo cego em uma semana.
+
+**O que resolve de verdade: fechar a torneira do dinheiro, não vigiar o barbeiro.**
+
+O risco real não é ele "atender e não registrar" — é **receber por fora**. E isso morre com
+controles que o sistema já tem ou terá:
+
+| Controle | Como fecha a brecha |
+|---|---|
+| **Pagamento 100% centralizado** | Pix cai na **sua** chave, cartão na **sua** maquininha, dinheiro no caixa. Ele nunca recebe do cliente. Sem isso, nenhuma câmera adianta; com isso, quase nenhuma fraude é possível sem o cliente ser cúmplice |
+| **Conciliação automática** | Extrato do Pix + maquininha **×** atendimentos registrados no sistema. Sobra dinheiro sem atendimento? Falta atendimento com dinheiro? O sistema aponta — todo dia, sem depender de olho humano |
+| **Comprovante automático ao cliente** | Ao concluir, o cliente recebe no WhatsApp o resumo do atendimento (já temos a Evolution). Atendimento não registrado = cliente sem mensagem = ele estranha. É a auditoria mais barata que existe, feita por quem esteve lá |
+| **Avaliação pós-atendimento** | Já existe no sistema (v27). Cliente avaliando confirma que foi atendido, quando e por quem |
+| **Estoque conferido** | Produto que sai sem venda registrada aparece na contagem (ver seção 5) |
+| **Câmera como está** | Continua ligada, para **segurança**. Se um cruzamento acusar algo concreto, você consulta aquele dia específico. Isso é investigação pontual, não vigilância — e é perfeitamente defensável |
+
+**Proposta concreta: "Painel de Integridade" na aba Equipe.** Um quadro diário que cruza sozinho
+agenda × check-outs × recebimentos × avaliações × estoque, e levanta a mão só quando algo não
+bate: atendimento concluído sem pagamento, recebimento sem atendimento, horário com movimento
+de caixa e agenda vazia, produto que sumiu do estoque sem venda, cliente que não recebeu
+comprovante. **Você olha exceções, não vídeos.** Leva minutos por semana, funciona igual quando
+você está viajando, é barato e não cria um único indício de subordinação.
+
+⚖️ Decisão sua. Mas se me pergunta: implantar vigilância por IA para validar honestidade é
+trocar um risco pequeno e controlável (fraude, já coberta pela centralização do pagamento) por
+um risco grande e caro (vínculo empregatício reconhecido + exposição na LGPD).
+
 ## 4. A sua tela de auditoria e fechamento
 
 **Aba "Equipe" no admin**, com:
@@ -155,10 +206,24 @@ Ordem sugerida:
    dos horários) ou escolher. É o item de maior risco de regressão: os testes e2e existentes
    (26 no admin) precisam cobrir os dois profissionais.
 4. **RLS por staff**: o barbeiro só enxerga as próprias linhas. Regra no banco, não na tela.
-5. **Custo dos produtos** (novo, por causa da decisão de 16/08): o catálogo hoje só tem preço
-   de venda. Entra `cost_cents` por produto — sem custo cadastrado, o sistema **não** calcula
-   comissão de produto e avisa você. Ex.: pomada a R$ 50, custo R$ 28, no crédito (3,5% =
-   R$ 1,75) → lucro R$ 20,25 → **R$ 10,12 para cada**.
+5. **Controle de estoque e custo dos produtos** (decisão de 16/08 — o frigobar acendeu a luz):
+   hoje o catálogo só tem preço de venda e não existe controle de estoque. Entra:
+   - `cost_cents` por produto — sem custo cadastrado o sistema **não** calcula comissão e avisa
+     você. Ex.: pomada a R$ 50, custo R$ 28, no crédito (3,5% = R$ 1,75) → lucro R$ 20,25 →
+     **R$ 10,12 para cada**;
+   - **estoque por produto** com entrada (compra), saída (venda, consumo próprio, perda/quebra,
+     cortesia) e **saldo atual**;
+   - **alerta de estoque baixo** (o produto acaba antes de você perceber, e venda perdida é o
+     prejuízo invisível);
+   - **contagem periódica**: você informa o que contou, o sistema mostra a diferença para o
+     saldo teórico. É esta conferência — não a câmera — que mostra produto saindo sem registro.
+
+5.1. **Consumo do profissional (aba "Meus consumos" no módulo dele)** — regra definida pelo
+   Juliano: ele lança o que consumiu e o valor é **descontado da cota-parte no fechamento**,
+   pelo **preço de venda menos a comissão que ele teria naquele item**. Exemplo dele: energético
+   comprado a R$ 10 e vendido a R$ 15 → lucro R$ 5 → comissão dele seria R$ 2,50 → ele paga
+   **R$ 12,50**, e a barbearia mantém seu lucro de R$ 2,50. O lançamento dá baixa no estoque
+   como qualquer venda, e aparece no extrato semanal como desconto — sem surpresa no fechamento.
 6. **Cálculo de comissão** no check-out: grava `service_net_cents`, `fee_cents`,
    `commission_cents` no atendimento — **congelado no momento do atendimento** (mudar a taxa,
    o custo do produto ou o percentual depois não pode reescrever o passado).
