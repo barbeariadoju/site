@@ -1,3 +1,11 @@
+## 29.40.0 — Guia da barba como página pilar, e o Wi-Fi/Pix sai da home
+
+- **`/guia-barba-masculina.html`**: a página pilar que faltava. Os 7 artigos de barba existiam soltos — bons, mas sem hierarquia, cada um competindo sozinho. Agora o guia organiza o assunto inteiro (formato, falhas, encravado, irritação, produtos, manutenção), aponta para cada artigo **e** para os 5 serviços de barba, e os 7 artigos apontam de volta. Isso é o que transforma uma pilha de posts em autoridade temática. Com `Article` schema, FAQ de 4 perguntas e fontes citadas (SBD e DermNet).
+- **`/na-barbearia.html`**: Wi-Fi e Pix saíram da home. Ocupavam uma dobra inteira entre o visitante vindo do Google e a decisão de agendar, sendo que são utilidades de quem **já está na cadeira**. ⚠️ **Mudei de destino em relação ao que eu mesmo tinha recomendado**: a auditoria dizia mandar pra `/cliente.html`, mas aquela é a "Minha Área", que pede WhatsApp e consulta fidelidade — enterrar a senha do Wi-Fi atrás de um formulário piora a vida de quem está sentado esperando. A página nova é `noindex` (não tem intenção de busca) e serve para QR Code na parede. Fica linkada na home por um card discreto.
+- **`og:title` e `twitter:title` do blog** ainda diziam "Centro de Conhecimento" — o rewrite da 29.37.0 trocou só a tag `<title>`. Corrigido, e a pilar entrou no `CreativeWorkSeries` e no `ItemList` da página.
+
+`npm test`: 17 unit + 46 e2e. 0 JSON-LD inválido, 0 links quebrados.
+
 ## 29.39.0 — Popup que não bloqueia, pré-seleção de serviço, avaliações reais e FAQ
 
 - **O popup de boas-vindas parou de brigar com o próprio objetivo.** Era um modal com fundo escuro cobrindo a tela, aberto 1,2s depois do load, e **interceptava o clique no CTA do hero** de quem chegava pela primeira vez — um popup que existe pra incentivar agendamento e bloqueia o agendamento se anula. Virou card ancorado embaixo, sem fundo bloqueante, que **só aparece depois que a pessoa rola além do hero sem ter clicado em agendar**: pega justamente quem não converteu de primeira. Quem clica no CTA antes de rolar nunca vê. Mantido o limite de 1 exibição a cada 30 dias.
