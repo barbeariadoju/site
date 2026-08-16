@@ -1,0 +1,104 @@
+<!doctype html><html lang="pt-BR"><head><title>Equipe | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.32.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<style>
+.eq-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px;flex-wrap:wrap}
+.eq-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.eq-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
+.eq-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;padding:14px 16px}
+.eq-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.eq-name{font-size:1.05rem;font-weight:800;color:var(--gold2)}
+.eq-status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.72rem;font-weight:700;white-space:nowrap}
+.eq-status[data-status="ativo"]{color:#7ee2aa}
+.eq-status[data-status="suspenso"]{color:#f1d675}
+.eq-status[data-status="encerrado"]{color:#888}
+.eq-meta{color:var(--muted);font-size:.85rem;margin:6px 0 0;line-height:1.6}
+.eq-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.eq-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.45rem .9rem;border-radius:10px;cursor:pointer}
+.eq-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
+.eq-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
+.eq-actions button[disabled]{opacity:.4;cursor:not-allowed}
+.eq-alert{border:1px solid rgba(220,140,100,.4);background:rgba(220,140,100,.08);border-radius:12px;padding:10px 14px;margin:0 0 16px;font-size:.86rem;line-height:1.6}
+.eq-alert strong{color:#f1c69a}
+.eq-alert a{color:var(--gold2)}
+.eq-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.eq-form label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+.eq-form input,.eq-form select{padding:.55rem .75rem;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.eq-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.eq-table th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.eq-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+.eq-table td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.eq-table tr[data-pending="1"]{background:rgba(220,140,100,.07)}
+.eq-scroll{overflow-x:auto}
+.eq-total{display:flex;flex-wrap:wrap;gap:18px;margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+.eq-total div{min-width:130px}
+.eq-total span{display:block;color:var(--muted);font-size:.76rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.eq-total strong{font-size:1.2rem;font-variant-numeric:tabular-nums}
+.eq-total .is-net strong{color:var(--gold2)}
+.eq-period{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.eq-period label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+.eq-period input,.eq-period select{padding:.55rem .75rem;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.eq-hint{color:var(--muted);font-size:.82rem;line-height:1.6;margin:10px 0 0}
+@media(max-width:700px){.eq-actions{flex-direction:column}.eq-actions button{width:100%}}
+</style>
+</head><body data-admin-page="equipe"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card"><div class="admin-auth-brand"><img src="assets/icon-192.png" alt=""><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div><label>E-mail<input id="admin-email" type="email" autocomplete="email"></label><label>Senha<input id="admin-password" type="password" autocomplete="current-password"></label><button id="admin-signin" class="btn primary">Entrar</button><p id="admin-message" class="field-help"></p></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar"><a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a><nav><a data-admin-nav="dashboard" href="admin.html"><span>⌂</span>Visão geral</a><a data-admin-nav="agenda" href="admin-agenda.html"><span>▦</span>Agenda</a><a data-admin-nav="atendimento" href="admin-atendimento.html"><span>✂</span>Modo Atendimento</a><a data-admin-nav="balcao" href="admin-balcao.html"><span>🚶</span>Atendimento Balcão</a><a data-admin-nav="clientes" href="admin-clientes.html"><span>👥</span>CRM / Clientes</a><a data-admin-nav="fidelidade" href="admin-fidelidade.html"><span>🏆</span>Fidelidade</a><a data-admin-nav="vales" href="admin-vales.html"><span>🎁</span>Vales-presente</a><a data-admin-nav="equipe" class="is-active" href="admin-equipe.html"><span>💈</span>Equipe</a><a data-admin-nav="relatorios" href="admin-relatorios.html"><span>📈</span>Relatórios</a><a data-admin-nav="financeiro" href="admin-financeiro.html"><span>💰</span>Financeiro</a><a data-admin-nav="espera" href="admin-espera.html"><span>⏳</span>Lista de espera</a><a data-admin-nav="mensagens" href="admin-mensagens.html"><span>✉</span>Mensagens</a><a data-admin-nav="notificacoes" href="admin-notificacoes.html"><span>🔔</span>Notificações</a><a data-admin-nav="avaliacoes" href="admin-avaliacoes.html"><span>⭐</span>Avaliações Google</a><a data-admin-nav="agendamento" href="admin-agendamento.html"><span>＋</span>Novo agendamento</a><a data-admin-nav="assistente" href="admin-assistente.html"><span>✦</span>Assistente IA</a><a data-admin-nav="leads" href="admin-leads.html"><span>🔥</span>Funil de Reativação</a><a data-admin-nav="conteudo" href="admin-conteudo.html"><span>🗂️</span>Central de Conteúdo</a></nav><div class="admin-sidebar-footer"><a href="index.html">← Voltar ao site</a><button id="admin-signout">Sair</button></div></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><p class="eyebrow">Equipe</p><h1>O acerto da semana, sem discussão.</h1><p>Cada atendimento gera a cota-parte na hora, com a conta aberta. Você confere antes de pagar — e o extrato mostra de onde veio cada centavo.</p></div></header>
+
+<div id="eq-setup-alert" class="eq-alert" hidden></div>
+
+<section class="admin-metrics"><article><span>Profissionais ativos</span><strong id="eq-metric-ativos">0</strong><small>além de você</small></article><article><span>A pagar nesta semana</span><strong id="eq-metric-apagar">R$ 0</strong><small>líquido de descontos</small></article><article><span>Espécie a conferir</span><strong id="eq-metric-especie">R$ 0</strong><small>entregas sem confirmação</small></article></section>
+
+<div class="eq-tabs">
+  <button data-eq-tab="fechamento" class="is-active" type="button">Fechamento</button>
+  <button data-eq-tab="cadastro" type="button">Profissionais</button>
+  <button data-eq-tab="ajustes" type="button">Custos e taxas</button>
+</div>
+
+<section class="admin-surface" data-eq-panel="fechamento">
+  <div class="eq-period">
+    <label>Profissional<select id="eq-prof-select"></select></label>
+    <label>De<input id="eq-start" type="date"></label>
+    <label>Até<input id="eq-end" type="date"></label>
+    <button class="btn" id="eq-load" type="button">Ver extrato</button>
+  </div>
+  <div class="eq-scroll"><table class="eq-table" id="eq-statement"><tbody></tbody></table></div>
+  <div class="eq-total" id="eq-totals" hidden>
+    <div><span>Créditos</span><strong id="eq-credits">R$ 0</strong></div>
+    <div><span>Descontos</span><strong id="eq-debits">R$ 0</strong></div>
+    <div class="is-net"><span>A pagar</span><strong id="eq-net">R$ 0</strong><small id="eq-pending-note" style="display:block;color:#f1c69a"></small></div>
+    <div><span>Espécie do período</span><strong id="eq-cash">R$ 0</strong></div>
+  </div>
+  <div class="eq-actions" id="eq-close-actions" hidden>
+    <button class="is-primary" id="eq-close" type="button">Fechar período e conferir</button>
+    <button id="eq-mark-paid" type="button" disabled>Marcar como pago (Pix)</button>
+    <button id="eq-add-entry" type="button">Lançar desconto/ajuste</button>
+  </div>
+  <p class="eq-hint">O fechamento não paga nada sozinho: ele fecha a conta para vocês dois conferirem. O pagamento é um segundo clique, depois do acerto.</p>
+</section>
+
+<section class="admin-surface" data-eq-panel="cadastro" hidden>
+  <div class="eq-form">
+    <label>Nome completo<input id="eq-new-name" type="text" placeholder="Nome do profissional"></label>
+    <label>Como aparece pro cliente<input id="eq-new-display" type="text" placeholder="Primeiro nome"></label>
+    <label>WhatsApp<input id="eq-new-phone" type="text" placeholder="11999999999"></label>
+    <label>CPF<input id="eq-new-cpf" type="text"></label>
+    <label>CNPJ (pode entrar depois)<input id="eq-new-cnpj" type="text"></label>
+    <label>Chave Pix do repasse<input id="eq-new-pix" type="text"></label>
+    <label>Cota-parte dele (%)<input id="eq-new-share" type="number" min="1" max="100" step="1" value="50"></label>
+  </div>
+  <div class="eq-actions"><button class="is-primary" id="eq-new-save" type="button">Cadastrar profissional</button></div>
+  <p class="eq-hint">Sem CNPJ, o cadastro já nasce com o prazo de 30 dias da Cláusula 5.3 contando — o painel avisa quando vencer.</p>
+  <div id="eq-list" style="margin-top:20px"></div>
+</section>
+
+<section class="admin-surface" data-eq-panel="ajustes" hidden>
+  <h2 style="margin-top:0">Taxas da maquininha</h2>
+  <p class="eq-hint" style="margin-top:0">A cota-parte sai sobre o valor <em>depois</em> da taxa (Cláusula 3.1.1). Enquanto estiver zerado, você paga cota sobre dinheiro que a operadora reteve.</p>
+  <div class="eq-form" id="eq-fees"></div>
+  <h2>Custo dos produtos</h2>
+  <p class="eq-hint" style="margin-top:0">A cota de produto é 50% do <strong>lucro</strong>, não do preço. Sem o custo, a venda entra como pendência no extrato em vez de virar cota sobre o preço cheio.</p>
+  <div class="eq-scroll"><table class="eq-table" id="eq-products"><tbody></tbody></table></div>
+</section>
+
+</main></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-equipe-v29.js?v=29.32.0"></script><script src="admin-pwa.js?v=28.58.0"></script><script src="admin-push-runtime-v24-6.js?v=28.16.1"></script></body></html>
