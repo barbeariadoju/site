@@ -27,6 +27,21 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 
 const GRAPH_VERSION = 'v23.0'
 
+// v29.31.8 — marcação das contas pessoais NA FOTO, e não só na legenda (pedido do Juliano,
+// 16/08/2026). A diferença é prática: a menção na legenda notifica, mas a marcação na foto é
+// a que coloca o post na aba "Marcados" dos perfis dele e da Nicole e a que dá o caminho
+// curto pro repost no story. Como o painel publica pela Graph API, dá pra fazer sozinho.
+// Só vale em FOTO de feed: story não tem esse campo e Reels usa outro formato — mexer neles
+// só criaria chance de erro em publicação que hoje funciona.
+// x/y são obrigatórios e ficam entre 0 e 1; ambos vão na metade de baixo da imagem, longe do
+// canto inferior direito onde a marca é aplicada. A posição não aparece na foto — só define
+// onde o toque revela o nome.
+const CONTAS_MARCADAS = [
+  { username: 'julianoblpadilha', x: 0.3, y: 0.72 },
+  { username: 'nicolefpadilha', x: 0.62, y: 0.72 },
+]
+const USER_TAGS = JSON.stringify(CONTAS_MARCADAS)
+
 // Publica um container de mídia do Instagram (feed ou story) e espera processar antes de
 // devolver o creation_id pronto pra publicar. Usado tanto por 'instagram' quanto por
 // 'instagram_story' — a única diferença entre os dois é o media_type enviado na criação.
@@ -287,7 +302,15 @@ Deno.serve(async (request: Request) => {
         const childIds: string[] = []
         for (let index = 0; index < carouselUrls.length; index++) {
           const childParams = new URLSearchParams({ access_token: pageToken, image_url: carouselUrls[index], is_carousel_item: 'true' })
-          const child = await createAndWaitInstagramContainer(igUserId, pageToken, childParams, false)
+          // Em carrossel a marcação vai em cada imagem, não no container pai — a Meta ignora
+          // user_tags no pai e não retorna erro, o que faria a tag sumir em silêncio.
+          if (USER_TAGS) childParams.set('user_tags', USER_TAGS)
+          let child = await createAndWaitInstagramContainer(igUserId, pageToken, childParams, false)
+          if ('error' in child && childParams.has('user_tags')) {
+            console.error('[content-publish-meta] user_tags recusado no carrossel, seguindo sem marcação:', child.error)
+            childParams.delete('user_tags')
+            child = await createAndWaitInstagramContainer(igUserId, pageToken, childParams, false)
+          }
           if ('error' in child) {
             await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
             return json({ error: `Imagem ${index + 1} do carrossel: ${child.error}` }, 502)
@@ -321,11 +344,22 @@ Deno.serve(async (request: Request) => {
         if (post.platform === 'instagram') {
           createParams.set('caption', finalCaption)
           if (videoUrl) createParams.set('media_type', 'REELS')
+          else if (USER_TAGS) createParams.set('user_tags', USER_TAGS)
         } else {
           createParams.set('media_type', 'STORIES')
         }
 
-        const container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
+        let container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
+        // A marcação NUNCA pode custar a publicação. Ela falha por motivos que não estão sob
+        // nosso controle — a pessoa marcada mudou o perfil pra privado, desligou "permitir
+        // marcações" ou trocou o @ — e nesses casos a Meta rejeita o container inteiro. Se
+        // isso acontecer, publica sem marcação: post no ar sem tag é contorno; post que não
+        // subiu por causa de uma tag é prejuízo.
+        if ('error' in container && createParams.has('user_tags')) {
+          console.error('[content-publish-meta] user_tags recusado, publicando sem marcação:', container.error)
+          createParams.delete('user_tags')
+          container = await createAndWaitInstagramContainer(igUserId, pageToken, createParams, Boolean(videoUrl))
+        }
         if ('error' in container) {
           await admin.from('content_posts').update({ status: 'rascunho' }).eq('id', id)
           return json({ error: container.error }, 502)
