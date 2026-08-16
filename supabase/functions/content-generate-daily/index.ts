@@ -209,13 +209,14 @@ Deno.serve(async (request: Request) => {
 
     const todaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     const dow = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay()
-    // v29.31.0 — DOMINGO passa a gerar conteúdo (ideia do Juliano, 16/08/2026). Era aqui que
-    // o domingo morria: a barbearia fecha, então o dia era pulado — e a marca simplesmente
-    // sumia justamente no dia em que as pessoas estão em casa, com o celular na mão e sem
-    // pressa. O post de domingo não vende (ver bloco do tema, mais abaixo): fala de descanso,
-    // família e recomeço. É construção de marca no dia de menor concorrência de atenção.
-    // Segunda continua fora — quem quiser ligar depois, é só remover o `dow === 1`.
-    if (dow === 1) return json({ ok: true, skipped: 'fechado_hoje' })
+    // v29.31.1 — CONTEÚDO TODO DIA, inclusive com a barbearia fechada (decisão do Juliano,
+    // 16/08/2026: "o ideal é que tenha posts todos os dias"). O guard antigo pulava domingo e
+    // segunda porque não se atende nesses dias — e com isso a marca sumia 2 dias de 7, ou
+    // seja, 29% do ano. Perfil que some perde alcance, e some justamente quando o cliente
+    // está em casa, sem pressa, com o celular na mão.
+    // Dia fechado não vende horário — vende marca: domingo fala de descanso e família,
+    // segunda fala de semana nova (e é o dia de maior intenção: "vou me arrumar essa semana").
+    // Ver os temas mais abaixo. Nenhum dos dois menciona agenda.
 
     const startOfTodayISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
     const platformsToGenerate: string[] = []
@@ -284,6 +285,20 @@ Deno.serve(async (request: Request) => {
 
       contextFact = `Tema de hoje: DOMINGO na voz da Barbearia do Ju. Ângulo desta semana — ${anguloDomingo} Escreva curto (2 a 4 linhas), caloroso, em primeira pessoa do plural, como quem manda uma mensagem de bom domingo pra um amigo. ${NO_HARD_SELL}`
       context = { tipo: 'domingo', angulo: semanaDoMes, dia: todaySP }
+    } else if (dowSP === 1) {
+      // SEGUNDA — a barbearia fecha, mas é o dia de MAIOR intenção da semana: é quando as
+      // pessoas decidem "essa semana eu me arrumo". O post não pode vender horário (não tem
+      // atendimento hoje), mas planta a semente: terça a agenda abre.
+      const semanaDoMes = Math.ceil(Number(todaySP.slice(-2)) / 7)
+      const anguloSegunda = [
+        'SEMANA NOVA: começar a semana com o visual em dia muda a postura, a confiança e o jeito de entrar numa reunião. Fale disso sem clichê de coach.',
+        'PLANEJAMENTO: quem se organiza no começo da semana não corre no fim. Uma provocação leve para já deixar o cuidado marcado na semana.',
+        'AUTOESTIMA MASCULINA: cuidar da própria imagem não é vaidade, é respeito por si — tom direto, adulto, sem piegas.',
+        'BASTIDOR: segunda é o dia de afiar as ferramentas, organizar a casa e preparar a semana. Mostre o cuidado que existe antes do cliente sentar na cadeira.',
+      ][(semanaDoMes - 1) % 4]
+
+      contextFact = `Tema de hoje: SEGUNDA-FEIRA na voz da Barbearia do Ju. Ângulo desta semana — ${anguloSegunda} Escreva curto (2 a 4 linhas), com energia de começo de semana, sem clichê motivacional batido. Hoje a barbearia está FECHADA: é PROIBIDO falar de agenda de hoje, horário livre, encaixe ou vaga. Pode terminar com um convite leve para a semana ("a semana começa amanhã por aqui", "te esperamos a partir de terça").`
+      context = { tipo: 'segunda', angulo: semanaDoMes, dia: todaySP }
     } else if (openSlotsCount > 0 && openSlotsCount <= 3) {
       // Escassez REAL: pouquíssimos horários restando é sinal de procura — pode falar.
       contextFact = `A agenda de hoje (${formatDateBR(todaySP)}) está QUASE CHEIA: restam só os últimos horários do dia. Convide a garantir um dos últimos horários de hoje, com tom de procura alta ("a agenda de hoje está fechando", "últimos horários do dia"). É PROIBIDO dizer o número exato de horários, citar horários específicos, ou usar as palavras "janela", "encaixe" e "vaga".`
@@ -330,6 +345,12 @@ Deno.serve(async (request: Request) => {
         '🙏 Domingo é dia de agradecer. Obrigado por cada visita e cada confiança desta semana. Bom descanso a todos! 💈',
         '☀️ Domingo, primeiro dia da semana — página em branco. Que a sua comece leve e com o pé direito. Até logo mais! 💈',
         '🙏 Que seu domingo seja de paz, fé e família. A gente se vê na semana! 💈',
+      ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
+      segunda: [
+        '💈 Semana nova começando. Que tal encarar ela com o visual em dia? A gente te espera a partir de terça.',
+        '📅 Segunda é dia de organizar a semana — deixe o seu horário garantido antes que ela encha. Abrimos terça!',
+        '✂️ Cuidar da própria imagem não é vaidade, é respeito por si mesmo. Semana nova, visual novo.',
+        '💈 Hoje é dia de afiar as ferramentas e deixar tudo pronto pra você. Te esperamos a partir de terça!',
       ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
     }
     const base = FALLBACK_BASE[String(context.tipo)] || FALLBACK_BASE.experiencia
