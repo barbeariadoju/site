@@ -366,12 +366,16 @@ atender doente — nem o cliente exposto a isso.
 oferecer ao cliente**. Quem tira o último café prepara o próximo; xícara/copo usado vai
 imediatamente para a pia; máquina e bancada ficam limpas depois do uso.
 
-5.2. **Frigobar** — atenção: **as bebidas do frigobar são produtos de revenda** (fazem parte do
-catálogo e do estoque). Consumo pessoal **não é servir-se livremente**: deve ser registrado no
-sistema pelo valor de custo ⚖️ *(ou conforme a política que o SALÃO-PARCEIRO definir: cortesia
-limitada a X por dia, ou compra a preço de custo)*. Bebida oferecida a cliente segue a política
-comercial vigente (cortesia ou venda registrada). O objetivo não é mesquinhez: é que **estoque
-que some sem registro vira ruído entre parceiros** — e não pode virar.
+5.2. **Frigobar / expositora — zero cortesia** (política definida em 16/08/2026). As bebidas
+são **produtos de revenda** e fazem parte do estoque. Não há consumo livre para ninguém.
+O PROFISSIONAL-PARCEIRO que quiser consumir **registra o item no sistema** e paga o
+**preço de venda menos a cota-parte que receberia se tivesse vendido** — ou seja, ele adquire
+o produto pelo valor que a barbearia teria recebido na venda, e o valor é descontado no
+fechamento semanal. *Exemplo: energético de custo R$ 10,00 e venda R$ 15,00 → lucro R$ 5,00 →
+cota-parte dele seria R$ 2,50 → ele paga **R$ 12,50**, e a barbearia mantém seu resultado.*
+Bebida oferecida a cliente segue a política comercial vigente (venda registrada ou cortesia
+autorizada pelo SALÃO-PARCEIRO). O objetivo não é mesquinhez: **estoque que some sem registro
+vira ruído entre parceiros** — e não pode virar.
 
 5.3. **Bebedouro e água** — livres para todos, sempre. Copos descartáveis são de uso consciente:
 um copo por pessoa por vez, sem desperdício. Acabou o garrafão? Quem percebeu avisa.
