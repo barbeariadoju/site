@@ -200,7 +200,13 @@ atividade do PROFISSIONAL-PARCEIRO.
 conservação, pelo SALÃO-PARCEIRO, do histórico de atendimentos e valores, para fins fiscais,
 contábeis e de comprovação de pagamentos.
 
-### CLÁUSULA 13ª — DAS DISPOSIÇÕES FINAIS
+### CLÁUSULA 13ª — DO ANEXO I
+13.1-A. Integra este contrato, para todos os efeitos, o **ANEXO I — Compromissos de Convivência
+e Uso da Estrutura Compartilhada**, que as partes declaram ter lido e acordado em conjunto,
+e que trata do uso dos equipamentos, das áreas comuns, da conservação do patrimônio e do
+padrão de atendimento ao cliente.
+
+### CLÁUSULA 14ª — DAS DISPOSIÇÕES FINAIS
 13.1. Este contrato substitui quaisquer ajustes anteriores e só pode ser alterado por escrito.
 13.2. A tolerância quanto a qualquer descumprimento não implica novação ou renúncia.
 13.3. As partes reconhecem a validade da assinatura eletrônica aposta neste instrumento, nos
@@ -215,6 +221,226 @@ Bragança Paulista/SP, ____ de __________ de 20____.
 **PROFISSIONAL-PARCEIRO** — _[nome]_ (CPF _[___]_ / CNPJ _[___]_)
 
 **TESTEMUNHAS:** 1. _______________  2. _______________
+
+---
+
+---
+
+# ANEXO I — COMPROMISSOS DE CONVIVÊNCIA E USO DA ESTRUTURA COMPARTILHADA
+
+> **Nota de redação (importante):** este anexo é escrito como **acordo entre parceiros**, não
+> como regulamento de empregador. A diferença não é estética — regra disciplinar imposta
+> (advertência, multa por atraso, controle de horário) é indício de **subordinação** e enfraquece
+> o contrato de parceria. Por isso aqui não existe "punição": existe **compromisso mútuo**, e o
+> descumprimento tem consequência **contratual** (responsabilidade por dano e, no limite,
+> rescisão), nunca disciplinar. Firmeza vem da clareza do combinado, não do tom de chefia.
+
+As partes acordam os compromissos abaixo, aplicáveis a **ambas** no que couber, com o objetivo
+de preservar a qualidade do atendimento, a boa convivência e o patrimônio comum.
+
+## 1. O padrão de atendimento ao cliente
+
+1.1. O cliente que senta na cadeira é **cliente da Barbearia do Ju** e deve receber o mesmo
+padrão de tratamento, independentemente de quem o atende: **capricho técnico, educação,
+atenção e cordialidade** do cumprimento à despedida.
+
+1.2. **Capricho é o mínimo, não o extra.** Acabamento conferido antes de liberar o cliente,
+espelho oferecido ao final, pergunta explícita se ficou do jeito que ele queria. Cliente
+liberado com dúvida é retrabalho garantido.
+
+1.3. **Pontualidade com o compromisso assumido.** Cada profissional é livre para definir a
+própria agenda — mas, uma vez marcado o horário com o cliente, **o compromisso é com ele**.
+A referência acordada é a mesma publicada no site: **tolerância de 10 minutos para os dois
+lados**. Atraso maior e previsível deve ser avisado ao cliente com antecedência, pelos canais
+oficiais.
+
+1.4. **Presença durante o atendimento.** Celular em silêncio e uso restrito ao necessário
+(consultar agenda, registrar o atendimento). Conversa paralela, chamada de vídeo e vídeo curto
+enquanto o cliente está na cadeira comprometem a experiência que ele está pagando.
+
+1.5. **Assuntos que não entram na cadeira:** política, religião, futebol em tom de rivalidade,
+comentários sobre outros clientes, sobre a concorrência ou sobre a vida pessoal de quem quer
+que seja. Assunto do cliente é do cliente — o que se fala na cadeira não sai dela.
+
+1.6. **Nunca discutir com cliente.** Situação difícil (reclamação, questionamento de preço,
+insatisfação) é encaminhada ao SALÃO-PARCEIRO, que decide — inclusive sobre isenção, conforme
+a Cláusula 10ª do contrato. Ninguém precisa "ganhar" discussão com cliente.
+
+1.7. **Sem cobrança direta e sem preço combinado por fora.** Todo valor passa pelo sistema e
+pela tabela vigente (contrato, Cláusulas 6.3 e 6.4).
+
+## 2. A estação de trabalho entre um cliente e outro
+
+2.1. Ao encerrar cada atendimento, e **antes de chamar o próximo**, o profissional deixa a
+estação em condição de receber um cliente novo:
+- **Cabelo do chão varrido** e descartado;
+- **Cadeira, apoios e bancada limpos** (borrifar e passar o pano, sem acúmulo de fios);
+- **Toalha usada no cesto** e toalha limpa disponível;
+- **Ferramentas limpas, desinfetadas e guardadas** no lugar;
+- **Produtos fechados** e devolvidos à posição de origem;
+- **Lixo descartado** na lixeira correta.
+
+2.2. **A regra prática:** a estação deve estar como você gostaria de encontrá-la se fosse o
+próximo a usar — e como o cliente gostaria de encontrá-la ao sentar.
+
+2.3. Ao final do dia, o profissional deixa sua estação organizada, ferramentas guardadas e
+toalhas encaminhadas para lavagem.
+
+## 3. Ferramentas e equipamentos
+
+3.1. **Equipamentos da casa** (máquinas, secador, cadeira, lavatório, esterilizador, TV, som,
+ar-condicionado) são disponibilizados em condições de uso, com custo integral do
+SALÃO-PARCEIRO, inclusive manutenção preventiva e reposição por desgaste natural.
+
+3.2. **Uso correto e conservação** são responsabilidade de quem usa: máquina limpa e lubrificada
+após o uso, lâminas ajustadas com cuidado, cabos sem torção, equipamentos desligados após o
+expediente, ar-condicionado desligado com o salão vazio.
+
+3.3. **Defeito ou desgaste percebido deve ser comunicado imediatamente** — equipamento com
+problema não deve continuar em uso "no jeitinho". Comunicar não gera cobrança nenhuma; deixar
+quebrar por omissão, sim.
+
+3.4. **Dano ao patrimônio ("quebrou, pagou") — com critério justo:**
+- **Desgaste natural, defeito de fabricação ou falha de manutenção da casa:** custo integral do
+  SALÃO-PARCEIRO. Sem cobrança.
+- **Dano por uso indevido, descuido ou negligência (culpa) ou por ato intencional (dolo):**
+  responsabilidade de quem causou, nos termos da Cláusula 6.7 do contrato, pelo **valor do
+  conserto** ou, se irrecuperável, pelo **valor de reposição de item equivalente**.
+- **Apuração:** as partes conversam antes de qualquer cobrança, com orçamento à vista. Havendo
+  concordância, o valor pode ser **descontado da cota-parte** — parcelado se necessário, sem
+  comprometer o sustento do profissional (limite acordado: até 20% do repasse semanal).
+- **Sem multa, sem penalidade, sem "taxa".** Ressarcimento é do prejuízo real, comprovado.
+
+3.5. **Ferramentas pessoais** (tesouras, navalhas, máquinas próprias) são de responsabilidade
+exclusiva do dono, que zela pela guarda. O SALÃO-PARCEIRO não responde por perda, furto ou
+dano de item pessoal, e o profissional não é obrigado a emprestá-las a ninguém.
+
+3.6. **Ferramenta emprestada volta limpa, no mesmo dia e nas mesmas condições.** Empréstimo é
+gentileza entre colegas, não obrigação — e quem empresta pode dizer não sem constrangimento.
+
+## 4. Higiene, biossegurança e descarte
+
+4.1. **Esterilização e desinfecção** dos instrumentos entre clientes, conforme as normas
+sanitárias aplicáveis. Este é o ponto do anexo que **não admite flexibilidade**: é saúde do
+cliente e responsabilidade legal do estabelecimento.
+
+4.2. **Material perfurocortante** (lâminas, navalhas descartáveis) vai **exclusivamente** no
+coletor apropriado, nunca no lixo comum.
+
+4.3. **Toalhas e capas**: uma por cliente, sem reaproveitamento. Encaminhar as usadas ao cesto.
+
+4.4. **Higiene pessoal**: mãos higienizadas antes de cada atendimento; unhas curtas e limpas;
+apresentação asseada. Trabalhar com o cliente a poucos centímetros do rosto exige cuidado com
+hálito e odor — não é exigência de etiqueta, é respeito básico.
+
+4.5. **Saúde**: quem estiver com quadro infeccioso (gripe forte, conjuntivite, lesão de pele
+nas mãos) não atende, comunica e reorganiza a agenda. Ninguém deve se sentir pressionado a
+atender doente — nem o cliente exposto a isso.
+
+## 5. Áreas e itens compartilhados
+
+5.1. **Café** — cortesia da casa, à disposição do profissional e, principalmente, **para
+oferecer ao cliente**. Quem tira o último café prepara o próximo; xícara/copo usado vai
+imediatamente para a pia; máquina e bancada ficam limpas depois do uso.
+
+5.2. **Frigobar** — atenção: **as bebidas do frigobar são produtos de revenda** (fazem parte do
+catálogo e do estoque). Consumo pessoal **não é servir-se livremente**: deve ser registrado no
+sistema pelo valor de custo ⚖️ *(ou conforme a política que o SALÃO-PARCEIRO definir: cortesia
+limitada a X por dia, ou compra a preço de custo)*. Bebida oferecida a cliente segue a política
+comercial vigente (cortesia ou venda registrada). O objetivo não é mesquinhez: é que **estoque
+que some sem registro vira ruído entre parceiros** — e não pode virar.
+
+5.3. **Bebedouro e água** — livres para todos, sempre. Copos descartáveis são de uso consciente:
+um copo por pessoa por vez, sem desperdício. Acabou o garrafão? Quem percebeu avisa.
+
+5.4. **Copos, xícaras e utensílios** — quem usa, lava (ou coloca na pia limpa da forma
+combinada). Ninguém lava a louça de ninguém.
+
+5.5. **Sanitário** — usado por clientes e profissionais. Manter **limpo e seco** após o uso,
+descarte no lixo, assento e pia em ordem. Acabando papel, sabonete ou toalha: repor se houver
+estoque, e avisar em qualquer caso. Sanitário sujo é a reclamação silenciosa que faz cliente não
+voltar — e o cliente não sabe (nem quer saber) de quem foi a vez.
+
+5.6. **Área de apoio / copa** — alimentos pessoais identificados; nada estragando na geladeira;
+lixo orgânico descartado no fim do dia. **Refeição não é feita no salão de atendimento**, e sim
+na área de apoio, fora da vista do cliente.
+
+5.7. **Som e TV** — o ambiente é da barbearia: o estilo e o volume seguem o padrão do
+estabelecimento, com bom senso e preferência do cliente que está na cadeira. Fone de ouvido
+durante atendimento, não.
+
+5.8. **Estacionamento e vagas** — as vagas em frente são **prioridade do cliente**. Profissionais
+estacionam de forma a não ocupá-las.
+
+5.9. **Fumo e álcool** — proibido fumar (inclusive vaporizador) nas dependências internas.
+Nenhum atendimento é feito sob efeito de álcool ou de substância que comprometa a segurança do
+cliente. Este item é de segurança, e o descumprimento autoriza a interrupção imediata do
+atendimento.
+
+## 6. Convivência entre profissionais
+
+6.1. **Respeito e cordialidade** entre todos, na frente e longe do cliente. Divergência se
+resolve em reserva, nunca no salão.
+
+6.2. **Nada de disputa por cliente.** O cliente escolhe com quem quer ser atendido, e essa
+escolha é respeitada sem comentário. Ninguém critica o trabalho do colega para o cliente —
+crítica técnica se faz entre profissionais, em particular.
+
+6.3. **Cliente sem agendamento (walk-in):** atende quem estiver livre no momento. Se mais de um
+estiver livre, vale a **alternância** (rodízio), registrada no sistema. Se todos estiverem
+ocupados, o cliente entra na **lista de espera** com nome e contato — ninguém é dispensado sem
+registro.
+
+6.4. **Cobertura entre parceiros** é gentileza, não obrigação: quem cobrir um atendimento de
+outro recebe a cota-parte normalmente, conforme o contrato.
+
+## 7. Imagem, redes sociais e dados
+
+7.1. **Foto ou vídeo de cliente só com autorização dele**, sempre. Não existe "vai que ele não
+liga".
+
+7.2. Conteúdo produzido dentro da barbearia (fotos de trabalhos, ambiente, bastidores) pode ser
+publicado no perfil pessoal do profissional **desde que não exponha cliente sem autorização, não
+revele dados de terceiros e não configure divulgação de outro estabelecimento concorrente
+enquanto durar a parceria**.
+
+7.3. **Nada de agendar por canal pessoal.** Cliente que chamar no privado é orientado a marcar
+pelos canais oficiais (contrato, Cláusula 8.4). Não é burocracia: é o que garante que o horário
+apareça na agenda, que o histórico do cliente exista e que o repasse seja calculado certo.
+
+7.4. Dados de clientes (telefone, histórico, preferências) **não são copiados, exportados,
+fotografados nem usados fora do sistema** (contrato, Cláusula 8.3 — LGPD).
+
+## 8. Chaves, abertura e patrimônio
+
+8.1. ⚖️ *(Definir com o profissional)* Se receber chave/acesso, é de uso pessoal e
+intransferível, para o horário de funcionamento acordado. Não é permitido franquear entrada a
+terceiros fora do expediente.
+
+8.2. Último a sair: conferir equipamentos desligados, ar-condicionado, luzes, e trancar.
+
+8.3. **Visitas pessoais** (amigos, familiares) não permanecem na área de atendimento durante o
+expediente — o espaço é do cliente.
+
+8.4. Valores em espécie recebidos ficam no local combinado e são registrados no sistema no ato,
+conforme o contrato (Cláusula 6.4).
+
+## 9. Como este anexo é tratado
+
+9.1. Este anexo é **acordado entre as partes**, não imposto. Pode ser revisto sempre que a
+prática mostrar necessidade — por conversa e por escrito.
+
+9.2. Descumprimento **não gera advertência, multa ou penalidade disciplinar**. Gera: (a)
+conversa direta entre as partes; (b) responsabilidade civil pelo dano efetivo, quando houver;
+(c) em caso de descumprimento grave ou reiterado dos itens de **segurança, higiene, honestidade
+financeira ou respeito ao cliente**, a possibilidade de rescisão prevista na Cláusula 11ª.
+
+9.3. Os compromissos deste anexo valem para **todos que atuam na barbearia**, inclusive o
+SALÃO-PARCEIRO. Regra que só vale para um lado não se sustenta — nem no papel nem na
+convivência.
+
+**Aceite:** ao assinar o Contrato de Parceria, o PROFISSIONAL-PARCEIRO declara ter lido e
+acordado com este Anexo I.
 
 ---
 
