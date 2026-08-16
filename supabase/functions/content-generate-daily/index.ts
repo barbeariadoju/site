@@ -148,7 +148,13 @@ async function generateAndUploadImage(admin: ReturnType<typeof createClient>, ge
   if (!geminiKey) return null
   try {
     // v29.6.0 — pedido 100% texto, sem anexar foto do salão nem do Juliano.
-    const prompt = [BRAND_STYLE, `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
+    // v29.31.0 — domingo pede outra luz: a arte do dia de descanso não pode ter a mesma
+    // energia comercial do resto da semana. Mantém a identidade da marca (mesma paleta,
+    // mesmos materiais, sem pessoas) e muda só a atmosfera — manhã calma em vez de
+    // barbearia em movimento.
+    const isDomingo = /domingo/i.test(themeText)
+    const MOOD_DOMINGO = `ATMOSFERA DE DOMINGO (obrigatória hoje): luz natural suave de manhã de domingo entrando de lado, clima calmo, silencioso e contemplativo, ferramentas de trabalho em REPOUSO e organizadas (guardadas, fechadas, alinhadas — nunca em uso), xícara de café sobre a bancada, sensação de descanso e casa. NÃO use luz noturna, néon, contraste dramático nem qualquer elemento que sugira movimento ou trabalho acontecendo. Nada de símbolos religiosos explícitos (cruz, igreja, terço, vela de altar).`
+    const prompt = [BRAND_STYLE, isDomingo ? MOOD_DOMINGO : '', `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
     const requestParts: unknown[] = [{ text: prompt }]
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
@@ -203,7 +209,13 @@ Deno.serve(async (request: Request) => {
 
     const todaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     const dow = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay()
-    if (dow === 0 || dow === 1) return json({ ok: true, skipped: 'fechado_hoje' })
+    // v29.31.0 — DOMINGO passa a gerar conteúdo (ideia do Juliano, 16/08/2026). Era aqui que
+    // o domingo morria: a barbearia fecha, então o dia era pulado — e a marca simplesmente
+    // sumia justamente no dia em que as pessoas estão em casa, com o celular na mão e sem
+    // pressa. O post de domingo não vende (ver bloco do tema, mais abaixo): fala de descanso,
+    // família e recomeço. É construção de marca no dia de menor concorrência de atenção.
+    // Segunda continua fora — quem quiser ligar depois, é só remover o `dow === 1`.
+    if (dow === 1) return json({ ok: true, skipped: 'fechado_hoje' })
 
     const startOfTodayISO = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
     const platformsToGenerate: string[] = []
@@ -247,7 +259,32 @@ Deno.serve(async (request: Request) => {
     let contextFact: string
     let context: Record<string, unknown>
 
-    if (openSlotsCount > 0 && openSlotsCount <= 3) {
+    // v29.31.0 — DOMINGO TEM VOZ PRÓPRIA (ideia do Juliano, 16/08/2026): "domingo é dia de
+    // missa, é o primeiro dia da semana, é dia de descanso, é dia de família".
+    //
+    // A barbearia fecha domingo — então é o único dia em que o post NÃO tenta vender, e é
+    // justamente por isso que ele funciona: constrói marca e afeto num dia em que todo
+    // concorrente ou some ou empurra promoção. Prioridade acima de campanha e rotação,
+    // porque no domingo o TOM importa mais que o conteúdo.
+    //
+    // Quatro ângulos girando por semana do mês pra não repetir o mesmo post todo domingo.
+    // A fé aparece com leveza e acolhimento — nunca prega, nunca exclui quem não é religioso:
+    // o cliente da barbearia é de todo tipo, e "descanso, família e recomeço" fala com todos.
+    const dowSP = new Date(`${todaySP}T12:00:00-03:00`).getUTCDay() // 0 = domingo
+    const NO_HARD_SELL = 'Hoje é DOMINGO e a barbearia está FECHADA. É PROIBIDO: falar de agenda, horário, preço, promoção, ou usar CTA de venda ("agende agora", "corra", "últimas vagas"). No máximo, uma assinatura leve no fim, tipo "até segunda 💈" ou "semana nova, visual novo — te esperamos". O post é sobre a PESSOA, não sobre o serviço.'
+
+    if (dowSP === 0) {
+      const semanaDoMes = Math.ceil(Number(todaySP.slice(-2)) / 7)
+      const anguloDomingo = [
+        'DESCANSO E FAMÍLIA: domingo é o dia de desacelerar, almoçar com quem se ama, ficar em casa sem pressa. Fale sobre o valor de parar — a semana inteira a gente corre, hoje não.',
+        'GRATIDÃO: olhe pra semana que passou e agradeça — pelo trabalho, pela família, pelos clientes que passaram pela cadeira. Tom simples e sincero, sem grandiloquência.',
+        'RECOMEÇO: domingo é o primeiro dia da semana, a página em branco. Fale de começar bem, com disposição e o visual em dia — sem virar propaganda.',
+        'FÉ E PAZ: domingo de missa, de igreja, de casa cheia. Deseje um domingo de paz e bênçãos, com respeito e leveza — sem pregar, sem citar versículo, acolhendo quem crê e quem não crê.',
+      ][(semanaDoMes - 1) % 4]
+
+      contextFact = `Tema de hoje: DOMINGO na voz da Barbearia do Ju. Ângulo desta semana — ${anguloDomingo} Escreva curto (2 a 4 linhas), caloroso, em primeira pessoa do plural, como quem manda uma mensagem de bom domingo pra um amigo. ${NO_HARD_SELL}`
+      context = { tipo: 'domingo', angulo: semanaDoMes, dia: todaySP }
+    } else if (openSlotsCount > 0 && openSlotsCount <= 3) {
       // Escassez REAL: pouquíssimos horários restando é sinal de procura — pode falar.
       contextFact = `A agenda de hoje (${formatDateBR(todaySP)}) está QUASE CHEIA: restam só os últimos horários do dia. Convide a garantir um dos últimos horários de hoje, com tom de procura alta ("a agenda de hoje está fechando", "últimos horários do dia"). É PROIBIDO dizer o número exato de horários, citar horários específicos, ou usar as palavras "janela", "encaixe" e "vaga".`
       context = { tipo: 'reta_final', data: todaySP, horarios_livres: openSlotsCount }
@@ -286,6 +323,14 @@ Deno.serve(async (request: Request) => {
       experiencia: '💈 Café na chegada, hora marcada respeitada e atendimento sem pressa. Agende seu horário na Barbearia do Ju!',
       fidelidade: '🎁 Cartão fidelidade Barbearia do Ju: a cada 10 cortes, 1 é por nossa conta — e todo corte conta automaticamente. Agende o seu!',
       servico_destaque: context.tipo === 'servico_destaque' ? `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco || 0).toFixed(2).replace('.', ',')}. Agende o seu!` : '',
+      // Fallback de domingo: sem venda, sem agenda — só o recado do dia. Também rotaciona,
+      // pra que uma falha de IA em dois domingos seguidos não repita a mesma frase.
+      domingo: [
+        '🙏 Bom domingo! Que hoje seja de descanso, mesa cheia e tempo com quem a gente ama. Até segunda 💈',
+        '🙏 Domingo é dia de agradecer. Obrigado por cada visita e cada confiança desta semana. Bom descanso a todos! 💈',
+        '☀️ Domingo, primeiro dia da semana — página em branco. Que a sua comece leve e com o pé direito. Até logo mais! 💈',
+        '🙏 Que seu domingo seja de paz, fé e família. A gente se vê na semana! 💈',
+      ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
     }
     const base = FALLBACK_BASE[String(context.tipo)] || FALLBACK_BASE.experiencia
     const fallbackCaption = base
