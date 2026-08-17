@@ -1,3 +1,15 @@
+## 29.42.0 — O Google matou o Q&A do perfil, e o conteúdo mudou de endereço
+
+Recomendação minha que envelheceu mal: mandei publicar 12 perguntas no Q&A do Perfil da Empresa. **O Google descontinuou o recurso em 03/11/2025** e os tópicos públicos sumiram a partir de dezembro — confirmado no changelog da própria API. Não existe mais onde publicar. O Google passou a gerar resposta por IA puxando do site, então o conteúdo continua valendo; mudou o lugar dele.
+
+- **`perguntas-frequentes.html`** com 23 perguntas agrupadas por tema (preço, agendamento, localização, barba e química, produtos), `FAQPage` batendo 23/23 com o visível. É superconjunto do FAQ da home — que continua com as 12 curtas, porque ali a função é conversão, não indexação. Linkada da home, do hub de serviços e no sitemap.
+- Ressalva honesta: **isso não gera o acordeão de FAQ no resultado de busca.** O Google restringiu esse rich result a sites de governo e saúde em 2023. O valor aqui é ser a fonte densa de onde a IA puxa quando alguém pergunta algo sobre a barbearia.
+- **Correção de bug da 29.40.0:** `guia-barba-masculina.html` nunca entrou no sitemap. O script casava um formato de linha que não existe no arquivo e **falhou em silêncio** — imprimiu "adicionada" sem ter adicionado. A página estava no ar e linkada, mas invisível pro sitemap por um dia. Agora 51 URLs.
+
+**Registro do Google Business Profile nesta rodada:** 10/10 serviços personalizados criados com preço Fixo (o seletor grava "A partir de" mesmo quando se clica em "Fixo" — só o teclado acerta), endereço público corrigido com a saída do " - 1" que divergia do site e do schema, 4 fotos de resultado sem rosto e 1 postagem com botão "Reservar" e link com UTM (`utm_medium=gbp`, para separar post de tráfego de Maps no GA4).
+
+**Categorias secundárias ficaram vazias de propósito.** "Barbeiro" e "Salão de beleza masculino" não existem na lista do Google em português; as alternativas eram falsas (Escola de barbearia, Loja de produtos para barbeiro) ou mais genéricas que a principal (Salão de Beleza). Categoria falsa é pior que categoria ausente — se uma auditoria futura apontar isso como pendência, está errada.
+
 ## 29.41.0 — Quatro artigos com referência real, no território que só nós temos
 
 Os quatro que ocupam o terreno que nenhum concorrente de Bragança consegue disputar, porque exigem as duas formações. **Todas as referências foram levantadas na fonte** — PubMed e canais oficiais da ANVISA — com DOI ou link direto, e nenhuma foi escrita de memória.
