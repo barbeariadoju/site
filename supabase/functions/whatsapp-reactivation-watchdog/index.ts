@@ -61,7 +61,18 @@ async function shouldSkipNudge(admin: any, phone: string): Promise<boolean> {
   // aqui" logo depois de o Juliano ter acabado de escrever é redundante e chato. Só faz
   // sentido reativar quando quem escreveu por último foi o CLIENTE e ainda não teve resposta.
   if (last.direction !== 'in') return true
-  return looksLikeClosingOrReaction(last.body)
+  if (looksLikeClosingOrReaction(last.body)) return true
+  // v29.43.5 (revisao 14-18/08): o cochicho saiu depois de "Um abraço, excelente fds" (Helder,
+  // com o Juliano ja tendo se despedido), "Da um tok eu vou 🙏" (Rafael Ferreira) e "se ta ai
+  // fico despreocupado" (Rafael) — frases de encerramento que a lista curta acima nao pegava.
+  // Regra invertida: so cochicha se a ultima frase do cliente PARECE PRECISAR de resposta
+  // (tem "?" ou palavra de pedido). Despedida, aviso ou combinado nao reabrem conversa.
+  const body = String(last.body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const despedida = /\b(abraco|abracos|bom fds|bom final de semana|boa semana|bom descanso|boa noite|bom dia|boa tarde|fico no aguardo|fico despreocupado|te aviso|eu aviso|passo ai|passo la|da um toque|da um tok|me avisa|qualquer coisa eu chamo|depois eu (vejo|falo|marco|passo)|ate (mais|logo|breve|amanha|la)|nos falamos|combinado|fechou|beleza entao|ta bom|tudo bem)\b/.test(body)
+  const pedido = /\?|\b(quero|queria|gostaria|pode|poderia|consigo|consegue|tem |teria|horario|marcar|agendar|remarcar|cancelar|quanto|qual|como|onde|quando|preciso|me (fala|diz|passa|manda)|disponivel|vaga)\b/.test(body)
+  if (despedida && !pedido) return true
+  if (!pedido) return true
+  return false
 }
 
 Deno.serve(async (request: Request) => {

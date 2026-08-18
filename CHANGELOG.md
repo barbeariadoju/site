@@ -1,3 +1,14 @@
+## 29.43.5 / 29.43.6 — Revisão de sexta a terça (14–18/08) + regra: corte já inclui o pezinho
+
+**Revisão de todas as conversas do WhatsApp de 14 a 18/08** (pedido do Juliano depois do caso Adriano):
+- **Cochicho "Ainda estou por aqui" depois de o Juliano se despedir** (Helder sex 12:59, Rafael Ferreira e Rafael sáb): a lista de encerramento do watchdog era curta demais. Regra invertida: só cochicha se a última frase do cliente parece precisar de resposta ("?" ou pedido); despedida/aviso/combinado não reabrem conversa.
+- **"cê pinta cabelo aí?" / "qual o produto que passou no meu cabelo?" → "seria um Corte?"**: "cabelo" não é corte quando a frase é sobre coloração/química ou produto. E a trava anti-promessa só age em frases sobre horário (estava trocando "a pasta está disponível por R$ 36" por "ela vou conferir").
+- **Sillas**: a segunda mensagem ("4") viu "conflito" com o agendamento que a própria conversa acabara de criar e perguntou "é esse, é novo, ou cancelar?". Agora: "Já está reservado 😊".
+- **Helo**: ao incluir sobrancelha + barba (60 min) o 10:45 não cabia e a resposta era "acabou de ficar indisponível" (falso). Agora: "não fecha pra 60 min — o mais perto é 10:30, serve?".
+- **Achado sem correção minha**: os 6 que responderam "1" à recuperação de segunda (17/08) não foram reconhecidos como pesquisa (RPC sem ) — outra janela corrigiu às 18:26 e marcou satisfeitos, mas nenhum recebeu o pedido do Google. Decisão do Juliano: **não reenviar** ("não quero parecer chato"); a próxima visita cuida.
+
+**Regra de negócio (v29.43.6)**: todo corte já inclui o pezinho — nunca somar nem cobrar os dois. Aplicado na JuIA (limpeza antes de disponibilidade e fechamento, no "de sempre", no acréscimo a agendamento e no prompt), no catálogo (descrição do Pezinho) e em . Histórico do Alfredo (22/07) corrigido para Corte de cabelo R$ 40.
+
 ## 29.43.4 — Caso Adriano: número solto com pesquisa E convite pendentes agora pergunta, não chuta
 
 Em 17/08 o convite de retorno (10:00:03) e a recuperação da pesquisa (10:00:04) saíram com 1 segundo de diferença; o "1" do Adriano foi lido como convite (reservou 11/09) quando era da pesquisa. A fila única (v29.43.0) já impede a colisão normal, mas dois crons no mesmo instante ainda podem sair antes de qualquer registro existir. Defesa em profundidade no webhook: se chega um 1/2/3 solto e há convite E pesquisa em aberto, a JuIA pergunta *"esse 1 é da pesquisa ou do retorno?"* e guarda o número; a palavra escolhida roteia o número pra pergunta certa (mesmo mecanismo da citação). Testado em produção com telefone fictício: "1" → pergunta; "pesquisa" → satisfeito + pedido do Google, convite intacto, nenhuma reserva criada. Crons já estão 2h separados (convite 10h, recuperação 12h).
