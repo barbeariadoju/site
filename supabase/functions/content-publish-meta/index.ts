@@ -181,11 +181,13 @@ Deno.serve(async (request: Request) => {
     // 'aprovado' funciona como lease de 3 minutos (approved_at = início da tentativa):
     // se a function morrer no meio sem reverter, uma nova tentativa depois do prazo
     // consegue "roubar" a lease em vez do rascunho ficar preso pra sempre.
+    // v29.44.0: um card 'agendado' também pode ser publicado na hora pelo botão (o clique
+    // vence o agendamento) — o cron não o pega mais porque o status deixa de ser 'agendado'.
     const { data: claimed } = await admin
       .from('content_posts')
       .update({ status: 'aprovado', approved_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('status', 'rascunho')
+      .in('status', ['rascunho', 'agendado'])
       .select('id')
     if (!claimed?.length) {
       const leaseCutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString()

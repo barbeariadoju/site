@@ -133,7 +133,7 @@
   }
 
   function updateMetrics() {
-    const pendentes = rows.filter(r => r.status === 'rascunho' || r.status === 'aprovado').length;
+    const pendentes = rows.filter(r => r.status === 'rascunho' || r.status === 'aprovado' || r.status === 'agendado').length;
     const now = new Date();
     const publicadosMes = rows.filter(r => r.status === 'publicado' && r.published_at && new Date(r.published_at).getMonth() === now.getMonth() && new Date(r.published_at).getFullYear() === now.getFullYear()).length;
     $('conteudo-metric-pendentes').textContent = pendentes;
@@ -164,7 +164,8 @@
     const list = $('conteudo-list');
     // 'aprovado' = publicação em andamento (lease de 3 min no servidor) — aparece junto
     // dos rascunhos pra nunca "sumir" da tela se uma tentativa travar no meio.
-    const filtered = rows.filter(r => statusTab === 'rascunho' ? (r.status === 'rascunho' || r.status === 'aprovado') : r.status === statusTab);
+    // v29.44.0: 'agendado' (publicação automática marcada) também mora na aba de rascunhos.
+    const filtered = rows.filter(r => statusTab === 'rascunho' ? (r.status === 'rascunho' || r.status === 'aprovado' || r.status === 'agendado') : r.status === statusTab);
     if (!filtered.length) { list.innerHTML = `<div class="conteudo-empty">Nenhum post ${statusTab === 'rascunho' ? 'pendente' : statusTab} por aqui.</div>`; return; }
     list.innerHTML = filtered.map(r => {
       const created = new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -172,7 +173,12 @@
         ? `Publicado em ${new Date(r.published_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
         : `Gerado em ${created} · ${r.source === 'ia' ? 'IA' : 'Manual'}`;
       const contextText = contextLabel(r.context);
-      const editable = r.status === 'rascunho' || r.status === 'aprovado';
+      const editable = r.status === 'rascunho' || r.status === 'aprovado' || r.status === 'agendado';
+      // v29.44.0 — hora agendada (scheduled_for é UTC; mostra em horário local).
+      const scheduledLabel = r.status === 'agendado' && r.scheduled_for
+        ? new Date(r.scheduled_for).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+        : '';
+      const scheduleError = r.context && typeof r.context.schedule_error === 'string' ? r.context.schedule_error : '';
       // Prévia visual (pedido do Juliano): mostra a arte exatamente como vai sair no
       // Status, antes de aprovar — evita publicar algo com visual ruim sem perceber.
       const imageUrl = r.context && typeof r.context.image_url === 'string' ? r.context.image_url : '';
@@ -192,7 +198,8 @@
       // imagem) — o campo de texto aqui é só anotação interna, não sai publicado.
       const isStoryPlatform = r.platform === 'facebook_story' || r.platform === 'instagram_story';
       return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}" data-carousel="${carouselUrls.length || ''}">
-        <span class="badge ${r.status === 'aprovado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
+        <span class="badge ${r.status === 'aprovado' || r.status === 'agendado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'agendado' ? `⏰ Agendado — sai sozinho ${esc(scheduledLabel)}` : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
+        ${scheduleError && r.status === 'rascunho' ? `<p class="meta">⚠️ A publicação agendada falhou e voltou pra fila: ${esc(scheduleError)}</p>` : ''}
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
         ${carouselUrls.length
@@ -205,7 +212,10 @@
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
           ${(videoUrl || carouselUrls.length) ? '' : !imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
-          <button type="button" class="is-primary" data-action="publish">✅ Aprovar e publicar no ${esc(platformLabel)}</button>
+          <button type="button" class="is-primary" data-action="publish">✅ ${r.status === 'agendado' ? 'Publicar agora' : 'Aprovar e publicar'} no ${esc(platformLabel)}</button>
+          ${r.status === 'agendado'
+            ? `<button type="button" data-action="unschedule">Cancelar agendamento</button>`
+            : r.status === 'rascunho' ? `<button type="button" data-action="schedule">⏰ Agendar</button>` : ''}
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}
       </article>`;
@@ -213,6 +223,12 @@
 
     list.querySelectorAll('[data-action="publish"]').forEach(btn => {
       btn.addEventListener('click', () => publish(btn.closest('.conteudo-card')));
+    });
+    list.querySelectorAll('[data-action="schedule"]').forEach(btn => {
+      btn.addEventListener('click', () => schedule(btn.closest('.conteudo-card')));
+    });
+    list.querySelectorAll('[data-action="unschedule"]').forEach(btn => {
+      btn.addEventListener('click', () => unschedule(btn.closest('.conteudo-card')));
     });
     list.querySelectorAll('[data-action="reject"]').forEach(btn => {
       btn.addEventListener('click', () => reject(btn.closest('.conteudo-card')));
@@ -300,14 +316,56 @@
     }
   }
 
+  // v29.44.0 — publicação agendada: o card fica 'agendado' com a hora escolhida e o cron
+  // content-publish-scheduled (a cada 5 min) publica sozinho quando chegar. A legenda
+  // editada no card é salva junto (é ela que sai). Hora digitada em horário local.
+  async function schedule(card) {
+    const id = card.dataset.id;
+    const caption = card.querySelector('[data-role="caption"]').value.trim();
+    const suggested = new Date(Date.now() + 60 * 60 * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const suggestedText = `${pad(suggested.getDate())}/${pad(suggested.getMonth() + 1)} ${pad(suggested.getHours())}:${pad(suggested.getMinutes())}`;
+    const answer = prompt('Publicar automaticamente em (dia/mês hora:minuto):', suggestedText);
+    if (answer === null) return;
+    const m = answer.trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})$/);
+    if (!m) { alert('Formato inválido. Use dia/mês hora:minuto, por exemplo 21/08 18:00.'); return; }
+    const now = new Date();
+    let year = m[3] ? Number(m[3]) : now.getFullYear();
+    if (year < 100) year += 2000;
+    const when = new Date(year, Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), 0, 0);
+    if (Number.isNaN(when.getTime())) { alert('Data inválida.'); return; }
+    if (when.getTime() < Date.now() - 60000) { alert('Essa hora já passou — escolha uma hora futura (ou use "Aprovar e publicar" pra sair agora).'); return; }
+    if (card.dataset.platform === 'whatsapp_business') {
+      const h = when.getHours();
+      if (h >= 20 || h < 8) alert('Aviso: Status do WhatsApp não sai entre 20h e 8h (horário de silêncio). Se agendar nessa faixa, ele sai na primeira rodada depois das 8h.');
+    }
+    const { data, error } = await sb.from('content_posts')
+      .update({ status: 'agendado', scheduled_for: when.toISOString(), caption })
+      .eq('id', id).eq('status', 'rascunho').select('id');
+    if (error) { alert(`Erro ao agendar: ${error.message}`); return; }
+    if (!data || !data.length) alert('Esse post mudou de situação enquanto você agendava. Atualize a página.');
+    await load();
+  }
+
+  async function unschedule(card) {
+    const id = card.dataset.id;
+    const { data, error } = await sb.from('content_posts')
+      .update({ status: 'rascunho', scheduled_for: null })
+      .eq('id', id).eq('status', 'agendado').select('id');
+    if (error) { alert(`Erro: ${error.message}`); return; }
+    if (!data || !data.length) alert('Esse post já saiu do agendamento (pode ter sido publicado agora). Atualize a página.');
+    await load();
+  }
+
   async function reject(card) {
     const id = card.dataset.id;
-    // Só rejeita quem ainda está em 'rascunho'. Rejeitar um card em 'aprovado'
+    // Só rejeita quem ainda está em 'rascunho' (ou 'agendado', v29.44.0 — cancelar o
+    // agendamento e rejeitar de uma vez). Rejeitar um card em 'aprovado'
     // (publicação em andamento) seria mentira: a publicação que já está rodando no
     // servidor continuaria e sobrescreveria pra 'publicado' no final — a tela diria
     // "rejeitado" mas o post sairia de verdade. A condição de status no update torna
     // a checagem atômica (não dá pra rejeitar "no meio").
-    const { data, error } = await sb.from('content_posts').update({ status: 'rejeitado' }).eq('id', id).eq('status', 'rascunho').select('id');
+    const { data, error } = await sb.from('content_posts').update({ status: 'rejeitado', scheduled_for: null }).eq('id', id).in('status', ['rascunho', 'agendado']).select('id');
     if (error) { alert(`Erro: ${error.message}`); return; }
     if (!data || !data.length) {
       alert('Esse post está sendo publicado agora (ou acabou de mudar de situação) — não dá mais pra rejeitar. Atualize a página pra ver como ficou.');

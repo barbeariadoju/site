@@ -64,6 +64,12 @@ verify_jwt = true
 [functions.manual-fix-once]
 verify_jwt = true
 
+# v29.44.0 — publicação agendada da Central (cron a cada 5 min). Fica com JWT exigido:
+# o pg_cron manda o anon key como Bearer (passa no gateway) E o x-webhook-secret
+# (WHATSAPP_WEBHOOK_SECRET, lido do Vault), que é o que o código de fato confere.
+[functions.content-publish-scheduled]
+verify_jwt = true
+
 # --- Funções SEM JWT: webhooks e crons, que se autenticam por x-webhook-secret ---
 # (Evolution API e pg_cron não mandam JWT; a checagem do secret é feita no código.)
 

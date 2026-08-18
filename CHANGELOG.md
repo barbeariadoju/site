@@ -1,3 +1,14 @@
+## 29.44.0 — Central de Conteúdo: publicação agendada (o post sai sozinho na hora marcada)
+
+Até aqui, todo conteúdo com hora certa ("Reel às 18h", "teaser sábado 17h30") dependia de alguém clicar na Central naquele minuto — e o lembrete por push tem atraso de até 9 min e só roda com o app aberto. Motivação concreta de 18/08: dois Reels de Resultado reais (degradê e texturizado) aprovados pelo Juliano no chat com "prossegue quando for a hora", pra sair terça 18h e sexta 18h.
+
+- **Status novo `agendado` + coluna `scheduled_for`** em `content_posts` (migration 120; o check de status foi ampliado). Fluxo: rascunho → ⏰ Agendar → agendado → (cron) aprovado → publicado. Nunca se publica `rascunho` automaticamente — só o que foi agendado de propósito.
+- **Function `content-publish-scheduled`** (verify_jwt=true; o pg_cron manda o anon key como Bearer e o `x-webhook-secret` do Vault, que é o que o código confere). Cron `bdj-content-publish-scheduled` a cada 5 min. Espelha o fluxo de publicação dos botões (Reel/foto/carrossel/Story do Instagram, vídeo/foto/texto do Facebook, Status do WhatsApp com lista explícita de contatos). Trava atômica agendado→aprovado; falha volta pra `rascunho` com `context.schedule_error` e push ❌; sucesso dá push ✅. Publica os vencidos em paralelo em segundo plano (Reel leva ~1-2 min na Meta).
+- **Horário de silêncio respeitado**: Status do WhatsApp agendado pra 20h-8h fica esperando e sai na primeira rodada depois das 8h. Facebook/Instagram publicam na hora agendada.
+- **Central**: card ganha "⏰ Agendar" (dia/mês hora:minuto, horário local) e, quando agendado, badge com a hora, "Publicar agora" e "Cancelar agendamento". Rejeitar também limpa agendamento. Os botões de publicar (`content-publish-meta`/`-whatsapp`) aceitam card `agendado` — o clique vence o agendamento.
+
+Testado: rota do cron respondendo 202 com a autenticação real do Vault; 6 rascunhos agendados (3 pra 18/08 18h, 3 pra 21/08 18h) — o primeiro lote é o teste em produção.
+
 ## 29.43.0 — JuIA: fecha mais, incomoda menos (revisão das conversas de 15 a 18/08)
 
 Pedido do Juliano em 18/08: revisar todas as interações da JuIA desde sábado e corrigir na raiz. Sábado 15/08 tiveram 12 conversas de cliente novo e **3 fecharam** — pelo menos 5 das perdidas foram culpa direta da JuIA. Cada correção abaixo tem o caso real que a motivou.
