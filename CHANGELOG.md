@@ -1,3 +1,18 @@
+## 29.43.2 — Bateria de testes da JuIA (123 cenários) + recuperação de pesquisa direto ao Google + JuIA Social sem eco
+
+**JuIA Social (v29.43.1)** — o comentário da Nicole no IG (16/08) recebeu **11 respostas iguais** ao longo de 35h. Causa: o robô enviava pra Meta ANTES de gravar em social_inbox e a leitura de "quais já respondi" às vezes falhava em silêncio. Agora **reserva a linha primeiro** (unique em platform+kind+external_id — se já existe, pula), envia com try/catch por item, e só então atualiza. Reenvio automático não existe mais. As 10 duplicatas foram apagadas pela Graph API (ferramenta temporária, removida).
+
+**Bateria (tests/juia, 123 cenários stateless em produção): 0 alertas automáticos, 6 problemas na leitura humana, todos corrigidos:**
+- Menu "Mais procurados" atropelava resposta real ("atende mulher também?", "valor é por pessoa?", "minha namorada terminou comigo…") — só entra em pedido genérico de catálogo.
+- "Para concluir, preciso de seu nome, seu WhatsApp, o serviço, a data, o horário." — virou frase de gente, e reconhece frustração ("CADÊ VOCÊS…" → "Calma que eu resolvo com você agora mesmo 🙏").
+- "vaga de emprego" acionava o fluxo de agenda por causa de "vaga" — vai pro Juliano.
+- "precisa agendar ou dá pra chegar e esperar?" / "só aparecendo?" — resposta fixa: hora marcada, sem fila, encaixe só se sobrar vaga.
+- "vocês atendem hoje?" / "aberto ainda?" — agora abre com "Sim, hoje atendemos até 19h!" (ou fechado/já encerramos), aplicado no fim pra nenhum bloco sobrescrever.
+- Datas em formato de sistema ("18/08/2026") — pós-processamento: hoje / amanhã / "sexta (21/08)".
+- Prompt: inglês/espanhol → responde no idioma. Lista extra de horários ("tenho ainda: …") limitada a 3.
+
+**Recuperação de pesquisa (survey-recovery, segunda 15h)** — pedido do Juliano: pedir avaliação do Google pra todo mundo. Cliente com **2+ visitas concluídas** (voltou = satisfeito) recebe o **link do Google direto** (rastreado, saída "1 = já avaliei"), sem passar pela pesquisa; cliente de 1 visita segue na pesquisa 1/2. Trava: sem novo pedido de Google em 30 dias. Simulação de 24/08: Rafael Ferreira e Dorta → Google; Sillas, Dirceu, Walisson → pesquisa. Migration 120 (customer_completed_visits, customer_google_ask_recent). Achado registrado: o "follow-up de 24h" citado no comentário do survey-recovery **não existe** — a régua real é dia 0 → segunda → opt-out.
+
 ## 29.44.0 — Central de Conteúdo: publicação agendada (o post sai sozinho na hora marcada)
 
 Até aqui, todo conteúdo com hora certa ("Reel às 18h", "teaser sábado 17h30") dependia de alguém clicar na Central naquele minuto — e o lembrete por push tem atraso de até 9 min e só roda com o app aberto. Motivação concreta de 18/08: dois Reels de Resultado reais (degradê e texturizado) aprovados pelo Juliano no chat com "prossegue quando for a hora", pra sair terça 18h e sexta 18h.

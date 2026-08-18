@@ -191,37 +191,65 @@ Deno.serve(async (request: Request) => {
         : `Você é a Barbearia do Ju (Bragança Paulista/SP) respondendo uma mensagem direta recebida no ${c.platform === 'facebook' ? 'Messenger' : 'Instagram Direct'}. Tom caloroso, direto, 1-3 frases. NUNCA invente preço, horário ou informação que não foi dada. NÃO tente agendar, cancelar ou remarcar por aqui — para qualquer coisa transacional, convide a pessoa a chamar no WhatsApp (11) 96707-3038 ou agendar direto em www.barbeariadoju.com.br/agendar/, onde a assistente consegue ver a agenda de verdade.`
 
       const hasText = c.original_text.trim().length > 0
-      const draft = hasText ? await askAI(openaiKey, systemPrompt, c.original_text) : ''
 
+      // v29.43.1 — BUG REAL (comentario da Nicole no IG, 16/08/2026): a resposta foi
+      // publicada ~11 vezes, uma a cada cron de 15 min. Causa: o codigo ENVIAVA primeiro e
+      // so gravava em social_inbox depois — qualquer excecao no meio (timeout de 20s da
+      // Graph API, que aborta o fetch DEPOIS de a Meta ja ter publicado; erro da IA; queda
+      // da function) derrubava a rodada inteira sem gravar nada, e a rodada seguinte via o
+      // comentario como novo e respondia de novo. Regra nova, na ordem certa:
+      //   1. RESERVA a linha em social_inbox ANTES de qualquer envio (unique em
+      //      platform+kind+external_id: se outra rodada ja reservou, esta pula);
+      //   2. gera o rascunho e envia, cada etapa em try/catch proprio — uma falha vira
+      //      'rascunho' com o erro anotado, nunca excecao solta;
+      //   3. atualiza a linha com o resultado. Reenvio automatico NUNCA acontece: se o
+      //      registro existe, o cron nao toca mais nele (o Juliano decide na mao pelo admin).
+      const { data: reserved, error: reserveError } = await admin.from('social_inbox').insert({
+        platform: c.platform, kind: c.kind, external_id: c.external_id, thread_id: c.thread_id,
+        sender_psid: c.sender_psid, sender_name: c.sender_name, original_text: c.original_text,
+        ai_draft: null, reply_text: null, status: 'rascunho', replied_at: null,
+        context: { ...c.context, auto_send_state: 'reservado' },
+      }).select('id').maybeSingle()
+      if (reserveError || !reserved) {
+        // 23505 = ja existe (outra rodada reservou); qualquer outro erro tambem pula — sem
+        // registro nao ha como garantir "uma resposta so", entao e melhor nao responder.
+        console.warn('[meta-social-sync] reserva pulada', c.kind, c.platform, c.external_id, reserveError?.code || 'sem linha')
+        continue
+      }
+
+      let draft = ''
       let status: 'enviado' | 'rascunho' = 'rascunho'
       let repliedAt: string | null = null
       let sendError: string | null = null
-
-      // Sem texto (figurinha/mídia) = nada real pra IA responder; cai pra rascunho pro
-      // Juliano decidir na mão. Com texto e rascunho gerado, envia de verdade — se a
-      // Graph API falhar (ex. token, permissão), também cai pra rascunho em vez de
-      // perder a mensagem.
-      if (hasText && draft && dryRun) {
-        sendError = '(dry_run — não enviado de verdade)'
-      } else if (hasText && draft) {
-        const sendResult = await sendReply(pageToken, pageId, igId, c, draft)
-        if (sendResult.ok) {
-          status = 'enviado'
-          repliedAt = new Date().toISOString()
-        } else {
-          sendError = sendResult.data?.error?.message || `HTTP ${sendResult.status}`
-          console.error('[meta-social-sync] envio automático falhou', c.kind, c.platform, c.external_id, sendResult.status, sendResult.data)
+      try {
+        draft = hasText ? await askAI(openaiKey, systemPrompt, c.original_text) : ''
+        // Sem texto (figurinha/midia) = nada real pra IA responder; fica em rascunho pro
+        // Juliano decidir na mao. Com texto e rascunho gerado, envia de verdade — se a
+        // Graph API falhar (token, permissao, timeout), fica em rascunho com o erro anotado.
+        if (hasText && draft && dryRun) {
+          sendError = '(dry_run — não enviado de verdade)'
+        } else if (hasText && draft) {
+          const sendResult = await sendReply(pageToken, pageId, igId, c, draft)
+          if (sendResult.ok) {
+            status = 'enviado'
+            repliedAt = new Date().toISOString()
+          } else {
+            sendError = sendResult.data?.error?.message || `HTTP ${sendResult.status}`
+            console.error('[meta-social-sync] envio automático falhou', c.kind, c.platform, c.external_id, sendResult.status, sendResult.data)
+          }
         }
+      } catch (e) {
+        sendError = e instanceof Error ? e.message : String(e)
+        console.error('[meta-social-sync] excecao no envio (linha ja reservada, nao reenvia)', c.kind, c.platform, c.external_id, sendError)
       }
 
-      const { data: row, error } = await admin.from('social_inbox').insert({
-        platform: c.platform, kind: c.kind, external_id: c.external_id, thread_id: c.thread_id,
-        sender_psid: c.sender_psid, sender_name: c.sender_name, original_text: c.original_text,
+      const { error: updateError } = await admin.from('social_inbox').update({
         ai_draft: draft || null, reply_text: draft || null, status, replied_at: repliedAt,
-        context: sendError ? { ...c.context, auto_send_error: sendError } : c.context,
-      }).select('id').maybeSingle()
-      if (error) { console.error('[meta-social-sync] insert', error); continue }
-      if (row) inserted.push({ id: row.id, kind: c.kind, platform: c.platform, status })
+        updated_at: new Date().toISOString(),
+        context: sendError ? { ...c.context, auto_send_error: sendError } : { ...c.context, auto_send_state: status },
+      }).eq('id', reserved.id)
+      if (updateError) console.error('[meta-social-sync] update', updateError)
+      inserted.push({ id: reserved.id, kind: c.kind, platform: c.platform, status })
     }
 
     if (inserted.length) {

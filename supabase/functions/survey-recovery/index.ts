@@ -77,7 +77,25 @@ Deno.serve(async (req) => {
       // v29.29.0: aqui é ETAPA 1 — pesquisa de satisfação, só 1 ou 2. O pedido de avaliação
       // no Google (e a saída "já avaliei") vem depois, para quem responder 1.
       const nome = firstName(t.customer_name)
-      const texto = `Oi${nome ? `, ${nome}` : ''}! 😊 Desculpe incomodar de novo — é rapidinho e prometo não insistir mais.\n\nComo foi seu último atendimento aqui na Barbearia do Ju?\n\n*1* — Satisfeito 👍\n*2* — Insatisfeito 👎\n\nObrigado! 💈`
+      // v29.43.2 — pedido do Juliano (18/08): "pedir a avaliacao do Google pra todo mundo".
+      // Quem VOLTOU (2+ visitas concluidas) ja disse, com os pes, que ficou satisfeito — pra
+      // esse cliente a recuperacao pula a pesquisa e vai direto ao ponto: link do Google
+      // (rastreado pelo go-review), com a saida "1 = ja avaliei". Cliente de 1 visita continua
+      // recebendo a pesquisa 1/2 (nao pedimos avaliacao publica de quem pode ter saido chateado).
+      // Trava anti-chatice: se ja houve pedido de Google nos ultimos 30 dias, pula.
+      const { data: visitasRaw } = await admin.rpc('customer_completed_visits', { p_phone: phone })
+      const visitas = Number(visitasRaw) || 0
+      const { data: googleRecente } = await admin.rpc('customer_google_ask_recent', { p_phone: phone, p_days: 30 })
+      const recorrente = visitas >= 2
+      if (recorrente && googleRecente === true) {
+        console.log('[survey-recovery] recorrente com pedido de Google recente — pulando', phone)
+        await admin.from('experience_requests').update({ recovery_attempts: 1, last_recovery_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', t.id)
+        continue
+      }
+      const trackedReviewLink = `${supabaseUrl}/functions/v1/go-review?t=${t.token}`
+      const texto = recorrente
+        ? `Oi${nome ? `, ${nome}` : ''}! 😊 Você voltar aqui já diz muito pra gente 🙏\n\nSe puder deixar sua avaliação no Google, ajuda demais a Barbearia do Ju — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉 E se algo não ficou como você esperava, me conta por aqui que a gente resolve. 💈`
+        : `Oi${nome ? `, ${nome}` : ''}! 😊 Desculpe incomodar de novo — é rapidinho e prometo não insistir mais.\n\nComo foi seu último atendimento aqui na Barbearia do Ju?\n\n*1* — Satisfeito 👍\n*2* — Insatisfeito 👎\n\nObrigado! 💈`
 
       try {
         const res = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
@@ -104,6 +122,15 @@ Deno.serve(async (req) => {
           last_recovery_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq('id', t.id)
+        if (recorrente) {
+          // Pedido de Google saiu direto: fecha a pesquisa como satisfeito (implicito) para o
+          // "1" seguinte ser lido como "ja avaliei" (find_open_google_ask_by_phone) e nao como
+          // resposta de pesquisa; e marca google_asked_at, que e o que o webhook consulta.
+          await admin.from('experience_requests').update({
+            status: 'satisfied', answer: 'satisfied_implicit', answered_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          }).eq('id', t.id)
+          await admin.rpc('mark_google_ask_sent', { p_token: t.token })
+        }
 
         sent++
       } catch (e) {
