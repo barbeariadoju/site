@@ -1,3 +1,10 @@
+## 29.43.3 — Bateria (parte 2, 31 cenários com agendamento existente): 3 correções, uma delas grave
+
+- **BUG GRAVE**: a pergunta de conflito ("você já tem horário nesse dia — é esse mesmo, é um novo, ou cancelar o antigo?") reaproveitava o marcador de cancelamento, e um **"sim" seco cancelava o agendamento**. Agora a escolha é explícita (1 mudar / 2 manter os dois / 3 cancelar, ou as palavras); "sim"/"não" soltos repergunta com números e não cancela nada.
+- "quero fazer sobrancelha **também, além do corte** que já marquei" caía como troca ("qual serviço no lugar?") ou como agendamento novo. Sinal de acréscimo + referência ao horário marcado = **incluir**: confirma "Corte + Sobrancelha (R$ 55, 40 min)" e grava o combo (nome composto, preço e duração somados).
+- "esqueci de pedir o **óleo de barba**" abria o menu de serviços de barba — produto não é serviço.
+- Lição de ferramenta: patch de código por  no bash come  das regex (vira byte 0x08, regex morta em silêncio). Sempre patch por arquivo .js.
+
 ## 29.43.2 — Bateria de testes da JuIA (123 cenários) + recuperação de pesquisa direto ao Google + JuIA Social sem eco
 
 **JuIA Social (v29.43.1)** — o comentário da Nicole no IG (16/08) recebeu **11 respostas iguais** ao longo de 35h. Causa: o robô enviava pra Meta ANTES de gravar em social_inbox e a leitura de "quais já respondi" às vezes falhava em silêncio. Agora **reserva a linha primeiro** (unique em platform+kind+external_id — se já existe, pula), envia com try/catch por item, e só então atualiza. Reenvio automático não existe mais. As 10 duplicatas foram apagadas pela Graph API (ferramenta temporária, removida).

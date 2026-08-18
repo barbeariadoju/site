@@ -704,7 +704,9 @@ Deno.serve(async req=>{
  // negação. Achado testando o reconhecimento de links de propósito. Mesmo padrão do
  // cancelNegated (uma negação explícita logo antes cancela o próprio gatilho).
  const barbaNegated=/\bsem\b[^.!?]{0,15}\bbarba\b/i.test(message)
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
+ // v29.43.2 (bateria): "esqueci de pedir o oleo de barba" abria o menu de servicos de barba — produto nao e servico.
+ const barbaProduto=/\b(oleo|óleo|balm|pomada|shampoo|creme|locao|loção|produto|kit)\b/i.test(message)
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
  // v28.30.5 — pedido do Juliano (31/07/2026): "cabelo" solto ("eu queria cabelo", "CABELO!")
  // não era entendido — a JuIA respondia com pergunta genérica ou a lista de mais procurados.
  // Igual ao padrão da barba: confirma o serviço óbvio ("seria um Corte de cabelo?") em vez
@@ -861,7 +863,32 @@ Deno.serve(async req=>{
  const addProductAsk=addProductVerb&&mentionsProduto&&productBookingContext
  const removeProductAsk=removeProductVerb&&mentionsProduto&&productBookingContext
  const updateProductsAsk=addProductAsk||removeProductAsk
- if((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical))intent='cancel'
+ // v29.43.2 (bateria, BUG GRAVE): a pergunta de conflito ("é esse mesmo, é um novo, ou cancelar o
+ // antigo?") reaproveitava pending_cancel_booking_id — e um "sim" seco do cliente CANCELAVA o
+ // agendamento. Agora a escolha e explicita: 1/reagendar, 2/manter os dois, 3/cancelar (ou as
+ // palavras). "sim"/"nao" soltos ou qualquer outra coisa reperguntam com numeros, sem cancelar nada.
+ let conflictHandled=false
+ if(next.pending_conflict_choice&&next.pending_cancel_booking_id){
+  const t=normalizedQuestion.trim()
+  if(/^1\b/.test(t)||rescheduleAsk||/\b(mudar|muda|esse mesmo|e esse|é esse|reagend)/.test(t)){
+   next.pending_reschedule_booking_id=next.pending_cancel_booking_id
+   next.pending_cancel_booking_id=null;next.pending_conflict_choice=null
+   intent='reschedule'
+  }else if(/^2\b/.test(t)||keepBothRequest||/\b(e outro|outro horario|novo horario|manter|os dois|ambos)\b/.test(t)){
+   next.keep_both_bookings=true
+   next.pending_cancel_booking_id=null;next.pending_conflict_choice=null
+   intent='book'
+  }else if(/^3\b/.test(t)||(cancelAsk&&!cancelNegated)){
+   next.pending_conflict_choice=null
+   intent='cancel'
+  }else{
+   const b=upcomingBookings.find((x:any)=>x.id===next.pending_cancel_booking_id)
+   reply=`Só pra eu não errar 😊 Sobre o seu horário de ${b?formatDateBR(b.booking_date):''} às ${b?String(b.start_time).slice(0,5):''}, me responde com o número:\n*1* — Mudar esse pro novo horário 🔄\n*2* — É outro, manter os dois\n*3* — Cancelar o antigo ❌`
+   actions=[{label:'1 — Mudar',message:'1'},{label:'2 — Manter os dois',message:'2'},{label:'3 — Cancelar o antigo',message:'3'}]
+   intent='other';handoff=false;conflictHandled=true
+  }
+ }
+ if(!conflictHandled&&((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical)))intent='cancel'
 
  if(intent==='cancel'){
   if(!verifiedPhone){
@@ -1301,6 +1328,19 @@ Deno.serve(async req=>{
  // change_service (ai.intent, não o "intent" já reclassificado por regex) —
  // nunca de chosen[0] "sobrando" de um fluxo de agendamento novo anterior na
  // mesma conversa, que poderia estar desatualizado.
+ // v29.43.2 (bateria): "quero fazer sobrancelha tambem, alem do corte que ja marquei" — o modelo
+ // classificava como agendamento novo e caia no "voce ja esta confirmado". Sinal de acrescimo +
+ // referencia ao horario ja marcado + servico reconhecido = alteracao do agendamento existente.
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&upcomingBookings.length>=1
+  &&/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|aproveitar e|junto com)\b/.test(normalizedQuestion)
+  &&/\b(ja marquei|que marquei|ja agendei|que agendei|meu horario|meu agendamento|no meu|alem d[oa])\b/.test(normalizedQuestion)){
+  {
+   // a frase "quero fazer sobrancelha tambem" nao casa nome de servico pela regra frouxa — mapa direto
+   const kw:[RegExp,string][]=[[/sobrancelha/,'Sobrancelha Masculina'],[/pezinho/,'Pezinho (acabamento)'],[/nasal/,'Depilação nasal (cera quente)'],[/barba express/,'Barba Express'],[/barboterapia/,'Barboterapia'],[/lavagem/,'Corte + Lavagem'],[/hidrata/,'Hidratação / Reconstrução Capilar']]
+   for(const [re,name] of kw){if(re.test(normalizedQuestion)){const svc=findService(name);if(svc&&!chosen.some((c:any)=>c.name===svc.name)){chosen.push(svc);next.services=chosen.map((c:any)=>c.name)}}}
+  }
+  if(chosen.length)intent='change_service'
+ }
  if(intent==='change_service'){
   const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
   if(!verifiedPhone){
@@ -1308,11 +1348,11 @@ Deno.serve(async req=>{
    handoff=true
   }else if(next.pending_change_service_new_name){
    const target=upcomingBookings.find((b:any)=>b.id===next.pending_change_service_booking_id)
-   const desired=findService(next.pending_change_service_new_name)
+   const desired=(next.pending_change_service_composed&&next.pending_change_service_composed.name===next.pending_change_service_new_name)?next.pending_change_service_composed:findService(next.pending_change_service_new_name)
    if(simpleYes&&!simpleNo){
     if(!desired){
      reply='Não reconheci esse serviço. Qual serviço você quer no lugar?'
-     next.pending_change_service_new_name=null
+     next.pending_change_service_new_name=null;next.pending_change_service_composed=null
      handoff=false
     }else{
      const {data:changedRows,error:changeError}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:next.pending_change_service_booking_id,p_service_name:desired.name,p_service_price:desired.price,p_duration_minutes:desired.duration})
@@ -1320,7 +1360,7 @@ Deno.serve(async req=>{
      if(changeError||!changed){
       reply='Não consegui trocar o serviço agora — esse serviço pode não caber mais nesse horário. Quer tentar outro serviço ou outro horário?'
       handoff=false
-      next.pending_change_service_new_name=null
+      next.pending_change_service_new_name=null;next.pending_change_service_composed=null
      }else{
       reply=`Prontinho! Troquei o serviço do seu agendamento de ${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)} para ${changed.service_name} (${money(changed.service_price)}).`
       handoff=false
@@ -1328,13 +1368,13 @@ Deno.serve(async req=>{
       const supabaseUrl=Deno.env.get('SUPABASE_URL')
       if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🔧 Serviço do agendamento trocado pela JuIA',body:`${changed.customer_name||customerFirstName}\n${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)}\nDe ${target?.service_name||'?'} para ${changed.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-service-changed-${changed.id}`}})}).catch(()=>{})
       next.pending_change_service_booking_id=null
-      next.pending_change_service_new_name=null
+      next.pending_change_service_new_name=null;next.pending_change_service_composed=null
       next.services=[]
      }
     }
    }else if(simpleNo){
     reply='Tudo bem, não troquei nada. Seu agendamento continua como estava.'
-    next.pending_change_service_new_name=null
+    next.pending_change_service_new_name=null;next.pending_change_service_composed=null
     handoff=false
    }else{
     reply=`Só confirmando: você quer trocar o serviço do seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}, de "${target?.service_name}" para "${desired?.name||next.pending_change_service_new_name}"${desired?` (${money(desired.price)}, ${desired.duration} min)`:''}? Responda sim ou não.`
@@ -1350,8 +1390,32 @@ Deno.serve(async req=>{
    // frase (swapTailMatch), mas o valor extraído nunca era usado aqui na primeira vez.
    // Agora, se já sabemos o serviço-alvo e ele é diferente do atual, pula direto pra
    // confirmação em vez de perguntar de novo.
+   // v29.43.2 (bateria): "quero fazer sobrancelha tambem, alem do corte que ja marquei" caia
+   // como TROCA ("qual servico no lugar?"). Com sinal de acrescimo (tambem/alem/incluir/
+   // adicionar) e um servico reconhecido, o alvo vira o servico atual + o novo (nome
+   // composto, preco e duracao somados) e a confirmacao diz "incluir", nao "trocar".
+   const addSignal=/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)
+   const bookedNames=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
+   const desiredNew=swapTailService||chosen.find((x:any)=>!bookedNames.some((n:string)=>n.includes(normalize(x.name))))||desiredFresh||null
    const askOrConfirm=(b:any)=>{
     next.pending_change_service_booking_id=b.id
+    if(addSignal&&desiredNew){
+     const atuais=String(b.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+     if(atuais.some((a:any)=>a.name===desiredNew.name)){
+      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${desiredNew.name} 😊 Está tudo certo!`
+      next.pending_change_service_booking_id=null
+      handoff=false
+      return
+     }
+     const todos=[...atuais,desiredNew]
+     const composed={name:todos.map((x:any)=>x.name).join(' + '),price:todos.reduce((a:number,x:any)=>a+Number(x.price||0),0),duration:todos.reduce((a:number,x:any)=>a+Number(x.duration||0),0)}
+     next.pending_change_service_new_name=composed.name
+     next.pending_change_service_composed=composed
+     reply=`Confirmando: incluir ${desiredNew.name} no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}? Fica ${composed.name} (${money(composed.price)}, ${composed.duration} min). Responda sim ou não.`
+     actions=[{label:'Sim, incluir',message:'Sim, pode incluir'},{label:'Não, manter',message:'Não, manter como está'}]
+     handoff=false
+     return
+    }
     if(swapTailService&&normalize(swapTailService.name)!==normalize(String(b.service_name||''))){
      next.pending_change_service_new_name=swapTailService.name
      reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, ${swapTailService.duration} min)? Responda sim ou não.`
@@ -1685,6 +1749,7 @@ Deno.serve(async req=>{
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date!==next.date)
   if(conflicting&&!next.keep_both_bookings){
    next.pending_cancel_booking_id=conflicting.id
+   next.pending_conflict_choice=true
    reply=`Antes de continuar: você já tem um agendamento confirmado para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Quer que eu cancele esse já que vai escolher outro dia, quer que eu mude esse agendamento pro novo horário, ou prefere manter os dois?`
    actions=[{label:'Mudar pro novo horário',message:'Sim, pode reagendar'},{label:'Cancelar o outro',message:'Sim, pode cancelar'},{label:'Manter os dois',message:'Quero manter os dois agendamentos'}]
    handoff=false
@@ -1864,6 +1929,7 @@ Deno.serve(async req=>{
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date===next.date)
   if(conflicting&&!next.keep_both_bookings){
    next.pending_cancel_booking_id=conflicting.id
+   next.pending_conflict_choice=true
    reply=`Só confirmando: você já tem um agendamento para ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). É esse mesmo que você quer (mudar pro novo horário ${next.time?`de ${next.time}`:'que você pediu'}), é um novo horário além desse, ou quer cancelar o antigo?`
    actions=[{label:'Mudar pro novo horário',message:'Sim, pode reagendar'},{label:'É outro, manter os dois',message:'Quero manter os dois agendamentos'},{label:'Cancelar o antigo',message:'Sim, pode cancelar'}]
    intent='other'
