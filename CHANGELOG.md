@@ -1,3 +1,7 @@
+## 29.43.8 — Card "Serviços feitos hoje" na visão geral
+
+Pedido do Juliano (18/08): além de "Concluídos: 9 atendimentos", mostrar quantos SERVIÇOS foram feitos no dia (corte + barba conta 2). Novo card entre "Concluídos" e "Ticket médio", alimentado pela mesma contagem que já sustentava "Serviços/cliente". Cache do dashboard.js bumpado pra 29.43.8 em todas as páginas do admin.
+
 ## 29.43.7 — Pagamento antecipado na confirmação da JuIA (WhatsApp), de forma passiva
 
 Decisão com o Juliano (18/08): não perguntar "quer deixar pago?" (rodada extra e cheiro de desconfiança); a confirmação do agendamento pelo WhatsApp ganha uma linha: *"Se preferir já deixar pago pelo Pix, é só me pedir a chave 😉"*. A JuIA já sabe passar a chave e avisar que o Juliano confere. Quando a allowlist do PagBank sair, vira link de pagamento na própria confirmação.

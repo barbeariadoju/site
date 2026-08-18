@@ -9,6 +9,8 @@
     const completedDistinctClients=new Set(completed.map(x=>phoneDigits(x.customer_phone))).size;
     setText('metric-ticket-medio',completed.length?money(completedRevenue/completed.length):money(0));
     setText('metric-servicos-cliente',completedDistinctClients?(completedServiceCount/completedDistinctClients).toFixed(1):'0');
+    // v29.43.8 (pedido do Juliano, 18/08): quantos SERVIÇOS foram feitos hoje (corte + barba conta 2), além do número de atendimentos.
+    setText('metric-servicos-hoje',String(completedServiceCount));
     setText('metric-noshows',noShowsToday.length);setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);
     // Card colapsável reaproveitado da Agenda (v28.26.0) — pedido do Juliano: poder clicar
     // num atendimento aqui e ver o detalhe completo (pagamento, produtos etc.) sem precisar
