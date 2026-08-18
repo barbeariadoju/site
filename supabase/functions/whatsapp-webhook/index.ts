@@ -360,7 +360,24 @@ Deno.serve(async (request: Request) => {
       const caption = String(data.message.imageMessage.caption || '').trim()
       const description = await describeReferenceImage(data?.key, data.message.imageMessage?.mimetype, evolutionApiUrl, evolutionApiKey, evolutionInstance)
       if (description === 'NAO_RELACIONADO') {
-        await sendWhatsapp(phone, `${greetingNow()}! 😊 Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?`)
+        // v29.43.0 — o aviso "nao consegui identificar sua foto" saiu 5x para o mesmo numero
+        // em 24h e, no caso Guilherme Silva (18/08, 09:19), chegou entre o "1" da pesquisa e
+        // o agradecimento — o cliente satisfeito leu uma frase sem pe nem cabeca. Regra:
+        // se o cliente mandou TEXTO nos ultimos 2 minutos (a foto e um aparte de uma conversa
+        // que ja anda), ou se esse mesmo aviso ja saiu ha menos de 30 minutos, registra a
+        // foto e fica quieto. O aviso continua valendo para quem manda SO a foto, do nada.
+        const [{ data: textoRecente }, { data: avisoRecente }] = await Promise.all([
+          admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'in')
+            .not('body', 'like', '[%').gte('created_at', new Date(Date.now() - 2 * 60 * 1000).toISOString()).limit(1),
+          admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out')
+            .like('body', '%não consegui identificar nela um corte%').gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString()).limit(1),
+        ])
+        const silencioso = (textoRecente && textoRecente.length > 0) || (avisoRecente && avisoRecente.length > 0)
+        if (!silencioso) {
+          await sendWhatsapp(phone, `${greetingNow()}! 😊 Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?`)
+        } else {
+          console.log('[whatsapp-webhook] foto nao relacionada: aviso suprimido (conversa em andamento ou aviso recente)', phone)
+        }
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, sem relação com corte/barba/cor identificada]' })
         return json({ ok: true, skipped: 'image_not_related' })
       } else if (description) {
@@ -1138,6 +1155,16 @@ Deno.serve(async (request: Request) => {
             handoff = true
           }
 
+          // v29.43.0 — caso Guilherme Silva (17/08, 18:43): tres mensagens picadas em 14s
+          // renderam DUAS respostas da JuIA com 6s de diferenca, ambas perguntando o servico.
+          // A checagem "o cliente escreveu de novo depois desta mensagem?" so existia no
+          // sendWhatsapp das respostas curtas — a resposta principal da IA saia por este
+          // caminho direto, sem ela. Agora vale aqui tambem: se chegou mensagem nova enquanto
+          // a IA pensava, esta resposta nasceu velha e quem processa a nova responde por todas.
+          if (await respostaFicouObsoleta()) {
+            console.warn('[whatsapp-webhook] resposta da IA descartada: cliente escreveu de novo antes do envio', phone)
+            return
+          }
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },

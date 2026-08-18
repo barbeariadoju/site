@@ -62,6 +62,15 @@ Deno.serve(async (req) => {
     for (const t of targets) {
       const phone = toWhatsNumber(t.phone)
       if (!phone) continue
+      // v29.43.0 — fila unica de perguntas numeradas: com convite/confirmacao/follow-up
+      // pendente para este telefone, a recuperacao espera a varredura seguinte.
+      {
+        const { data: pendente } = await admin.rpc('juia_pending_numeric_question', { p_phone: phone })
+        if (pendente && pendente !== 'survey') {
+          console.log('[survey-recovery] fila unica: adiado, ja existe pergunta pendente', pendente, phone)
+          continue
+        }
+      }
 
       // Tom: curto, humilde, com a saída explícita. Nada de "sua opinião é muito importante
       // para nós" — soa a robô de call center. E promete não insistir de novo, porque é verdade.

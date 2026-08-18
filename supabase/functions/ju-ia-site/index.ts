@@ -27,7 +27,9 @@ const formatDateBR=(value:any)=>{
  const [y,m,d]=iso.split('-')
  return `${d}/${m}/${y}`
 }
-const firstName=(value:any)=>String(value||'').trim().split(/\s+/)[0]||'cliente'
+// v29.43.0: nome do WhatsApp pode ser so emoji/simbolo ("🤓") — nesse caso nao ha primeiro nome
+// util e e melhor nao usar nada do que escrever "Oi, 🤓!" (caso real, 15/08/2026).
+const firstName=(value:any)=>{const f=String(value||'').trim().split(/\s+/)[0]||'';return /\p{L}/u.test(f)?f:'cliente'}
 
 const fetchWithTimeout=async(url:string,init:RequestInit,timeoutMs=8000)=>{
  const controller=new AbortController()
@@ -564,11 +566,25 @@ Deno.serve(async req=>{
  // de upsell (upsell_services_done) — quem pediu só um horário do serviço de sempre não
  // quer responder mais perguntas (motivo do pedido do Juliano).
  let assumedUsualService=''
- if((intent==='availability'||intent==='book')&&!chosen.length&&verifiedPhone&&hasCustomer&&lastService&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest){
-  next.services=[lastService.name]
-  chosen.push(lastService)
+ let cabeloAssumidoNota=''
+ // v29.43.0 — caso Alfredo (17/08): o "de sempre" dele era "Corte de cabelo + Pezinho" e o
+ // casador de nome, sem achar o combo inteiro no catalogo, escolhia o componente de nome
+ // mais parecido em TAMANHO — "Pezinho (acabamento)" (10 min) ganhava de "Corte de cabelo".
+ // Agora o historico e quebrado nos componentes ("+") e cada um e resolvido; se o unico
+ // componente reconhecido for um complemento curto (<=15 min), NAO assume nada e pergunta.
+ const usualServices=(()=>{
+  const parts=lastServiceName.split(/\s*\+\s*/).map(p=>p.trim()).filter(Boolean)
+  const found:any[]=[]
+  for(const p of (parts.length?parts:[lastServiceName])){const svc=findService(p);if(svc&&!found.some(f=>f.name===svc.name))found.push(svc)}
+  if(!found.length&&lastService)found.push(lastService)
+  return found
+ })()
+ const usualIsOnlyAddon=usualServices.length>0&&usualServices.every((s:any)=>Number(s.duration)<=15)
+ if((intent==='availability'||intent==='book')&&!chosen.length&&verifiedPhone&&hasCustomer&&usualServices.length&&!usualIsOnlyAddon&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest){
+  next.services=usualServices.map((s:any)=>s.name)
+  chosen.push(...usualServices)
   next.upsell_services_done=true
-  assumedUsualService=lastService.name
+  assumedUsualService=usualServices.map((s:any)=>s.name).join(' + ')
  }
 
  if(hasCustomer && repeatRequest){
@@ -710,25 +726,23 @@ Deno.serve(async req=>{
   }
   if(bareBarbaAsk){
    const barbaOptions=services.filter(s=>s.category==='barba')
-   reply=`Temos algumas opções de barba: ${barbaOptions.map(s=>`${s.name} (${money(s.price)}, ${s.duration} min)`).join(', ')}. Qual você prefere?`
+   const outros=chosen.filter((c:any)=>c.category!=='barba').map((c:any)=>c.name)
+   reply=`Pra barba, qual você prefere? ${barbaOptions.map(s=>`${s.name} (${money(s.price)}, ${s.duration} min)`).join(' · ')}.${(next.date||next.time)?` Me diz qual e já te passo os horários${outros.length?` pra ${outros.join(' + ')} + barba`:''}.`:''}`
    actions=barbaOptions.map(s=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
    intent='other'
    handoff=false
   }
   if(bareCabeloAsk){
+   // v29.43.0 — caso Bruno (15/08): "apenas cabelo" virava a pergunta "seria um Corte de
+   // cabelo? ou Corte + Lavagem?" — uma rodada a mais numa conversa que ja tinha 2h30 de
+   // espera. "Cabelo" e Corte de cabelo: assume, avisa numa linha que existe a lavagem, e
+   // segue pro horario. Quem quiser a lavagem so fala.
    const corte=findService('Corte de cabelo')
    const corteLavagem=findService('Corte + Lavagem')
    if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
-   // Já oferece o upgrade de lavagem aqui — marca haircut_wash_asked pra não repetir a
-   // mesma pergunta no turno seguinte, quando o cliente escolher uma das opções.
    next.haircut_wash_asked=true
-   reply=`Você gostaria de um Corte de cabelo${corte?` (${money(corte.price)}, ${corte.duration} min)`:''}, seria isso?${corteLavagem?` Se preferir, temos também o Corte + Lavagem por ${money(corteLavagem.price)}, com lavagem profissional incluída.`:''}`
-   actions=[
-    ...(corte?[{label:`Corte de cabelo · ${money(corte.price)}`,message:'Quero Corte de cabelo'}]:[]),
-    ...(corteLavagem?[{label:`Corte + Lavagem · ${money(corteLavagem.price)}`,message:'Quero Corte + Lavagem'}]:[]),
-    {label:'Ver todos os serviços',url:'https://www.barbeariadoju.com.br/agendar/'}
-   ]
-   intent='other'
+   if(corte&&!chosen.some((c:any)=>c.name===corte.name)){chosen.push(corte);next.services=chosen.map((c:any)=>c.name)}
+   cabeloAssumidoNota=corteLavagem?`(Anotei Corte de cabelo — se quiser com lavagem, o Corte + Lavagem sai ${money(corteLavagem.price)}, é só me dizer.)`:'(Anotei Corte de cabelo.)'
    handoff=false
   }
  }
@@ -1540,7 +1554,11 @@ Deno.serve(async req=>{
  // "sim" fecha (simpleNo não vira mais book — no fluxo novo, o "não" que fecha é o da
  // oferta, tratado acima com intent='book' explícito; um "não" solto depois disso, ex.
  // respondendo "Posso confirmar?" da opção adicionada, não pode criar agendamento).
- if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'){
+ // v29.43.0 — !bareBarbaAsk: caso Luis (15/08): "Barba e cabelo" montava a pergunta "qual
+ // barba?" e este bloco forcava 'availability' por cima — a JuIA listou horarios SO de
+ // corte e a barba sumiu da conversa. Enquanto a barba nao estiver escolhida, a pergunta
+ // dela tem prioridade (o horario vem logo depois, no mesmo fluxo).
+ if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'&&!bareBarbaAsk){
   if(next.date&&next.time&&simpleYes)intent='book'
   else if(!(next.date&&next.time&&(simpleYes||simpleNo)))intent='availability'
  }
@@ -1563,7 +1581,7 @@ Deno.serve(async req=>{
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
  // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
  const effectiveTime=requestedTime||(next.completed?'':next.time||'')
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length)intent='availability'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
  // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
@@ -1573,12 +1591,30 @@ Deno.serve(async req=>{
  // !bareCabeloAsk: se acabamos de perguntar "seria um Corte de cabelo?", essa pergunta não
  // pode ser atropelada pelo fluxo de disponibilidade no mesmo turno (a data, se citada, já
  // foi guardada dentro do bloco do bareCabeloAsk acima).
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk&&!bareCabeloAsk){
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk&&!bareCabeloAsk&&!bareBarbaAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
  }
  if(keepBothRequest){next.keep_both_bookings=true}
+ // v29.43.0 — ADIAMENTO/DESISTENCIA (caso Bruno, 15/08, 11:28): depois de nao conseguir o
+ // horario que queria, ele escreveu "Esse horário não consigo / Mas deixa, qlq coisa vou
+ // semana que vem" — e a JuIA repetiu a lista de horarios do dia, feito papagaio. Quando o
+ // cliente sinaliza que vai deixar pra depois, a resposta certa nao e insistir no dia de
+ // hoje: e aceitar com simpatia e ja abrir a porta pro proximo agendamento (semana que vem,
+ // outro dia). Sem hora nova na mensagem (senao e um pedido novo, nao desistencia).
+ const desistenciaSignal=/\b(deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|semana que vem|proxima semana|outro dia|outra hora|depois eu (vejo|falo|marco|passo)|fica pra (proxima|outra)|mais pra frente|agora nao (da|consigo|vai dar)|nao vai dar hoje|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
+ if(desistenciaSignal&&activelyBooking&&notSpecialFlow&&!requestedTime&&!requestedPeriod&&!simpleYes&&intent!=='book'){
+  const semanaQueVem=/semana que vem|proxima semana/.test(normalizedQuestion)
+  const nome=hasCustomer&&customerFirstName!=='cliente'?`, ${customerFirstName}`:''
+  reply=`Sem problema${nome}! 😊 Fica combinado assim. Se quiser já deixar seu horário garantido ${semanaQueVem?'na semana que vem':'pra outro dia'}, me diz o dia e o horário que ficam bons pra você (ex.: "terça às 14h") que eu reservo por aqui mesmo.`
+  actions=[]
+  next.date=null
+  next.time=null
+  next.sales_stage='postponed'
+  intent='other'
+  handoff=false
+ }
 
  if(intent==='availability'&&!chosen.length){
   // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
@@ -1778,8 +1814,15 @@ Deno.serve(async req=>{
     {label:'Tarde',message:'Prefiro tarde'},
     {label:'Final do dia',message:'Prefiro final do dia'}
    ]
+  }else if(allSlots.length>4){
+   // v29.43.0 — casos Aline e Luis (15/08): 8 e 10 horarios despejados numa linha e os dois
+   // sumiram. Mais de 4 opcoes vira amostra espalhada + faixa; o cliente pode responder
+   // qualquer horario, nao so os exemplos.
+   const spread=[allSlots[0],allSlots[Math.floor(allSlots.length/3)],allSlots[Math.floor(allSlots.length*2/3)],allSlots[allSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
+   reply=`Para ${serviceNames} (${duration} min) consigo te atender entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Por exemplo: ${spread.join(', ')}. Qual fica melhor pra você?`
+   actions=spread.map((t:string)=>({label:t,message:t}))
   }else{
-   reply=`Para ${serviceNames}, estes são todos os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
+   reply=`Para ${serviceNames}, estes são os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
    actions=allSlots.map((t:string)=>({label:t,message:t}))
   }
   }
@@ -1969,7 +2012,12 @@ Deno.serve(async req=>{
     .replace(/^[^.!?]*\b(temos|tem|conseguimos|consigo|posso|dá|da)\s+(sim|s[íi])\b[^.!?]*[.!?]\s*/i,'')
     .replace(promessaDeHorario,'vou conferir')
     .trim()
-   reply=`Deixa eu conferir a agenda certinho antes de confirmar. ${reply}`.trim()
+   // v29.43.0 — casos Bruno e Luis (15/08): o prefixo "Deixa eu conferir a agenda certinho
+   // antes de confirmar" fazia o cliente achar que a JuIA ia VOLTAR com a resposta — Bruno
+   // esperou 2h30. A frase agora nomeia o que falta e deixa claro que a proxima palavra e dele.
+   const falta=!chosen.length?'qual serviço você quer':!next.date?'pra qual dia':!next.time?'qual horário prefere':''
+   if(!/\?/.test(reply)&&falta)reply=`${reply} Me diz ${falta} que eu já confiro o horário pra você.`.trim()
+   if(!reply)reply=falta?`Claro! Me diz ${falta} que eu já confiro o horário pra você.`:'Claro! Me diz o que precisa que eu já confiro pra você.'
   }
  }
  if(isFirstMessage){
@@ -2031,6 +2079,9 @@ Deno.serve(async req=>{
  // v28.30.4 (presumir em silêncio). Nota única, no fim, sem repetir se a resposta já disser.
  if(assumedUsualService&&!handoff&&(intent==='availability'||intent==='book')&&!/de sempre/i.test(reply)){
   reply+=`\n\n(Anotei ${assumedUsualService}, o seu de sempre 😉 Se quiser outro serviço ou incluir algo, é só dizer.)`
+ }
+ if(cabeloAssumidoNota&&!handoff&&!/Anotei Corte de cabelo/i.test(reply)){
+  reply+=`\n\n${cabeloAssumidoNota}`
  }
 
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})

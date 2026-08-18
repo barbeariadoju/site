@@ -60,6 +60,17 @@ Deno.serve(async(req:Request)=>{
     const email=String(booking?.customer_email||'').trim().toLowerCase()
 
     let whatsappOk=false
+    // v29.43.0 — fila unica de perguntas numeradas: se este telefone ja tem outra pergunta
+    // sem resposta (convite, confirmacao, follow-up), a pesquisa espera o proximo cron
+    // (roda a cada 15 min). Sem isso o "1" do cliente responde a pergunta errada.
+    if(phone.length>=12){
+      const {data:pendente}=await admin.rpc('juia_pending_numeric_question',{p_phone:phone})
+      if(pendente&&pendente!=='survey'){
+        console.log('[satisfaction-dispatch] fila unica: adiado, ja existe pergunta pendente',pendente,phone)
+        skipped++
+        continue
+      }
+    }
     if(phone.length>=12 && evolutionApiUrl && evolutionApiKey && evolutionInstance){
       // v29.30.0 — a pesquisa virou COMPROVANTE + pesquisa numa mensagem só (pedido do
       // Juliano, 16/08/2026). Duas razões, e a segunda vale mais que a primeira:

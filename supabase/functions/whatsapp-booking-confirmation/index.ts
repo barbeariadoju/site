@@ -104,6 +104,17 @@ Deno.serve(async (request: Request) => {
 
   for (const booking of dueForRequest || []) {
     try {
+      // v29.43.0 — fila unica de perguntas numeradas: pesquisa/convite/follow-up pendente
+      // para este telefone segura o pedido ate o proximo cron (15 min). Alem disso, a RPC
+      // bookings_due_for_confirmation_request agora so devolve agendamentos feitos com
+      // >= 36h de antecedencia (quem acabou de marcar nao precisa confirmar de novo).
+      {
+        const { data: pendente } = await admin.rpc('juia_pending_numeric_question', { p_phone: booking.customer_phone })
+        if (pendente && pendente !== 'confirmation') {
+          console.log('[whatsapp-booking-confirmation] fila unica: adiado', pendente, booking.id)
+          continue
+        }
+      }
       const name = firstName(booking.customer_name)
       const time = String(booking.start_time).slice(0, 5)
       // v28.59.0 — menu numérico (sugestão do Juliano, 06/08/2026, caso Graziela: cliente

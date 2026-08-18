@@ -250,6 +250,16 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of stage1Leads || []) {
     try {
+      // v29.43.0 — fila unica de perguntas numeradas: este follow-up tem opcoes 1-4; se o
+      // telefone ja tem pesquisa/convite/confirmacao sem resposta, espera o proximo cron.
+      {
+        const { data: pendente } = await admin.rpc('juia_pending_numeric_question', { p_phone: lead.phone })
+        if (pendente && pendente !== 'lead_followup') {
+          console.log('[whatsapp-lead-followup] fila unica: adiado', pendente, lead.phone)
+          continue
+        }
+      }
+
       if (await isResolved(lead.phone, lead.last_message_at)) {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue

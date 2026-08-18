@@ -1,3 +1,27 @@
+## 29.43.0 — JuIA: fecha mais, incomoda menos (revisão das conversas de 15 a 18/08)
+
+Pedido do Juliano em 18/08: revisar todas as interações da JuIA desde sábado e corrigir na raiz. Sábado 15/08 tiveram 12 conversas de cliente novo e **3 fecharam** — pelo menos 5 das perdidas foram culpa direta da JuIA. Cada correção abaixo tem o caso real que a motivou.
+
+**Perda de agendamento (ju-ia-site):**
+- **"Deixa eu conferir a agenda certinho antes de confirmar"** (Bruno esperou 2h30, Luis idem): era o prefixo da trava anti-promessa. O cliente lia como "ela vai voltar com a resposta". Agora a frase nomeia o que falta e devolve a bola: *"Qual serviço você tem interesse? Assim já confiro…"*.
+- **"Barba e cabelo" virava só corte** (Luis): a pergunta "qual barba?" era montada e, na sequência, o bloco de retomada forçava `availability` por cima — listava horários só de corte e a barba sumia. A pergunta da barba agora tem prioridade (`!bareBarbaAsk` em três pontos) e já avisa que o horário vem em seguida.
+- **10 horários numa linha** (Luis recebeu 10, Aline 8; nenhum respondeu): acima de 4 vira faixa + 4 exemplos espalhados.
+- **"Apenas cabelo" gerava a pergunta "seria um Corte de cabelo? ou Corte + Lavagem?"** (Bruno, mais uma rodada): assume Corte de cabelo e segue pro horário, com nota de uma linha sobre a lavagem.
+- **"Mas deixa, qlq coisa vou semana que vem"** recebia a lista de horários de novo (Bruno, papagaio): sinal de adiamento agora responde com simpatia e abre a porta pra reservar na semana que vem.
+- **"O seu de sempre" pegava o complemento, não o serviço** (Alfredo, 17/08: histórico "Corte de cabelo + Pezinho" → assumiu Pezinho, 10 min, e reservou sem perguntar). O casador de nome escolhia o componente de nome mais parecido em tamanho. Agora quebra o histórico nos componentes e assume todos; se só sobrar complemento (≤15 min), pergunta.
+- **"Oi, 🤓!"**: nome do WhatsApp sem letra não é nome. Ignorado.
+
+**Redundância e ruído (webhook + robôs):**
+- **Resposta em dobro** (Guilherme Silva, 17/08, 18:43: três mensagens picadas → duas respostas em 6s): a checagem "o cliente escreveu de novo?" só existia nas respostas curtas; a resposta principal da IA saía sem ela. Agora vale pra todas.
+- **"Recebi sua foto, mas não consegui identificar…"** saiu 5x pro mesmo número e, no caso Guilherme (18/08, 09:19), entre o "1" da pesquisa e o agradecimento. Suprimido quando o cliente mandou texto nos últimos 2 min ou quando o mesmo aviso saiu há menos de 30 min.
+- **Confirmação de presença 3h depois de marcar** (Nuno: marcou 16:37 pra amanhã, "confirma?" às 19:45; Alfredo disse "amanhã tô aí" e levou o pedido às 8h). RPC `bookings_due_for_confirmation_request` só devolve agendamentos feitos com **≥ 36h de antecedência** — o pedido nunca chega menos de 12h depois de o cliente marcar.
+- **Convite de retorno "daqui a 4 semanas" pra quem vem toda semana** (Luiz André: cadência real de ~9 dias, convite pra 11/09, respondeu "agora não"). Nova função `customer_visit_cadence_days` (mediana dos intervalos, telefone normalizado — o mesmo cliente aparecia com e sem o 55 e o histórico ficava partido); o convite mira 1/2/3/4 semanas conforme a cadência.
+- **Fila única de perguntas numeradas** (`juia_pending_numeric_question`): pesquisa (1/2), recuperação de pesquisa, convite (1/2/3), confirmação (1/2/3) e follow-up 2 de lead (1-4) agora conferem, antes de enviar, se o telefone já tem outra pergunta sem resposta. Se tem, esperam o próximo cron. É a regra do Juliano: "não tem como mandar outra mensagem enquanto o cliente não responder a pesquisa" — o "1" respondia a pergunta errada.
+
+Migration 119. Deploy pela CLI (7 functions, verify_jwt preservado). Testado em produção com telefones fictícios (5511990000801/802) nos 5 cenários — barba+cabelo, listagem, adiamento, "de sempre" com combo, cabelo solto — e dados apagados depois. Deno check: 0 erros novos (os 2 `pitch` já existiam).
+
+**Ainda em aberto**: o modelo às vezes escreve a data no formato de sistema ("para 18/08/2026") apesar do prompt; a lista de horários da resposta ao "horário X ocupado" ainda pode chegar a 8 opções.
+
 ## 29.42.0 — O Google matou o Q&A do perfil, e o conteúdo mudou de endereço
 
 Recomendação minha que envelheceu mal: mandei publicar 12 perguntas no Q&A do Perfil da Empresa. **O Google descontinuou o recurso em 03/11/2025** e os tópicos públicos sumiram a partir de dezembro — confirmado no changelog da própria API. Não existe mais onde publicar. O Google passou a gerar resposta por IA puxando do site, então o conteúdo continua valendo; mudou o lugar dele.

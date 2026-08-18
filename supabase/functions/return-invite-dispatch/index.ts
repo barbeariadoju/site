@@ -130,6 +130,12 @@ Deno.serve(async(req:Request)=>{
     const {data:pendingExpRows}=await admin.rpc('find_pending_experience_by_phone',{p_phone:phone})
     const pendingSurvey=Array.isArray(pendingExpRows)?pendingExpRows[0]:pendingExpRows
     if(pendingSurvey){skipped++;continue}
+    // v29.43.0 — fila unica: qualquer outra pergunta numerada pendente (confirmacao de
+    // presenca, follow-up de lead) tambem segura o convite ate o cron de amanha.
+    {
+      const {data:pendente}=await admin.rpc('juia_pending_numeric_question',{p_phone:phone})
+      if(pendente){console.log('[return-invite] fila unica: adiado',pendente,phone);skipped++;continue}
+    }
 
     // Sugestão: mesmo dia da semana e horário, 4 semanas depois. Se o dia +28 não tiver
     // agenda (fechado/lotado), tenta até +35 dias; escolhe sempre o horário mais próximo
@@ -138,7 +144,14 @@ Deno.serve(async(req:Request)=>{
     const targetTime=String(b.start_time).slice(0,5)
     const mins=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
     let suggestedDate='',suggestedTime=''
-    for(let d=28;d<=35;d++){
+    // v29.43.0 — cadencia do proprio cliente (caso Luiz Andre, 15/08: faz barba a cada ~9
+    // dias e recebeu convite pra 4 semanas depois; respondeu "agora nao"). Mediana dos
+    // intervalos das ultimas visitas (>=3 visitas); sem base, segue o padrao de 4 semanas.
+    const {data:cadenciaRaw}=await admin.rpc('customer_visit_cadence_days',{p_phone:phone})
+    const cadencia=Number(cadenciaRaw)||0
+    const alvoDias=!cadencia?28:cadencia<=10?7:cadencia<=17?14:cadencia<=24?21:28
+    const semanasLabel=alvoDias===7?'na semana que vem':`daqui a ${alvoDias/7} semanas`
+    for(let d=alvoDias;d<=alvoDias+7;d++){
       const iso=new Date(new Date(`${b.booking_date}T12:00:00Z`).getTime()+d*24*3600*1000).toISOString().slice(0,10)
       const {data:slots}=await admin.rpc('get_available_slots',{p_date:iso,p_duration_minutes:duration})
       const list=(slots||[]).map((x:any)=>String(x.slot_time).slice(0,5))
@@ -153,7 +166,7 @@ Deno.serve(async(req:Request)=>{
     const weekday=new Date(suggestedDate+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
     // "de ontem" só quando é verdade — convite adiado pela pesquisa pode sair 2-3 dias depois.
     const visitWord=b.booking_date===candidateDays[0]?'a visita de ontem':'sua visita'
-    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer ${visitWord} 🙏 Quer já deixar seu retorno reservado? Tenho ${weekday}, ${formatDateBR(suggestedDate)} às ${suggestedTime} (${b.service_name}) — daqui a 4 semanas.\n*1* — Pode reservar ✅\n*2* — Prefiro outro dia/horário 🔄\n*3* — Agora não, obrigado\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
+    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer ${visitWord} 🙏 Quer já deixar seu retorno reservado? Tenho ${weekday}, ${formatDateBR(suggestedDate)} às ${suggestedTime} (${b.service_name}) — ${semanasLabel}.\n*1* — Pode reservar ✅\n*2* — Prefiro outro dia/horário 🔄\n*3* — Agora não, obrigado\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
     try{
       const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
         method:'POST',
