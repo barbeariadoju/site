@@ -249,7 +249,7 @@ Deno.serve(async (request: Request) => {
     // mensagem chegar nela. Mensagem sem citação segue o comportamento de sempre.
     const quotedRaw = data?.message?.extendedTextMessage?.contextInfo?.quotedMessage
     const quotedText = String(quotedRaw?.conversation || quotedRaw?.extendedTextMessage?.text || '').trim()
-    const quotedTarget = !quotedText
+    let quotedTarget: string | null = !quotedText
       ? null
       : (/satisfeito/i.test(quotedText) && /insatisfeito/i.test(quotedText))
         ? 'survey'
@@ -514,6 +514,27 @@ Deno.serve(async (request: Request) => {
           aiState.pending_change_service_new_name
         )
 
+        // v29.43.4 — caso Adriano (17/08): convite de retorno e recuperacao da pesquisa sairam
+        // com 1 segundo de diferenca; o "1" dele foi lido como convite (reservou 11/09) quando
+        // era da pesquisa. Quando um numero solto chega com as DUAS perguntas em aberto, a JuIA
+        // pergunta "pesquisa ou retorno?" (ver bloco antes do interceptador do convite) e guarda
+        // o numero. Aqui trata a resposta: a palavra escolhida vira o alvo e o numero guardado
+        // volta a ser o texto — como se o cliente tivesse citado a pergunta certa.
+        const disamb = aiState.pending_disambiguation as { number?: string; at?: string } | undefined
+        if (disamb && disamb.number && !quotedTarget) {
+          const dn = normalize(text).trim()
+          const escolheuPesquisa = /pesquis|satisf|atendimento|avalia/.test(dn)
+          const escolheuRetorno = /retorn|reserv|agend|horari|marcar/.test(dn)
+          const fresh = disamb.at ? Date.now() - new Date(disamb.at).getTime() < 24 * 3600 * 1000 : false
+          const { pending_disambiguation: _pd, ...restState } = aiState as Record<string, unknown>
+          await admin.from('whatsapp_conversations').update({ state: restState, updated_at: new Date().toISOString() }).eq('phone', phone)
+          if (fresh && (escolheuPesquisa || escolheuRetorno)) {
+            quotedTarget = escolheuPesquisa ? 'survey' : 'invite'
+            text = String(disamb.number)
+            console.log('[whatsapp-webhook] desambiguacao resolvida', phone, quotedTarget, text)
+          }
+        }
+
         const stillActive = isTakeoverActive(conversation)
         await admin.from('whatsapp_conversations').upsert({
           phone,
@@ -762,6 +783,21 @@ Deno.serve(async (request: Request) => {
           .order('sent_at', { ascending: false })
           .limit(1)
         const returnInvite = returnInviteRows && returnInviteRows.length ? returnInviteRows[0] : null
+        // v29.43.4 — caso Adriano: numero solto (1/2/3) com convite E pesquisa pendentes ao mesmo
+        // tempo e ambiguo. Em vez de chutar (antes ganhava o convite, por ser "mais recente"), a
+        // JuIA pergunta a qual dos dois o numero se refere e guarda o numero pra proxima mensagem.
+        if (returnInvite && !juiaAwaitingAnswer && !quotedTarget && /^[123][\s!.,]*$/.test(normalize(text).trim())) {
+          const { data: pendSurveyRows } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
+          const pendSurvey = Array.isArray(pendSurveyRows) ? pendSurveyRows[0] : pendSurveyRows
+          if (pendSurvey) {
+            const numero = normalize(text).trim()[0]
+            const { data: convRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+            const st = (convRow?.state || {}) as Record<string, unknown>
+            await admin.from('whatsapp_conversations').update({ state: { ...st, pending_disambiguation: { number: numero, invite_id: returnInvite.id, survey_token: pendSurvey.token, at: new Date().toISOString() } }, updated_at: new Date().toISOString() }).eq('phone', phone)
+            await sendWhatsapp(phone, `Só pra eu não confundir 😊 Esse *${numero}* é a resposta da *pesquisa* (como foi o atendimento) ou do *retorno* (reservar o próximo horário)? Me responde *pesquisa* ou *retorno*.`)
+            return
+          }
+        }
         if (returnInvite && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'invite')) {
           const inviteReply = normalize(text)
           const inviteTrimmed = inviteReply.trim()

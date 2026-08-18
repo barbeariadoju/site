@@ -1,3 +1,7 @@
+## 29.43.4 — Caso Adriano: número solto com pesquisa E convite pendentes agora pergunta, não chuta
+
+Em 17/08 o convite de retorno (10:00:03) e a recuperação da pesquisa (10:00:04) saíram com 1 segundo de diferença; o "1" do Adriano foi lido como convite (reservou 11/09) quando era da pesquisa. A fila única (v29.43.0) já impede a colisão normal, mas dois crons no mesmo instante ainda podem sair antes de qualquer registro existir. Defesa em profundidade no webhook: se chega um 1/2/3 solto e há convite E pesquisa em aberto, a JuIA pergunta *"esse 1 é da pesquisa ou do retorno?"* e guarda o número; a palavra escolhida roteia o número pra pergunta certa (mesmo mecanismo da citação). Testado em produção com telefone fictício: "1" → pergunta; "pesquisa" → satisfeito + pedido do Google, convite intacto, nenhuma reserva criada. Crons já estão 2h separados (convite 10h, recuperação 12h).
+
 ## 29.43.3 — Bateria (parte 2, 31 cenários com agendamento existente): 3 correções, uma delas grave
 
 - **BUG GRAVE**: a pergunta de conflito ("você já tem horário nesse dia — é esse mesmo, é um novo, ou cancelar o antigo?") reaproveitava o marcador de cancelamento, e um **"sim" seco cancelava o agendamento**. Agora a escolha é explícita (1 mudar / 2 manter os dois / 3 cancelar, ou as palavras); "sim"/"não" soltos repergunta com números e não cancela nada.
