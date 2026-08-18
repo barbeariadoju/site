@@ -2121,7 +2121,11 @@ Deno.serve(async req=>{
         rewards>0?` A propósito, você já tem ${rewards} corte(s) grátis disponível(is) pela fidelidade — é só avisar quando quiser usar! 🎁`:
         points===9?` Ah, e esse atendimento vai completar seu cartão fidelidade — no próximo corte você ganha um grátis! 🎉`:
         ` A propósito, você está com ${points} ponto(s) de fidelidade — faltam ${Math.max(0,10-points)} pra ganhar um serviço grátis. 💈`
-      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}`
+      // v29.43.7 — pedido do Juliano (18/08): oferecer o pagamento antecipado tambem no WhatsApp,
+      // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
+      // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.
+      const prepayNote=verifiedPhone?' Se preferir já deixar pago pelo Pix, é só me pedir a chave 😉':''
+      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}${prepayNote}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
