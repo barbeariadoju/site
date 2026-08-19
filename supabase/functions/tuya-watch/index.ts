@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       }
 
       // upsert hub primeiro (FK dos eventos)
-      const { data: prev } = await admin.from('alarm_hubs').select('offline_since, sensors, open_days, created_at').eq('device_id', d.id).maybeSingle()
+      const { data: prev } = await admin.from('alarm_hubs').select('offline_since, sensors, open_days, created_at, daily_liveness').eq('device_id', d.id).maybeSingle()
       const offlineSince = d.online ? null : (prev?.offline_since || new Date().toISOString())
       const { error: upErr } = await admin.from('alarm_hubs').upsert({
         device_id: d.id, name: d.name, online: !!d.online, mode, alarm_on: alarmOn,
@@ -164,7 +164,9 @@ Deno.serve(async (req) => {
       if (!(isOpen(dow) && hourSP >= 11)) { do { ref = new Date(ref.getTime() - 86400000) } while (!isOpen(ref.getUTCDay())) }
       const refStartUtc = ref.getTime() + 3 * 3600 * 1000 // 00:00 SP desse dia em UTC
       for (const s of enriched) {
-        const daily = /porta|presen|pir|moviment|janela/i.test(s.name)
+        // daily_liveness (coluna do hub): só vale se a rotina gera evento todo dia aberto (chegar com o alarme armado
+        // e abrir a porta). Juliano hoje desarma ANTES de abrir → default false = regra semanal (SENSOR_SILENT_DAYS).
+        const daily = !!(prev as any)?.daily_liveness && /porta|presen|pir|moviment|janela/i.test(s.name)
         const lastMs = s.last_event_at ? new Date(s.last_event_at).getTime() : null
         if (daily) {
           const hubAgeDays = (now - new Date((prev as any)?.created_at || now).getTime()) / 86400000
