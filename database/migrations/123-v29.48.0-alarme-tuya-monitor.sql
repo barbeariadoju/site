@@ -91,3 +91,7 @@ grant usage, select on sequence public.alarm_events_id_seq, public.alarm_alerts_
 grant select on public.alarm_hubs, public.alarm_events, public.alarm_alerts to authenticated;
 grant select, insert, update on public.chair_sessions, public.camera_heartbeat to service_role;
 grant select on public.chair_sessions, public.camera_heartbeat to authenticated;
+
+-- v29.48.2 — prova de vida DIÁRIA por dias de funcionamento (pedido do Juliano: 8 dias é muito)
+alter table public.alarm_hubs add column if not exists open_days integer[] not null default '{2,3,4,5,6}';
+alter table public.alarm_hubs add column if not exists created_at timestamptz not null default now();

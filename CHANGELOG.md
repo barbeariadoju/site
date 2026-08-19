@@ -1,4 +1,4 @@
-## 29.48.0 — Alarme EKASA monitorado pela nuvem Tuya (tuya-watch) + card "Alarme" no admin
+## 29.48.0 / 29.48.2 — Alarme EKASA monitorado pela nuvem Tuya (tuya-watch) + card "Alarme" no admin + prova de vida diária
 
 Pedido do Juliano (19/08): os sensores a pilha do alarme morreram sem aviso e o alarme armado não disparou. Sensores 433 MHz são "mão única" — nem a central nem a nuvem sabem se estão vivos; então o monitoramento é por **prova de vida** (último evento de cada sensor) + central offline + disparo + "Low Battery" no registro.
 

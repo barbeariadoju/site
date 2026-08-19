@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       }
 
       // upsert hub primeiro (FK dos eventos)
-      const { data: prev } = await admin.from('alarm_hubs').select('offline_since, sensors').eq('device_id', d.id).maybeSingle()
+      const { data: prev } = await admin.from('alarm_hubs').select('offline_since, sensors, open_days, created_at').eq('device_id', d.id).maybeSingle()
       const offlineSince = d.online ? null : (prev?.offline_since || new Date().toISOString())
       const { error: upErr } = await admin.from('alarm_hubs').upsert({
         device_id: d.id, name: d.name, online: !!d.online, mode, alarm_on: alarmOn,
@@ -152,10 +152,33 @@ Deno.serve(async (req) => {
       } else await resolve(d.id, 'offline', null)
       if (alarmOn) await alert(d.id, 'alarm', null, `ALARME DISPARADO em "${d.name}"${lastSensorEvent ? ' — ' + lastSensorEvent : ''}.`, '🚨 Alarme disparou')
       else await resolve(d.id, 'alarm', null)
+      // v29.48.2 — regra DIÁRIA (pedido do Juliano): sensor de porta/presença precisa ter evento em todo dia de
+      // funcionamento da loja (open_days do hub; Barbearia = ter..sáb). Até as 11h do dia aberto ainda dá tempo;
+      // depois disso, se não houve evento desde o dia aberto anterior, alerta. Campainha (e outros) = SENSOR_SILENT_DAYS.
+      const spNow = new Date(now - 3 * 3600 * 1000) // relógio SP (UTC-3), só pra dia/hora
+      const dow = spNow.getUTCDay(), hourSP = spNow.getUTCHours()
+      const openDays: number[] = Array.isArray(prev?.open_days) && prev.open_days.length ? prev.open_days : [2, 3, 4, 5, 6]
+      const isOpen = (day: number) => openDays.includes(day)
+      // dia aberto mais recente que JÁ deveria ter gerado evento: hoje se aberto e >= 11h; senão o aberto anterior
+      let ref = new Date(Date.UTC(spNow.getUTCFullYear(), spNow.getUTCMonth(), spNow.getUTCDate()))
+      if (!(isOpen(dow) && hourSP >= 11)) { do { ref = new Date(ref.getTime() - 86400000) } while (!isOpen(ref.getUTCDay())) }
+      const refStartUtc = ref.getTime() + 3 * 3600 * 1000 // 00:00 SP desse dia em UTC
       for (const s of enriched) {
-        const ageDays = s.last_event_at ? (now - new Date(s.last_event_at).getTime()) / 86400000 : null
-        if (ageDays !== null && ageDays >= SENSOR_SILENT_DAYS) await alert(d.id, 'sensor_silent', s.name, `Sensor "${s.name}" (${d.name}) sem prova de vida há ${Math.floor(ageDays)} dias — conferir pilha.`, '🔋 Sensor sem sinal')
-        else if (ageDays !== null) await resolve(d.id, 'sensor_silent', s.name)
+        const daily = /porta|presen|pir|moviment|janela/i.test(s.name)
+        const lastMs = s.last_event_at ? new Date(s.last_event_at).getTime() : null
+        if (daily) {
+          const hubAgeDays = (now - new Date((prev as any)?.created_at || now).getTime()) / 86400000
+          if (lastMs !== null && lastMs < refStartUtc) {
+            const dias = Math.max(1, Math.round((now - lastMs) / 86400000))
+            await alert(d.id, 'sensor_silent', s.name, `Sensor "${s.name}" (${d.name}) não deu sinal no último dia de funcionamento (último evento há ${dias} dia${dias > 1 ? 's' : ''}) — conferir pilha.`, '🔋 Sensor sem sinal')
+          } else if (lastMs === null && hubAgeDays >= 2) {
+            await alert(d.id, 'sensor_silent', s.name, `Sensor "${s.name}" (${d.name}) nunca deu sinal desde que o monitor começou — conferir pilha/cadastro.`, '🔋 Sensor sem sinal')
+          } else await resolve(d.id, 'sensor_silent', s.name)
+        } else {
+          const ageDays = lastMs !== null ? (now - lastMs) / 86400000 : null
+          if (ageDays !== null && ageDays >= SENSOR_SILENT_DAYS) await alert(d.id, 'sensor_silent', s.name, `Sensor "${s.name}" (${d.name}) sem prova de vida há ${Math.floor(ageDays)} dias — conferir pilha.`, '🔋 Sensor sem sinal')
+          else if (ageDays !== null) await resolve(d.id, 'sensor_silent', s.name)
+        }
       }
       const lowBat = rows.filter((r) => /low ?batt|bateria (fraca|baixa)/i.test(r.text || ''))
       for (const r of lowBat) await alert(d.id, 'low_battery', r.sensor_name || r.text, `${r.text} (${d.name}) — trocar pilha.`, '🔋 Bateria fraca no alarme')
