@@ -1,3 +1,10 @@
+## 29.50.0 — Caso Luiz André: fidelidade "0 pontos" (cadastro duplicado) + trava de barba redundante
+
+JuIA disse "0 pontos" pro Luiz André (cliente semanal) e fechou "Corte + Barba Express + Barboterapia c/ ozônio".
+- **Causa da fidelidade**: perfil DUPLICADO por formato de telefone (5511... × 11...) — a consulta pegava o perfil sem conta. **5 pares de duplicados unificados** (Luiz, Leonardo, Miguel, Carlos, Alessio; lógica do admin_merge_customers replicada, timeline anotada). Luiz creditado retroativamente (+2: visitas 18/07 e 06/08) → 4 pontos. `v27_customer_for_booking` corrigida pra phone_match_key (comparava dígito exato — era quem alimentava timeline/pesquisa com o perfil errado).
+- **Trava de serviços de barba** (`dropBarbaRedundante`, ju-ia-site): da família Barba Express / Barboterapia / Barboterapia c/ ozônio só fica o mais completo, com aviso "tirei X pra você não pagar em dobro" — mesmo padrão do corte+pezinho (v29.43.6). Testado em produção.
+- Agendamento do Luiz (sex 21/08 11h) corrigido: Corte + Barboterapia c/ ozônio, R$90, 70 min.
+
 ## 29.49.0 — Conclusão de atendimento com Pix antecipado não pergunta mais a forma de pagamento
 
 Caso Frei Bartolomeu (19/08, ao concluir): já tinha pago adiantado no Pix (confirmado) e o modal de conclusão perguntou a forma de pagamento. Agora, quando `prepay_declared_at` + `prepay_confirmed_at` estão preenchidos, o modal abre com Pix pré-selecionado e a nota "💸 Este cliente já pagou antecipado no Pix" — dá pra trocar se preciso. Cache agenda.js → 29.49.0. Playwright 26/26.

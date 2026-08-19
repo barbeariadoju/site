@@ -576,6 +576,21 @@ Deno.serve(async req=>{
   const idx=chosen.findIndex((c:any)=>/pezinho/i.test(String(c.name)))
   if(temCorte&&idx>=0){chosen.splice(idx,1);next.services=chosen.map((c:any)=>c.name);pezinhoNota='(O pezinho já vem incluso no corte 😉 — não precisa adicionar.)'}
  }
+ // v29.50.0 — caso Luiz André (19/08): fechou "Corte + Barba Express + Barboterapia com
+ // vaporizador de ozônio" — dois serviços de BARBA juntos. A barboterapia com ozônio é o
+ // serviço de barba mais completo; nunca faz sentido somar outro serviço de barba a ela.
+ // Regra: da família barba (Barba Express / Barboterapia / Barboterapia c/ ozônio) fica só
+ // o MAIS completo (ozônio > barboterapia > express); os demais saem com aviso ao cliente.
+ const dropBarbaRedundante=()=>{
+  const rank=(n:string)=>/oz[oô]ni/i.test(n)?3:/barboterapia/i.test(n)?2:/barba/i.test(n)?1:0
+  const barbas=chosen.filter((c:any)=>rank(String(c.name))>0)
+  if(barbas.length<2)return
+  const melhor=barbas.reduce((a:any,b:any)=>rank(String(b.name))>rank(String(a.name))?b:a)
+  const removidos=barbas.filter((b:any)=>b!==melhor)
+  for(const r of removidos){const i=chosen.indexOf(r);if(i>=0)chosen.splice(i,1)}
+  next.services=chosen.map((c:any)=>c.name)
+  if(!pezinhoNota)pezinhoNota=`(${melhor.name} já é o cuidado completo da barba — tirei ${removidos.map((r:any)=>r.name).join(' e ')} pra você não pagar em dobro 😉)`
+ }
  let avisoAbertoHoje=''
  // v29.43.0 — caso Alfredo (17/08): o "de sempre" dele era "Corte de cabelo + Pezinho" e o
  // casador de nome, sem achar o combo inteiro no catalogo, escolhia o componente de nome
@@ -1776,6 +1791,7 @@ Deno.serve(async req=>{
  }
 
  dropPezinhoSeTemCorte()
+ dropBarbaRedundante()
  if(intent==='availability'&&!chosen.length){
   // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
   // responde na hora se aquele dia tem agenda aberta (sondando com duração mínima de
@@ -1989,6 +2005,7 @@ Deno.serve(async req=>{
   }
  }
  dropPezinhoSeTemCorte()
+ dropBarbaRedundante()
  if(intent==='book'){
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date===next.date)
   // v29.43.5 (caso Sillas, 15/08): "So o corte mesmo" + "4" chegaram separados; a primeira
