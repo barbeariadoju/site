@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.content-generate-video]
 verify_jwt = false
+
+[functions.tuya-watch]
+verify_jwt = true

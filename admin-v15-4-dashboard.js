@@ -23,6 +23,19 @@
       setText('metric-cadeira-sub',`vs ${reg} registrado${reg===1?'':'s'} · ${status}`);
       const card=$('metric-cadeira-card');if(card){card.classList.toggle('admin-metric-warn',cam!==reg||(minAgo!==null&&minAgo>15))}
     }).catch(()=>{})}
+    // v29.48.0 (19/08): card "Alarme" — central(is) EKASA via Tuya Cloud (tuya-watch, 10 min). Mostra modo
+    // (armado/casa/desarmado), online, e alertas abertos (offline, sensor sem prova de vida, bateria, disparo).
+    if($('metric-alarme')){sb.rpc('alarm_summary').then(({data,error})=>{
+      if(error||!data||!Array.isArray(data.hubs)||!data.hubs.length){setText('metric-alarme','–');setText('metric-alarme-sub',error?'sem dados':'nenhuma central vinculada');return}
+      const hubs=data.hubs,alerts=Array.isArray(data.open_alerts)?data.open_alerts:[];
+      const modeLabel=m=>({armado:'Armado 🔒',casa:'Modo Casa 🏠',desarmado:'Desarmado 🔓'})[m]||(m||'?');
+      const main=hubs.length===1?modeLabel(hubs[0].mode):hubs.map(h=>`${h.name}: ${modeLabel(h.mode)}`).join(' · ');
+      setText('metric-alarme',main);
+      const off=hubs.filter(h=>!h.online).map(h=>h.name);
+      const sub=alerts.length?alerts.map(a=>a.message).join(' · '):(off.length?`offline: ${off.join(', ')}`:`${hubs.length===1?'central online':hubs.length+' centrais online'} · ${hubs.reduce((n,h)=>n+((h.sensors||[]).length),0)} sensores ok`);
+      setText('metric-alarme-sub',sub);
+      const card=$('metric-alarme-card');if(card){card.classList.toggle('admin-metric-warn',alerts.length>0||off.length>0||hubs.some(h=>h.alarm_on))}
+    }).catch(()=>{})}
     setText('metric-noshows',noShowsToday.length);setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);
     // Card colapsável reaproveitado da Agenda (v28.26.0) — pedido do Juliano: poder clicar
     // num atendimento aqui e ver o detalhe completo (pagamento, produtos etc.) sem precisar

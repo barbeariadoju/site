@@ -1,3 +1,12 @@
+## 29.48.0 — Alarme EKASA monitorado pela nuvem Tuya (tuya-watch) + card "Alarme" no admin
+
+Pedido do Juliano (19/08): os sensores a pilha do alarme morreram sem aviso e o alarme armado não disparou. Sensores 433 MHz são "mão única" — nem a central nem a nuvem sabem se estão vivos; então o monitoramento é por **prova de vida** (último evento de cada sensor) + central offline + disparo + "Low Battery" no registro.
+
+- **Vínculo**: app Ekaza (OEM) NÃO completa autorização por QR (expira ao confirmar) em Western America nem Central Europe; compartilhar dispositivo entre Ekaza e Smart Life falha ("conta não existe"). Solução: central "Barbearia" migrada pro **app Smart Life** (Desligar sem apagar dados → parear de novo; sensores e configurações preservados) e Smart Life vinculado ao projeto Tuya "Barbearia do Ju" (Western America, Access ID e94sgxw7uhynpqvhjy57). Pastrana e Itararé migram depois, uma por vez.
+- **Function `tuya-watch`** (verify_jwt true + x-webhook-secret; cron `bdj-tuya-watch` */10 min): token HMAC, lista de centrais (`associated-users/devices`), shadow v2 (dp101 modo, dp103 alarme, dp116 último evento de sensor UTF-16BE, dp121 última ação, dp120 lista de sensores), logs v1 (online/offline/DP reports) → `alarm_hubs`, `alarm_events`, `alarm_alerts` + push (offline ≥12 min, sensor sem evento ≥ 8 dias, Low Battery, disparo). Segredos TUYA_* via `supabase secrets set --env-file`. Migration 123 (+ GRANTs 29.48.1 — de novo o 42501).
+- **Admin**: card "Alarme" (modo atual, online, alertas) na visão geral; cache dashboard.js 29.48.0.
+- Também: Notificação offline ligada no próprio app (paliativo independente do robô).
+
 ## 29.47.0 — Pix antecipado pelo WhatsApp: chave + valor, comprovante → push → confirmação (caso Frei Bartolomeu)
 
 Primeiro cliente a pedir pra pagar adiantado pela JuIA (19/08, 13:08). Três buracos vistos ao vivo e fechados:
