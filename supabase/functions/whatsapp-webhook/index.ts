@@ -351,6 +351,49 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // v29.47.0 — caso Frei Bartolomeu (19/08/2026, 13:12): pediu a chave, pagou e mandou o
+    // COMPROVANTE em PDF — e a JuIA ficou muda (PDF caía em "mídia sem texto"). Fluxo agora:
+    // comprovante (PDF/imagem) ou "já paguei" de um número com agendamento futuro →
+    //   1. marca prepay_declared_at no agendamento (mesmo caminho do site: flag 💸 na Agenda),
+    //   2. responde "recebi, o Juliano confere e te confirmo aqui",
+    //   3. push pro Juliano com valor — ele confirma na Agenda e o prepay-confirm manda o
+    //      "Pagamento confirmado ✅" pro cliente.
+    // Heurística pra imagem/PDF: nome do arquivo/legenda fala em comprovante/pix/pagamento,
+    // OU a JuIA passou a chave Pix pra esse número nos últimos 60 min (aí foto sem legenda é
+    // comprovante, não referência de corte).
+    {
+      const docMsg = data?.message?.documentMessage || data?.message?.documentWithCaptionMessage?.message?.documentMessage
+      const imgMsg = data?.message?.imageMessage
+      const hint = `${docMsg?.fileName || ''} ${docMsg?.caption || ''} ${imgMsg?.caption || ''} ${text || ''}`.toLowerCase()
+      const saysPaid = /\b(paguei|ja paguei|fiz o pix|pix feito|pix realizado|transferi|ta pago|esta pago|pagamento (feito|realizado|efetuado)|segue (o )?comprovante|comprovante)\b/.test(normalize(hint))
+      const hasMedia = !!(docMsg || imgMsg)
+      if (hasMedia || saysPaid) {
+        let pixRecente = false
+        if (hasMedia && !saysPaid) {
+          const { data: ultimaChave } = await admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out')
+            .ilike('body', '%Chave Pix%').gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString()).limit(1)
+          pixRecente = !!(ultimaChave && ultimaChave.length)
+        }
+        if (saysPaid || pixRecente) {
+          const { data: prox } = await admin.rpc('phone_upcoming_bookings', { p_phone: phone })
+          const b = Array.isArray(prox) && prox.length ? prox[0] : null
+          if (b) {
+            const total = Number(b.service_price || 0) + Number(b.products_price || 0)
+            const quando = `${String(b.booking_date).split('-').reverse().slice(0, 2).join('/')} às ${String(b.start_time).slice(0, 5)}`
+            await admin.from('bookings').update({ prepay_declared_at: new Date().toISOString(), prepay_key: 'picpay' }).eq('id', b.id).is('prepay_confirmed_at', null)
+            const { data: bk } = await admin.from('bookings').select('customer_name').eq('id', b.id).maybeSingle()
+            const nome = String(bk?.customer_name || 'Cliente').split(/\s+/)[0]
+            await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: hasMedia ? `[comprovante recebido${docMsg?.fileName ? ': ' + docMsg.fileName : ''}]` : text })
+            await sendWhatsapp(phone, `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${total.toFixed(2).replace('.', ',')} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
+            const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+            if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+              body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${total.toFixed(2).replace('.', ',')} · ${quando}\n${b.service_name}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
+            return json({ ok: true, prepay_declared: b.id })
+          }
+        }
+      }
+    }
+
     // Cliente mandou uma FOTO de referência (corte/barba/cor) em vez de texto — ver
     // describeReferenceImage acima. A legenda (imageMessage.caption) nunca era lida antes
     // disso, então mesmo uma foto COM legenda caía direto no skip de "mídia sem texto"

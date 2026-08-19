@@ -58,7 +58,8 @@ Deno.serve(async (req) => {
       const phone = toWhatsNumber(row.customer_phone || '')
       if (url && apikey && instance && phone) {
         const nome = String(row.customer_name || '').split(' ')[0] || 'Tudo certo'
-        const texto = `Pagamento confirmado ✅\n\n${nome}, o seu Pix de ${money(Number(row.valor || 0))} caiu certinho aqui. Seu horário está garantido e não precisa fazer mais nada.\n\nAté logo! 💈\nBarbearia do Ju`
+        // v29.47.0 — texto revisado (pedido do Juliano, 19/08: "mensagem bonita e profissional pra tranquilizá-lo").
+        const texto = `✅ Pagamento confirmado!\n\n${nome}, o Juliano conferiu e o seu Pix de ${money(Number(row.valor || 0))} foi recebido. Seu horário está garantido — é só chegar no horário combinado, sem precisar fazer mais nada.\n\nObrigado pela confiança, te esperamos! 💈\nBarbearia do Ju`
         const res = await fetch(`${url}/message/sendText/${instance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey },

@@ -2301,6 +2301,23 @@ Deno.serve(async req=>{
  if(avisoAbertoHoje&&!handoff&&!/atendemos até|estamos fechados|já encerramos|excepcionalmente fechados/i.test(reply)){
   reply=`${avisoAbertoHoje} ${reply}`.trim()
  }
+ // v29.47.0 — caso Frei Bartolomeu (19/08/2026, 13:08): primeiro cliente que pediu pra pagar
+ // antecipado pelo WhatsApp. A JuIA passou a chave, mas NÃO o valor — ele teve que perguntar
+ // "quanto é?". Agora, pedido de chave Pix com agendamento futuro no número verificado vira
+ // resposta determinística: chave + VALOR do próximo agendamento (serviço + produtos) + nome/
+ // instituição. Pedido de "celular"/outra chave continua com o modelo (segunda chave).
+ const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion))
+  &&!/\b(ja paguei|paguei|comprovante|enviei|mandei|fiz o pix|transferi)\b/.test(normalizedQuestion)
+  &&!/\b(celular|telefone|outra chave|segunda chave|cpf|cnpj)\b/.test(normalizedQuestion)
+ if(pixKeyAsk&&verifiedPhone&&upcomingBookings.length&&!handoff){
+  const b:any=upcomingBookings[0]
+  const total=Number(b.service_price||0)+Number(b.products_price||0)
+  const quando=b.booking_date===today()?'hoje':formatDateBR(b.booking_date)
+  reply=`Chave Pix (e-mail): contato@barbeariadoju.com.br
+💰 Valor: ${money(total)} — ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)}.
+No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Quando fizer, me avisa que o Juliano confere 😉`
+  actions=[]
+ }
  // v29.43.2: o modelo insiste em escrever "18/08/2026" apesar do prompt. Troca determinística
  // no fim: hoje -> "hoje", amanha -> "amanha", resto -> "sexta (21/08)". Nunca mexe em horario.
  reply=reply.replace(/\b(\d{2})\/(\d{2})\/(20\d{2})\b/g,(m,d,mo,y)=>{

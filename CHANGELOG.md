@@ -1,3 +1,10 @@
+## 29.47.0 — Pix antecipado pelo WhatsApp: chave + valor, comprovante → push → confirmação (caso Frei Bartolomeu)
+
+Primeiro cliente a pedir pra pagar adiantado pela JuIA (19/08, 13:08). Três buracos vistos ao vivo e fechados:
+- **ju-ia-site**: pedido de chave Pix (ou "quero pagar adiantado") com agendamento futuro no número verificado vira resposta determinística: chave + **valor do agendamento** (serviço+produtos, dia/hora) + nome/instituição. Pedido de celular/outra chave segue com o modelo. Migration 122: `phone_upcoming_bookings` devolve preços e `prepay_declared_at`.
+- **whatsapp-webhook**: comprovante (PDF/imagem) ou "já paguei" → marca `prepay_declared_at`/`prepay_key=picpay` (flag 💸 na Agenda, igual ao site), responde "recebi, o Juliano confere", push 💸 com valor. Foto sem legenda só conta como comprovante se a chave foi passada nos últimos 60 min.
+- **prepay-confirm**: texto do "Pagamento confirmado" revisado.
+
 ## 29.46.0 — Câmera IP: contador de sessões na cadeira + card no admin
 
 Pedido do Juliano (19/08): contar quantos clientes sentam na cadeira por dia (câmera IP da barbearia) e comparar com os atendimentos concluídos — precaução pra quando entrar a segunda pessoa e rede pra atendimento esquecido.
