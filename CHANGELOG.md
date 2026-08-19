@@ -1,3 +1,12 @@
+## 29.46.0 — Câmera IP: contador de sessões na cadeira + card no admin
+
+Pedido do Juliano (19/08): contar quantos clientes sentam na cadeira por dia (câmera IP da barbearia) e comparar com os atendimentos concluídos — precaução pra quando entrar a segunda pessoa e rede pra atendimento esquecido.
+
+- **Câmera**: Xiongmai XM533 (iCSee), 192.168.15.5, RTSP `/onvif2` (TCP) + ONVIF 8899 (PTZ usado pra enquadrar cadeira + bancada + espera).
+- **Contador** (fora do repo, no notebook da barbearia): `C:\Users\julia\barbearia-camera\chair_counter.py` — YOLOv8n pessoa, zona da cadeira em `zone.json`, sessão = cadeira ocupada ≥ 6 min, fecha após 2,5 min vazia; reflexo do espelho fica fora da zona. Só horários/contagem — nunca vídeo ou rosto. Credenciais em `%USERPROFILE%\barbearia-camera.env`. Inicia com o Windows (Startup\BarbeariaContadorCadeira.vbs), instância única (porta 47123). Testado ao vivo: Juliano na cadeira = verde "NA CADEIRA", reflexo = ignorado.
+- **Banco** (migration 121): `chair_sessions`, `camera_heartbeat`, RPC `camera_ingest(p_secret, p_event)` (segredo `camera_ingest_secret` no Vault, chamada com anon), RPC `chair_day_summary(date)`.
+- **Admin**: card "Cadeira (câmera)" na visão geral — sessões × registrados, estado do contador (heartbeat); fica em alerta quando diverge ou contador parado > 15 min. Cache: dashboard.js e style/admin-core 29.46.0.
+
 ## 29.45.0 — Plano do dia 19/08: cancelamento por número, mensagens picadas, confirmação com "como remarcar", balcão sem robô duplo, DM vazia repetida
 
 Revisão diária da JuIA (regra de 18/08) + pedidos do Juliano no chat.

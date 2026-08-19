@@ -11,6 +11,18 @@
     setText('metric-servicos-cliente',completedDistinctClients?(completedServiceCount/completedDistinctClients).toFixed(1):'0');
     // v29.43.8 (pedido do Juliano, 18/08): quantos SERVIÇOS foram feitos hoje (corte + barba conta 2), além do número de atendimentos.
     setText('metric-servicos-hoje',String(completedServiceCount));
+    // v29.46.0 (19/08): card "Cadeira (câmera)" — sessões contadas pela câmera (pessoa na cadeira
+    // por 6+ min) x atendimentos concluídos no sistema. Divergência = atendimento não registrado
+    // (ou sessão falsa) → pintar de alerta. Heartbeat > 15 min sem sinal = contador parado.
+    if($('metric-cadeira')){sb.rpc('chair_day_summary').then(({data,error})=>{
+      if(error||!data){setText('metric-cadeira','–');setText('metric-cadeira-sub','sem dados');return}
+      const cam=Number(data.chair_sessions||0),aberta=Number(data.chair_open||0),reg=Number(data.bookings_completed||0);
+      const seen=data.camera_last_seen?new Date(data.camera_last_seen):null,minAgo=seen?Math.round((Date.now()-seen.getTime())/60000):null;
+      setText('metric-cadeira',String(cam)+(aberta?' +1 na cadeira':''));
+      const status=minAgo===null?'câmera nunca conectou':minAgo>15?`contador parado há ${minAgo} min`:'câmera ok';
+      setText('metric-cadeira-sub',`vs ${reg} registrado${reg===1?'':'s'} · ${status}`);
+      const card=$('metric-cadeira-card');if(card){card.classList.toggle('admin-metric-warn',cam!==reg||(minAgo!==null&&minAgo>15))}
+    }).catch(()=>{})}
     setText('metric-noshows',noShowsToday.length);setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);
     // Card colapsável reaproveitado da Agenda (v28.26.0) — pedido do Juliano: poder clicar
     // num atendimento aqui e ver o detalhe completo (pagamento, produtos etc.) sem precisar
