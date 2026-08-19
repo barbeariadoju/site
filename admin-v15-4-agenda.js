@@ -215,7 +215,11 @@
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
-      modal.querySelector('[data-payment-slot]').innerHTML=paymentPickerHtml('');
+      // v29.49.0 — caso Frei Bartolomeu (19/08): pagou adiantado no Pix (confirmado), e o modal
+      // de conclusão ainda perguntava a forma de pagamento. Pix antecipado confirmado = pré-seleciona
+      // Pix e avisa; dá pra trocar se por acaso o registro estiver errado.
+      const prepaid=!!(booking.prepay_declared_at&&booking.prepay_confirmed_at);
+      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>':'')+paymentPickerHtml(prepaid?'pix':'');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
       modal.querySelector('[data-loyalty-delta]').value='';
@@ -237,7 +241,7 @@
       const visitInput=modal.querySelector('[data-visit-number]');
       visitInput.value='';
       visitInput.placeholder=booking.id?`o sistema conta ${visitNumber(booking)}ª`:'';
-      let selectedPayment='',selectedProductsPayment='';
+      let selectedPayment=prepaid?'pix':'',selectedProductsPayment='';
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);

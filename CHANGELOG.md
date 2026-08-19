@@ -1,3 +1,6 @@
+## 29.49.0 — Conclusão de atendimento com Pix antecipado não pergunta mais a forma de pagamento
+
+Caso Frei Bartolomeu (19/08, ao concluir): já tinha pago adiantado no Pix (confirmado) e o modal de conclusão perguntou a forma de pagamento. Agora, quando `prepay_declared_at` + `prepay_confirmed_at` estão preenchidos, o modal abre com Pix pré-selecionado e a nota "💸 Este cliente já pagou antecipado no Pix" — dá pra trocar se preciso. Cache agenda.js → 29.49.0. Playwright 26/26.
 ## 29.48.0 / 29.48.2 — Alarme EKASA monitorado pela nuvem Tuya (tuya-watch) + card "Alarme" no admin + prova de vida diária
 
 Pedido do Juliano (19/08): os sensores a pilha do alarme morreram sem aviso e o alarme armado não disparou. Sensores 433 MHz são "mão única" — nem a central nem a nuvem sabem se estão vivos; então o monitoramento é por **prova de vida** (último evento de cada sensor) + central offline + disparo + "Low Battery" no registro.
