@@ -831,7 +831,7 @@ Deno.serve(async req=>{
  // "chegar/chego + um horário" com agendamento futuro existente entra no fluxo de remarcação.
  const arrivalTimeAsk=upcomingBookings.length>0&&/\b(chegar|chego|chegando)\b[^.!?]{0,30}\b\d{1,2}[:h]\d{0,2}/.test(normalizedQuestion)
  const rescheduleAsk=(includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])||arrivalTimeAsk)&&!changeServiceAsk
- const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir'])
+ const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir','cancela o ','cancelar o ','cancela esse','cancelar esse','cancela pra mim','cancelar pra mim','cancela a ','cancelar a '])
  // "Não quero cancelar" contém a substring "quero cancelar", então cancelAsk também
  // disparava aqui — bug real (28/07/2026): cliente disse "Não quero cancelar, quero
  // mudar o serviço de corte para barba" e ficou preso perguntando "quer mesmo cancelar?"
@@ -902,28 +902,62 @@ Deno.serve(async req=>{
    intent='other';handoff=false;conflictHandled=true
   }
  }
- if(!conflictHandled&&((next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical)))intent='cancel'
+ // v29.45.0 (caso Ricardo 19/08): a lista "qual deles quer cancelar? 1/2" nao guardava estado —
+ // o "1" do cliente ia pro modelo, que repetia a lista, e o anti-repeticao soltava "me embolei".
+ // Agora a lista fica em pending_cancel_options; numero, horario ou "nao" sao tratados aqui;
+ // qualquer outra coisa (mudou de assunto) descarta a lista e segue normal.
+ const cancelPickPending=Array.isArray(next.pending_cancel_options)&&next.pending_cancel_options.length>0
+ const cancelPickAnswer=cancelPickPending&&(/^\s*\d{1,2}\s*[.)\-]?\s*$/.test(normalizedQuestion)||Boolean(extractRequestedTime(message))||(simpleNo&&!simpleYes))
+ if(cancelPickPending&&!cancelPickAnswer&&!cancelAsk)next.pending_cancel_options=null
+ if(!conflictHandled&&(cancelPickAnswer||(next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical)))intent='cancel'
 
  if(intent==='cancel'){
+  const doCancel=async(bookingId:string)=>{
+   const {data:cancelledRows,error:cancelError}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:bookingId})
+   const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
+   if(cancelError||!cancelled){
+    reply='Não consegui cancelar agora — pode já ter passado do horário ou já ter sido cancelado. Se precisar, o Juliano confirma direto com você.'
+    handoff=true
+   }else{
+    reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Se quiser marcar outro horário, é só me dizer.`
+    handoff=false
+    const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+    const supabaseUrl=Deno.env.get('SUPABASE_URL')
+    if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado pela JuIA',body:`${cancelled.customer_name||customerFirstName} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}\n${cancelled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${cancelled.id}`}})}).catch(()=>{})
+    await notifyWaitlistIfMatch(supabase,cancelled.booking_date,cancelled.start_time)
+   }
+   next.pending_cancel_booking_id=null
+   next.pending_cancel_options=null
+  }
+  // Escolhe 1 agendamento entre varios pelo numero da lista ou pelo horario citado ("o das 8h").
+  const pickCancelTarget=(ids:string[])=>{
+   const list=ids.map((id)=>upcomingBookings.find((b:any)=>b.id===id)).filter(Boolean)
+   const num=normalizedQuestion.match(/^\s*(\d{1,2})\s*[.)\-]?\s*$/)
+   if(num){const idx=Number(num[1])-1;return list[idx]||null}
+   const t=extractRequestedTime(message)
+   if(t){const hits=list.filter((b:any)=>String(b.start_time).slice(0,5)===t);if(hits.length===1)return hits[0]}
+   return null
+  }
   if(!verifiedPhone){
    reply='Para cancelar com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
    handoff=true
+  }else if(cancelPickPending&&!next.pending_cancel_booking_id){
+   const picked=pickCancelTarget(next.pending_cancel_options)
+   if(picked){
+    await doCancel(picked.id)
+   }else if(simpleNo&&!simpleYes){
+    reply='Tudo bem, não cancelei nada. Seus agendamentos continuam confirmados.'
+    next.pending_cancel_options=null
+    handoff=false
+   }else{
+    const list=(next.pending_cancel_options as string[]).map((id)=>upcomingBookings.find((b:any)=>b.id===id)).filter(Boolean)
+    reply='Só me diz o número do que você quer cancelar:\n'+list.map((b:any,i:number)=>`*${i+1}* — ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+    actions=list.map((b:any,i:number)=>({label:`${i+1} — ${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:String(i+1)}))
+    handoff=false
+   }
   }else if(next.pending_cancel_booking_id){
    if(simpleYes&&!simpleNo){
-    const {data:cancelledRows,error:cancelError}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_cancel_booking_id})
-    const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
-    if(cancelError||!cancelled){
-     reply='Não consegui cancelar agora — pode já ter passado do horário ou já ter sido cancelado. Se precisar, o Juliano confirma direto com você.'
-     handoff=true
-    }else{
-     reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Se quiser marcar outro horário, é só me dizer.`
-     handoff=false
-     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
-     const supabaseUrl=Deno.env.get('SUPABASE_URL')
-     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado pela JuIA',body:`${cancelled.customer_name||customerFirstName} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}\n${cancelled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${cancelled.id}`}})}).catch(()=>{})
-     await notifyWaitlistIfMatch(supabase,cancelled.booking_date,cancelled.start_time)
-    }
-    next.pending_cancel_booking_id=null
+    await doCancel(next.pending_cancel_booking_id)
    }else if(simpleNo){
     reply='Tudo bem, não cancelei nada. Seu agendamento continua confirmado.'
     next.pending_cancel_booking_id=null
@@ -943,9 +977,17 @@ Deno.serve(async req=>{
    actions=[{label:'Sim, cancelar',message:'Sim, pode cancelar'},{label:'Não, manter',message:'Não, manter o agendamento'}]
    handoff=false
   }else{
-   reply='Você tem mais de um agendamento futuro. Qual deles quer cancelar?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
-   actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Cancelar o de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
-   handoff=false
+   // "cancela o das 8h" com 2 agendamentos futuros: se o horario citado casa com um so, cancela
+   // direto (o cliente ja pediu e ja apontou qual). Senao, lista numerada COM estado.
+   const direct=pickCancelTarget(upcomingBookings.map((b:any)=>b.id))
+   if(direct&&extractRequestedTime(message)){
+    await doCancel(direct.id)
+   }else{
+    next.pending_cancel_options=upcomingBookings.map((b:any)=>b.id)
+    reply='Você tem mais de um agendamento futuro. Qual deles quer cancelar? Me responde com o número:\n'+upcomingBookings.map((b:any,i:number)=>`*${i+1}* — ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+    actions=upcomingBookings.map((b:any,i:number)=>({label:`${i+1} — ${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:String(i+1)}))
+    handoff=false
+   }
   }
  }
 

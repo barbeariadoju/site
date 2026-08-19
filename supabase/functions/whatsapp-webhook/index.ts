@@ -477,6 +477,46 @@ Deno.serve(async (request: Request) => {
         // Somos a mensagem "mais recente" depois da espera — reivindica o buffer completo
         // (pode ter crescido mais do que só esta mensagem, se chegaram picadas antes) e limpa.
         text = afterWait?.buffer_text || text
+        // v29.45.0 — caso Leticia (18/08/2026, 18:59): ela mandou "amanhã por volta das 19h",
+        // 7s depois "ele chega do trabalho...", 12s depois "até um pouco antes dá certo". Cada
+        // uma chegou DEPOIS do buffer anterior já ter sido reivindicado e limpo, então as duas
+        // primeiras respostas foram descartadas como obsoletas (certo) — mas a terceira
+        // processou SÓ "até um pouco antes dá certo" e perguntou "manhã, tarde ou fim do dia?"
+        // ignorando o 19h que ela já tinha dito. "Quem processa a nova responde por todas" só
+        // é verdade se a nova carregar o texto das que ficaram sem resposta. Aqui junta as
+        // mensagens de entrada que chegaram depois da última saída (bot ou humano) nos
+        // últimos 3 min. Número solto (1/2/3) fica sozinho: é resposta a pergunta numerada.
+        try {
+          const bareNumber = /^\s*\d{1,2}\s*$/.test(text)
+          if (!bareNumber) {
+            const { data: lastOutRow } = await admin
+              .from('whatsapp_messages')
+              .select('created_at')
+              .eq('phone', phone)
+              .eq('direction', 'out')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            const desdeMs = Math.max(lastOutRow ? new Date(lastOutRow.created_at).getTime() : 0, Date.now() - 3 * 60 * 1000)
+            const { data: semResposta } = await admin
+              .from('whatsapp_messages')
+              .select('body, created_at')
+              .eq('phone', phone)
+              .eq('direction', 'in')
+              .gt('created_at', new Date(desdeMs).toISOString())
+              .lt('created_at', new Date(stampMs).toISOString())
+              .order('created_at', { ascending: true })
+              .limit(6)
+            const jaNoTexto = new Set(text.split('\n').map((s) => s.trim()))
+            const extras = (semResposta || [])
+              .map((m) => String(m.body || '').replace(/^(📷|🎙️)\s*/, '').trim())
+              .filter((b) => b && !b.startsWith('[') && !jaNoTexto.has(b))
+            if (extras.length) {
+              text = `${extras.join('\n')}\n${text}`
+              console.log('[whatsapp-webhook] juntando mensagens sem resposta ao texto atual', phone, extras.length)
+            }
+          }
+        } catch (_e) { /* melhor responder só a atual do que não responder */ }
         // A partir daqui, qualquer mensagem NOVA do cliente torna esta resposta obsoleta.
         obsoleteCutoffMs = Date.now()
         await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
@@ -508,6 +548,7 @@ Deno.serve(async (request: Request) => {
         const aiState = (conversation?.state || {}) as Record<string, unknown>
         const juiaAwaitingAnswer = !!(
           aiState.pending_cancel_booking_id ||
+          (Array.isArray(aiState.pending_cancel_options) && (aiState.pending_cancel_options as unknown[]).length > 0) || // v29.45.0 lista "qual cancelar?"
           aiState.pending_reschedule_booking_id ||
           aiState.pending_reschedule_new_date ||
           aiState.pending_products_summary ||

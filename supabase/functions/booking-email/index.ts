@@ -147,11 +147,16 @@ Deno.serve(async (request: Request) => {
       smsText = `Barbearia do Ju: agendamento de ${smsDetails} foi cancelado. Para remarcar: ${bookingUrl} ou (11) 96707-3038`
     }
 
+    // v29.45.0 — caso Ricardo (19/08/2026): marcou pelo site às 8h de sábado, quis mudar pra 11h,
+    // "não consegui reagendar" e fez um SEGUNDO agendamento (duplicou). A confirmação do WhatsApp
+    // não dizia como mudar — só a de cancelamento tinha link. Agora toda confirmação/alteração
+    // diz que basta responder aqui (a JuIA remarca/cancela) e, quando existe, traz o link.
+    const gerenciarLinha = `\n\nPrecisa remarcar ou cancelar? É só me responder aqui mesmo que eu resolvo 😉${managementUrl ? `\nOu, se preferir, pelo link: ${managementUrl}` : ''}`
     let waText = `💈 *Barbearia do Ju*\n${customerLead}`
     if (eventType === 'booking_confirmed') {
-      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu horário foi confirmado:\n📅 ${smsDetails}\n📍 ${smsAddress}\n\nQualquer dúvida, é só chamar por aqui!`
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu horário foi confirmado:\n📅 ${smsDetails}\n📍 ${smsAddress}${gerenciarLinha}`
     } else if (eventType === 'booking_rescheduled') {
-      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu agendamento foi alterado:\n📅 Novo horário: ${smsDetails}\n\nQualquer dúvida, é só chamar por aqui!`
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu agendamento foi alterado:\n📅 Novo horário: ${smsDetails}${gerenciarLinha}`
     } else if (eventType === 'booking_reminder_24h') {
       waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Passando pra lembrar do seu atendimento amanhã:\n📅 ${smsDetails}\n📍 ${smsAddress}\n\nAté lá!`
     } else if (eventType === 'booking_cancelled') {

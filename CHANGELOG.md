@@ -1,3 +1,14 @@
+## 29.45.0 — Plano do dia 19/08: cancelamento por número, mensagens picadas, confirmação com "como remarcar", balcão sem robô duplo, DM vazia repetida
+
+Revisão diária da JuIA (regra de 18/08) + pedidos do Juliano no chat.
+
+- **ju-ia-site** — caso Ricardo (19/08 08:08): "qual deles quer cancelar? 1/2" não guardava estado; o "1" ia pro modelo, que repetia a lista, e o anti-repetição soltava "me embolei". Agora `pending_cancel_options` guarda a lista; número, horário citado ("o das 8h") ou "não" são tratados; "cancela o das 08 horas" com 2 agendamentos cancela direto quando o horário casa com um só; `cancelAsk` aceita "cancela o/esse/pra mim". Testado em produção (5599900011234, dados apagados).
+- **whatsapp-webhook** — `juiaAwaitingAnswer` reconhece `pending_cancel_options`. Caso Leticia (18/08 18:59): três mensagens picadas, cada uma chegando depois do buffer anterior ter sido limpo → as duas primeiras respostas descartadas como obsoletas (certo) e a terceira processada SOZINHA ("até um pouco antes dá certo") → JuIA perguntou período ignorando o "19h" dito antes. Agora, ao reivindicar o buffer, junta as mensagens de entrada sem resposta desde a última saída (3 min), exceto número solto.
+- **booking-email** — confirmação/alteração pelo WhatsApp agora diz "Precisa remarcar ou cancelar? É só me responder aqui" + link de gerenciar (Ricardo não achou como mudar e duplicou o agendamento; a página meu-agendamento foi testada no celular e funciona).
+- **satisfaction-dispatch / send-walkin-welcome** — robô redundante do balcão (2 Rafaéis, 18/08: boas-vindas 18:21 + comprovante 18:30). O convite "da próxima vez agende por aqui" virou uma linha dentro do comprovante (canal balcão); send-walkin-welcome é no-op (só envia com `force=1`).
+- **meta-social-sync** — DM vazia (figurinha/mídia) repetida pela 3ª vez do mesmo perfil (psid 1061649352872645: 06/08, 08/08, 19/08) é arquivada como 'ignorado' sem push.
+- Posts das 8h de 19/08 saíram sem arte (Gemini 500 ×2); arte refeita via `only_image` e aprovada no crivo.
+
 ## 29.43.8 — Card "Serviços feitos hoje" na visão geral
 
 Pedido do Juliano (18/08): além de "Concluídos: 9 atendimentos", mostrar quantos SERVIÇOS foram feitos no dia (corte + barba conta 2). Novo card entre "Concluídos" e "Ticket médio", alimentado pela mesma contagem que já sustentava "Serviços/cliente". Cache do dashboard.js bumpado pra 29.43.8 em todas as páginas do admin.

@@ -46,7 +46,7 @@ Deno.serve(async(req:Request)=>{
 
   const {data:rows,error}=await admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,channel)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
     .limit(50)
@@ -110,6 +110,9 @@ Deno.serve(async(req:Request)=>{
         ? `💳 Serviço ${pagServico} · Produtos ${pagProdutos}`
         : pagServico ? `💳 Pago ${pagServico}` : ''
 
+      // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
+      // mensagem separada (send-walkin-welcome, 9 min antes desta) agora é UMA linha aqui.
+      const ehBalcao=String(booking?.channel||'')==='balcao'
       const waText=[
         `Olá, ${first}! Muito obrigado pela visita à Barbearia do Ju 💈`,
         '',
@@ -117,6 +120,7 @@ Deno.serve(async(req:Request)=>{
         ...linhas,
         `*Total: ${money(total)}*`,
         ...(pagamentoLinha?[pagamentoLinha]:[]),
+        ...(ehBalcao?['','Da próxima vez, se quiser, é só me chamar aqui que eu já deixo seu horário reservado 😉']:[]),
         '',
         'Como foi seu atendimento?',
         'Digite *1* para 😊 Satisfeito',

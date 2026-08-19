@@ -217,6 +217,27 @@ Deno.serve(async (request: Request) => {
         continue
       }
 
+      // v29.45.0 — DM vazia REPETIDA (figurinha/mídia sem texto) do mesmo perfil: o psid
+      // 1061649352872645 mandou a 3ª DM vazia em 19/08 (06/08 e 08/08 já tinham sido
+      // ignoradas na mão) e cada uma virou push "esperando você" pro Juliano. A partir da 3ª
+      // vazia do mesmo remetente, arquiva como 'ignorado' em silêncio (a linha fica reservada,
+      // então nunca reprocessa) e não entra no push. DM vazia de perfil novo continua
+      // chegando pra ele decidir — pode ser cliente de verdade mandando um print.
+      if (!hasText && c.kind === 'message' && c.sender_psid) {
+        const { count: vaziasAntes } = await admin.from('social_inbox')
+          .select('id', { count: 'exact', head: true })
+          .eq('sender_psid', c.sender_psid).eq('kind', 'message').eq('original_text', '')
+          .neq('id', reserved.id)
+        if ((vaziasAntes || 0) >= 2) {
+          await admin.from('social_inbox').update({
+            status: 'ignorado', updated_at: new Date().toISOString(),
+            context: { ...c.context, auto_send_state: 'ignorado', motivo: 'dm vazia repetida do mesmo perfil' },
+          }).eq('id', reserved.id)
+          console.log('[meta-social-sync] dm vazia repetida arquivada sem push', c.platform, c.sender_psid)
+          continue
+        }
+      }
+
       let draft = ''
       let status: 'enviado' | 'rascunho' = 'rascunho'
       let repliedAt: string | null = null

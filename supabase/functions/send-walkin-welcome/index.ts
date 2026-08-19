@@ -63,6 +63,16 @@ Deno.serve(async (request: Request) => {
     const phone = canonicalPhone(String(body?.phone || ''))
     if (!phone) return json({ ok: true, sent: false, skipped: true, error: 'Telefone inválido para WhatsApp.' })
 
+    // v29.45.0 — robô redundante (regra do Juliano, 18/08: "robôs redundantes → corrigir na
+    // raiz"). Caso real 18/08: os dois Rafaéis do balcão receberam ESTA boas-vindas às 18:21 /
+    // 19:36 e, 9 minutos depois, o comprovante + pesquisa (satisfaction-dispatch). Duas
+    // mensagens institucionais em 10 min pra quem acabou de conhecer a casa é demais. O convite
+    // "da próxima vez agende por aqui" agora vai DENTRO do comprovante (canal balcão), numa
+    // linha só. Esta function fica como no-op pra não quebrar o admin-balcao antigo em cache.
+    if (String(body?.force || '') !== '1') {
+      return json({ ok: true, sent: false, skipped: true, folded_into_receipt: true })
+    }
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL')?.trim() || ''
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY')?.trim() || ''
     const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim() || ''
