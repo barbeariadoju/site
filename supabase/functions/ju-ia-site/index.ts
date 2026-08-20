@@ -30,6 +30,11 @@ const formatDateBR=(value:any)=>{
 // v29.43.0: nome do WhatsApp pode ser so emoji/simbolo ("🤓") — nesse caso nao ha primeiro nome
 // util e e melhor nao usar nada do que escrever "Oi, 🤓!" (caso real, 15/08/2026).
 const firstName=(value:any)=>{const f=String(value||'').trim().split(/\s+/)[0]||'';return /\p{L}/u.test(f)?f:'cliente'}
+// v29.51.0 — caso Stevan (19/08): "com 43 horários" expõe agenda vazia pro cliente.
+// NUNCA dizer quantidade de horários nem despejar a lista inteira: amostra espalhada
+// de até 4 (mesmo padrão do v29.43.0) e o cliente responde qualquer horário.
+const slotsSample=(slots:string[])=>[slots[0],slots[Math.floor(slots.length/3)],slots[Math.floor(slots.length*2/3)],slots[slots.length-1]].filter((v,i,a)=>!!v&&a.indexOf(v)===i)
+const slotsPhrase=(slots:string[])=>slots.length<=4?slots.join(', '):`entre ${slots[0]} e ${slots[slots.length-1]} — por exemplo ${slotsSample(slots).join(', ')}`
 
 const fetchWithTimeout=async(url:string,init:RequestInit,timeoutMs=8000)=>{
  const controller=new AbortController()
@@ -164,6 +169,12 @@ const greetingNow=()=>{
 }
 
 const extractRequestedTime=(text='')=>{
+ // v29.51.0 — caso Luiz André (19/08): "11.00 horas" caía no fallback de hora sem
+ // minutos, que casava o "00" antes de "horas" e devolvia 00:00 ("meia-noite já está
+ // reservado"). Hora com PONTO só vale quando é claramente horário: precedida de
+ // "às/as" ou seguida de h/hs/horas — "dia 21.08" (data) continua fora.
+ const dotted=String(text).match(/(?:(?:^|\s)[aà]s\s*([01]?\d|2[0-3])[.]([0-5]\d)(?!\d))|(?:(?:^|\D)([01]?\d|2[0-3])[.]([0-5]\d)\s*(?:h\b|hs\b|hrs?\b|horas?\b))/i)
+ if(dotted){const h=dotted[1]??dotted[3];const m=dotted[2]??dotted[4];return `${String(Number(h)).padStart(2,'0')}:${m}`}
  const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH])([0-5]\d)(?:\D|$)/)
  if(match)return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`
  // v28.31.5: "às 9h"/"19h" (hora sem minutos, jeito mais comum de falar horário no
@@ -1176,16 +1187,16 @@ Deno.serve(async req=>{
       const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
       if(nextAvail){
        const weekday=new Date(nextAvail.date+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
-       reply=`Não encontrei horário em ${formatDateBR(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday})${nextAvail.slots.length<=10?`: ${nextAvail.slots.join(', ')}`:`, com ${nextAvail.slots.length} horários`}. Quer remarcar pra esse dia?`
+       reply=`Não encontrei horário em ${formatDateBR(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday}): consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
        next.date=nextAvail.date
-       actions=nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]
+       actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
       }else{
        reply='Não encontrei horário disponível nas próximas semanas para esse atendimento. Quer falar direto com a equipe?'
        next.date=null
       }
      }else{
-      reply=`Estes são os horários disponíveis em ${formatDateBR(next.date)}: ${allSlots.join(', ')}. Qual você prefere?`
-      actions=allSlots.map((t:string)=>({label:t,message:t}))
+      reply=`Em ${formatDateBR(next.date)} consigo te atender ${slotsPhrase(allSlots)}. Qual fica melhor pra você?`
+      actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
      }
      handoff=false
     }else if(allSlots.includes(time)){
@@ -1208,17 +1219,17 @@ Deno.serve(async req=>{
      actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
      handoff=false
     }else if(allSlots.length){
-     reply=`${time} não está disponível em ${formatDateBR(next.date)}. Horários disponíveis: ${allSlots.join(', ')}.`
-     actions=allSlots.map((t:string)=>({label:t,message:t}))
+     reply=`${time} não está disponível em ${formatDateBR(next.date)}, mas consigo te atender ${slotsPhrase(allSlots)}. Algum desses serve?`
+     actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
      next.time=null
      handoff=false
     }else{
      const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
      if(nextAvail){
       const weekday=new Date(nextAvail.date+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
-      reply=`Não encontrei horário em ${formatDateBR(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday})${nextAvail.slots.length<=10?`: ${nextAvail.slots.join(', ')}`:`, com ${nextAvail.slots.length} horários`}. Quer remarcar pra esse dia?`
+      reply=`Não encontrei horário em ${formatDateBR(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday}): consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
       next.date=nextAvail.date
-      actions=nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]
+      actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
      }else{
       reply='Não encontrei horário disponível nas próximas semanas para esse atendimento. Quer falar direto com a equipe?'
      }
@@ -1848,10 +1859,10 @@ Deno.serve(async req=>{
    const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
    if(nextAvail){
     const weekday=new Date(nextAvail.date+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
-    reply=`Não encontrei horário em ${formatDateBR(next.date)} para ${serviceNames}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday})${nextAvail.slots.length<=10?`: ${nextAvail.slots.join(', ')}`:`, com ${nextAvail.slots.length} horários`}. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga.`
+    reply=`Não encontrei horário em ${formatDateBR(next.date)} para ${serviceNames}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)} (${weekday}): consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga.`
     next.pending_waitlist=waitlistOffer
     next.date=nextAvail.date
-    actions=[...(nextAvail.slots.length<=10?nextAvail.slots.map((t:string)=>({label:t,message:t})):[]),{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
+    actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
     // direct: aqui a pergunta É sobre a lista (não há dia alternativo) — um "sim" solto

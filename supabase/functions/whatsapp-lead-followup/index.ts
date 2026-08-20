@@ -153,6 +153,45 @@ Deno.serve(async (request: Request) => {
     }
   }
 
+  // --- Item 1b (v29.51.0, caso Stevan 19/08): resgate de lista de espera VENCIDA.
+  // O trigger de cancelamento só cobre vaga que ABRE; quando o dia lotado simplesmente
+  // passa, a entrada ficava 'esperando' pra sempre (Marcio esperava desde 08/08 sem
+  // ninguém saber). Agora: dia pedido passou → se foi há até 2 dias e HOJE tem horário
+  // compatível, manda oferta de resgate (sem expor quantidade de horários — regra do
+  // Juliano, 20/08); se é mais velho que isso, expira em silêncio.
+  const todayBRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const twoDaysAgoBRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(now - 2 * 86400000))
+  const { data: staleWaitlist, error: staleWaitlistError } = await admin
+    .from('waitlist')
+    .select('id, customer_name, customer_phone, service_name, duration_minutes, preferred_date, created_at')
+    .eq('status', 'esperando')
+    .lt('preferred_date', todayBRT)
+  if (staleWaitlistError) { console.error('[whatsapp-lead-followup] stale_waitlist', staleWaitlistError) }
+  for (const entry of staleWaitlist || []) {
+    try {
+      if (entry.preferred_date < twoDaysAgoBRT) {
+        await admin.from('waitlist').update({ status: 'expirado', updated_at: new Date().toISOString() }).eq('id', entry.id)
+        continue
+      }
+      if (await isResolved(entry.customer_phone, entry.created_at)) {
+        await admin.from('waitlist').update({ status: 'expirado', updated_at: new Date().toISOString() }).eq('id', entry.id)
+        continue
+      }
+      const { data: slotsData } = await admin.rpc('get_available_slots', { p_date: todayBRT, p_duration_minutes: entry.duration_minutes || 30 })
+      const slots = (slotsData || []).map((x: any) => String(x.slot_time).slice(0, 5))
+      if (!slots.length) continue // tenta de novo na próxima rodada; expira quando envelhecer
+      const sample = [slots[0], slots[Math.floor(slots.length / 3)], slots[Math.floor(slots.length * 2 / 3)], slots[slots.length - 1]].filter((v, i, a) => !!v && a.indexOf(v) === i)
+      const phrase = slots.length <= 4 ? slots.join(', ') : `entre ${slots[0]} e ${slots[slots.length - 1]} — por exemplo ${sample.join(', ')}`
+      const name = firstName(entry.customer_name)
+      await sendWhatsapp(entry.customer_phone, `Oi${name ? `, ${name}` : ''}! 😊 Aqui é da Barbearia do Ju. Você pediu pra eu avisar quando abrisse vaga${entry.service_name ? ` pro seu ${entry.service_name}` : ''} — hoje consigo te encaixar: tenho horário ${phrase}. Me diz o horário que prefere que eu já deixo reservado pra você 💈`)
+      await admin.from('waitlist').update({ status: 'avisado', offered_date: todayBRT, notified_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', entry.id)
+      waitlistOfferSent++
+    } catch (error) {
+      console.error('[whatsapp-lead-followup] stale_waitlist falhou', entry.customer_phone, error)
+      waitlistOfferSkipped++
+    }
+  }
+
   // --- Vaga reaberta (v28.34.0): o trigger bookings_notify_leads_slot_reopened marca
   // slot_reopened_at sozinho quando um agendamento que ocupava a data que este lead
   // queria (kind='availability', date_interest) é cancelado ou reagendado pra outro dia
@@ -223,7 +262,11 @@ Deno.serve(async (request: Request) => {
         // não manda nada: cliente novo/recente não deve ser cutucado por causa de um "oi".
         if (!text) { await admin.from('conversation_leads').delete().eq('phone', lead.phone); continue }
       } else if (lead.kind === 'availability') {
-        text = `Oi${name ? `, ${name}` : ''}! 😊 Aqueles horários que a gente conversou podem ter mudado desde então — se ainda tiver interesse, posso conferir de novo pra você.`
+        // v29.51.0 — reescrita a pedido do Juliano (20/08): a versão antiga ("aqueles
+        // horários podem ter mudado") era vaga, não dizia o que fazer e teve 0 respostas
+        // em dezenas de envios. Agora: relembra o que a pessoa queria, dá o próximo passo
+        // concreto (dizer o dia) e fecha com o benefício real (hora marcada, sem fila).
+        text = `Oi${name ? `, ${name}` : ''}! 👋 Vi que você estava procurando horário${lead.service_interest ? ` pra ${lead.service_interest}` : ''} e a gente acabou não fechando. Me diz o dia que fica melhor pra você que eu já deixo reservado — atendimento com hora marcada, sem fila 💈`
       } else {
         text = `Oi${name ? `, ${name}` : ''}! 😊 Só passando pra saber se ainda tem interesse em ${lead.service_interest || 'agendar um horário'} — se quiser, posso já ver um horário pra você.`
       }

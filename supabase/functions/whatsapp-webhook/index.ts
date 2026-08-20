@@ -1018,11 +1018,35 @@ Deno.serve(async (request: Request) => {
           const refersToSurvey = /pesquis|avaliacao/.test(normalizedReply)
           const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
             || (refersToSurvey && /\b2\b/.test(normalizedReply) && !/\b1\b/.test(normalizedReply))
+          // v29.51.0 — caso Vivian/Theo (19/08): "O Theo tá muito inquieto com o cabelo…😁"
+          // caiu como SATISFEITO só por causa do emoji, e a JuIA respondeu "Que ótimo saber
+          // disso!" pra uma mãe descrevendo problema. Duas guardas: (1) menção a problema/
+          // ajuste nunca vira "satisfeito" — avisa o Juliano por push e deixa a conversa
+          // seguir no fluxo normal; (2) emoji positivo sozinho só vale em mensagem CURTA
+          // (mensagem longa precisa de palavra de elogio).
+          const mentionsProblem = /inquiet|incomod|ajust|retoc|retoque|arrum|corrig|reclam|nao ficou|nao gostou|cocando|coceira|pinic|machuc|desconfort|problema|estranho|torto|falhad/.test(normalizedReply)
           // `&& !isUnsatisfied` é essencial: "não gostei" contém "gostei" e cairia como
           // elogio, mandando pedido de avaliação pra quem reclamou.
-          const isSatisfied = !isUnsatisfied && !asksSomethingElse
-            && (praise || positiveEmoji.test(text) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
+          const isSatisfied = !isUnsatisfied && !asksSomethingElse && !mentionsProblem
+            && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
               || (refersToSurvey && /\b1\b/.test(normalizedReply)))
+          if (mentionsProblem && !isUnsatisfied) {
+            const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+            if (pushSecret) {
+              await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+                body: JSON.stringify({
+                  custom: {
+                    title: '⚠️ Cliente mencionou possível ajuste',
+                    body: `${pending.customer_name || phone}: ${text}`.slice(0, 180),
+                    url: 'https://wa.me/' + phone,
+                    tag: `whatsapp-adjust-${phone}`,
+                  },
+                }),
+              }).catch((error) => console.error('[whatsapp-webhook] push adjust', error))
+            }
+          }
           // Mensagem claramente NÃO é resposta à pesquisa (pedido de agendamento, pergunta longa,
           // áudio transcrito sobre outro assunto etc.) — sem isso, qualquer cliente com pesquisa
           // pendente ficava travado num "não entendi, satisfeito ou insatisfeito?" repetido pra
@@ -1110,7 +1134,12 @@ Deno.serve(async (request: Request) => {
               return
             }
           } else if (ambiguousShortReply) {
-            const reply = 'Não entendi 🙂 Digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito.'
+            // v29.51.0 — caso Frei (19/08): "Eu que agradeço" levou um seco "Não entendi".
+            // Gentileza recebe gentileza; o lembrete da pesquisa vai junto, mas acolhendo.
+            const courtesy = /eu que agradeco|obrigad|valeu|de nada|disponha|abraco|amem|\bamen\b|tmj|por nada/.test(trimmedNormalized)
+            const reply = courtesy
+              ? `Nós que agradecemos${pending.customer_name ? `, ${String(pending.customer_name).trim().split(/\s+/)[0]}` : ''}! 🙏 Quando puder, me conta como foi o atendimento: digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito. 😊`
+              : 'Não entendi 🙂 Digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito.'
             await sendWhatsapp(phone, reply)
             return
           }
