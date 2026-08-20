@@ -659,6 +659,34 @@ Deno.serve(async req=>{
   }
  }
 
+ // v29.53.0 — resposta à política de pagamento antecipado (cliente com 2+ furos).
+ // "1"/topo = push pro Juliano criar o agendamento no painel e combinar o Pix;
+ // "2"/não = fecha educado. Qualquer outra coisa segue o fluxo (a política fica
+ // pendente e reaparece se ele tentar outro horário, já que o guard dispara de novo).
+ if(state?.pending_prepay_policy){
+  const ppp=state.pending_prepay_policy as Record<string,unknown>
+  const aceita=/^1[\s!.,]*$/.test(normalizedQuestion.trim())||/\btopo\b|\btopar\b|aceito|concordo|fechado|combinado/.test(normalizedQuestion)||simpleYes
+  const recusa=/^2[\s!.,]*$/.test(normalizedQuestion.trim())||simpleNo
+  if(aceita&&!recusa){
+   const pppPhone=String(verifiedPhone||next.phone||knownPhone||'').replace(/\D/g,'')
+   reply=`Perfeito! 👊 Já passei seu pedido pro Juliano: ${formatDateBR(String(ppp.date))} às ${ppp.time}${ppp.services?` (${ppp.services})`:''}. Assim que ele reservar, você recebe a confirmação por aqui — e aí é só me pedir a chave Pix que eu te passo com o valor certinho 😉`
+   actions=[]
+   intent='other'
+   handoff=false
+   next.pending_prepay_policy=null
+   const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+   if(pushSecret){
+    await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'💸 Cliente topou Pix antecipado (política de furo)',body:`${next.name||contextFullName||pppPhone} aceitou: ${formatDateBR(String(ppp.date))} às ${ppp.time} (${ppp.services||'serviço'}, R$ ${ppp.price??'?'}). Crie o agendamento na Agenda — a JuIA passa a chave quando o cliente pedir.`,url:'/admin-agenda.html?app=1',tag:`prepay-policy-${pppPhone}`}})}).catch(()=>{})
+   }
+  }else if(recusa){
+   reply='Tudo bem, sem problemas 😊 Se mudar de ideia, é só me chamar por aqui.'
+   actions=[]
+   intent='other'
+   handoff=false
+   next.pending_prepay_policy=null
+  }
+ }
+
  if(hasCustomer && recommendationRequest){
   const preferred=Array.isArray(context?.preferred_services)?context.preferred_services:[]
   const preferredName=String(preferred?.[0]?.name||preferred?.[0]||'').trim()
@@ -2073,16 +2101,16 @@ Deno.serve(async req=>{
     const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
     if(error){
      if(error.message.includes('cliente_bloqueado')){
-      // v29.52.0 (caso Graziele, 3 furos): cliente bloqueado não agenda sozinho.
-      // Resposta neutra (sem expor o bloqueio) + push pro Juliano decidir o encaixe.
-      reply='Esse horário eu preciso confirmar direto com o Juliano — já avisei ele aqui e assim que ele conferir a agenda te respondo por aqui, tudo bem? 😊'
-      actions=[]
+      // v29.53.0 (política padronizada, pedido do Juliano 20/08): 2 furos (no_show) ou
+      // bloqueio manual = não agenda direto. A JuIA apresenta a política de pagamento
+      // antecipado (termos aprovados pelo Juliano) e guarda o pedido; o "1" do cliente
+      // dispara push pro Juliano criar o agendamento no painel (que passa pelo guard).
+      next.pending_prepay_policy={date:next.date,time:next.time,services:chosen.map((s:any)=>s.name).join(' + '),price}
+      const nomeP=next.name?firstName(next.name):''
+      reply=`${nomeP?nomeP+', v':'V'}ou ser transparente com você 😊 Como os últimos horários reservados acabaram ficando sem atendimento, por aqui o agendamento agora é confirmado com pagamento antecipado pelo Pix. Funciona assim:\n✅ O Pix do valor do serviço garante o horário.\n⏰ Tolerância de atraso: 10 minutos.\n🔁 Precisou remarcar? Avisando até a véspera (24 horas antes), o valor vira crédito pra nova data, sem perder nada.\n⚠️ Se não vier e não avisar, o valor não é devolvido — ele cobre o horário que ficou reservado só pra você.\n\nTopa? Digite *1* pra combinar o pagamento, ou *2* se preferir deixar pra outra hora.`
+      actions=[{label:'1 — Topo',message:'1'},{label:'2 — Agora não',message:'2'}]
       intent='other'
       handoff=false
-      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
-      if(pushSecret){
-       await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🚫 Cliente bloqueado tentou agendar',body:`${next.name||phone} pediu ${formatDateBR(next.date)} às ${next.time}. Você decide o encaixe — responda no WhatsApp.`,url:'https://wa.me/'+phone,tag:`blocked-attempt-${phone}`}})}).catch(()=>{})
-      }
      }
      else if(error.message.includes('indisponível')){
       // v29.43.5 (caso Helo, 15/08): ela escolheu 10:45 pra corte (30 min), depois incluiu
