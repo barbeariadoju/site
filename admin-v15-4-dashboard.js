@@ -32,7 +32,13 @@
       const main=hubs.length===1?modeLabel(hubs[0].mode):hubs.map(h=>`${h.name}: ${modeLabel(h.mode)}`).join(' · ');
       setText('metric-alarme',main);
       const off=hubs.filter(h=>!h.online).map(h=>h.name);
-      const sub=alerts.length?alerts.map(a=>a.message).join(' · '):(off.length?`offline: ${off.join(', ')}`:`${hubs.length===1?'central online':hubs.length+' centrais online'} · ${hubs.reduce((n,h)=>n+((h.sensors||[]).length),0)} sensores ok`);
+      // v29.53.1 (20/08): hora da última leitura no card — a central é lida a cada 10 min,
+      // então o modo pode estar "atrasado" (caso real: Juliano rearmou 10h10 e o card ficou
+      // "Desarmado" até a leitura seguinte, parecendo bug). Com o horário, dá pra ver que é
+      // foto de minutos atrás, não estado ao vivo.
+      const lastRead=hubs.map(h=>h.last_seen_at?new Date(h.last_seen_at):null).filter(Boolean).sort((a,b)=>b-a)[0];
+      const readLabel=lastRead?` · lido às ${String(lastRead.getHours()).padStart(2,'0')}h${String(lastRead.getMinutes()).padStart(2,'0')}`:'';
+      const sub=(alerts.length?alerts.map(a=>a.message).join(' · '):(off.length?`offline: ${off.join(', ')}`:`${hubs.length===1?'central online':hubs.length+' centrais online'} · ${hubs.reduce((n,h)=>n+((h.sensors||[]).length),0)} sensores ok`))+readLabel;
       setText('metric-alarme-sub',sub);
       const card=$('metric-alarme-card');if(card){card.classList.toggle('admin-metric-warn',alerts.length>0||off.length>0||hubs.some(h=>h.alarm_on))}
     }).catch(()=>{})}
