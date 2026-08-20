@@ -1,3 +1,11 @@
+## 29.54.0 — Copiar a chave Pix no site avisa o Juliano na hora (caso Nado, 20/08)
+
+Caso real: o Nado agendou pelo site às 14h07 pra 15h, copiou a chave Pix da tela de confirmação, pagou... e não tocou em "✅ Já fiz o Pix". Nenhum registro, nenhum push — o Juliano só soube do pagamento DEPOIS do atendimento, conferindo o extrato à mão. Com um desconhecido isso seria desconfiança na cadeira; com aviso antecipado seria confiança ("já vi seu Pix, tá garantido").
+- **Migration 126 — `note_prepay_key_copied(code, token, key)`**: mesma autorização do declare (booking_code + management_token), grava `prepay_key` (coalesce — 1ª chave vence) e devolve `first_copy` pra função só avisar uma vez. NÃO mexe em `prepay_declared_at` — cópia é sinal, não declaração.
+- **`prepay-declare` ganhou `event:'copied'`**: push "👀 Copiou a chave Pix — de olho no extrato" (nome, valor, qual chave, e a nota de que o "Já fiz o Pix" ainda não veio) só na primeira cópia. O fluxo 'declared' (padrão) segue idêntico.
+- **`agenda-v15.js` (cache → 29.54.0)**: sucesso na cópia da chave dispara o aviso fire-and-forget (guard local de 1 envio por tela; falha de rede não atrapalha a cópia).
+- Testado em produção com agendamento TESTE-CLAUDE-PIX (2 cópias: prepay_key gravado 1x, declared_at continua nulo, push único) e apagado em seguida. O caso do Nado em si foi fechado à mão: concluído + pago no Pix via SQL (com trilha no customer_timeline), comprovante+pesquisa saíram pelo robô normal.
+
 ## 29.52.0 / 29.52.1 / 29.53.0 / 29.53.1 — Política de no-show (bloqueio + Pix antecipado automático), pesquisa "1 + comentário", hora da leitura no card Alarme (20/08)
 
 Caso Graziele (3 furos: no_show 28/07, cancelamento em cima da hora 06/08, no_show 20/08) + caso Leticia + caso do card do alarme.

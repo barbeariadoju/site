@@ -33,10 +33,54 @@ Deno.serve(async (req) => {
     const token = String(body.token || '').trim()
     const key = String(body.key || 'pagbank').trim().toLowerCase()
 
+    // v29.54.0 — dois eventos no mesmo endpoint: 'declared' (padrão, o "Já fiz o Pix")
+    // e 'copied' (o cliente copiou uma chave na tela). O caso do Nado (20/08/2026) provou
+    // que muita gente paga sem tocar no botão — a cópia da chave vira o primeiro aviso.
+    const event = String(body.event || 'declared').trim().toLowerCase()
+
     if (!bookingCode || !token) return json({ ok: false, message: 'Dados incompletos.' }, 400)
     if (key !== 'pagbank' && key !== 'picpay') return json({ ok: false, message: 'Chave inválida.' }, 400)
+    if (event !== 'declared' && event !== 'copied') return json({ ok: false, message: 'Evento inválido.' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    if (event === 'copied') {
+      // Registra a chave copiada; push só na PRIMEIRA sinalização deste agendamento,
+      // pra não encher o celular do Juliano se o cliente copiar duas vezes.
+      const { data: cData, error: cError } = await admin.rpc('note_prepay_key_copied', {
+        p_booking_code: bookingCode,
+        p_token: token,
+        p_key: key,
+      })
+      const cRow = Array.isArray(cData) ? cData[0] : cData
+      if (cError || !cRow?.ok) {
+        console.error('[prepay-declare] rpc copied', cError)
+        return json({ ok: false }, 400)
+      }
+      if (cRow.first_copy) {
+        try {
+          const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')
+          if (pushSecret && supabaseUrl) {
+            await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+              body: JSON.stringify({
+                custom: {
+                  title: '👀 Copiou a chave Pix — de olho no extrato',
+                  body: `${cRow.customer_name || 'Cliente'} • ${money(Number(cRow.valor || 0))}\nDeve cair em: ${KEY_LABEL[key]}\n(ainda sem o aviso "Já fiz o Pix")`,
+                  url: '/admin-agenda.html?app=1',
+                  tag: `prepay-copy-${cRow.booking_id}`,
+                },
+              }),
+            })
+          }
+        } catch (pushErr) {
+          console.error('[prepay-declare] push copied', pushErr)
+        }
+      }
+      return json({ ok: true })
+    }
 
     const { data, error } = await admin.rpc('declare_prepay', {
       p_booking_code: bookingCode,

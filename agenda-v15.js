@@ -203,6 +203,21 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
   function bindPixOffer(bookingCode,managementToken,valor){
     const box=$('pix-offer'); if(!box)return;
     const statusEl=$('pix-status');
+    // v29.54.0 — caso Nado (20/08/2026): cliente copiou a chave, pagou e nunca tocou em
+    // "Já fiz o Pix" — o Juliano só soube depois do atendimento. Copiar a chave agora
+    // também avisa o servidor (event:'copied' → push "de olho no extrato"), uma vez só.
+    // Fire-and-forget: falha de rede aqui não pode atrapalhar a cópia nem a tela.
+    let copiaAvisada=false;
+    const avisarCopia=(texto)=>{
+      if(copiaAvisada)return; copiaAvisada=true;
+      const chave=texto.includes('@')?'picpay':'pagbank';
+      try{
+        fetch(`${cfg.supabaseUrl}/functions/v1/prepay-declare`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({booking_code:bookingCode,token:managementToken,key:chave,event:'copied'})
+        }).catch(()=>{});
+      }catch{}
+    };
     const copiar=async(texto,botao)=>{
       let ok=false;
       try{ await navigator.clipboard.writeText(texto); ok=true; }
@@ -211,7 +226,7 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
       botao.querySelector('small').textContent=ok?'copiado ✅':'copie manualmente';
       botao.classList.toggle('is-copied',ok);
       setTimeout(()=>{botao.querySelector('small').textContent=antes;botao.classList.remove('is-copied')},2600);
-      if(ok)fire('pix_key_copied',{value:valor});
+      if(ok){fire('pix_key_copied',{value:valor});avisarCopia(texto);}
     };
     box.querySelectorAll('[data-pix-copy]').forEach(b=>b.onclick=()=>copiar(b.dataset.pixCopy,b));
     $('pix-later').onclick=()=>{
