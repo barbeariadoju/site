@@ -42,6 +42,9 @@ Deno.serve(async(req:Request)=>{
       p_notes:body.notes?String(body.notes).trim():null,
       p_selected_products:Array.isArray(body.selected_products)?body.selected_products:[]
     })
+    // v29.52.0 — cliente bloqueado por furo repetido (trigger bookings_block_guard):
+    // mensagem neutra, sem expor o bloqueio; encaixe só na conversa com o Juliano.
+    if(createError&&String(createError.message||'').includes('cliente_bloqueado'))return json({error:'Não foi possível concluir o agendamento online para este horário. Fale com a gente pelo WhatsApp que encontramos juntos um horário pra você.'},400)
     if(createError)return json({error:createError.message},400)
 
     const managementToken=token()

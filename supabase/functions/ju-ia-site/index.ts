@@ -2072,7 +2072,19 @@ Deno.serve(async req=>{
     const selectedProducts=next.products.map((n:string)=>findProduct(n)).filter(Boolean).map((p:any)=>({name:p.name,price:p.price}))
     const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
     if(error){
-     if(error.message.includes('indisponível')){
+     if(error.message.includes('cliente_bloqueado')){
+      // v29.52.0 (caso Graziele, 3 furos): cliente bloqueado não agenda sozinho.
+      // Resposta neutra (sem expor o bloqueio) + push pro Juliano decidir o encaixe.
+      reply='Esse horário eu preciso confirmar direto com o Juliano — já avisei ele aqui e assim que ele conferir a agenda te respondo por aqui, tudo bem? 😊'
+      actions=[]
+      intent='other'
+      handoff=false
+      const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+      if(pushSecret){
+       await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'🚫 Cliente bloqueado tentou agendar',body:`${next.name||phone} pediu ${formatDateBR(next.date)} às ${next.time}. Você decide o encaixe — responda no WhatsApp.`,url:'https://wa.me/'+phone,tag:`blocked-attempt-${phone}`}})}).catch(()=>{})
+      }
+     }
+     else if(error.message.includes('indisponível')){
       // v29.43.5 (caso Helo, 15/08): ela escolheu 10:45 pra corte (30 min), depois incluiu
       // sobrancelha + barba (60 min) e o 10:45 nao cabia mais — a resposta "acabou de ficar
       // indisponivel" era falsa (ninguem pegou) e ainda exigiu mais uma rodada pra ela ver o
