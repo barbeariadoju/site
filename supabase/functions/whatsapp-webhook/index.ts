@@ -1011,12 +1011,19 @@ Deno.serve(async (request: Request) => {
           // escreveu "só elogios hein" — a JuIA respondeu "não entendi" e NÃO disparou o
           // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:
           // prejuízo direto. Elogio em texto livre agora conta como satisfeito.
-          const praise = /elogi|gostei|gostamos|amei|adorei|perfeit|excelent|maravilh|sensacional|nota ?10|recomend|parabens|caprichad|impec|top\b|show\b|massa\b|daora|curti|melhor|satisfeit|otimo|otima|muito bo[am]|ficou bo[am]|arrasou|show de bola|gratid/.test(normalizedReply)
+          // v29.52.1 — caso Leticia (20/08): "1 Meu marido gostou bastante" não casava nada
+          // (o ^1$ exige número sozinho e "gostou" faltava no dicionário) e caiu no modelo,
+          // sem registrar a pesquisa nem disparar o pedido do Google. Dois reparos: elogio
+          // em 3ª pessoa (gostou/adorou/aprovou/amou) e "1"/"2" no INÍCIO seguido de
+          // comentário contam como resposta da pesquisa.
+          const praise = /elogi|gost(ei|amos|ou|aram)|am(ei|ou)|ador(ei|ou)|aprov(ou|ei|ado)|perfeit|excelent|maravilh|sensacional|nota ?10|recomend|parabens|caprichad|impec|top\b|show\b|massa\b|daora|curti|melhor|satisfeit|otimo|otima|muito bo[am]|ficou bo[am]|arrasou|show de bola|gratid/.test(normalizedReply)
+          const leadingOne = /^1[\s!.,:;-]/.test(trimmedNormalized)
+          const leadingTwo = /^2[\s!.,:;-]/.test(trimmedNormalized)
           // v29.17.0 — caso Robson: "O 1 é relativo a pesquisa." é metafala SOBRE a pesquisa
           // e caía no "não entendi". Quem cita a pesquisa/avaliação e diz 1 ou 2 no meio da
           // frase está respondendo a ela, mesmo sem o número vir sozinho no início.
           const refersToSurvey = /pesquis|avaliacao/.test(normalizedReply)
-          const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized)
+          const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized) || leadingTwo
             || (refersToSurvey && /\b2\b/.test(normalizedReply) && !/\b1\b/.test(normalizedReply))
           // v29.51.0 — caso Vivian/Theo (19/08): "O Theo tá muito inquieto com o cabelo…😁"
           // caiu como SATISFEITO só por causa do emoji, e a JuIA respondeu "Que ótimo saber
@@ -1028,7 +1035,7 @@ Deno.serve(async (request: Request) => {
           // `&& !isUnsatisfied` é essencial: "não gostei" contém "gostei" e cairia como
           // elogio, mandando pedido de avaliação pra quem reclamou.
           const isSatisfied = !isUnsatisfied && !asksSomethingElse && !mentionsProblem
-            && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized)
+            && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized) || leadingOne
               || (refersToSurvey && /\b1\b/.test(normalizedReply)))
           if (mentionsProblem && !isUnsatisfied) {
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
