@@ -46,7 +46,7 @@ Deno.serve(async(req:Request)=>{
 
   const {data:rows,error}=await admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,channel)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,channel,prepay_confirmed_at)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
     .limit(50)
@@ -106,9 +106,15 @@ Deno.serve(async(req:Request)=>{
       }
       if(desconto>0) linhas.push(`🎁 Desconto fidelidade — ${money(desconto)}`)
       // Só detalha as duas formas de pagamento quando forem realmente diferentes.
-      const pagamentoLinha=produtos.length>0 && pagProdutos && pagServico && pagProdutos!==pagServico
-        ? `💳 Serviço ${pagServico} · Produtos ${pagProdutos}`
-        : pagServico ? `💳 Pago ${pagServico}` : ''
+      // v29.56.0 (caso Aletéia, 21/08): quem pagou ANTECIPADO por Pix e teve o pagamento
+      // confirmado pelo Juliano recebia um comprovante sem NENHUMA linha de pagamento quando
+      // a forma não tinha sido preenchida na conclusão — o cliente que já pagou lê isso como
+      // "não registraram meu Pix". O pagamento antecipado confirmado vale como forma de
+      // pagamento por si só.
+      const pagServicoEfetivo=pagServico||(booking?.prepay_confirmed_at?'no Pix (antecipado)':'')
+      const pagamentoLinha=produtos.length>0 && pagProdutos && pagServicoEfetivo && pagProdutos!==pagServicoEfetivo
+        ? `💳 Serviço ${pagServicoEfetivo} · Produtos ${pagProdutos}`
+        : pagServicoEfetivo ? `💳 Pago ${pagServicoEfetivo}` : ''
 
       // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
       // mensagem separada (send-walkin-welcome, 9 min antes desta) agora é UMA linha aqui.

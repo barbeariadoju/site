@@ -163,10 +163,16 @@ Deno.serve(async(req:Request)=>{
     if(!suggestedDate){await skip('sem_horario_nas_proximas_semanas');continue}
 
     const first=String(b.customer_name||'').trim().split(/\s+/)[0]||''
-    const weekday=new Date(suggestedDate+'T12:00:00-03:00').toLocaleDateString('pt-BR',{weekday:'long'})
     // "de ontem" só quando é verdade — convite adiado pela pesquisa pode sair 2-3 dias depois.
     const visitWord=b.booking_date===candidateDays[0]?'a visita de ontem':'sua visita'
-    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer ${visitWord} 🙏 Quer já deixar seu retorno reservado? Tenho ${weekday}, ${formatDateBR(suggestedDate)} às ${suggestedTime} (${b.service_name}) — ${semanasLabel}.\n*1* — Pode reservar ✅\n*2* — Prefiro outro dia/horário 🔄\n*3* — Agora não, obrigado\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
+    // v29.56.0 — pedido do Juliano (21/08/2026, caso Rinaldo): o convite NÃO propõe mais data.
+    // Cravar "quinta, 17/09 às 17:30 — daqui a 4 semanas" (a) escancara que a agenda está
+    // livre lá na frente e (b) decide pelo cliente um intervalo que talvez não seja o dele.
+    // Agora são três passos curtos: quer reservar? (1/2) -> pra quando? (1 semana/15/30 dias)
+    // -> escolhe entre alguns horários daquele dia. A data sugerida continua sendo calculada
+    // aqui (guarda "tem agenda nas próximas semanas" e fica registrada pra relatório), mas
+    // NUNCA aparece na mensagem. Ver [[posicionamento-barbearia-do-ju]] e a regra de 20/08.
+    const waText=`Oi${first?`, ${first}`:''}! 💈 Passando pra agradecer ${visitWord} 🙏\n\nQuer já deixar seu próximo horário reservado?\n*1* — Quero sim ✅\n*2* — Agora não, obrigado\n\nSe preferir decidir depois, tranquilo — é só me chamar por aqui 😊`
     try{
       const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
         method:'POST',

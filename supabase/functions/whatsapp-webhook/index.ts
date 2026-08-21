@@ -263,6 +263,42 @@ Deno.serve(async (request: Request) => {
                 ? 'juia'
                 : null
 
+    // v29.58.0 — pedido do Juliano (21/08/2026, caso Dr. Pedro): ele REAGIU com 👍 ao
+    // comprovante em vez de digitar "1". Reação não é mensagem de texto — chegava vazia,
+    // virava "[mídia ou mensagem sem texto]" e morria ali: a pesquisa ficava pendente pra
+    // sempre, o pedido de avaliação no Google nunca saía, e ainda travava a fila única
+    // (convite de retorno, follow-up) esperando uma resposta que, pro cliente, já tinha sido
+    // dada. Agora reação positiva na pergunta da pesquisa vale como "1 — satisfeito" e
+    // negativa como "2", entrando no MESMO caminho de sempre (inclusive o ask do Google).
+    // Reação em qualquer outra mensagem é ignorada em silêncio — é só um carinho, não pede
+    // resposta, e responder a um 👍 solto é exatamente o tipo de robô chato que não queremos.
+    const reactionRaw = (data?.message as any)?.reactionMessage
+    const reactionEmoji = String(reactionRaw?.text || '').trim()
+    if (reactionEmoji && !fromMe) {
+      const reactedId = String(reactionRaw?.key?.id || '')
+      let alvoBody = ''
+      if (reactedId) {
+        const { data: alvoRow } = await admin
+          .from('whatsapp_messages')
+          .select('body')
+          .eq('evolution_message_id', reactedId)
+          .eq('direction', 'out')
+          .maybeSingle()
+        alvoBody = String(alvoRow?.body || '')
+      }
+      const reagiuNaPesquisa = /satisfeito/i.test(alvoBody) && /insatisfeito/i.test(alvoBody)
+      const positivo = /[\u{1F44D}\u{1F44F}\u{2764}\u{2665}\u{1F49B}\u{1F49C}\u{1F49A}\u{1F60D}\u{1F929}\u{1F525}\u{1F91D}\u{1F60A}\u{1F600}\u{1F603}\u{1F604}\u{1F606}\u{1F64F}\u{2705}\u{1F4AF}\u{1F31F}]/u.test(reactionEmoji)
+      const negativo = /[\u{1F44E}\u{1F621}\u{1F620}\u{1F612}\u{1F61E}\u{1F622}\u{1F62D}\u{1F92C}]/u.test(reactionEmoji)
+      if (reagiuNaPesquisa && (positivo || negativo)) {
+        text = positivo ? '1' : '2'
+        // Roteia explicitamente pra pesquisa: sem isso um "1" solto poderia ser capturado
+        // antes pelo convite de retorno (que roda primeiro na fila de interceptadores).
+        quotedTarget = 'survey'
+      } else {
+        return json({ ok: true, skipped: 'reaction_ignored' })
+      }
+    }
+
     const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
     const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
@@ -851,6 +887,117 @@ Deno.serve(async (request: Request) => {
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
         }
 
+        // v29.56.0 — ETAPAS 2 e 3 do convite de retorno (pedido do Juliano, 21/08/2026).
+        // O convite não crava mais data: pergunta se quer reservar (1/2), depois PRA QUANDO
+        // (1 semana / 15 dias / 30 dias) e só então oferece alguns horários daquele dia.
+        // O estado da conversa guarda o passo; o return_invites continua 'sent' até resolver,
+        // então a fila única (juia_pending_numeric_question) segue segurando os outros robôs.
+        // Nunca dizemos QUANTOS horários existem — só uma amostra (regra de 20/08).
+        {
+          const { data: invConvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+          const invState = (invConvRow?.state || {}) as Record<string, any>
+          const pendInvite = invState.pending_invite as any
+          const saveInviteState = async (value: any) => {
+            await admin.from('whatsapp_conversations').update({ state: { ...invState, pending_invite: value }, updated_at: new Date().toISOString() }).eq('phone', phone)
+          }
+          const dropInvite = async (inviteId: string, status: string) => {
+            await saveInviteState(null)
+            await admin.from('return_invites').update({ status, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', inviteId)
+          }
+          if (pendInvite?.invite_id && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'invite')) {
+            const raw = normalize(text).trim()
+            const soNumero = /^[1-9][\s!.,]*$/.test(raw) ? Number(raw[0]) : 0
+            const duracao = Number(pendInvite.duration_minutes) || 30
+            // Amostra espalhada: até 4 horários bem distribuídos no dia, sem revelar o total.
+            const amostra = (lista: string[]) => {
+              if (lista.length <= 4) return lista
+              const passo = (lista.length - 1) / 3
+              return [0, 1, 2, 3].map((i) => lista[Math.round(i * passo)]).filter((v, i, a) => a.indexOf(v) === i)
+            }
+            const buscarDia = async (isoBase: string) => {
+              for (let d = 0; d <= 6; d++) {
+                const iso = new Date(new Date(`${isoBase}T12:00:00Z`).getTime() + d * 24 * 3600 * 1000).toISOString().slice(0, 10)
+                const { data: slots } = await admin.rpc('get_available_slots', { p_date: iso, p_duration_minutes: duracao })
+                const lista = (slots || []).map((x: any) => String(x.slot_time).slice(0, 5))
+                if (lista.length) return { iso, lista }
+              }
+              return null
+            }
+            if (pendInvite.stage === 'interval') {
+              const dias = soNumero === 1 ? 7 : soNumero === 2 ? 15 : soNumero === 3 ? 30 : 0
+              if (!dias) {
+                // Qualquer outra coisa ("dia 5", "só em setembro", uma pergunta): o convite sai
+                // do caminho e a JuIA assume a conversa normalmente. Nunca insistir.
+                await dropInvite(String(pendInvite.invite_id), 'counter')
+              } else {
+                const base = new Date(new Date(`${pendInvite.base_date}T12:00:00Z`).getTime() + dias * 24 * 3600 * 1000).toISOString().slice(0, 10)
+                const achado = await buscarDia(base)
+                if (!achado) {
+                  await dropInvite(String(pendInvite.invite_id), 'counter')
+                  await sendWhatsapp(phone, 'Nessa semana eu não consigo encaixar 😕 Me diz outro dia que fica bom pra você que eu confiro por aqui.')
+                  return
+                }
+                const opcoes = amostra(achado.lista)
+                const linhas = opcoes.map((t, i) => `*${i + 1}* — ${t}`).join('\n')
+                const diaSemana = new Date(achado.iso + 'T12:00:00-03:00').toLocaleDateString('pt-BR', { weekday: 'long' })
+                await saveInviteState({ ...pendInvite, stage: 'slot', date: achado.iso, options: opcoes, at: new Date().toISOString() })
+                await sendWhatsapp(phone, `Fechado! Olhando ${diaSemana}, ${formatDateBR(achado.iso)} — qual horário fica melhor?\n${linhas}\n\nSe preferir outro dia ou horário, é só me dizer 😊`)
+                return
+              }
+            } else if (pendInvite.stage === 'slot') {
+              const opcoes: string[] = Array.isArray(pendInvite.options) ? pendInvite.options : []
+              const porHora = raw.match(/\b([01]?\d|2[0-3])[:h]([0-5]\d)?\b/)
+              const escolhido = soNumero >= 1 && soNumero <= opcoes.length
+                ? opcoes[soNumero - 1]
+                : porHora
+                  ? opcoes.find((t) => t.startsWith(String(porHora[1]).padStart(2, '0') + ':') && (!porHora[2] || t.endsWith(porHora[2]))) || ''
+                  : ''
+              if (!escolhido) {
+                await dropInvite(String(pendInvite.invite_id), 'counter')
+              } else {
+                const { data: novoId, error: erroBook } = await admin.rpc('create_public_booking_v15', {
+                  p_customer_name: pendInvite.customer_name || 'Cliente',
+                  p_customer_phone: phone,
+                  p_customer_email: null,
+                  p_service_name: pendInvite.service_name,
+                  p_service_price: pendInvite.service_price,
+                  p_duration_minutes: duracao,
+                  p_booking_date: pendInvite.date,
+                  p_start_time: escolhido,
+                  p_notes: 'Retorno pré-agendado pelo convite da JuIA',
+                  p_selected_products: [],
+                })
+                if (erroBook || !novoId) {
+                  console.error('[whatsapp-webhook] convite retorno book v2', erroBook)
+                  await dropInvite(String(pendInvite.invite_id), 'counter')
+                  await sendWhatsapp(phone, 'Poxa, esse horário acabou de ser ocupado 😔 Me diz outro dia e horário que ficam bons pra você que eu encaixo por aqui mesmo.')
+                  return
+                }
+                await admin.from('bookings').update({ channel: 'juia_whatsapp' }).eq('id', novoId)
+                await saveInviteState(null)
+                await admin.from('return_invites').update({ status: 'accepted', result_booking_id: novoId, suggested_date: pendInvite.date, suggested_time: escolhido, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pendInvite.invite_id)
+                await sendWhatsapp(phone, `Prontinho! ✅ Seu retorno está reservado: ${pendInvite.service_name} em ${formatDateBR(pendInvite.date)} às ${escolhido}. Te espero! 💈 Qualquer imprevisto, é só me chamar por aqui.`)
+                const pushSecretRet = Deno.env.get('PUSH_WEBHOOK_SECRET')
+                if (pushSecretRet) {
+                  await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecretRet },
+                    body: JSON.stringify({
+                      custom: {
+                        title: '🔁 Retorno pré-agendado pelo convite',
+                        body: `${pendInvite.customer_name || phone} escolheu ${formatDateBR(pendInvite.date)} às ${escolhido} (${pendInvite.service_name}).`,
+                        url: '/admin-agenda.html?app=1',
+                        tag: `return-invite-${pendInvite.invite_id}`,
+                      },
+                    }),
+                  }).catch((error) => console.error('[whatsapp-webhook] push convite retorno v2', error))
+                }
+                return
+              }
+            }
+          }
+        }
+
         // v29.16.0 — resposta ao convite de retorno pós-atendimento (mandado pelo cron
         // return-invite-dispatch na manhã seguinte ao atendimento). Checado ANTES da
         // pesquisa de satisfação de propósito: o convite é sempre a pergunta mais RECENTE
@@ -887,9 +1034,15 @@ Deno.serve(async (request: Request) => {
           const inviteTrimmed = inviteReply.trim()
           // Ordem importa: "não, prefiro outro dia" tem negação E pedido de outro horário —
           // outro-dia primeiro; "agora não" é recusa; só então o sim.
-          const inviteOtherDay = /^2[\s!.,]*$/.test(inviteTrimmed) || /outro dia|outro horari|prefiro outr|remarc|mudar o dia|mudar o horari|semana que vem/.test(inviteReply)
-          const inviteDecline = !inviteOtherDay && (/^3[\s!.,]*$/.test(inviteTrimmed) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
-          const inviteAccept = !inviteOtherDay && !inviteDecline && (/^1[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply))
+          // v29.56.0: a pergunta agora é só "quer reservar?" — *1* sim, *2* não.
+          // COMPATIBILIDADE: os convites disparados ANTES deste deploy usavam 1/2/3, onde o
+          // "2" era "prefiro outro dia" e o "3" era a recusa. Responder "tudo bem, quando
+          // quiser me chama" a quem quis outro dia seria perder a venda por detalhe de versão.
+          // Os convites antigos expiram sozinhos em 48h e esta trava sai junto.
+          const inviteV2 = Date.parse(String(returnInvite.sent_at || '')) >= Date.parse('2026-08-21T13:30:00Z')
+          const inviteOtherDay = (!inviteV2 && /^2[\s!.,]*$/.test(inviteTrimmed)) || /outro dia|outro horari|prefiro outr|remarc|mudar o dia|mudar o horari/.test(inviteReply)
+          const inviteDecline = !inviteOtherDay && ((inviteV2 ? /^2[\s!.,]*$/.test(inviteTrimmed) : /^3[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
+          const inviteAccept = !inviteOtherDay && !inviteDecline && (/^1[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply))
           const canonInvitePhone = (v: unknown) => {
             const d = String(v || '').replace(/\D/g, '')
             return d.length === 10 || d.length === 11 ? `55${d}` : d
@@ -904,44 +1057,29 @@ Deno.serve(async (request: Request) => {
               await sendWhatsapp(phone, `Você já está com horário marcado pra ${formatDateBR(alreadyBooked.booking_date)} às ${String(alreadyBooked.start_time).slice(0, 5)} 😊 Te espero! Se quiser mudar, é só me falar.`)
               return
             }
-            const { data: newBookingId, error: inviteBookError } = await admin.rpc('create_public_booking_v15', {
-              p_customer_name: returnInvite.customer_name || 'Cliente',
-              p_customer_phone: phone,
-              p_customer_email: null,
-              p_service_name: returnInvite.service_name,
-              p_service_price: returnInvite.service_price,
-              p_duration_minutes: returnInvite.duration_minutes || 30,
-              p_booking_date: returnInvite.suggested_date,
-              p_start_time: returnInvite.suggested_time,
-              p_notes: 'Retorno pré-agendado pelo convite da JuIA',
-              p_selected_products: [],
-            })
-            if (inviteBookError || !newBookingId) {
-              // Horário sugerido foi ocupado entre o convite e a resposta — devolve pro
-              // fluxo de conversa em vez de deixar o cliente no vácuo.
-              console.error('[whatsapp-webhook] convite retorno book', inviteBookError)
-              await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
-              await sendWhatsapp(phone, 'Poxa, esse horário acabou de ser ocupado 😔 Me diz outro dia e horário que ficam bons pra você que eu encaixo por aqui mesmo.')
-              return
-            }
-            await admin.from('bookings').update({ channel: 'juia_whatsapp' }).eq('id', newBookingId)
-            await admin.from('return_invites').update({ status: 'accepted', result_booking_id: newBookingId, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
-            await sendWhatsapp(phone, `Prontinho! ✅ Seu retorno está reservado: ${returnInvite.service_name} em ${formatDateBR(returnInvite.suggested_date)} às ${String(returnInvite.suggested_time).slice(0, 5)}. Te espero! 💈 Qualquer imprevisto, é só me chamar por aqui.`)
-            const invitePushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-            if (invitePushSecret) {
-              await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-webhook-secret': invitePushSecret },
-                body: JSON.stringify({
-                  custom: {
-                    title: '🔁 Retorno pré-agendado pelo convite',
-                    body: `${returnInvite.customer_name || phone} aceitou o convite: ${returnInvite.service_name} em ${formatDateBR(returnInvite.suggested_date)} às ${String(returnInvite.suggested_time).slice(0, 5)}.`,
-                    url: '/admin-agenda.html?app=1',
-                    tag: `return-invite-${returnInvite.id}`,
-                  },
-                }),
-              }).catch((error) => console.error('[whatsapp-webhook] push convite retorno', error))
-            }
+            // v29.56.0 — ETAPA 2: em vez de reservar uma data que NÓS escolhemos, perguntamos
+            // pra quando ele quer. O intervalo é do cliente, não do robô. A conta é feita a
+            // partir da data do último atendimento (é o que ele sente como "1 semana depois").
+            const { data: convInvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+            const stInv = (convInvRow?.state || {}) as Record<string, unknown>
+            const { data: baseBooking } = await admin.from('bookings').select('booking_date').eq('id', returnInvite.booking_id).maybeSingle()
+            await admin.from('whatsapp_conversations').update({
+              state: {
+                ...stInv,
+                pending_invite: {
+                  invite_id: returnInvite.id,
+                  stage: 'interval',
+                  customer_name: returnInvite.customer_name,
+                  service_name: returnInvite.service_name,
+                  service_price: returnInvite.service_price,
+                  duration_minutes: returnInvite.duration_minutes || 30,
+                  base_date: baseBooking?.booking_date || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
+                  at: new Date().toISOString(),
+                },
+              },
+              updated_at: new Date().toISOString(),
+            }).eq('phone', phone)
+            await sendWhatsapp(phone, `Boa! 😄 Pra quando você quer deixar reservado?\n*1* — Daqui a 1 semana\n*2* — Daqui a 15 dias\n*3* — Daqui a 30 dias\n\nSe preferir outra data, é só me dizer qual 😊`)
             return
           } else if (inviteOtherDay) {
             await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)

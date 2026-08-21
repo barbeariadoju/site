@@ -565,6 +565,17 @@ Deno.serve(async req=>{
  const simpleNo=includesAny(normalizedQuestion,['nao','não','deixa assim','mantem','manter','deixa pra la']) && normalizedQuestion.length<35
  const keepBothRequest=includesAny(normalizedQuestion,['manter os dois','manter ambos','deixa os dois','quero os dois'])
 
+ // v29.54.0 — caso Aletéia (21/08/2026, 08h54): ela perguntou "Qual o valor do corte?" DUAS
+ // vezes e a JuIA não respondeu nenhuma das duas — na segunda, ainda leu a pergunta como
+ // confirmação e criou o agendamento. Cliente marcada, a caminho, sem saber o preço. Duas
+ // travas nascem aqui: (1) pergunta de preço tem resposta determinística com o valor do que
+ // já está escolhido (blocos abaixo); (2) PERGUNTA NUNCA VIRA AGENDAMENTO — só confirmação
+ // explícita ou "sim" curto fecham. Vale pra qualquer pergunta, não só a de preço.
+ const askedPrice=/(quanto (custa|e|fica|sai|da|seria))|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)/.test(normalizedQuestion)
+ const isQuestion=/\?\s*$/.test(String(message||'').trim())||askedPrice
+ const explicitConfirm=includesAny(normalizedQuestion,['pode confirmar','confirma pra mim','pode fechar','pode marcar','pode agendar','confirmo','isso mesmo'])
+ if(intent==='book'&&isQuestion&&!explicitConfirm&&!simpleYes)intent='faq'
+
  // v29.18.0 — caso Paulo Spina (13/08/2026): cliente recorrente perguntou "consigo um
  // horário hoje 16h30?" e levou interrogatório ("qual serviço?"), mesmo com o histórico
  // dizendo que ele sempre faz Corte de cabelo. Pedido do Juliano: pra quem já é de casa,
@@ -1676,7 +1687,17 @@ Deno.serve(async req=>{
  }
  let offerTurn=false // true = esta resposta é a reação à oferta — o "retomar fluxo" abaixo não pode atropelar
  const pendingOffer=Array.isArray(next.upsell_offer_options)&&next.upsell_offer_options.length?next.upsell_offer_options as string[]:null
- if(pendingOffer&&notSpecialFlow){
+ // v29.54.0 (caso Aletéia): pergunta de preço no meio da oferta numerada não é resposta à
+ // oferta nem "mudou de assunto" (que matava a venda) — é uma pergunta legítima que PRECISA
+ // ser respondida com o valor. A oferta continua viva; o horário segue reservado.
+ if(pendingOffer&&notSpecialFlow&&askedPrice&&!explicitConfirm&&chosen.length){
+  const totalNow=chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0)
+  const durNow=chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)
+  const linhas=chosen.map((s:any)=>`${s.name} — ${money(s.price)}`).join('\n')
+  reply=`${linhas}${chosen.length>1?`\n*Total: ${money(totalNow)}*`:''} (${durNow} min).${next.time?` Seu horário das ${next.time} continua reservado.`:''}\n\nQuer que eu confirme assim, ou prefere incluir algum dos itens que te mandei?`
+  actions=[{label:'Confirmar assim',message:'Sim, pode confirmar'}]
+  intent='other';handoff=false;offerTurn=true
+ }else if(pendingOffer&&notSpecialFlow){
   // Palavra-chave de cada opção pra reconhecer resposta por extenso ("quero a barba").
   const offerKeyword=(n:string)=>{
    const k=normalize(n)
@@ -1932,7 +1953,11 @@ Deno.serve(async req=>{
      }
      const lines=offerOpts.map((n,i)=>`*${i+1}* — ${optionLabel(n)}`).join('\n')
      const noneNumber=offerOpts.length+1
-     reply=`Sim! ✅ ${effectiveTime} está disponível para ${serviceNames}. Quer aproveitar e incluir mais alguma coisa? É só me responder com o número:\n${lines}\n*${noneNumber}* — Não, pode fechar assim 😊\n\nAh, e se quiser deixar algum produto de estética ou bebida gelada separado pra retirar na hora, é só me avisar.`
+     // v29.54.0 (caso Aletéia): quando o cliente pergunta o horário E o preço na mesma
+     // mensagem, a oferta numerada reescrevia o reply inteiro e a pergunta do preço sumia.
+     // O valor entra ANTES da oferta — pergunta feita, pergunta respondida.
+     const precoAntes=askedPrice?`${serviceNames} — *${money(chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0))}*.\n\n`:''
+     reply=`${precoAntes}Sim! ✅ ${effectiveTime} está disponível para ${serviceNames}. Quer aproveitar e incluir mais alguma coisa? É só me responder com o número:\n${lines}\n*${noneNumber}* — Não, pode fechar assim 😊\n\nAh, e se quiser deixar algum produto de estética ou bebida gelada separado pra retirar na hora, é só me avisar.`
      actions=[...offerOpts.map((n,i)=>({label:optionLabel(n),message:String(i+1)})),{label:'Não, pode fechar',message:String(noneNumber)}]
      next.upsell_offer_options=[...offerOpts,'__none__']
      next.upsell_offer_done=true
@@ -2235,6 +2260,11 @@ Deno.serve(async req=>{
       // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
       // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.
       const prepayNote=verifiedPhone?' Se preferir já deixar pago pelo Pix, é só me pedir a chave 😉':''
+      // v29.54.0 (caso Aletéia, 21/08): ela respondeu só "Quero" a esta oferta. Sem "pix"/"chave"
+      // na frase, a resposta caía no modelo e a chave saiu SEM O VALOR — exatamente o erro que a
+      // v29.47.0 tinha corrigido. Marca a oferta no estado pra um "quero"/"sim" curto na mensagem
+      // seguinte cair no caminho determinístico (chave + valor).
+      if(verifiedPhone)next.pix_offered=true
       reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}${prepayNote}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
@@ -2374,7 +2404,7 @@ Deno.serve(async req=>{
  // "quanto é?". Agora, pedido de chave Pix com agendamento futuro no número verificado vira
  // resposta determinística: chave + VALOR do próximo agendamento (serviço + produtos) + nome/
  // instituição. Pedido de "celular"/outra chave continua com o modelo (segunda chave).
- const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion))
+ const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion)||(Boolean(state?.pix_offered)&&simpleYes))
   &&!/\b(ja paguei|paguei|comprovante|enviei|mandei|fiz o pix|transferi)\b/.test(normalizedQuestion)
   &&!/\b(celular|telefone|outra chave|segunda chave|cpf|cnpj)\b/.test(normalizedQuestion)
  if(pixKeyAsk&&verifiedPhone&&upcomingBookings.length&&!handoff){
@@ -2385,6 +2415,29 @@ Deno.serve(async req=>{
 💰 Valor: ${money(total)} — ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)}.
 No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Quando fizer, me avisa que o Juliano confere 😉`
   actions=[]
+  next.pix_offered=false
+  // v29.55.0 — caso Aletéia (21/08/2026): a JuIA passou a chave, a cliente pagou em silêncio
+  // (sem avisar, sem comprovante) e o Juliano só descobriu quando ela falou na cadeira, depois
+  // do corte — nenhum push, e o card da Agenda não mostrava nada. É o mesmo buraco que a
+  // migration 126 fechou no SITE (copiar a chave já avisa), agora fechado no WhatsApp:
+  // PASSAR A CHAVE registra o Pix pendente no agendamento e avisa o Juliano UMA vez.
+  // Não mexe em prepay_declared_at — declaração forte continua sendo do cliente/comprovante.
+  if(b?.id){
+   try{
+    const {data:marked}=await supabase.from('bookings')
+      .update({prepay_key:'picpay',updated_at:new Date().toISOString()})
+      .eq('id',b.id).is('prepay_key',null).is('prepay_confirmed_at',null).select('id')
+    const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
+    const supabaseUrl=Deno.env.get('SUPABASE_URL')
+    if(marked&&marked.length&&pushSecret&&supabaseUrl){
+     await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{
+      title:'💸 Passei a chave Pix — fique de olho no extrato',
+      body:`${next.name||contextFullName||'Cliente'} pediu a chave para ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)} — ${money(total)}. Se cair, confirme na Agenda antes de concluir o atendimento.`,
+      url:'/admin-agenda.html?app=1',
+      tag:`prepay-key-sent-${b.id}`}})}).catch(()=>{})
+    }
+   }catch(error){console.error('[ju-ia-site] prepay_key_sent',error)}
+  }
  }
  // v29.43.2: o modelo insiste em escrever "18/08/2026" apesar do prompt. Troca determinística
  // no fim: hoje -> "hoje", amanha -> "amanha", resto -> "sexta (21/08)". Nunca mexe em horario.

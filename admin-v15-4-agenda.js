@@ -243,6 +243,28 @@
       visitInput.placeholder=booking.id?`o sistema conta ${visitNumber(booking)}ª`:'';
       let selectedPayment=prepaid?'pix':'',selectedProductsPayment='';
       modal.hidden=false;
+      // v29.57.0 — caso Aletéia (21/08/2026): a trava da v29.49.0 decidia com o que a PÁGINA
+      // tinha carregado. O Pix dela foi registrado e confirmado com a Agenda já aberta, então
+      // o modal abriu achando que não havia pagamento nenhum e perguntou a forma de novo —
+      // logo pra uma cliente que já tinha pago. Agora o estado do Pix é conferido DIRETO NO
+      // BANCO na hora de abrir. E ganha o aviso que faltava: cliente que declarou o Pix e
+      // ainda NÃO teve confirmação aparece em destaque, porque a hora de conferir o extrato
+      // é essa, antes de fechar o atendimento.
+      if(booking.id){
+        sb.from('bookings').select('prepay_declared_at,prepay_confirmed_at').eq('id',booking.id).maybeSingle().then(({data:fresh})=>{
+          if(!fresh||modal.hidden)return;
+          const slot=modal.querySelector('[data-payment-slot]');
+          if(!slot)return;
+          const jaPago=!!(fresh.prepay_declared_at&&fresh.prepay_confirmed_at);
+          const soDeclarado=!!(fresh.prepay_declared_at&&!fresh.prepay_confirmed_at);
+          if(jaPago&&!prepaid){
+            slot.innerHTML='<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'+paymentPickerHtml('pix');
+            selectedPayment='pix';
+          }else if(soDeclarado){
+            slot.insertAdjacentHTML('afterbegin','<p class="privacy-note" style="margin:4px 0 8px;color:var(--gold2);font-weight:700">⚠️ Este cliente diz ter pago por Pix e você ainda não confirmou o recebimento. Confira o extrato antes de concluir.</p>');
+          }
+        }).catch(()=>{});
+      }
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);
       const paymentSlot=modal.querySelector('[data-payment-slot]');
