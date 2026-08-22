@@ -1903,6 +1903,20 @@ Deno.serve(async req=>{
 
  dropPezinhoSeTemCorte()
  dropBarbaRedundante()
+ // v29.64.0 — caso Helder (22/08, 09h52): a JuIA ofereceu "13:45 — serve pra você?", ele
+ // respondeu "13:45 então" e ela perguntou DE NOVO "quer reservar esse horário?" (ele teve
+ // que dizer "Sim"; no dia anterior já tinha dito ao Juliano que a IA é "chatinha"). Quem
+ // escolhe um horário que a própria JuIA acabou de oferecer já está reservando: vai direto
+ // pro agendamento (a RPC reconfere a vaga). Só quando a oferta única de venda já passou —
+ // senão a mensagem certa é a de disponibilidade com a oferta numerada, que também fecha.
+ {
+  const lastAssistant=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
+  const soOHorario=normalizedQuestion.replace(/[^a-z0-9:]/g,'').length<=16
+  if(intent==='availability'&&effectiveTime&&chosen.length&&next.date&&soOHorario&&!isQuestion&&lastAssistant.includes(effectiveTime)&&/serve pra voc|qual (fica|prefere|voc)|algum desses|mais perto|exemplo/i.test(lastAssistant)&&(upsellOfferDone||next.upsell_offer_done)){
+   next.time=effectiveTime
+   intent='book'
+  }
+ }
  if(intent==='availability'&&!chosen.length){
   // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
   // responde na hora se aquele dia tem agenda aberta (sondando com duração mínima de
@@ -2057,7 +2071,16 @@ Deno.serve(async req=>{
      const antes=alternatives.filter((t:string)=>minutos(t)<alvo).pop()
      const depois=alternatives.find((t:string)=>minutos(t)>alvo)
      const proximos=[antes,depois].filter(Boolean) as string[]
-     if(proximos.length){
+     // v29.64.0 (caso Helder, 22/08 09h51): "Chego umas 13:30 então, espero a vez" — cliente
+     // flexível, e ainda levou duas rodadas ("serve pra você?" → "quer reservar?"). Quem avisa
+     // que chega "por volta de" e "espera a vez" aceita o próximo livre: reserva direto o
+     // primeiro horário depois do pedido (até 30 min) e explica em uma mensagem só.
+     const flexivel=/\bumas\b|por volta|mais ou menos|espero a vez|\bespero\b|qualquer (um|horario)|tanto faz|o que tiver/.test(normalizedQuestion)
+     if(flexivel&&depois&&minutos(depois)-alvo<=30&&(upsellOfferDone||next.upsell_offer_done)){
+      next.time=depois
+      serviceRuleNote=`${effectiveTime} já estava tomado${next.date===today()?'':' nesse dia'}, então deixei o próximo livre, ${depois} — chegando ${effectiveTime} é só esperar ${minutos(depois)-alvo} min ☕`
+      intent='book'
+     }else if(proximos.length){
       const resto=alternatives.filter((t:string)=>!proximos.includes(t))
       const sobra=resto.length?` Se preferir outro, tenho ainda: ${resto.slice(0,3).join(', ')}.`:''
       reply=proximos.length===2
@@ -2395,6 +2418,14 @@ Deno.serve(async req=>{
  if(isFirstMessage){
   const crmName=hasCustomer?String(context?.name||'').trim():''
   const greetName=crmName?firstName(crmName):(String(body?.whatsapp_name||'').trim()?firstName(String(body.whatsapp_name)):'')
+  // v29.64.0 (caso Helder, 22/08 09h49): saiu "Bom dia, Helder! Tudo bem, Helder! Obrigada por
+  // perguntar" — o modelo repetiu o nome que o prefixo já traz. Tira a 1ª menção do nome nos
+  // primeiros 60 caracteres da resposta antes de colar a saudação.
+  if(greetName){
+   const esc=greetName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')
+   const semNome=reply.replace(new RegExp(`^(.{0,60}?)(,\\s*${esc}(?=[!.?,\\s])|\\b${esc},\\s*)`,'i'),'$1')
+   if(semNome!==reply)reply=semNome.charAt(0).toUpperCase()+semNome.slice(1)
+  }
   reply=`${greetingNow()}${greetName?`, ${greetName}`:''}! ${reply}`
  }
  // v28.31.0: funil de conversas com interesse sem agendamento fechado (pedido do
@@ -2518,6 +2549,18 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   return `${wdName} (${d}/${mo})`
  })
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})
+ // v29.64.0 — caso Helder (21/08, 10h10): "Bom trabalho e ótimo dia" → "Muito obrigado,
+ // Helder! Desejo um ótimo dia..." → "Obrigado senhor Juliano" → "Eu que agradeço, Helder!"
+ // — quatro despedidas em cadeia; no dia seguinte ele disse ao Juliano que "desconfiou que
+ // era a IA". Regra de gente: despedida se responde UMA vez. Se a última fala da JuIA já foi
+ // um fechamento e o cliente só devolveu outra gentileza, fica em silêncio (o webhook não
+ // envia resposta vazia; o estado é salvo normalmente).
+ {
+  const lastAssistant=normalize(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
+  const despedidaPura=/^(muito )?(obrigad[oa]|valeu|brigad[oa]|grat[oa])( senhor| sr\.?| juliano| ju| pelo (atendimento|servico))?[!. ]*$|^(bom trabalho|otimo dia|bom dia|boa tarde|boa noite|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve)|tchau|tmj|fique com deus)( (e |pra voce|tambem|senhor|juliano|ju)[a-z ]*)?[!. ]*$/.test(normalizedQuestion.trim())
+  const jaFechou=/agradec|obrigad|otimo dia|bom descanso|abraco|ate (mais|logo|breve)|desejo/.test(lastAssistant)
+  if(despedidaPura&&jaFechou&&!isQuestion&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'){reply='';actions=[];handoff=false;intent='other'}
+ }
  // v29.62.0 — aviso da regra das famílias (só quando o código tirou algo da lista). Cede a
  // vez quando a resposta já traz o aviso específico antigo de barba (29.50.0, "não pagar em
  // dobro") ou de pezinho (29.43.6) — testado ao vivo em 22/08: sem isso saíam os dois.

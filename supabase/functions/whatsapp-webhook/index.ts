@@ -1578,6 +1578,13 @@ Deno.serve(async (request: Request) => {
             console.warn('[whatsapp-webhook] resposta da IA descartada: cliente escreveu de novo antes do envio', phone)
             return
           }
+          // v29.64.0 (caso Helder): resposta VAZIA é a JuIA escolhendo silêncio de propósito
+          // (ex.: segunda despedida seguida). Salva o estado e não manda nada.
+          if (!String(reply || '').trim()) {
+            await admin.from('whatsapp_conversations').update({ state: ai.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
+            console.log('[whatsapp-webhook] JuIA em silêncio de propósito (despedida já respondida)', phone)
+            return
+          }
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },

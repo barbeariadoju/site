@@ -1,3 +1,13 @@
+## 29.64.0 — "A JuIA é chatinha" (caso Helder, 21–22/08): menos rodadas, menos papo
+
+Print do Juliano às 13h30 com a pergunta "o que ela fez de errado?". A conversa inteira no banco mostra o padrão: **ela pede confirmação demais e responde gentileza com mais gentileza até cansar**. Em 21/08 ela respondeu a QUATRO despedidas seguidas do Helder ("Bom trabalho e ótimo dia" → "Obrigado senhor" → …) e no dia seguinte ele disse ao Juliano "eu desconfiei que fosse a IA". Em 22/08: "Bom dia, Helder! Tudo bem, Helder!" (nome duas vezes), "Chego umas 13:30, espero a vez" → "13:30 já está reservado nesse dia… serve 13:45?" → "13:45 então" → **"Quer reservar esse horário?"** → "Sim" → confirmado. Seis mensagens pra um cliente fiel que queria uma.
+
+- **Horário que a própria JuIA ofereceu, escolhido pelo cliente, é reserva** — não pergunta "quer reservar?". Vale quando a mensagem é só o horário (+ "então/pode ser"), a última fala da JuIA continha esse horário com "serve pra você? / qual prefere? / por exemplo" e a oferta única de venda já passou (senão a mensagem certa é a da disponibilidade com a oferta numerada, cujo "4" também fecha). A RPC reconfere a vaga.
+- **Cliente flexível reserva o próximo livre direto**: "chego umas X / por volta / espero a vez / tanto faz" com X tomado → reserva o primeiro horário depois de X (até 30 min) e explica em uma linha ("13:30 já estava tomado, então deixei o próximo livre, 13:45 — chegando 13:30 é só esperar 15 min ☕").
+- **Nome uma vez só**: o modelo escreve "Tudo bem, Helder!" e o prefixo já diz "Bom dia, Helder!" — a 1ª menção do nome nos primeiros 60 caracteres da resposta sai antes de colar a saudação.
+- **Despedida se responde UMA vez**: se a última fala da JuIA já foi fechamento (agradecimento/ótimo dia/abraço) e o cliente devolve só outra gentileza, a JuIA fica em silêncio — ju-ia-site devolve resposta vazia e o webhook não envia nada (estado salvo). Despedida com pedido ou pergunta continua respondida.
+- Já estava corrigido antes (29.43.5): o cochicho "Ainda estou por aqui" depois de "Um abraço, excelente fds" (mesmo Helder, 18/08).
+
 ## 29.63.0 — Handoff não é mudez + agendamento em GRUPO (caso Plinio, 22/08 08h48)
 
 Print do Juliano às 10h: cliente novo vindo do site, "quero falar com o barbeiro" → a JuIA perguntou o motivo (certo) e fez handoff → ele emendou "2 cortes masculinos e 1 infantil / hoje à tarde / tem disponibilidade?" e ficou **25 minutos no vácuo** (o Juliano estava na cadeira). Só o watchdog das 9h15 destravou, com um texto genérico; o "?" dele às 9h22 rendeu "Corte de cabelo + Corte de cabelo infantil (60 min)" com 10:00 entre as opções — 3 pessoas viraram 2 e "à tarde" virou manhã (a frase original nunca chegou ao modelo, só o "?").
