@@ -706,7 +706,28 @@ Deno.serve(async (request: Request) => {
         // Silêncio continua sendo a regra (a JuIA nunca fala por cima dele), mas agora ele
         // recebe um push com a pergunta pra decidir se responde. Deduplicado por 10 min em
         // integration_alerts pra uma conversa animada não virar chuva de notificação.
+        // v29.63.0 — caso Plinio (22/08/2026, sábado, 08h48): "quero falar com o barbeiro" →
+        // handoff (JuIA muda) → ele emendou "2 cortes masculinos e 1 infantil / hoje à tarde /
+        // tem disponibilidade?" e ficou 25 MINUTOS no vácuo, porque o Juliano estava na
+        // cadeira (Augusto, 9h). Só o watchdog das 9h15 destravou, com um texto genérico.
+        // Regra nova: se o takeover nasceu do handoff da PRÓPRIA JuIA e o Juliano ainda não
+        // escreveu nada desde então, pergunta de agenda/preço do cliente é respondida pela
+        // JuIA na hora (com a ressalva de que o Juliano está atendendo) — e o takeover é
+        // liberado. Takeover que nasceu de mensagem do Juliano (caso Deisler) continua mudo.
+        let takeoverAssumidoPelaJuia = false
         if (stillActive) {
+          const perguntaDeAgenda = /horari|dispon|agend|marcar|vaga|encaix|pre[c]o|valor|quanto|hoje|amanha|cort|barb/.test(normalize(text || ''))
+          if (perguntaDeAgenda && conversation?.human_takeover_at) {
+            const { data: humanOut } = await admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
+              .gte('created_at', conversation.human_takeover_at).limit(1)
+            if (!humanOut || !humanOut.length) {
+              takeoverAssumidoPelaJuia = true
+              await admin.from('whatsapp_conversations').update({ human_takeover: false, human_takeover_at: null, updated_at: new Date().toISOString() }).eq('phone', phone)
+              console.log('[whatsapp-webhook] takeover sem resposta humana: JuIA assume a pergunta de agenda', phone)
+            }
+          }
+        }
+        if (stillActive && !takeoverAssumidoPelaJuia) {
           try {
             const alertKey = `takeover_msg_${phone}`
             const { data: lastAlert } = await admin
@@ -1491,6 +1512,13 @@ Deno.serve(async (request: Request) => {
 
           let reply = String(ai.reply)
           let handoff = Boolean(ai.handoff)
+          // v29.63.0 (caso Plinio): a JuIA assumiu uma pergunta de agenda durante o handoff —
+          // avisa que o Juliano está atendendo, mas resolve. E não volta a mudar por causa
+          // de um handoff repetido do modelo na mesma resposta.
+          if (takeoverAssumidoPelaJuia) {
+            reply = `O Juliano está atendendo na cadeira agora, mas eu já te adianto 😊 ${reply}`
+            handoff = false
+          }
 
           // v28.44.4: anti-papagaio — caso real (Juliano, 02/08/2026): ele encaminhou 3
           // mensagens de divulgação com a palavra "barba" (link + textos do lançamento do

@@ -1,3 +1,11 @@
+## 29.63.0 — Handoff não é mudez + agendamento em GRUPO (caso Plinio, 22/08 08h48)
+
+Print do Juliano às 10h: cliente novo vindo do site, "quero falar com o barbeiro" → a JuIA perguntou o motivo (certo) e fez handoff → ele emendou "2 cortes masculinos e 1 infantil / hoje à tarde / tem disponibilidade?" e ficou **25 minutos no vácuo** (o Juliano estava na cadeira). Só o watchdog das 9h15 destravou, com um texto genérico; o "?" dele às 9h22 rendeu "Corte de cabelo + Corte de cabelo infantil (60 min)" com 10:00 entre as opções — 3 pessoas viraram 2 e "à tarde" virou manhã (a frase original nunca chegou ao modelo, só o "?").
+
+- **Webhook — takeover que nasceu do handoff da própria JuIA não cala pergunta de agenda**: se o Juliano ainda não escreveu nada desde o handoff (`sent_by='human'` depois de `human_takeover_at`) e o cliente pergunta de horário/preço/serviço, a JuIA libera o takeover e responde na hora com o prefixo "O Juliano está atendendo na cadeira agora, mas eu já te adianto 😊". Takeover que nasceu de mensagem do Juliano (caso Deisler, 29.12.0) continua em silêncio + push, como antes.
+- **ju-ia-site — grupo**: "N cortes", "N infantil/criança", "N pessoas" viram `group_adults`/`group_kids` no state e a lista de serviços é reexpandida a cada turno (uma entrada por pessoa; a regra das famílias e o modelo colapsam nomes repetidos, por isso a contagem vive em número, não na lista). Duração = soma (3 pessoas = 90 min), um agendamento só no nome de quem chamou. "Só eu / apenas eu / sozinho" desfaz. Prompt ganhou a instrução de grupo.
+- **Sabido e NÃO feito**: agendamento em grupo ainda é 1 registro com o serviço repetido ("Corte de cabelo + Corte de cabelo + Corte de cabelo infantil") — não cria 3 clientes nem 3 fidelidades. Se virar frequente, modelar `group_size` no banco.
+
 ## 29.60.0–29.62.3 — Regra das famílias de serviço (1 corte + 1 barba) + revisão das conversas de 21/08 (22/08)
 
 Sábado, sessão "plano do dia". Duas functions (29.60/29.61) já estavam no ar desde 21/08 17h sem commit — este registro fecha a conta. O resto nasceu da varredura das conversas de ontem e de um print do Juliano às 7h45.
