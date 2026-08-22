@@ -210,7 +210,7 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><div data-google-review-block><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-already-reviewed><small>⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)</small></label></div><p class="privacy-note" data-already-reviewed-note hidden style="margin-top:10px">⭐ Este cliente já avaliou no Google — o pedido de avaliação não será enviado.</p><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
@@ -222,6 +222,21 @@
       modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>':'')+paymentPickerHtml(prepaid?'pix':'');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
+      // v29.65.0 — pedido do Juliano (22/08/2026): um clique "já avaliou no Google" que fica
+      // salvo no cadastro (customer_profiles.google_reviewed) — quem já tem a marca nem vê
+      // mais a opção de pedir avaliação ao concluir. O flag é lido pelo webhook na pesquisa
+      // (customer_already_reviewed, migration 128), então o link do Google não sai mais.
+      const reviewBlock=modal.querySelector('[data-google-review-block]');
+      const reviewedNote=modal.querySelector('[data-already-reviewed-note]');
+      const alreadyBox=modal.querySelector('[data-already-reviewed]');
+      alreadyBox.checked=false;
+      const reviewProfile=(typeof customerProfiles!=='undefined'?customerProfiles:[]).find(p=>p.phone&&booking.customer_phone&&phoneKey(p.phone)===phoneKey(booking.customer_phone));
+      const jaAvaliou=!!(reviewProfile&&(reviewProfile.google_reviewed||reviewProfile.google_review_declared_at));
+      reviewBlock.hidden=jaAvaliou;
+      reviewedNote.hidden=!jaAvaliou;
+      if(jaAvaliou)modal.querySelector('[data-request-google-review]').checked=false;
+      const onAlreadyToggle=()=>{if(alreadyBox.checked)modal.querySelector('[data-request-google-review]').checked=false};
+      alreadyBox.addEventListener('change',onAlreadyToggle);
       modal.querySelector('[data-loyalty-delta]').value='';
       // v29.20.0 — caixinha e cortesia zeradas a cada abertura do modal
       modal.querySelector('[data-tip-amount]').value='';
@@ -292,7 +307,8 @@
           products_payment_method:selectedProductsPayment||null,
           products:readChecklistProducts(modal),
           service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
-          request_google_review:modal.querySelector('[data-request-google-review]').checked,
+          request_google_review:modal.querySelector('[data-request-google-review]').checked&&!alreadyBox.checked&&!jaAvaliou,
+          mark_google_reviewed:alreadyBox.checked,
           loyalty_delta:Number(modal.querySelector('[data-loyalty-delta]').value)||0,
           visit_number:Math.floor(Number(modal.querySelector('[data-visit-number]').value))||0,
           tip_amount:Math.max(0,Number(modal.querySelector('[data-tip-amount]').value))||0,
@@ -302,7 +318,7 @@
       };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
       const confirmEl=modal.querySelector('[data-payment-confirm]');
-      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle)}
+      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle);alreadyBox.removeEventListener('change',onAlreadyToggle)}
       cancelEls.forEach(el=>el.addEventListener('click',onCancel));
       paymentSlot.addEventListener('click',onPaymentClick);
       productsPaymentSlot.addEventListener('click',onProductsPaymentClick);
@@ -386,7 +402,7 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='';
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='';
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
@@ -396,6 +412,7 @@
       completionService=choice.service;
       completionProductsPayment=choice.products_payment_method;
       completionRequestGoogleReview=choice.request_google_review;
+      completionMarkGoogleReviewed=Boolean(choice.mark_google_reviewed);
       completionLoyaltyDelta=choice.loyalty_delta||0;
       completionVisitNumber=choice.visit_number||0;
       completionTipAmount=choice.tip_amount||0;
@@ -414,6 +431,13 @@
       if(completionProducts)body.selected_products=completionProducts;
       if(completionService)body.service=completionService;
       if(typeof completionRequestGoogleReview==='boolean')body.request_google_review=completionRequestGoogleReview;
+      // v29.65.0 — "já avaliou no Google": grava no cadastro (function) e atualiza o cache local
+      // na hora, pra próxima conclusão deste cliente já abrir sem a opção de pedir avaliação.
+      if(completionMarkGoogleReviewed){
+        body.mark_google_reviewed=true;
+        const prof=(typeof customerProfiles!=='undefined'?customerProfiles:[]).find(p=>p.phone&&booking?.customer_phone&&phoneKey(p.phone)===phoneKey(booking.customer_phone));
+        if(prof){prof.google_reviewed=true;prof.google_review_declared_at=prof.google_review_declared_at||new Date().toISOString()}
+      }
       // v29.12.0: extras (pontos antigos + cliente recorrente) vão JUNTO no mesmo pedido.
       // Antes eram um sb.rpc separado daqui do navegador, e em 11/08/2026 falharam calados
       // em 3 conclusões seguidas. Agora quem chama a RPC é a própria function, com o JWT de

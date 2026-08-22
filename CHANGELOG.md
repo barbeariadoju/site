@@ -1,3 +1,12 @@
+## 29.65.0 — "Já avaliou no Google" com um clique no Concluir (pedido do Juliano, 22/08)
+
+Ele reconhece na cadeira quem já deixou avaliação. Antes só dava pra desmarcar "pedir avaliação" **a cada** conclusão — e a marca não ficava em lugar nenhum.
+
+- **Modal "Concluir atendimento"**: novo checkbox *"⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)"*. Marcou uma vez → `admin-booking-status` grava `google_reviewed`/`google_reviewed_at`/`google_review_declared_at` no `customer_profiles` (telefone com e sem 55) e desliga o pedido deste atendimento. Nas próximas conclusões desse cliente o bloco de avaliação some e aparece só o aviso "já avaliou — o pedido não será enviado" (cache local atualizado na hora, sem recarregar).
+- **Migration 128**: `customer_already_reviewed()` — a ÚNICA checagem que o webhook faz antes de mandar o link do Google na pesquisa — passou a ler também o perfil (`google_reviewed` ou `google_review_declared_at`). Antes só contava quem clicou no nosso link (`experience_requests.google_clicked_at`); o "1 = já avaliei" do WhatsApp gravava no perfil e era ignorado. Bug latente, fechado de carona.
+- Cache: `admin-v15-4-agenda.js` e `admin-v15-4-core.js` → `?v=29.65.0` nas 7 páginas do admin; `ADMIN_VERSION`/`admin-version.json` → 29.65.0 (painel aberto recarrega sozinho).
+- Avaliações do Google: 92 no painel, 89 na API (Windsor) — todas respondidas; as 2–3 mais novas ainda não chegaram na API (atraso normal de sincronização), entram na próxima varredura.
+
 ## 29.64.0 — "A JuIA é chatinha" (caso Helder, 21–22/08): menos rodadas, menos papo
 
 Print do Juliano às 13h30 com a pergunta "o que ela fez de errado?". A conversa inteira no banco mostra o padrão: **ela pede confirmação demais e responde gentileza com mais gentileza até cansar**. Em 21/08 ela respondeu a QUATRO despedidas seguidas do Helder ("Bom trabalho e ótimo dia" → "Obrigado senhor" → …) e no dia seguinte ele disse ao Juliano "eu desconfiei que fosse a IA". Em 22/08: "Bom dia, Helder! Tudo bem, Helder!" (nome duas vezes), "Chego umas 13:30, espero a vez" → "13:30 já está reservado nesse dia… serve 13:45?" → "13:45 então" → **"Quer reservar esse horário?"** → "Sim" → confirmado. Seis mensagens pra um cliente fiel que queria uma.

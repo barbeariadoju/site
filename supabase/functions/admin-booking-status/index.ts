@@ -106,6 +106,11 @@ Deno.serve(async (request: Request) => {
     // avaliou antes. Só um booleano puro, sem "trim" (não é string).
     const hasGoogleReviewChange = typeof body?.request_google_review === 'boolean'
     const requestGoogleReview = hasGoogleReviewChange ? Boolean(body.request_google_review) : true
+    // v29.65.0 — clique "já avaliou no Google" no Concluir (pedido do Juliano, 22/08/2026):
+    // grava no CADASTRO (customer_profiles) que o cliente já avaliou, pra nunca mais pedir —
+    // customer_already_reviewed passou a ler esse flag (migration 128) — e desliga o pedido
+    // deste atendimento. Booleano puro.
+    const markGoogleReviewed = body?.mark_google_reviewed === true
     // v29.20.0 — caixinha (gorjeta) e cortesia, vindas do modal "Concluir atendimento".
     // Caixinha fica FORA do faturamento (é do barbeiro), só registrada. Cortesia zera o
     // serviço na receita do Financeiro (tela trata) e o trigger de fidelidade pula o ponto.
@@ -207,6 +212,17 @@ Deno.serve(async (request: Request) => {
     if (hasPaymentMethodChange) updatePayload.payment_method = paymentMethod
     if (hasProductsPaymentMethodChange) updatePayload.products_payment_method = productsPaymentMethod
     if (hasGoogleReviewChange) updatePayload.request_google_review = requestGoogleReview
+    if (markGoogleReviewed) {
+      updatePayload.request_google_review = false
+      const d = String(current.customer_phone || '').replace(/\D/g, '')
+      const semDDI = d.replace(/^55/, '')
+      const agora = new Date().toISOString()
+      const { error: reviewedError } = await admin
+        .from('customer_profiles')
+        .update({ google_reviewed: true, google_reviewed_at: agora, google_review_declared_at: agora, updated_at: agora })
+        .or(`phone.eq.${d},phone.eq.${semDDI},phone.eq.55${semDDI}`)
+      if (reviewedError) console.error('[admin-booking-status] mark_google_reviewed', reviewedError)
+    }
     if (hasTipAmount) updatePayload.tip_amount = tipAmount
     if (hasCourtesyChange) {
       updatePayload.courtesy = courtesy
