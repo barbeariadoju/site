@@ -2557,7 +2557,11 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  // envia resposta vazia; o estado é salvo normalmente).
  {
   const lastAssistant=normalize(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
-  const despedidaPura=/^(muito )?(obrigad[oa]|valeu|brigad[oa]|grat[oa])( senhor| sr\.?| juliano| ju| pelo (atendimento|servico)| demais| viu| amigo)*[!. ]*$|^(bom trabalho|otimo dia|bom dia|boa tarde|boa noite|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve)|tchau|tmj|fique com deus)( (e |pra voce|tambem|senhor|juliano|ju)[a-z ]*)?[!. ]*$/.test(normalizedQuestion.trim())
+  // Começa com agradecimento/despedida, é curta e não traz pedido nenhum. "Bom dia/boa
+  // tarde/boa noite" ficam de fora de propósito: são aberturas de conversa, não fechamento.
+  const q=normalizedQuestion.trim()
+  const pedidoNaFala=/\?|quer|queria|gostaria|marc|agend|horari|pode|consig|tem |teria|preciso|cancel|remarc|quanto|qual|como|onde|quando|vaga|amanha|hoje/.test(q)
+  const despedidaPura=q.length<=60&&!pedidoNaFala&&/^(muito |ok |beleza |show |top )?(obrigad|valeu|brigad|grat[oa]|bom trabalho|otimo dia|otima tarde|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve|a proxima)|tchau|tmj|fique com deus|deus abencoe|excelente (dia|fds|final de semana))/.test(q)
   const jaFechou=/agradec|obrigad|otimo dia|bom descanso|abraco|ate (mais|logo|breve)|desejo/.test(lastAssistant)
   if(despedidaPura&&jaFechou&&!isQuestion&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'){reply='';actions=[];handoff=false;intent='other'}
  }
