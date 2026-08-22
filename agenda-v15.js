@@ -1,4 +1,5 @@
 import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, prettyDate, nextOpenDay } from './assets/js/booking-format.js?v=28.16.2';
+import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.62.0';
 
 (() => {
   const cfg=window.BDJ_AGENDA_CONFIG||{};
@@ -7,6 +8,9 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
   const $=id=>document.getElementById(id);
   const allServices=window.BDJ_SERVICES||[];
   let services=JSON.parse(sessionStorage.getItem('bdj_selected_services_v15')||'[]');
+  // v29.62.0 — lista vinda do carrinho (ou de aba antiga) passa pelo crivo das famílias:
+  // 1 corte + 1 barba por atendimento (ver assets/js/service-rules.js).
+  services=normalizeServiceSet(services).items;
   let products=JSON.parse(sessionStorage.getItem('bdj_selected_products_v15')||'[]');
   let selectedTime='', step=1, slotsRequestId=0, waitlistOfferDate='';
   // Catálogo único em products-catalog-v1.js (mesmo padrão de allServices/BDJ_SERVICES) —
@@ -25,6 +29,12 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
   }
   function saveState(){sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(services));sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(products));}
   function fire(event,data={}){window.dataLayer=window.dataLayer||[];window.dataLayer.push({event,...data});}
+  // Aviso da regra das famílias logo acima das sugestões ("Corte + Barboterapia já inclui a barba").
+  function ruleNotice(message){
+    let el=$('service-rule-notice-v15');
+    if(!el){el=document.createElement('p');el.id='service-rule-notice-v15';el.setAttribute('role','status');el.style.cssText='margin:0 0 .75rem;padding:.65rem .9rem;border-radius:10px;background:#fff7e6;color:#5a3d00;border:1px solid #f0d9a6;font-size:.95rem;line-height:1.35';$('service-suggestions-v15')?.insertAdjacentElement('beforebegin',el);}
+    el.textContent=message||'';el.hidden=!message;
+  }
   function serviceIndex(name){return allServices.findIndex(s=>s.name===name)}
   function renderSelected(){
     const box=$('selected-services-v15'), empty=$('empty-services-v15'); box.innerHTML='';
@@ -42,7 +52,10 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
     box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
     const names=services.map(s=>s.name).join(' ');
     const suggestions=[];
-    const add=n=>{const i=serviceIndex(n);if(i>=0&&!services.some(s=>s.name===n)&&!suggestions.includes(i))suggestions.push(i)};
+    // v29.62.0: só sugere o que a regra das famílias deixaria entrar — antes, qualquer
+    // carrinho com "Corte" ganhava Barba Express como sugestão, mesmo já tendo Barboterapia
+    // dentro do combo (caso Augusto Monteiro, 22/08/2026).
+    const add=n=>{const i=serviceIndex(n);if(i>=0&&!services.some(s=>s.name===n)&&!suggestions.includes(i)&&applyServiceRule(services.map(s=>s.name),n).added)suggestions.push(i)};
     if(/Corte|Lavagem|Luzes|Platinado|Relaxamento/.test(names)){add('Sobrancelha Masculina');add('Barba Express');add('Depilação nasal (cera quente)');add('Hidratação / Reconstrução Capilar')}
     if(/Barba|Barboterapia/.test(names)){add('Pigmentação de Barba');add('Depilação nasal (cera quente)');add('Sobrancelha Masculina')}
     if(!suggestions.length){add('Sobrancelha Masculina');add('Depilação nasal (cera quente)')}
@@ -351,7 +364,7 @@ import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, 
   }
   document.addEventListener('click',e=>{
     const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();return}
-    const add=e.target.closest('[data-add-service]');if(add){const s=allServices[Number(add.dataset.addService)];services.push({name:s.name,price:s.price,duration:s.duration});selectedTime='';fire('upsell_service_added',{item_name:s.name,value:s.price});renderSelected();return}
+    const add=e.target.closest('[data-add-service]');if(add){const s=allServices[Number(add.dataset.addService)];const rule=applyServiceRule(services.map(x=>x.name),s.name);ruleNotice(rule.message);if(!rule.added)return;services=services.filter(x=>rule.services.includes(x.name));services.push({name:s.name,price:s.price,duration:s.duration});selectedTime='';fire('upsell_service_added',{item_name:s.name,value:s.price});renderSelected();return}
     const prod=e.target.closest('[data-product]');if(prod){const p=productCatalog.find(x=>x.name===prod.dataset.product);const i=products.findIndex(x=>x.name===p.name);if(i>=0)products.splice(i,1);else{products.push({name:p.name,price:p.price});fire('product_added_booking',{item_name:p.name,value:p.price})}renderProducts();updateSummary();saveState();return}
   });
   document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));document.querySelectorAll('[data-progress-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.progressStep);if(n<=step)go(n)});

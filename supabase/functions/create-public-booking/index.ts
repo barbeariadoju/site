@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { normalizeServiceSet, splitServiceNames } from '../_shared/service-rules.ts'
 
 const corsHeaders={
   'Access-Control-Allow-Origin':'*',
@@ -29,6 +30,22 @@ Deno.serve(async(req:Request)=>{
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
     const emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET')
     const admin=createClient(url,service)
+
+    // v29.62.0 — rede de segurança da regra das famílias (1 corte + 1 barba por atendimento;
+    // ver supabase/functions/_shared/service-rules.ts). O carrinho e a etapa de horário já
+    // impedem no navegador; aqui pega cache velho, aba antiga ou chamada direta. Caso real:
+    // Augusto Monteiro (22/08/2026) chegou com "Corte + Barboterapia + Barba Express".
+    // Se a lista de serviços não carregar, não bloqueia (melhor um agendamento estranho do
+    // que nenhum) — a JuIA e o admin enxergam e corrigem na cadeira.
+    try{
+      const {data:svc}=await admin.from('services').select('name').eq('active',true)
+      const known=(svc||[]).map((s:any)=>String(s.name))
+      if(known.length){
+        const check=normalizeServiceSet(splitServiceNames(String(body.service_name),known))
+        const r=check.removed.find((x:any)=>x.name!==x.keptBy)
+        if(r)return json({error:`«${r.keptBy}» e «${r.name}» não entram no mesmo horário: a Barboterapia já inclui a barba e todo corte já inclui o acabamento. Vale 1 serviço de corte e 1 de barba por atendimento (exceção: corte adulto + corte infantil). Ajuste a lista e tente de novo.`},400)
+      }
+    }catch(ruleError){console.error('[create-public-booking] service rule',ruleError)}
 
     const {data:id,error:createError}=await admin.rpc('create_public_booking_v15',{
       p_customer_name:String(body.customer_name).trim(),

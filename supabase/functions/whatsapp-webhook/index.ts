@@ -71,6 +71,9 @@ const transcribeAudioMessage = async (
     const form = new FormData()
     form.append('file', new Blob([bytes], { type: 'audio/ogg' }), 'audio.ogg')
     form.append('model', 'whisper-1')
+    // v29.62.2 (caso Marcelo, 21/08/2026): sem o idioma fixo, o Whisper "ouviu" lituano num
+    // áudio em português ("Paldys visi, azuiti mėjim."). Travado em pt.
+    form.append('language', 'pt')
 
     const transcriptionResponse = await fetchWithTimeout('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -376,6 +379,17 @@ Deno.serve(async (request: Request) => {
     let audioTranscribed = false
     if (!text && data?.message?.audioMessage) {
       const transcribed = await transcribeAudioMessage(data?.key, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+      // v29.62.2 (caso Marcelo, 21/08/2026, 15h50): o 2º áudio virou "Paldys visi, azuiti
+      // mėjim." e a JuIA seguiu como se fosse resposta — confirmou 08:30 sem o cliente ter
+      // dito isso de forma legível. Se a transcrição não tem cara de português (letras de
+      // outros alfabetos latinos, nenhuma vogal, nada legível), pede pra repetir em vez de
+      // adivinhar. Mesma saída educada do áudio não transcrito, com texto próprio.
+      const pareceIlegivel = (t: string) => /[ąčęėįšųūžășțłńśźżćđ]/i.test(t) || !/[aeiouáéíóúâêôãõ]/i.test(t) || t.replace(/[^a-zà-ú]/gi, '').length < 2
+      if (transcribed && pareceIlegivel(transcribed)) {
+        await sendWhatsapp(phone, 'Não consegui entender bem o seu áudio 🙉 Pode escrever ou mandar de novo, por gentileza?')
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: `[áudio recebido, transcrição ilegível: ${transcribed.slice(0, 80)}]` })
+        return json({ ok: true, skipped: 'audio_gibberish' })
+      }
       if (transcribed) {
         text = transcribed
         audioTranscribed = true
@@ -412,7 +426,26 @@ Deno.serve(async (request: Request) => {
         }
         if (saysPaid || pixRecente) {
           const { data: prox } = await admin.rpc('phone_upcoming_bookings', { p_phone: phone })
-          const b = Array.isArray(prox) && prox.length ? prox[0] : null
+          let b = Array.isArray(prox) && prox.length ? prox[0] : null
+          // v29.62.1 (caso Aletéia, 21/08/2026, 09h34): marcou 09:30, pediu a chave às 08:56 e
+          // mandou a foto do comprovante às 09:34 — JÁ NA CADEIRA. phone_upcoming_bookings só
+          // enxerga horário futuro, então a foto caiu no fluxo de "referência de corte" ("não
+          // consegui identificar um corte"). Comprovante logo depois da chave vale também pro
+          // atendimento de hoje que começou há pouco (até 3h) e ainda não teve o Pix confirmado.
+          if (!b) {
+            const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+            const agoraSP = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date())
+            const agoraMin = Number(agoraSP.slice(0, 2)) * 60 + Number(agoraSP.slice(3, 5))
+            const { data: recente } = await admin.from('bookings')
+              .select('id, booking_date, start_time, duration_minutes, service_name, status, selected_products, service_price, products_price, prepay_declared_at')
+              .in('customer_phone', [phone, phone.replace(/^55/, '')]).eq('booking_date', hojeSP)
+              .in('status', ['pending', 'confirmed', 'completed']).is('prepay_confirmed_at', null)
+              .order('start_time', { ascending: false }).limit(3)
+            b = (recente || []).find((r: any) => {
+              const m = Number(String(r.start_time).slice(0, 2)) * 60 + Number(String(r.start_time).slice(3, 5))
+              return agoraMin - m >= 0 && agoraMin - m <= 180
+            }) || null
+          }
           if (b) {
             const total = Number(b.service_price || 0) + Number(b.products_price || 0)
             const quando = `${String(b.booking_date).split('-').reverse().slice(0, 2).join('/')} às ${String(b.start_time).slice(0, 5)}`
@@ -887,6 +920,57 @@ Deno.serve(async (request: Request) => {
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.
         }
 
+        // v29.60.0 — resposta ao menu do cliente insatisfeito (1 reparo · 2 ressarcimento ·
+        // 3 sugestão). Roda ANTES de qualquer outro interceptador: insatisfação é sempre a
+        // pergunta mais urgente da conversa. Texto livre também resolve (palavras-chave ou,
+        // no fim, vira relato registrado) — ninguém insatisfeito pode cair em "Não entendi".
+        // O ressarcimento NUNCA é executado pelo robô: registra o pedido e o Juliano decide.
+        {
+          const { data: unsatConvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+          const unsatState = (unsatConvRow?.state || {}) as Record<string, any>
+          const pendUnsat = unsatState.pending_unsat as any
+          if (pendUnsat?.token && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
+            const rawUnsat = normalize(text).trim()
+            const nUnsat = /^[123][\s!.,]*$/.test(rawUnsat) ? Number(rawUnsat[0]) : 0
+            const clearUnsat = async () => {
+              await admin.from('whatsapp_conversations').update({ state: { ...unsatState, pending_unsat: null }, updated_at: new Date().toISOString() }).eq('phone', phone)
+            }
+            const pushUnsat = async (title: string, body: string) => {
+              const s = Deno.env.get('PUSH_WEBHOOK_SECRET')
+              if (!s) return
+              await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-webhook-secret': s },
+                body: JSON.stringify({ custom: { title, body, url: 'https://wa.me/' + phone, tag: `unsat-choice-${phone}` } }),
+              }).catch((error) => console.error('[whatsapp-webhook] push unsat choice', error))
+            }
+            const nomeUnsat = pendUnsat.customer_name || phone
+            if (nUnsat === 1 || /reparo|retoque|ajust|reagend|remarc|corrigir|arrumar/.test(rawUnsat)) {
+              await clearUnsat()
+              await sendWhatsapp(phone, 'Claro! Me diz o dia e o horário que ficam melhores pra você que o Juliano confirma o reparo por aqui — sem nenhum custo, e com prioridade 😊')
+              await pushUnsat('🔧 Insatisfeito quer REPARO sem custo', `${nomeUnsat} escolheu reagendar pra reparo/ajuste. Combine o horário — ele responde por aqui.`)
+              return
+            } else if (nUnsat === 2 || /ressarc|reembols|devolu|estorno|dinheiro de volta/.test(rawUnsat)) {
+              await clearUnsat()
+              await sendWhatsapp(phone, 'Entendido. Já passei agora pro Juliano providenciar o ressarcimento — ele confirma com você por aqui em breve. E mais uma vez: me desculpe por não termos acertado dessa vez 🙏')
+              await pushUnsat('💸 Insatisfeito pediu RESSARCIMENTO', `${nomeUnsat} pediu o valor de volta. Falar com ele e providenciar — o robô só registrou, não devolveu nada.`)
+              return
+            } else if (nUnsat === 3) {
+              await clearUnsat()
+              await sendWhatsapp(phone, 'Pode contar 🙏 Estou lendo, e o Juliano também vai ler pessoalmente cada palavra. O que aconteceu?')
+              return
+            } else {
+              // Texto livre = o próprio relato. Registra como feedback da pesquisa e
+              // encaminha — o cliente não precisa se encaixar em número nenhum.
+              await clearUnsat()
+              await admin.from('experience_requests').update({ feedback: String(text).slice(0, 2000), updated_at: new Date().toISOString() }).eq('token', pendUnsat.token).is('feedback', null)
+              await sendWhatsapp(phone, 'Obrigado por me contar 🙏 O Juliano vai ler pessoalmente e te responde por aqui.')
+              await pushUnsat('💬 Relato do cliente insatisfeito', `${nomeUnsat}: "${String(text).slice(0, 180)}"`)
+              return
+            }
+          }
+        }
+
         // v29.56.0 — ETAPAS 2 e 3 do convite de retorno (pedido do Juliano, 21/08/2026).
         // O convite não crava mais data: pergunta se quer reservar (1/2), depois PRA QUANDO
         // (1 semana / 15 dias / 30 dias) e só então oferece alguns horários daquele dia.
@@ -1258,9 +1342,16 @@ Deno.serve(async (request: Request) => {
           } else if (isUnsatisfied) {
             const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: null })
             if (submitResult?.ok) {
-              const reply = 'Poxa, sinto muito que sua experiência não tenha sido como esperávamos. 😕 O que podemos fazer pra você se sentir melhor? Se for algo no serviço, podemos fazer um retoque ou reparo agora mesmo, sem nenhum custo — é só me dizer o melhor dia e horário.\n\nE se quiser, deixe aqui sua 💬 sugestão também, vou ler com atenção.'
+              // v29.60.0 — pedido do Juliano (21/08/2026): o "2" não pode cair num "o que
+              // podemos fazer?" genérico. O cliente insatisfeito recebe um menu CONCRETO de
+              // reparação: reparo sem custo, ressarcimento, ou desabafo/sugestão. O estado
+              // pending_unsat roteia a resposta (número ou texto livre) mesmo com o
+              // human_takeover ligado — os interceptadores rodam antes da JuIA.
+              const reply = `Poxa, sinto muito que não tenha sido como esperávamos 😕 Quero resolver isso da melhor forma pra você. Como prefere?\n*1* — Reagendar um novo atendimento, sem nenhum custo, pra fazermos o reparo/ajuste\n*2* — Ressarcimento do valor pago\n*3* — Deixar uma sugestão ou contar o que aconteceu\n\nPode responder com o número ou escrever à vontade — o Juliano também vai ler esta conversa pessoalmente.`
               await sendWhatsapp(phone, reply)
-              await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+              const { data: unsatConvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+              const unsatStateNow = (unsatConvRow?.state || {}) as Record<string, unknown>
+              await admin.from('whatsapp_conversations').upsert({ phone, state: { ...unsatStateNow, pending_unsat: { token: pending.token, customer_name: pending.customer_name || null, at: new Date().toISOString() } }, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {
                 await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -1269,7 +1360,7 @@ Deno.serve(async (request: Request) => {
                   body: JSON.stringify({
                     custom: {
                       title: '😕 Cliente insatisfeito',
-                      body: `${pending.customer_name || phone} ficou insatisfeito. Combine o retoque sem custo pelo WhatsApp.`,
+                      body: `${pending.customer_name || phone} ficou insatisfeito. Mandei o menu (1 reparo · 2 ressarcimento · 3 sugestão) — a escolha dele chega em outro push.`,
                       url: 'https://wa.me/' + phone,
                       tag: `whatsapp-unsatisfied-${phone}`,
                     },

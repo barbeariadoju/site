@@ -1,4 +1,5 @@
 import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
+import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.62.0';
 
 (() => {
   const serviceStorageKey = 'bdj_services_v1';
@@ -25,6 +26,13 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
   };
   const selectedServices = readStoredMap(serviceStorageKey);
   const selectedProducts = readStoredMap(productStorageKey);
+  // v29.62.0 — carrinho salvo antes da regra das famílias (ou montado em outra aba) passa
+  // pelo crivo ao carregar, e serviço nunca tem quantidade > 1: dois cortes no mesmo horário
+  // não existem (pai e filho = Corte de cabelo + Corte de cabelo infantil).
+  {
+    const kept = normalizeServiceSet([...selectedServices.values()].map(v => ({ name: v.name, price: v.price }))).items.map(v => v.name);
+    [...selectedServices.keys()].forEach(k => { if(!kept.includes(k)) selectedServices.delete(k); else selectedServices.get(k).qty = 1; });
+  }
   // Sincroniza imediatamente os dois storages para eliminar estados vazios antigos.
   sessionStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
   localStorage.setItem(serviceStorageKey, JSON.stringify([...selectedServices]));
@@ -74,7 +82,8 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
       total += Number(item.price || 0) * Number(item.qty || 1);
       const row = document.createElement('div');
       row.className = 'cart-row';
-      row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-service="${key}" aria-label="Remover ${item.name}" title="Remover serviço">×</button><span>${item.qty}x ${item.name}<small>${item.time || ''}</small></span></div><div class="cart-qty-actions"><button type="button" data-dec-service="${key}" aria-label="Diminuir ${item.name}">−</button><button type="button" data-inc-service="${key}" aria-label="Aumentar ${item.name}">+</button></div>`;
+      // v29.62.0: sem botões de quantidade — serviço é 1 por horário (regra das famílias).
+      row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-service="${key}" aria-label="Remover ${item.name}" title="Remover serviço">×</button><span>${item.name}<small>${item.time || ''}</small></span></div><div></div>`;
       items.appendChild(row);
     });
 
@@ -114,17 +123,39 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
     setTimeout(() => { button.textContent = original; button.disabled = false; }, 800);
   }
 
+  // Aviso curto na tela (troca/recusa da regra das famílias). Estilo inline de propósito:
+  // não mexe no style.css nem exige bump extra de cache.
+  let noticeTimer = null;
+  function notice(message){
+    if(!message) return;
+    let el = document.getElementById('service-rule-notice');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'service-rule-notice';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:min(92vw,520px);background:#1c1c1c;color:#fff;padding:12px 16px;border-radius:12px;font-size:.95rem;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:9999;text-align:center';
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { el.hidden = true; }, 4500);
+  }
+
   function addService(button){
     const name = button.dataset.name || '';
     const price = Number(button.dataset.price || 0);
     const time = button.dataset.time || '';
     const duration = parseDuration(time);
-    const item = selectedServices.get(name) || {name, price, time, duration, qty:0};
-    item.qty += 1;
-    item.price = price;
-    item.time = time;
-    item.duration = duration;
-    selectedServices.set(name, item);
+    // v29.62.0 — regra das famílias (assets/js/service-rules.js): 1 corte + 1 barba por
+    // atendimento; o mais novo substitui o anterior da mesma família, combo que já cobre o
+    // pedido recusa, pezinho nunca soma a um corte. Caso real: Augusto Monteiro (22/08/2026)
+    // saiu com "Corte + Barboterapia + Barba Express" porque o carrinho deixava.
+    const rule = applyServiceRule([...selectedServices.keys()], name);
+    notice(rule.message);
+    if(!rule.added){ render(); return; }
+    [...selectedServices.keys()].forEach(k => { if(!rule.services.includes(k)) selectedServices.delete(k); });
+    selectedServices.set(name, {name, price, time, duration, qty:1});
     panelHidden = true;
     fire('service_selected', {item_name:name, value:price});
     feedback(button);
@@ -166,11 +197,7 @@ import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
     const remove = event.target.closest('[data-remove-service]');
     if(remove){ selectedServices.delete(remove.dataset.removeService); render(); return; }
 
-    const inc = event.target.closest('[data-inc-service]');
-    if(inc){ const item=selectedServices.get(inc.dataset.incService); if(item){item.qty+=1; render();} return; }
-
-    const dec = event.target.closest('[data-dec-service]');
-    if(dec){ const item=selectedServices.get(dec.dataset.decService); if(item){item.qty-=1; if(item.qty<=0) selectedServices.delete(dec.dataset.decService); render();} return; }
+    // v29.62.0: os botões +/− de quantidade de serviço foram removidos (1 por horário).
 
     if(panel?.classList.contains('active') && !event.target.closest('.service-cart') && !event.target.closest('#open-service-cart')){
       panelHidden = true;

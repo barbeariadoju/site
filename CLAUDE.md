@@ -102,6 +102,11 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
 - **Não reduzir as menções de "barboterapia" na home.** Das 10, só ~4 são texto
   visível; o resto é meta e schema, legítimos. Canibalização se resolve com link
   interno de âncora comercial, e já foi feito.
+- **Não deixar somar dois serviços da mesma família num atendimento** (regra do
+  Juliano, 22/08/2026): 1 corte + 1 barba; Barboterapia e Barba Express são
+  alternativas; combos "Corte + X" já incluem a barba; pezinho já vem no corte.
+  Única exceção: corte adulto + corte infantil (pai e filho). Fonte única:
+  `assets/js/service-rules.js` (+ cópia TS em `supabase/functions/_shared/`).
 - **`admin-version.json` e a constante `ADMIN_VERSION` são separados de propósito**
   da versão do site. É o que decide o reload do painel aberto durante atendimento.
 
