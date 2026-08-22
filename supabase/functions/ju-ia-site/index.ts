@@ -2494,7 +2494,9 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   return `${wdName} (${d}/${mo})`
  })
  await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state:next,intent}]).then(()=>{})
- // v29.62.0 — aviso da regra das famílias (só quando o código tirou algo da lista).
- if(serviceRuleNote&&!reply.includes('Só pra ajustar'))reply=`${serviceRuleNote}\n\n${reply}`
+ // v29.62.0 — aviso da regra das famílias (só quando o código tirou algo da lista). Cede a
+ // vez quando a resposta já traz o aviso específico antigo de barba (29.50.0, "não pagar em
+ // dobro") ou de pezinho (29.43.6) — testado ao vivo em 22/08: sem isso saíam os dois.
+ if(serviceRuleNote&&!/Só pra ajustar|pagar em dobro|já vem incluso/.test(reply))reply=`${serviceRuleNote}\n\n${reply}`
  return respond({reply,intent,state:next,actions,handoff})
 })
