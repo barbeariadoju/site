@@ -1,3 +1,13 @@
+## 29.66.0 — Reativação de 30 dias LIGADA (primeiro disparo terça 25/08 14h) + treino de sexta vira quinta
+
+Contexto: análise de crescimento do dia mostrou platô de ~36 atendimentos/semana e retenção de 16% (20 de 124 voltaram). O Juliano aprovou ligar o convite pra quem completou 30 dias sem voltar — regra dele desde 11/08 era "só com 30+ dias e base madura"; a base tem 6 semanas agora.
+
+- **O que já existia**: function `customer-reactivation` + cron `customer-reactivation-diario` (14h), ATIVOS desde a v28 com régua de 45 dias — zero envios até hoje. Dois buracos que iriam pro ar: a elegibilidade **não excluía quem já tem horário futuro marcado** ("sentimos sua falta" pra quem acabou de agendar) e o texto era genérico.
+- **Migration 129** — `customers_due_for_reactivation` recriada (DROP + CREATE: ganhou `last_service` no retorno): régua padrão 30 dias (ou `return_interval_days` do perfil, sem folga), exclui quem tem agendamento pending/confirmed futuro, cliente bloqueado e `survey_opt_out`. Cron: `0 17 * * 2-6` (ter–sáb; segunda fechada e o Juliano pediu terça), body `{"default_days":30,"grace_days":0,"cooldown_days":40}`.
+- **Mensagem nova**: "Oi, Nome! 💈 Aqui é a JuIA… Já faz mais de um mês desde o seu último corte com o Juliano — deve estar na hora de dar um trato, né? 😄 Me diz o dia que fica melhor pra você que eu confiro os horários (hora marcada, sem fila)…" — mesmo CTA que converte no lead-followup; a resposta cai na JuIA como pedido de horário. Nome que parece empresa/título (Espaço, Salão, Dr) não vira vocativo. Sem desconto (posicionamento).
+- **Primeira leva (terça 25/08, 14h): 9 clientes** — Moises (39d), Sergio Henrique (39d), Monique (38d), Vinícius Luiz (37d), Romilce/Alexandre (37d), Marcelo Saraiva (36d), Espaço Shanti (32d), Fabio Calvoso (32d), Cleidson (30d). Cooldown de 40 dias evita repetir.
+- **Agenda**: bloqueios "Treino do Juliano" de **sexta 10–11h movidos pra quinta 10–11h** (pedido dele, 22/08 — sexta não pode ficar travada); quarta continua. Sem conflito com agendamentos existentes.
+
 ## 29.65.0 — "Já avaliou no Google" com um clique no Concluir (pedido do Juliano, 22/08)
 
 Ele reconhece na cadeira quem já deixou avaliação. Antes só dava pra desmarcar "pedir avaliação" **a cada** conclusão — e a marca não ficava em lugar nenhum.

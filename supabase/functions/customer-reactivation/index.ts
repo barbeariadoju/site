@@ -87,7 +87,15 @@ Deno.serve(async (request: Request) => {
   let failed = 0
   for (const c of candidates) {
     const phone = canonicalPhone(c.phone)
-    const text = `Oi, ${firstName(c.name)}! 💈 Sentimos sua falta aqui na Barbearia do Ju! Já faz um tempinho desde seu último atendimento — que tal renovar o visual? É só me chamar aqui que eu te ajudo a agendar um horário. 😊`
+    // v29.66.0 (22/08/2026, Juliano ligou a reativação de 30 dias): texto genérico "sentimos
+    // sua falta" virou mensagem com o que ele fez e há quanto tempo, e o CTA é o mesmo que
+    // já converte no lead-followup ("me diz o dia") — a resposta cai na JuIA como pedido de
+    // horário. Nome que parece empresa/título (Espaço, Salão, Dr…) não vira vocativo.
+    const nomeCru = firstName(c.name)
+    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|dr|dra|sr|sra|conta)$/i.test(nomeCru) || nomeCru.length < 3 ? '' : nomeCru
+    const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
+    const tempo = c.days_since >= 60 ? 'mais de dois meses' : c.days_since >= 45 ? 'mais de um mês e meio' : c.days_since >= 35 ? 'mais de um mês' : 'um mês'
+    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde o seu último ${servico} com o Juliano — deve estar na hora de dar um trato, né? 😄\n\nMe diz o dia que fica melhor pra você que eu confiro os horários (hora marcada, sem fila). Se preferir, dá pra agendar direto no site: https://www.barbeariadoju.com.br/agendar/`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
