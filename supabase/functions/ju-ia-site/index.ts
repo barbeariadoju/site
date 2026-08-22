@@ -2557,7 +2557,7 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  // envia resposta vazia; o estado é salvo normalmente).
  {
   const lastAssistant=normalize(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
-  const despedidaPura=/^(muito )?(obrigad[oa]|valeu|brigad[oa]|grat[oa])( senhor| sr\.?| juliano| ju| pelo (atendimento|servico))?[!. ]*$|^(bom trabalho|otimo dia|bom dia|boa tarde|boa noite|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve)|tchau|tmj|fique com deus)( (e |pra voce|tambem|senhor|juliano|ju)[a-z ]*)?[!. ]*$/.test(normalizedQuestion.trim())
+  const despedidaPura=/^(muito )?(obrigad[oa]|valeu|brigad[oa]|grat[oa])( senhor| sr\.?| juliano| ju| pelo (atendimento|servico)| demais| viu| amigo)*[!. ]*$|^(bom trabalho|otimo dia|bom dia|boa tarde|boa noite|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve)|tchau|tmj|fique com deus)( (e |pra voce|tambem|senhor|juliano|ju)[a-z ]*)?[!. ]*$/.test(normalizedQuestion.trim())
   const jaFechou=/agradec|obrigad|otimo dia|bom descanso|abraco|ate (mais|logo|breve)|desejo/.test(lastAssistant)
   if(despedidaPura&&jaFechou&&!isQuestion&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'){reply='';actions=[];handoff=false;intent='other'}
  }
