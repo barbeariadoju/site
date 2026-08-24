@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#e8dcc0"/>
+  <circle cx="256" cy="256" r="234" fill="none" stroke="#d9c9a3" stroke-width="10"/>
+  <g fill="#43281a">
+    <path id="metade" d="M256 250
+             C 268 222, 298 208, 330 215
+             C 364 222, 386 248, 410 250
+             C 428 251, 439 238, 438 218
+             C 456 214, 472 234, 464 260
+             C 455 290, 410 302, 374 291
+             C 341 281, 314 269, 296 273
+             C 280 277, 266 288, 256 304
+             C 245 285, 245 266, 256 250 Z"/>
+    <use href="#metade" transform="translate(512,0) scale(-1,1)"/>
+  </g>
+</svg>

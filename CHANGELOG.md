@@ -1,3 +1,13 @@
+## 29.67.0 — Favicon novo: bigode no círculo da busca (pedido do Juliano, 24/08)
+
+Contexto: na busca do Google, o ícone do site aparecia como um quadradinho escuro ilegível dentro do círculo — o favicon era a **placa inteira da fachada** espremida em 192px (texto minúsculo, fundo preto). O Juliano tinha desenhado a solução com o Claude no dia anterior: fundo bege do logo com o bigode marrom, centrado no círculo. Recriado aqui em SVG (a conversa anterior não é acessível desta sessão) e rasterizado com o Chromium/Playwright do próprio projeto.
+
+- **Ícones trocados (mesmos nomes, zero edição de HTML)**: `assets/icon-192.png`, `assets/icon-512.png` e `assets/apple-touch-icon-180.png` agora são o emblema — fundo bege `#e8dcc0`, anel sutil `#d9c9a3`, bigode handlebar `#43281a`. Legível até em 48px (testado visualmente em 512/48/16). Vale pra busca do Google, aba do navegador, PWA e tela de início do iPhone.
+- **`favicon.ico` novo na raiz** (16+32+48 embutidos como PNG): fallback pra navegador/ferramenta que pede `/favicon.ico` direto — não existia.
+- **Schema da home**: `logo` do LocalBusiness saiu de `icon-512.png` (que agora é só o bigode, sem o nome) pra `assets/marca-selo-transparente.png`, que carrega o nome da barbearia — papel de logo é do selo, papel de favicon é do emblema.
+- **Cache**: `sw.js` CACHE `barbearia-os-v28-16-0` → `v29-67-0` (os 3 ícones estão no precache do service worker; sem o bump, o PWA continuaria servindo os antigos). Os `<link rel="icon">` não têm `?v=`, mas o arquivo mudou de conteúdo no mesmo nome: navegador pega no próximo miss e o Google refaz o fetch do favicon no ritmo dele (dias, não minutos — não estranhar se a busca demorar a atualizar).
+- Fonte do desenho versionada em `assets/src/favicon-bigode.svg`; pra regerar em qualquer tamanho é Playwright + screenshot do SVG (não há ImageMagick no ambiente).
+
 ## 29.66.0 — Reativação de 30 dias LIGADA (primeiro disparo terça 25/08 14h) + treino de sexta vira quinta
 
 Contexto: análise de crescimento do dia mostrou platô de ~36 atendimentos/semana e retenção de 16% (20 de 124 voltaram). O Juliano aprovou ligar o convite pra quem completou 30 dias sem voltar — regra dele desde 11/08 era "só com 30+ dias e base madura"; a base tem 6 semanas agora.
