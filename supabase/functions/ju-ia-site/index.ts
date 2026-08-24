@@ -2130,6 +2130,10 @@ Deno.serve(async req=>{
   const diasCitados=weekdayDatesMentioned(normalizedQuestion,today())
   const perguntaDeDias=/\b(quais? dias?|que dias?|qual dia (voce|vc|voces|vcs)|que dia (voce|vc|voces|vcs)|essa semana|nessa semana|nesta semana|proximos dias|dias disponiveis|quando (voce|vc|voces|vcs))\b/.test(normalizedQuestion)
   const jaPerguntouODia=/(para|pra) qual dia/i.test(ultimaFalaJuIA)
+  // v29.70.0: o handoff=false do fim deste bloco (que existe pra não vazar handoff do
+  // modelo) estava engolindo o pedido de exceção fora do horário — o Juliano nunca
+  // recebia o push. Flag em vez de atribuição direta.
+  let pedeExcecaoAoJuliano=false
   if(diasCitados.length||perguntaDeDias||jaPerguntouODia||minTime){
    const varredura=diasCitados.length
     ?await availabilityForDates(supabase,diasCitados,duration,minTime)
@@ -2181,7 +2185,7 @@ Deno.serve(async req=>{
      }else{
       reply=`Meu último horário ${emDia(alternativa.date)} é ${ultimo}. Depois disso o Juliano às vezes abre uma exceção — vou falar com ele agora e já te respondo, tá? 😊 Se preferir garantir logo, reservo ${ultimo} pra você.`
       actions=[{label:ultimo,message:ultimo}]
-      handoff=true
+      pedeExcecaoAoJuliano=true
      }
     }else if(alternativa){
      reply=`Nesses dias não sobrou horário para ${serviceNames}. O mais próximo que consigo é ${emDia(alternativa.date)}: ${slotsPhrase(alternativa.slots)}. Serve pra você?`
@@ -2195,7 +2199,7 @@ Deno.serve(async req=>{
    // "Só depois das 19h"/"final do dia" também é preferência de período: guardar evita a
    // pergunta "manhã, tarde ou final do dia?" no turno seguinte (o loop do v29.12.0).
    if(minTime)next.period=Number(minTime.slice(0,2))>=18?'evening':(Number(minTime.slice(0,2))>=12?'afternoon':'morning')
-   handoff=false
+   handoff=pedeExcecaoAoJuliano
   }else{
    // Sem dia e sem pista nenhuma: a pergunta continua sendo a certa — mas só na primeira
    // vez, e carregando o horário que ele já tiver dito, pra ele não precisar repetir.
