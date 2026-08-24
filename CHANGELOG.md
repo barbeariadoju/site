@@ -1,3 +1,15 @@
+## PagBank — homologação (24/08): por que NÃO migramos para o produto Order
+
+O Maurício (Time de Integração PagBank, chamado 1430398600) cobrou: *"É necessário que realize transações no produto Order para que possamos finalizarmos a homologação."* Recomendação óbvia seria migrar. **Decidimos não migrar** — e o motivo importa.
+
+- **A cobrança nasceu de uma pergunta nossa não respondida.** Em 21/08 17h56 ele escreveu: *"só houve transações no produto Checkout PagBank. Poderia nos confirmar se será utilizado o produto Order?"* — ninguém respondeu, e o e-mail de hoje é a escalada disso. Não era problema técnico.
+- **São TRÊS produtos, não dois** (levantado na documentação, 24/08): `Checkout` (página hospedada, `api.pagseguro.com/checkouts` — o que usamos, em produção); `Order` (`/orders`, você monta a própria tela, cobrança avulsa); e `Pagamentos Recorrentes / Assinaturas` (`api.assinaturas.pagseguro.com`, plano + assinante + assinatura, com o PagBank cobrando sozinho todo mês).
+- **O Order NÃO é o produto do Clube do Ju.** O Juliano levantou a dúvida certa. O Order tem um modo "com indicação de recorrência" (`charges.recurring.type=SUBSEQUENT`), mas a doc é explícita: ele serve **para quem tem sistema próprio de gestão de recorrência**. Adotá-lo significaria construir motor de cobrança mensal, retentativa em cartão recusado, cartão vencido e cancelamento — do zero, para um barbeiro sozinho. O caminho do Clube é Assinaturas.
+- **Não trocamos o Checkout pelo Order no fluxo atual**: a página hospedada é o que mantém CPF e cartão fora do nosso site. Migrar para o Order jogaria captura de dado sensível para dentro do nosso código sem nenhum ganho — pagamento avulso de agendamento já funciona 100%.
+- **Os dois testes que ele pediu JÁ tinham sido feitos** em 21/08, e o que faltava era ele enxergá-los: PIX pago 16:20:32 (`ORDE_19385C2F…` / `CHAR_CA766916…`) e CARTÃO 16:56:13 (`ORDE_3A25891A…` / `CHAR_CD0249C2…`), ambos `PAID`, ciclo completo até a baixa automática pelo webhook em ~1s. Note que **os dois geraram pedidos `ORDE_...`**, ainda que criados via Checkout.
+- **ARMADILHA OPERACIONAL (provável causa raiz):** o e-mail de logs de 21/08 saiu às 16h29 **do Gmail**, e a conta do PagBank é o **Hotmail** — o Juliano observou que o Maurício não responde o que sai do Gmail. Somado a isso, o teste de cartão só terminou às 16h56, **depois** do envio: os logs analisados continham só o PIX. **Correspondência com o PagBank vai SEMPRE pelo Hotmail.**
+- **Pendente**: resposta do Maurício a três perguntas enviadas hoje pelo Hotmail — (1) dá para homologar o Checkout com essas transações; (2) se o chamado for exclusivo do Order, encerra e abre outro ou redireciona; (3) Assinaturas exige homologação e credencial próprias (resposta que evita descobrir processo de semanas na véspera do Clube).
+
 ## 29.68.0/29.68.1 — JuIA: mensagem comercial padronizada + pergunta de primeira visita (24/08)
 
 Dois pedidos do Juliano na mesma tarde, ambos na `ju-ia-site` (vale pro WhatsApp e pro chat do site), deployados e testados em produção.
