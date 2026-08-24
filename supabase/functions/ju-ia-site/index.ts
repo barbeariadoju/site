@@ -2159,9 +2159,30 @@ Deno.serve(async req=>{
     const alternativa=semFiltro.find((d:any)=>d.slots.length)
     if(alternativa&&minTime){
      const ultimo=alternativa.slots[alternativa.slots.length-1]
-     reply=`Depois das ${horaFalada(minTime)} eu não consigo atender — o último horário ${emDia(alternativa.date)} é ${ultimo}. Se ${ultimo} servir pra você, já reservo; se preferir mais cedo, é só me dizer o horário.`
+     // v29.70.0 — a v29.69.0 respondia "depois das X eu não consigo" e ficava nisso, o que
+     // CONTRADIZ duas verdades da casa: (1) o horário estendido já existe desde a v28.61.0
+     // (caso Moisés — o Ju estica até 60 min depois do fechamento, só no WhatsApp), e (2)
+     // o Juliano abre exceção fora do horário quando dá (regra dele, 24/08/2026). Então a
+     // ordem certa é: tenta o estendido de verdade; se nem esticado couber, quem decide
+     // exceção é ELE — a JuIA não nega e não promete, encaminha (handoff).
+     let esticado=''
+     if(verifiedPhone){
+      const {data:extOk}=await supabase.rpc('extended_close_slot_ok',{p_date:alternativa.date,p_start_time:minTime,p_duration_minutes:duration,p_extend_minutes:60})
+      if(extOk===true)esticado=minTime
+     }
      next.date=alternativa.date
-     actions=[{label:ultimo,message:ultimo}]
+     if(esticado){
+      const isSatX=new Date(alternativa.date+'T12:00:00-03:00').getUTCDay()===6
+      next.time=esticado
+      next.upsell_offer_done=true // atendimento que vara o fechamento nunca leva oferta de venda
+      respostaConferidaNaAgenda=true // extended_close_slot_ok já validou colisão e bloqueio
+      reply=`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar ${emDia(alternativa.date)} às ${esticado} 😊 Posso confirmar?`
+      actions=[{label:`Confirmar ${esticado}`,message:`Quero reservar ${esticado}`}]
+     }else{
+      reply=`Meu último horário ${emDia(alternativa.date)} é ${ultimo}. Depois disso o Juliano às vezes abre uma exceção — vou falar com ele agora e já te respondo, tá? 😊 Se preferir garantir logo, reservo ${ultimo} pra você.`
+      actions=[{label:ultimo,message:ultimo}]
+      handoff=true
+     }
     }else if(alternativa){
      reply=`Nesses dias não sobrou horário para ${serviceNames}. O mais próximo que consigo é ${emDia(alternativa.date)}: ${slotsPhrase(alternativa.slots)}. Serve pra você?`
      next.date=alternativa.date
@@ -2298,6 +2319,22 @@ Deno.serve(async req=>{
       extendedOffered=true
       handoff=false
      }
+    }
+    // v29.70.0 — MENTIRA REAL: horário FORA do expediente caía no texto de horário ocupado
+    // ("20:00 já está reservado nesse dia") — não estava reservado, simplesmente não existe
+    // na agenda. Antes de abrir, informa o horário de verdade; depois do último, é o caso de
+    // exceção do Juliano (o estendido acima já foi tentado e não coube) e vai pra ele.
+    const primeiroDoDia=allSlots[0]
+    const ultimoDoDia=allSlots[allSlots.length-1]
+    if(!extendedOffered&&ultimoDoDia&&effectiveTime>ultimoDoDia){
+     reply=`${emDiaCap(next.date)} meu último horário é ${ultimoDoDia} — às ${effectiveTime} já é fora do nosso atendimento. O Juliano às vezes abre exceção depois do horário: vou falar com ele agora e já te respondo 😊 Se preferir garantir, reservo ${ultimoDoDia} pra você.`
+     actions=[{label:ultimoDoDia,message:ultimoDoDia}]
+     handoff=true
+     extendedOffered=true // já respondido aqui; não cair no texto de horário ocupado
+    }else if(!extendedOffered&&primeiroDoDia&&effectiveTime<primeiroDoDia){
+     reply=`${emDiaCap(next.date)} a gente começa a atender ${primeiroDoDia} — às ${effectiveTime} ainda estamos fechados. O primeiro horário que consigo é ${primeiroDoDia}. Serve pra você?`
+     actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
+     extendedOffered=true
     }
     if(!extendedOffered){
      const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')

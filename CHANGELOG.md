@@ -1,3 +1,11 @@
+## 29.70.0 — Fora do horário: a JuIA encaminha pro Juliano em vez de negar (pedido dele, 24/08)
+
+Regra do Juliano, dita hoje: *"eventualmente eu abro exceções e atendo alguns clientes após o horário — quando alguém após as 18:30 pedir, pode encaminhar pra mim resolver"*. Duas correções, e uma delas era mentira que já estava no ar.
+
+- **Contradição que a v29.69.0 criou (corrigida em menos de uma hora)**: a resposta nova de piso de horário dizia *"depois das 19h eu não consigo atender"* — mas o **horário estendido existe desde a v28.61.0** (caso Moisés): no WhatsApp, `extended_close_slot_ok` estica até 60 min depois do fechamento. A ordem agora é a certa: **tenta o estendido de verdade** ("pra você o Ju estica: consigo às 19:00, posso confirmar?"); só se nem esticado couber é que vira exceção — e aí **quem decide é ele** (`handoff`, com push no celular). A JuIA não nega e não promete.
+- **MENTIRA REAL removida**: horário fora do expediente caía no texto de horário ocupado — *"20:00 já está reservado nesse dia"*. Não estava reservado; simplesmente não existe na agenda. Agora, depois do último horário → informa o último de verdade e chama o Juliano; **antes de abrir** → *"a gente começa a atender 08:00"* e oferece o primeiro (sem handoff, aqui não há exceção a decidir).
+- Vale pros dois caminhos: com dia definido ("pode 20h amanhã?") e sem dia ("após as 19h").
+
 ## 29.69.0 — JuIA: pergunta sobre DIAS agora é respondida com dias (caso Tiago, 24/08)
 
 Contexto: às 17h58 de 24/08 o Tiago perguntou *"Para que dia você tem vaga pra cortar essa semana?"*. A JuIA devolveu a pergunta dele: *"Para qual dia você quer ver os horários?"*. Ele respondeu *"Após as 19h"* — **mesma frase**. Respondeu *"Segunda-feira, terça-feira e quarta-feira"* — mesma frase de novo, e aí o anti-papagaio do `whatsapp-webhook` trocou tudo por *"Desculpe, me embolei aqui 🙏"* e chamou o Juliano, que fechou o horário na mão em 1 minuto. Levantando o histórico, a mesma morte apareceu **três vezes em seis dias**: 19/08 08h08, 22/08 11h49 e 22/08 16h31.
