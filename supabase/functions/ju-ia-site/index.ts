@@ -1907,12 +1907,15 @@ Deno.serve(async req=>{
      fvTags.push(fvTag)
      const fvUpd:Record<string,unknown>={internal_tags:fvTags,updated_at:new Date().toISOString()}
      if(fvPrior&&!(Number(fvRow.prior_visits)>0))fvUpd.prior_visits=1
-     await supabase.from('customer_profiles').update(fvUpd).eq('id',fvRow.id)
+     const {error:fvUpdErr}=await supabase.from('customer_profiles').update(fvUpd).eq('id',fvRow.id)
+     if(fvUpdErr)console.error('[ju-ia-site] first-visit update',fvUpdErr)
     }else{
      // agendamento público não cria perfil na hora (só na conclusão) — cria aqui pra
      // declaração não se perder; telefone no formato do booking (com 55), que é o que
-     // os fluxos de conclusão/fidelidade procuram.
-     await supabase.from('customer_profiles').insert({name:String(next.name||'Cliente WhatsApp').trim(),phone:fvDigits,internal_tags:[fvTag],prior_visits:fvFirst?0:1})
+     // os fluxos de conclusão/fidelidade procuram. upsert por telefone (não insert):
+     // se um perfil nascer entre o select acima e este write, ninguém duplica.
+     const {error:fvInsErr}=await supabase.from('customer_profiles').upsert({name:String(next.name||'Cliente WhatsApp').trim(),phone:fvDigits,internal_tags:[fvTag],prior_visits:fvFirst?0:1},{onConflict:'phone'})
+     if(fvInsErr)console.error('[ju-ia-site] first-visit insert',fvInsErr)
     }
     reply=fvFirst
      ?`Que alegria receber você pela primeira vez! 🎉 Pode vir tranquilo: hora marcada, sem fila, café por nossa conta — e se o acabamento não ficar do seu jeito, a gente ajusta sem custo. Até já! 💈`
