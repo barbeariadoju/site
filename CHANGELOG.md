@@ -1,3 +1,12 @@
+## 29.72.0 — Pergunta de horário sem serviço assume o CORTE e já responde com a agenda (caso Bruno, 25/08)
+
+Caso das 11h14 de 25/08 (print do Juliano): cliente NOVO perguntou *"Vocês tem horário livre as 13:00 ou 14:00?"* e a resposta foi *"Qual serviço você tem interesse?"* — ele sumiu, e nem a intervenção manual do Juliano às 11h38 reverteu. Parecidíssimo com o caso Fernando da manhã, mas por outro caminho: a v29.71.0 cobria "quero marcar" sem serviço; quem já chegava com HORA na mão caía no fluxo de disponibilidade, que devolvia a pergunta de serviço.
+
+- **Cliente com hora na mão está pronto pra fechar**: no WhatsApp, pergunta de disponibilidade sem serviço agora **assume Corte de cabelo** (carro-chefe — mesma mecânica transparente do bareCabeloAsk e do "serviço de sempre") e responde JÁ com a disponibilidade real, fechando com a nota *"(Anotei Corte de cabelo — se quiser outro serviço ou incluir a barba, é só me dizer 😉)"*. Hora citada sem dia = hoje. Só WhatsApp (no site o catálogo está na tela) e nunca em pergunta de preço/informação.
+- **Prompt alinhado**: o exemplo antigo "Claro! Qual serviço você prefere?" virou "É corte de cabelo? Já confiro esse horário pra você." — o modelo não devolve mais pergunta aberta de serviço quando o cliente já deu o horário.
+- **Bug da v29.70.0 achado no teste desta correção**: `primeiroDoDia`/`ultimoDoDia` eram o primeiro/último horário **livre**, não o expediente — com a manhã lotada, "tem 13:00?" numa terça respondia *"às 13:00 ainda estamos fechados, a gente começa a atender 13:30"* (mentira nova no lugar da antiga). A régua agora é o expediente teórico (abre 08:00; último início = fechamento − duração): fora dele valem os textos de fechado/exceção; dentro dele, horário tomado é "reservado" e cai no fluxo dos horários mais próximos. Testado em produção: *"13:00 já está reservado nesse dia. O mais perto que consigo é 13:30 — serve pra você?"*.
+- Sem bump de cache: só edge function (`ju-ia-site`).
+
 ## 29.71.0 — Abertura objetiva puxando pro corte + toque de 30 min + boas-vindas sem "ajuste" (casos Fernando e Mateus, 25/08)
 
 Três pedidos do Juliano na revisão da manhã de 25/08:
