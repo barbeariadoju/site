@@ -34,6 +34,10 @@ const firstName = (value: any) => String(value || '').trim().split(/\s+/)[0] || 
 // motivo — não faz sentido perguntar "por que não agendou" pra quem nem chegou a
 // pedir um serviço.
 const NUDGE1_AFTER_MS = 2 * 60 * 60 * 1000
+// v29.71.0 (caso Fernando, 25/08): quem pediu pra marcar e sumiu no meio da conversa recebe
+// um toque leve já aos ~30 min ("ainda estou por aqui" + o site como alternativa) — pedido
+// do Juliano; os demais kinds continuam esperando as 2h de sempre.
+const BOOKING_INTENT_AFTER_MS = 30 * 60 * 1000
 const NUDGE2_AFTER_MS = 20 * 60 * 60 * 1000
 const MAX_LOOKBACK_MS = 5 * 24 * 60 * 60 * 1000
 // Cliente só é "reativável" por visita antiga se já passaram pelo menos esses dias —
@@ -224,26 +228,34 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  // --- Estágio 1: primeiro toque, 2h depois da última mensagem sem resposta ---
+  // --- Estágio 1: primeiro toque — booking_intent aos ~30 min, os demais nas 2h ---
   const { data: stage0Leads, error: stage0Error } = await admin
     .from('conversation_leads')
     .select('phone, customer_name, kind, service_interest, last_message_at')
     .eq('followup_stage', 0)
     .is('resolved_at', null)
-    .lt('last_message_at', new Date(now - NUDGE1_AFTER_MS).toISOString())
+    .lt('last_message_at', new Date(now - BOOKING_INTENT_AFTER_MS).toISOString())
     .gt('last_message_at', new Date(now - MAX_LOOKBACK_MS).toISOString())
 
   if (stage0Error) { console.error('[whatsapp-lead-followup] stage0', stage0Error); return json({ error: stage0Error.message }, 500) }
 
   for (const lead of stage0Leads || []) {
     try {
+      // v29.71.0: a query acima usa o limiar curto (30 min) pra alcançar o booking_intent;
+      // os outros kinds só entram quando completam as 2h de sempre.
+      if (lead.kind !== 'booking_intent' && now - new Date(lead.last_message_at).getTime() < NUDGE1_AFTER_MS) continue
       if (await isResolved(lead.phone, lead.last_message_at)) {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
       }
       const name = firstName(lead.customer_name)
       let text = ''
-      if (lead.kind === 'greeting') {
+      if (lead.kind === 'booking_intent') {
+        // Caso Fernando (25/08): pediu pra marcar, a JuIA perguntou o serviço e ele sumiu —
+        // o Juliano teve que notar e intervir na mão. Toque leve, sem cobrança, com o site
+        // como alternativa (só aqui, nunca na abertura da conversa).
+        text = `Oi${name ? `, ${name}` : ''}! 😊 Ainda estou por aqui se precisar, tá? E se preferir, você também pode agendar direto pelo site — é rapidinho e bem simples: https://www.barbeariadoju.com.br/agendar/ 💈`
+      } else if (lead.kind === 'greeting') {
         // Precisa do contexto comercial de verdade (não só o que foi dito na conversa) —
         // agendamento ativo ou última visita, buscados agora, não guardados no lead.
         const { data: upcoming } = await admin.rpc('phone_upcoming_bookings', { p_phone: lead.phone })
@@ -286,6 +298,7 @@ Deno.serve(async (request: Request) => {
     .eq('followup_stage', 1)
     .is('resolved_at', null)
     .neq('kind', 'greeting')
+    .neq('kind', 'booking_intent')
     .lt('followup_1_sent_at', new Date(now - NUDGE2_AFTER_MS).toISOString())
     .gt('followup_1_sent_at', new Date(now - MAX_LOOKBACK_MS).toISOString())
 

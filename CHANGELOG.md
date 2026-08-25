@@ -1,3 +1,13 @@
+## 29.71.0 — Abertura objetiva puxando pro corte + toque de 30 min + boas-vindas sem "ajuste" (casos Fernando e Mateus, 25/08)
+
+Três pedidos do Juliano na revisão da manhã de 25/08:
+
+- **Caso Fernando (7h26)**: ele abriu com *"gostaria de marcar um horário"* e a JuIA respondeu com pergunta aberta dupla ("qual serviço e para qual dia?") + link do site — o cliente ficou mudo e o Juliano teve que intervir na mão 5 min depois (converteu com "É para corte de cabelo? Que período você prefere?"). Agora o prompt manda a JuIA ser objetiva no WhatsApp: **puxa direto pro corte** (carro-chefe) em UMA pergunta curta ("É corte de cabelo? E fica melhor de manhã, à tarde ou no fim do dia?") — se for outro serviço, o cliente corrige. E **o link do site saiu da abertura**: mandar o site logo de cara passa a impressão de "se vira sozinho" (tem gente com dificuldade ou preguiça de agendar por lá); o site só entra se o cliente pedir.
+- **Toque de 30 minutos**: quem pede pra marcar e some no meio da conversa agora vira lead `booking_intent` (kind novo, migration 131) e o `whatsapp-lead-followup` manda aos ~30 min (era 2h): *"Ainda estou por aqui se precisar, tá? E se preferir, você também pode agendar direto pelo site — é rapidinho e bem simples"*. É AQUI que o site aparece, como alternativa — não na abertura. Os demais kinds seguem nas 2h; `booking_intent` não recebe a pesquisa de motivo do dia seguinte.
+- **Boas-vindas de primeira visita sem vulnerabilidade** (print do Mateus, 6h55): a frase *"se o acabamento não ficar do seu jeito, a gente ajusta sem custo"* dava a entender que o acabamento podia sair ruim — regra da casa: saudação de boas-vindas é marketing que levanta, nunca expõe. Nova: *"Pode vir no capricho: aqui é hora marcada, sem fila, atendimento sem pressa e café por nossa conta. Vai ser um prazer cuidar do seu visual"*. A garantia de ajuste continua existindo no prompt — mas só quando o cliente demonstra receio ou pergunta.
+- Verificado antes de mexer: a resposta educada pra abordagem comercial (v29.68.0) e o caso Tiago dos dias (v29.69.0) já estavam corrigidos e no ar desde ontem à noite — sessão remota que publicou direto no GitHub (repo local sincronizado hoje via fetch).
+- Sem bump de cache: só edge functions (`ju-ia-site`, `whatsapp-lead-followup`) + migration 131.
+
 ## 29.70.0 — Fora do horário: a JuIA encaminha pro Juliano em vez de negar (pedido dele, 24/08)
 
 Regra do Juliano, dita hoje: *"eventualmente eu abro exceções e atendo alguns clientes após o horário — quando alguém após as 18:30 pedir, pode encaminhar pra mim resolver"*. Duas correções, e uma delas era mentira que já estava no ar.
