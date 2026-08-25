@@ -1,3 +1,13 @@
+## 29.71.2 — Reativação: nome em CAIXA ALTA não vai cru pro vocativo (estreia da 1ª leva, 25/08)
+
+Conferência da **primeira leva da reativação de 30 dias**, que era a estreia da automação: **16 mensagens em 42 segundos**, às 14h em ponto, **zero falhas de envio**. A guarda de nome-empresa funcionou (o "Espaço Shanti" saiu como *"Oi! 💈 Aqui é a JuIA…"*, sem vocativo). O único defeito real foi cosmético e entregava o robô: saiu **"Oi, MOISES!"** — o cadastro está em caixa alta e o nome ia cru pro vocativo. São 5 cadastros assim, de 141.
+
+- **Correção**: primeiro nome todo MAIÚSCULO (ou todo minúsculo) vira Capitalizado antes de entrar no vocativo; nome já bem escrito ("Vinícius", "McCarthy") fica intocado. Acento sobrevive: `ROGÉRIO` → `Rogério`. Testado com 7 casos antes do deploy.
+- **Não mexi no cadastro do cliente**: a correção é na hora de escrever a mensagem. Consertar os 5 nomes no banco seria mexer no dado que o Juliano digitou, e o mesmo problema voltaria no próximo cadastro em caixa alta.
+- **Deploy conferido**: `customer-reactivation` v30 com `verify_jwt:false` preservado — se isso virasse `true`, o cron (que manda só `x-webhook-secret`, sem Authorization) passaria a tomar 401 em silêncio. Depois do deploy, `dry_run` devolveu `200` / `would_message:0`, provando de uma vez que a function roda e que o cooldown de 40 dias está segurando os 16 recém-contatados.
+- **Mesma causa, ainda não corrigida**: a saudação da `ju-ia-site` usa o nome do mesmo jeito ("Bom dia, MOISES!"). Não mexi porque essa function está atrás da PONTE de deploy por SHA (ver 29.68) e o conserto pede re-apontar a ponte — fica para quando alguém estiver olhando.
+- Sem respostas de clientes até 14h36; normal para convite de reativação, que costuma render ao longo do dia.
+
 ## 29.71.0 — Abertura objetiva puxando pro corte + toque de 30 min + boas-vindas sem "ajuste" (casos Fernando e Mateus, 25/08)
 
 Três pedidos do Juliano na revisão da manhã de 25/08:

@@ -92,7 +92,13 @@ Deno.serve(async (request: Request) => {
     // já converte no lead-followup ("me diz o dia") — a resposta cai na JuIA como pedido de
     // horário. Nome que parece empresa/título (Espaço, Salão, Dr…) não vira vocativo.
     const nomeCru = firstName(c.name)
-    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|dr|dra|sr|sra|conta)$/i.test(nomeCru) || nomeCru.length < 3 ? '' : nomeCru
+    // v29.71.2 (25/08): a 1a leva saiu com "Oi, MOISES!" — 5 dos 141 cadastros estao em
+    // CAIXA ALTA e o nome ia cru pro vocativo, denunciando texto de robo. Nome todo maiusculo
+    // (ou todo minusculo) vira Capitalizado; nome ja bem escrito (Vinícius, McCarthy) fica intacto.
+    const nomeCase = (nomeCru === nomeCru.toUpperCase() || nomeCru === nomeCru.toLowerCase())
+      ? nomeCru.charAt(0).toUpperCase() + nomeCru.slice(1).toLowerCase()
+      : nomeCru
+    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|dr|dra|sr|sra|conta)$/i.test(nomeCru) || nomeCru.length < 3 ? '' : nomeCase
     const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
     const tempo = c.days_since >= 60 ? 'mais de dois meses' : c.days_since >= 45 ? 'mais de um mês e meio' : c.days_since >= 35 ? 'mais de um mês' : 'um mês'
     // v29.71.1 (25/08, pedido do Juliano no ensaio): "me diz o dia que eu confiro" soava
