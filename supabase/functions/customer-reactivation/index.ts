@@ -95,7 +95,10 @@ Deno.serve(async (request: Request) => {
     const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|dr|dra|sr|sra|conta)$/i.test(nomeCru) || nomeCru.length < 3 ? '' : nomeCru
     const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
     const tempo = c.days_since >= 60 ? 'mais de dois meses' : c.days_since >= 45 ? 'mais de um mês e meio' : c.days_since >= 35 ? 'mais de um mês' : 'um mês'
-    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde o seu último ${servico} com o Juliano — deve estar na hora de dar um trato, né? 😄\n\nMe diz o dia que fica melhor pra você que eu confiro os horários (hora marcada, sem fila). Se preferir, dá pra agendar direto no site: https://www.barbeariadoju.com.br/agendar/`
+    // v29.71.1 (25/08, pedido do Juliano no ensaio): "me diz o dia que eu confiro" soava
+    // burocrático. CTA novo: pergunta direta + exemplo de resposta + "já deixo reservado"
+    // (o mesmo verbo que converte no lead-followup desde a v29.51.0).
+    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde o seu último ${servico} com o Juliano — deve estar na hora de dar um trato, né? 😄\n\nQuer garantir um horário essa semana? É só me responder com o dia que fica melhor (pode ser "quinta à tarde") que eu já deixo reservado pra você — hora marcada, sem fila. Se preferir, dá pra agendar direto pelo site: https://www.barbeariadoju.com.br/agendar/`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
