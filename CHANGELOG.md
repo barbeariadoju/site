@@ -1,3 +1,20 @@
+## 29.73.0 — Migration 132: o botão "Excluir registro" do admin esbarrava em GRANT, não em policy (25/08)
+
+Registro feito a posteriori: o commit da migration subiu sem entrada no CHANGELOG. Resumo a partir do próprio arquivo `132-v29.73.0-grant-delete-bookings.sql`.
+
+- **Sintoma**: "Excluir registro" no admin devolvia *permission denied for table bookings*, mesmo com a policy RLS `admin delete cancelled bookings` (`is_admin()` + `status='cancelled'`) existindo desde sempre.
+- **Causa**: o Postgres checa o **GRANT antes da policy** — e o `DELETE` nunca tinha sido concedido a `authenticated` (nem a `service_role`). Policy correta, porta trancada antes dela. É a terceira vez que essa mesma classe de bug aparece (migration 127 em `payments`, migration 130 em `customer_profiles`): **policy escrita não implica grant dado**.
+- **De quebra**: revoga `TRUNCATE` de `anon` e `authenticated` — TRUNCATE ignora RLS e ninguém do site ou do admin precisa disso.
+
+## 29.72.0 — Pergunta de horário sem serviço assume o CORTE e já responde com a agenda (caso Bruno, 25/08)
+
+Caso das 11h14 de 25/08 (print do Juliano): cliente NOVO perguntou *"Vocês tem horário livre as 13:00 ou 14:00?"* e a resposta foi *"Qual serviço você tem interesse?"* — ele sumiu, e nem a intervenção manual do Juliano às 11h38 reverteu. Parecidíssimo com o caso Fernando da manhã, mas por outro caminho: a v29.71.0 cobria "quero marcar" sem serviço; quem já chegava com HORA na mão caía no fluxo de disponibilidade, que devolvia a pergunta de serviço.
+
+- **Cliente com hora na mão está pronto pra fechar**: no WhatsApp, pergunta de disponibilidade sem serviço agora **assume Corte de cabelo** (carro-chefe — mesma mecânica transparente do bareCabeloAsk e do "serviço de sempre") e responde JÁ com a disponibilidade real, fechando com a nota *"(Anotei Corte de cabelo — se quiser outro serviço ou incluir a barba, é só me dizer 😉)"*. Hora citada sem dia = hoje. Só WhatsApp (no site o catálogo está na tela) e nunca em pergunta de preço/informação.
+- **Prompt alinhado**: o exemplo antigo "Claro! Qual serviço você prefere?" virou "É corte de cabelo? Já confiro esse horário pra você." — o modelo não devolve mais pergunta aberta de serviço quando o cliente já deu o horário.
+- **Bug da v29.70.0 achado no teste desta correção**: `primeiroDoDia`/`ultimoDoDia` eram o primeiro/último horário **livre**, não o expediente — com a manhã lotada, "tem 13:00?" numa terça respondia *"às 13:00 ainda estamos fechados, a gente começa a atender 13:30"* (mentira nova no lugar da antiga). A régua agora é o expediente teórico (abre 08:00; último início = fechamento − duração): fora dele valem os textos de fechado/exceção; dentro dele, horário tomado é "reservado" e cai no fluxo dos horários mais próximos. Testado em produção: *"13:00 já está reservado nesse dia. O mais perto que consigo é 13:30 — serve pra você?"*.
+- Sem bump de cache: só edge function (`ju-ia-site`).
+
 ## 29.71.2 — Reativação: nome em CAIXA ALTA não vai cru pro vocativo (estreia da 1ª leva, 25/08)
 
 Conferência da **primeira leva da reativação de 30 dias**, que era a estreia da automação: **16 mensagens em 42 segundos**, às 14h em ponto, **zero falhas de envio**. A guarda de nome-empresa funcionou (o "Espaço Shanti" saiu como *"Oi! 💈 Aqui é a JuIA…"*, sem vocativo). O único defeito real foi cosmético e entregava o robô: saiu **"Oi, MOISES!"** — o cadastro está em caixa alta e o nome ia cru pro vocativo. São 5 cadastros assim, de 141.
