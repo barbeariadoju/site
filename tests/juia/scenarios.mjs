@@ -235,4 +235,27 @@ export const scenarios = [
   // Mensagem longa / estresse de limite
   { id: 'stress-01', category: 'estresse', message: 'oi bom dia tudo bem? entao eu queria muito marcar um horario mas antes queria entender direitinho como funciona o processo de voces, se precisa pagar antes, se pode cancelar depois, se da pra remarcar quantas vezes eu quiser, se voces mandam lembrete, se o barbeiro é sempre o mesmo, se posso escolher o barbeiro, enfim, um monte de coisa, desculpa o textao', note: 'Mensagem muito longa com várias perguntas misturadas — deve responder de forma organizada sem se perder, idealmente priorizando 1-2 pontos e oferecendo continuar.' },
   { id: 'stress-02', category: 'estresse', message: 'CADE VOCES NAO TO CONSEGUINDO MARCAR NADA AQUI', note: 'Mensagem em caixa alta (cliente irritado) — resposta calma, sem espelhar o tom alterado.' },
+
+  // Pergunta por DIAS (v29.69.0) — as tres conversas reais que terminaram no "me embolei"
+  // do anti-papagaio (whatsapp-webhook) e obrigaram o Juliano a assumir na mao. Todas tem
+  // a mesma raiz: o cliente pergunta/responde sobre DIAS e a JuIA devolve a pergunta dela.
+  // `state`/`history` (suportados pelo runner) recriam o ponto exato da conversa real.
+  { id: 'dias-01', category: 'pergunta_de_dias', message: 'Para que dia você tem vaga pra cortar essa semana?', state: { services: ['Corte de cabelo'] },
+    red_flags: ['para qual dia', 'pra qual dia'],
+    note: 'CASO TIAGO (24/08/2026). Deve responder com DIAS que tem vaga, nunca com "para qual dia voce quer ver os horarios?".' },
+  { id: 'dias-02', category: 'pergunta_de_dias', message: 'Após as 19h', state: { services: ['Corte de cabelo'] },
+    red_flags: ['para qual dia', 'pra qual dia'],
+    note: 'CASO TIAGO. Piso de horario sem dia: fechamos as 19h, entao a resposta certa e dizer isso e oferecer o ultimo horario possivel — nunca ignorar a restricao.' },
+  { id: 'dias-03', category: 'pergunta_de_dias', message: 'Segunda-feira, terça-feira e quarta-feira', state: { services: ['Corte de cabelo'] },
+    history: [{ role: 'user', content: 'quero cortar o cabelo' }, { role: 'assistant', content: 'Perfeito! Anotei Corte de cabelo. Para qual dia você quer ver os horários?' }],
+    red_flags: ['para qual dia', 'pra qual dia'],
+    note: 'CASO TIAGO. Tres dias de uma vez (segunda a barbearia nao abre): deve dizer quais desses tem vaga, e nunca repetir a pergunta do dia que ja foi feita.' },
+  { id: 'dias-04', category: 'pergunta_de_dias', message: 'quais dias vcs tem horario essa semana?',
+    red_flags: ['para qual dia', 'pra qual dia'],
+    note: 'Mesma pergunta sem servico definido — pode perguntar o servico, mas nao pode devolver "para qual dia?".' },
+  { id: 'dias-05', category: 'pergunta_de_dias', message: 'Não obrigado', state: { services: ['Corte de cabelo'], date: '2099-01-01', pending_waitlist: { date: '2099-01-01', period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 30 } },
+    history: [{ role: 'user', content: 'tem horario hoje?' }, { role: 'assistant', content: 'Não encontrei horário hoje para Corte de cabelo. O próximo dia com horário disponível é terça: consigo te atender entre 08:00 e 18:30. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera.' }],
+    note: 'CASOS DE SABADO (22/08/2026). Recusa a oferta de outro dia: deve agradecer e encerrar com a porta aberta, NUNCA seguir listando horarios.' },
+  { id: 'dias-06', category: 'pergunta_de_dias', message: 'Vou deixar obrigado', state: { services: ['Corte de cabelo'], date: '2099-01-01', pending_waitlist: { date: '2099-01-01', period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 30 } },
+    note: 'CASO DE SABADO. Recusa educada SEM a palavra "nao" — o simpleNo nao pegava, e a JuIA continuava empurrando agenda.' },
 ]

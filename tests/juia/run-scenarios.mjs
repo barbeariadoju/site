@@ -61,6 +61,13 @@ function redFlags(scenario, reply, intent, handoff) {
   if (lower.includes('não entendi') && scenario.category !== 'pos_atendimento') flags.push('nao_entendi_fora_de_contexto')
   if (lower.includes('undefined') || lower.includes('[object object]')) flags.push('erro_de_template_na_resposta')
   if (reply && reply.length > 900) flags.push('resposta_muito_longa')
+  // v29.69.0: red_flags por cenario (o contrato ja estava documentado em scenarios.mjs, mas
+  // o runner nunca tinha implementado). Frase que NAO pode aparecer na resposta daquele
+  // cenario — ex.: "para qual dia" nos casos de pergunta por dias, que foi exatamente o
+  // loop que travou as conversas do Tiago (24/08) e dos dois clientes de sabado (22/08).
+  for (const proibida of scenario.red_flags || []) {
+    if (lower.includes(String(proibida).toLowerCase())) flags.push(`frase_proibida: ${proibida}`)
+  }
   return flags
 }
 
@@ -79,6 +86,11 @@ for (const scenario of targets) {
   } else if (needsPhone) {
     extra.verifiedPhone = TEST_PHONE
   }
+  // v29.69.0: cenario pode trazer o ponto exato de uma conversa real (estado guardado e/ou
+  // as ultimas falas). Sem isso so dava pra testar a primeira mensagem — e os travamentos
+  // que a JuIA teve em agosto/2026 aconteceram todos no MEIO da conversa.
+  if (scenario.state) extra.state = { ...(extra.state || {}), ...scenario.state }
+  if (scenario.history) extra.history = scenario.history
   const { ok, status, data } = await callJuIA(scenario.message, extra)
   const reply = data?.reply || ''
   const intent = data?.intent || ''
