@@ -2395,8 +2395,17 @@ Deno.serve(async req=>{
      extendedOffered=true
     }
     if(!extendedOffered){
-     const samePeriod=slotsForPeriod(allSlots,slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening')
+     const periodoPedido=slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening'
+     const samePeriod=slotsForPeriod(allSlots,periodoPedido)
      const alternatives=(samePeriod.length?samePeriod:allSlots)
+     // v29.75.0 (caso Longanesi 19/08, pedido do Juliano em 26/08): além dos vizinhos do
+     // horário pedido, abrir a porta do OUTRO período do dia quando ele tem vaga — "pode
+     // ser um desses, ou o senhor prefere à tarde?". Só entra quando as alternativas
+     // mostradas ficaram todas no período pedido (senão a lista já cobre o dia inteiro e
+     // a frase vira ruído).
+     const rotuloPeriodo=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à tarde':'no fim do dia'
+     const outrosPeriodos=['morning','afternoon','evening'].filter((p)=>p!==periodoPedido&&slotsForPeriod(allSlots,p).length)
+     const conviteOutroPeriodo=samePeriod.length&&outrosPeriodos.length?` Ou, se ficar melhor pra você, também tenho horários ${outrosPeriodos.map(rotuloPeriodo).join(' e ')} 😉`:''
      // v29.14.0 — caso real 11/08/2026 (print que o Juliano mandou): o cliente pediu 10:00
      // em TRÊS dias seguidos e nas três recebeu "está reservado" + uma lista despejada de
      // 8 a 12 horários. Ele insistiu quatro vezes e não fechou. Lista comprida não é
@@ -2421,8 +2430,8 @@ Deno.serve(async req=>{
       const resto=alternatives.filter((t:string)=>!proximos.includes(t))
       const sobra=resto.length?` Se preferir outro, tenho ainda: ${resto.slice(0,3).join(', ')}.`:''
       reply=proximos.length===2
-       ? `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} ou ${proximos[1]} — algum desses serve pra você?${sobra}`
-       : `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} — serve pra você?${sobra}`
+       ? `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} ou ${proximos[1]} — algum desses serve pra você?${sobra}${conviteOutroPeriodo}`
+       : `${effectiveTime} já está reservado nesse dia. O mais perto que consigo é ${proximos[0]} — serve pra você?${sobra}${conviteOutroPeriodo}`
       actions=[...proximos,...resto.slice(0,4)].map((t:string)=>({label:t,message:t}))
      }else{
       reply=`${effectiveTime} já está reservado nesse dia. Estes são os horários que tenho: ${alternatives.slice(0,8).join(', ')}.`
