@@ -510,7 +510,14 @@ Deno.serve(async (request: Request) => {
 
     // Registra a mensagem individual no histórico ANTES de agrupar — o histórico mostra
     // cada mensagem real como o cliente mandou, mesmo que a IA processe várias juntas.
-    await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: imageDescribed ? `📷 ${text}` : audioTranscribed ? `🎙️ ${text}` : text })
+    // v29.74.0: o created_at do BANCO desta mensagem vira a régua de obsolescência (ver
+    // comentário no processBuffered) — por isso o .select() aqui.
+    const { data: inboundRow } = await admin
+      .from('whatsapp_messages')
+      .insert({ phone, direction: 'in', body: imageDescribed ? `📷 ${text}` : audioTranscribed ? `🎙️ ${text}` : text })
+      .select('created_at')
+      .single()
+    const inboundStampMs = inboundRow?.created_at ? new Date(inboundRow.created_at).getTime() : Date.now()
 
     // Buffer/debounce: junta esta mensagem com qualquer outra que ainda esteja "fresca"
     // (chegou nos últimos DEBOUNCE_MS) pro mesmo telefone, espera um pouco, e só a
@@ -630,7 +637,16 @@ Deno.serve(async (request: Request) => {
           }
         } catch (_e) { /* melhor responder só a atual do que não responder */ }
         // A partir daqui, qualquer mensagem NOVA do cliente torna esta resposta obsoleta.
-        obsoleteCutoffMs = Date.now()
+        // v29.74.0 (caso Michele, 25/08/2026, 10h37): a régua era Date.now() DESTE instante —
+        // mas entre o carimbo da mensagem processada e este ponto passam ~6s (debounce +
+        // leituras). "Qual o valor?" chegou DENTRO dessa janela, ficou aquém da régua, e a
+        // resposta da mensagem anterior (nascida velha, sem o preço) foi enviada mesmo assim —
+        // duas respostas simultâneas e a pergunta do preço engolida. A régua certa é o
+        // created_at (do banco) da última mensagem coberta por este processamento: tudo que
+        // chegar depois DELA torna esta resposta obsoleta. O texto combinado nunca contém
+        // mensagem mais nova que a própria (uma mais nova teria stamp maior e este turno
+        // desistiria no teste do buffer acima), então a régua é exatamente inboundStampMs.
+        obsoleteCutoffMs = inboundStampMs
         await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
         // v29.17.1 — caso Helder (13/08/2026): mensagem morreu em silêncio total entre o ack e a
         // chamada da IA, sem UM log sequer pra dizer onde. Marcos de log baratos no caminho feliz:

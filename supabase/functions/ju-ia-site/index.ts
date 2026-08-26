@@ -1231,6 +1231,26 @@ Deno.serve(async req=>{
   const rescheduleTarget=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
   const desiredServiceName=chosen.length?chosen.map((s:any)=>s.name).join(' + '):''
   const wantsServiceChange=Boolean(rescheduleTarget)&&Boolean(desiredServiceName)&&normalize(desiredServiceName)!==normalize(String(rescheduleTarget?.service_name||''))
+  // v29.74.0 (caso Tiago, 25/08/2026, 14h24): pediu por áudio pra remarcar "pra amanhã",
+  // e 25s depois mandou OUTRO áudio desistindo ("pode manter hoje mesmo, nem tinha pensado
+  // nisso"). Com pending_reschedule ativo, o fluxo tratou a desistência como resposta de
+  // remarcação e ofereceu os horários de amanhã (o "amanhã" veio do histórico) — o Juliano
+  // teve que intervir e quase remarcou sem precisar. Desistir de remarcar tem que vir ANTES
+  // de qualquer etapa do fluxo: mantém o agendamento original e limpa o estado.
+  const keepSignal=includesAny(normalizedQuestion,['pode manter','pode deixar como esta','deixa como esta','deixar como esta','mantem o horario','manter o horario','mantem o mesmo','mantem assim','deixa assim','fica como esta','fica assim','nao precisa mudar','nao precisa remarcar','nao precisa trocar','nao vou mais remarcar','desisti de remarcar','vou hoje mesmo','mantem hoje','pode ser hoje mesmo'])
+  const keepTarget=rescheduleTarget||(upcomingBookings.length===1?upcomingBookings[0]:null)
+  if(keepSignal&&keepTarget){
+   reply=`Perfeito! 😊 Então fica mantido: ${formatDateBR(keepTarget.booking_date)} às ${String(keepTarget.start_time).slice(0,5)} (${keepTarget.service_name}). Te espero!`
+   actions=[]
+   handoff=false
+   next.pending_reschedule_booking_id=null
+   next.pending_reschedule_new_date=null
+   next.pending_reschedule_new_time=null
+   next.pending_cancel_booking_id=null
+   next.date=null
+   next.time=null
+   next.period=null
+  }else{
   // v29.12.0 — caso Darlisson (11/08/2026): cliente disse "vamos ter que remarcar" e, na
   // mensagem seguinte, "Eu retorno o contato amanhã". A JuIA insistiu em oferecer horários
   // do MESMO dia e o agendamento das 15:45 ficou de pé — cadeira bloqueada por alguém que
@@ -1419,6 +1439,7 @@ Deno.serve(async req=>{
     }
    }
   }
+  } // fecha o else da desistência de remarcar (keepSignal, v29.74.0)
  }
 
  // Adiciona/remove produto de um agendamento já confirmado (ex.: cliente
@@ -2314,7 +2335,12 @@ Deno.serve(async req=>{
      next.upsell_products_done=true
     }else{
      next.upsell_offer_done=true
-     reply=`Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
+     // v29.74.0 (caso Michele, 25/08/2026): o precoAntes da v29.54.0 só existia no ramo COM
+     // oferta — quando a oferta já tinha sido feita (ou não havia o que oferecer), "14:15h +
+     // qual o valor?" caía aqui e a pergunta do preço morria sem resposta. Pergunta feita,
+     // pergunta respondida — nos dois ramos.
+     const precoAntesSemOferta=askedPrice?`${serviceNames} — *${money(chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0))}*.\n\n`:''
+     reply=`${precoAntesSemOferta}Sim, ${effectiveTime} está disponível para esse atendimento de ${duration} minutos. Quer reservar esse horário?`
      actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
     }
    }else{

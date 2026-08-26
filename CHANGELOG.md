@@ -1,3 +1,18 @@
+## 29.74.0 — Revisão diária 26/08: resposta obsoleta não sai mais (caso Michele), desistir de remarcar (caso Tiago) e fim do rascunho institucional vago no cron das 8h
+
+Três correções da varredura das conversas de 25/08 + a causa-raiz dos três dias seguidos de rascunho genérico rejeitado no crivo.
+
+**1. whatsapp-webhook — a régua de obsolescência tinha uma janela de ~6s (caso Michele, 25/08 10h37).** Ela mandou "Pode ser as 14:15h" e, 6,3s depois (fora do debounce), "Qual o valor?". A resposta da 1ª mensagem nasceu velha, mas passou no teste de obsolescência porque a régua era `Date.now()` do instante da reivindicação do buffer (~6s depois do carimbo da mensagem) — a 2ª mensagem chegou DENTRO dessa janela e ficou aquém da régua. Resultado: duas respostas simultâneas conflitantes ("quer incluir? 1/2/3" e "quer reservar?"), o "Sim" dela caiu na pergunta errada e ela respondeu "4" às cegas. A régua agora é o `created_at` do BANCO da última mensagem coberta pelo processamento — qualquer mensagem que chegue depois dela descarta a resposta (quem processa a nova responde por todas, como já era o desenho).
+
+**2. ju-ia-site — pergunta de preço no ramo sem oferta (a outra metade do caso Michele).** O `precoAntes` da v29.54.0 só existia no ramo COM oferta numerada; quando a oferta já tinha sido feita (ou não havia o que oferecer), "14:15h + qual o valor?" caía no "Sim, X está disponível... Quer reservar?" e a pergunta do preço morria sem resposta. Agora o valor entra antes da confirmação nos dois ramos.
+
+**3. ju-ia-site — desistir de remarcar mantém o horário (caso Tiago, 25/08 14h24).** Pediu por áudio pra remarcar "pra amanhã" e, 25s depois, mandou outro áudio desistindo ("pode manter hoje mesmo, nem tinha pensado nisso"). Com `pending_reschedule` ativo, o fluxo tratou a desistência como resposta de remarcação e ofereceu os horários de amanhã (o "amanhã" veio do histórico) — o Juliano interveio e quase remarcou sem precisar. Sinal de desistência ("pode manter", "deixa como está", "não precisa mudar", "vou hoje mesmo"...) agora vem ANTES de qualquer etapa: confirma o horário original mantido e limpa o estado da remarcação.
+
+**4. content-generate-daily — três dias seguidos de rascunho institucional vago (22, 25 e 26/08), mesma causa do domingo da v29.31.2.** Os dias úteis (ter–sáb) geravam com esforço baixo, sem revisão de qualidade e com tema abstrato ("a experiência de ser atendido") — e conceito abstrato vira frase de agência ("Seu visual merece o cuidado e a precisão de uma experiência premium"). Três mudanças:
+- **`CLICHE_INSTITUCIONAL`** (filtro determinístico, irmão do `CLICHE_VAZIO`): "visual/estilo/corte merece", "experiência premium/única", "cuidado e precisão", "acabamento impecável", "atendimento de excelência" etc. derrubam a legenda pro retry.
+- **A revisão de qualidade (`textoRaso` + segunda tentativa em modo exigente) passou a valer TODO dia**, não só domingo/segunda. Dia útil continua barato: primeira tentativa em esforço baixo; só paga a segunda quando cai no filtro.
+- **`VOZ_CONCRETA` nos temas de dia útil** (experiência, fidelidade, serviço em destaque, campanha): um fato concreto por post, voz do Juliano em primeira pessoa, proibição explícita de elogio genérico à própria casa e de frase que serviria pra qualquer barbearia.
+
 ## 29.73.0 — Migration 132: o botão "Excluir registro" do admin esbarrava em GRANT, não em policy (25/08)
 
 Registro feito a posteriori: o commit da migration subiu sem entrada no CHANGELOG. Resumo a partir do próprio arquivo `132-v29.73.0-grant-delete-bookings.sql`.

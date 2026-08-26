@@ -118,6 +118,12 @@ async function generateCaption(openaiKey: string | undefined, prompt: string, ex
 // pode desobedecer um filtro. Se a legenda cair em clichê de cartão ou virar lista de
 // objetos, ela é descartada e outra é pedida.
 const CLICHE_VAZIO = /que a semana comece leve|disposi[çc][ãa]o renovada|novos? recome[çc]os?|energias? renovadas?|recarregar as energias|momentos? especiais|o visual em dia|sua melhor vers[ãa]o|aproveite o dia em fam[íi]lia|dia de descanso e renova[çc][ãa]o|desejamos a todos/i
+// v29.74.0 — clichê INSTITUCIONAL de dia útil (26/08/2026): três dias seguidos de rascunho
+// reprovado no crivo com a mesma voz de agência ("Seu visual merece o cuidado e a precisão",
+// "experiência premium", "acabamento impecável"). São frases que serviriam pra qualquer
+// barbearia do país — o oposto do que o Juliano aprova. Mesma lógica do CLICHE_VAZIO:
+// o prompt proíbe, mas proibição textual depende do modelo; o filtro não.
+const CLICHE_INSTITUCIONAL = /\b(visual|estilo|corte|cabelo|barba|voc[êe])\s+(merece|pede)\b|merece\s+(o\s+)?cuidado|cuidado\s+(e\s+(a\s+)?(precis[ãa]o|estilo)|à\s+altura|nos\s+detalhes)|experi[êe]ncia\s+(premium|[úu]nica|completa|exclusiva)|momento\s+de\s+cuidado|acabamento\s+impec[áa]vel|atendimento\s+(de\s+excel[êe]ncia|impec[áa]vel|diferenciado)|cada\s+corte\s+[ée]\s+pensado|eleve\s+(o\s+)?seu|autoestima\s+em\s+dia|garanta\s+seu\s+momento/i
 // v29.31.5 — nunca revelar quando a barbearia abriu (decisão do Juliano, 16/08/2026).
 // Um texto emocionou de verdade dizendo "comecei do zero em março" — mas datar o começo
 // entrega a quem ainda não é cliente que a casa é recente, e isso trabalha contra a
@@ -128,6 +134,7 @@ const textoRaso = (t: string) => {
   const txt = String(t || '').trim()
   if (!txt) return true
   if (CLICHE_VAZIO.test(txt)) return true
+  if (CLICHE_INSTITUCIONAL.test(txt)) return true
   if (REVELA_IDADE.test(txt)) return true
   // "domingo" repetido 3+ vezes = texto girando em torno de si mesmo, sem conteúdo.
   if ((txt.toLowerCase().match(/domingo/g) || []).length >= 3) return true
@@ -301,14 +308,18 @@ Deixe o canto inferior direito limpo e desimpedido — a marca é aplicada depoi
 // v29.31.3 — escreve com esforço e NÃO aceita a primeira resposta se ela vier rasa.
 // Dias de conteúdo emocional (domingo/segunda) usam o modo exigente e ganham uma segunda
 // chance com aviso explícito do que deu errado — em vez de publicar texto morno.
+// v29.74.0 — a revisão de qualidade passou a valer TODO dia, não só domingo/segunda: os
+// rascunhos de ter-sáb saíam na primeira tentativa (esforço baixo, sem gate) e três dias
+// seguidos vieram institucionais vagos, reprovados no crivo. Dia útil continua barato
+// (primeira tentativa em esforço baixo); só quando cai no filtro é que paga a segunda
+// tentativa em modo exigente.
 async function captionComQualidade(openaiKey: string | undefined, prompt: string, emocional: boolean): Promise<string> {
-  if (!emocional) return await generateCaption(openaiKey, prompt)
-  let texto = await generateCaption(openaiKey, prompt, true)
+  let texto = await generateCaption(openaiKey, prompt, emocional)
   if (textoRaso(texto)) {
     console.warn('[content-generate-daily] 1a versao rasa, pedindo de novo')
     const promptDuro = `${prompt}
 
-ATENÇÃO — sua tentativa anterior foi REPROVADA por soar vazia: clichê de cartão, repetição da palavra do dia ou lista de objetos. Recomece do zero. Abra com uma pessoa ou uma verdade sobre quem lê, não com um cenário. Nada de frase que caberia em qualquer negócio.`
+ATENÇÃO — sua tentativa anterior foi REPROVADA por soar vazia ou institucional: clichê de cartão, elogio genérico à própria barbearia ("seu visual merece", "experiência premium", "cuidado e precisão"), repetição da palavra do dia ou lista de objetos. Recomece do zero. Abra com uma pessoa, uma cena ou um fato concreto desta barbearia, não com um elogio. Nada de frase que caberia em qualquer negócio.`
     const segunda = await generateCaption(openaiKey, promptDuro, true)
     if (!textoRaso(segunda)) texto = segunda
   }
@@ -407,6 +418,13 @@ Deno.serve(async (request: Request) => {
 
     const NO_AGENDA_TALK = 'É PROIBIDO mencionar a agenda de hoje, disponibilidade, encaixe, janela de horário, vaga aberta ou qualquer coisa que sugira que existe horário sobrando — a barbearia é procurada e o post vende a experiência, não a vacância.'
 
+    // v29.74.0 — a mesma lição do domingo (v29.31.2) aplicada ao dia útil: conceito abstrato
+    // vira frase de agência. Três dias seguidos de rascunho reprovado no crivo ("Seu visual
+    // merece o cuidado e a precisão...") provaram que dizer o TEMA não basta — é preciso
+    // dizer COMO se escreve. Regra: um fato concreto por post, voz do Juliano, zero elogio
+    // genérico à própria casa.
+    const VOZ_CONCRETA = `COMO ESCREVER (é isso que decide se o texto é aprovado ou reprovado na revisão): escolha UM detalhe concreto e construa o texto em volta dele — uma cena ou um fato verificável (o café servido na chegada, o horário que começa na hora que foi marcado, o espelho no final pro cliente conferir o acabamento, um cliente por vez na cadeira). Escreva como o Juliano falaria com um cliente na cadeira: simples, direto, de pessoa pra pessoa. É PROIBIDO elogiar a própria barbearia com adjetivo genérico ("seu visual/estilo merece", "cuidado e precisão", "experiência premium/única", "acabamento impecável", "atendimento de excelência", "momento de cuidado") e é PROIBIDA qualquer frase que serviria igual pra qualquer outra barbearia do Brasil — se não tem um fato concreto DESTA barbearia, reescreva antes de entregar.`
+
     let contextFact: string
     let context: Record<string, unknown>
 
@@ -481,27 +499,27 @@ ${NO_HARD_SELL}`
       contextFact = `A agenda de hoje (${formatDateBR(todaySP)}) está QUASE CHEIA: restam só os últimos horários do dia. Convide a garantir um dos últimos horários de hoje, com tom de procura alta ("a agenda de hoje está fechando", "últimos horários do dia"). É PROIBIDO dizer o número exato de horários, citar horários específicos, ou usar as palavras "janela", "encaixe" e "vaga".`
       context = { tipo: 'reta_final', data: todaySP, horarios_livres: openSlotsCount }
     } else if (campaign) {
-      contextFact = `Campanha ativa da barbearia — use como tema central do post de hoje, escolhendo um ângulo criativo (não repita o texto da campanha ao pé da letra): ${String(campaign.content).slice(0, 600)}. Use apenas preços e datas que estão descritos aí em cima — não invente. ${NO_AGENDA_TALK}`
+      contextFact = `Campanha ativa da barbearia — use como tema central do post de hoje, escolhendo um ângulo criativo (não repita o texto da campanha ao pé da letra): ${String(campaign.content).slice(0, 600)}. Use apenas preços e datas que estão descritos aí em cima — não invente. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
       context = { tipo: 'campanha', campanha: campaign.title }
     } else {
       // Sem campanha: rotação de temas positivos pra não repetir o mesmo post toda manhã.
       const dayNumber = Number(todaySP.slice(-2))
       const rotation = dayNumber % 3
       if (rotation === 0) {
-        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 ou 2 destes fatos verdadeiros (não liste todos): café na chegada, atendimento com hora marcada respeitada (sem fila e sem espera), atendimento sem pressa, ambiente climatizado, cartão fidelidade (a cada 10 cortes, 1 é grátis). ${NO_AGENDA_TALK}`
+        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE, sem listar os outros: café na chegada, atendimento com hora marcada respeitada (sem fila e sem espera), atendimento sem pressa (um cliente por vez), ambiente climatizado, cartão fidelidade (a cada 10 cortes, 1 é grátis). ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
         context = { tipo: 'experiencia' }
       } else if (rotation === 1) {
-        contextFact = `Tema de hoje: o CARTÃO FIDELIDADE da Barbearia do Ju — a cada 10 cortes, 1 é grátis, e todo corte conta automaticamente, sem precisar carimbar nada. ${NO_AGENDA_TALK}`
+        contextFact = `Tema de hoje: o CARTÃO FIDELIDADE da Barbearia do Ju — a cada 10 cortes, 1 é grátis, e todo corte conta automaticamente, sem precisar carimbar nada. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
         context = { tipo: 'fidelidade' }
       } else {
         const { data: featuredRows } = await admin.rpc('pick_featured_service')
         const featured = Array.isArray(featuredRows) ? featuredRows[0] : featuredRows
         if (featured) {
           const priceLabel = Number(featured.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          contextFact = `Tema de hoje: destaque o serviço "${featured.name}" (R$${priceLabel}, ${featured.duration_minutes} minutos) — o que é, pra quem é, por que vale a pena. ${NO_AGENDA_TALK}`
+          contextFact = `Tema de hoje: destaque o serviço "${featured.name}" (R$${priceLabel}, ${featured.duration_minutes} minutos) — o que acontece nesse atendimento, pra quem ele é, por que vale a pena. Descreva o serviço de verdade (gesto, etapa, resultado), não um elogio a ele. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
           context = { tipo: 'servico_destaque', servico: featured.name, preco: featured.price, duracao_minutos: featured.duration_minutes }
         } else {
-          contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 ou 2 destes fatos verdadeiros: café na chegada, hora marcada respeitada, atendimento sem pressa, ambiente climatizado. ${NO_AGENDA_TALK}`
+          contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE: café na chegada, hora marcada respeitada, atendimento sem pressa, ambiente climatizado. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
           context = { tipo: 'experiencia' }
         }
       }
