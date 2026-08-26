@@ -1,7 +1,13 @@
 (() => {
   const KEY = 'bdj_cookie_consent_v1';
   const current = localStorage.getItem(KEY);
-  const gtag = (...args) => { window.dataLayer = window.dataLayer || []; window.dataLayer.push(args); };
+  // v29.76.0 — o GTM só reconhece comando de consent quando recebe um objeto `arguments`
+  // de verdade (o padrão oficial do gtag). A versão antiga empurrava um Array
+  // (`push(args)` de arrow function com rest) e o GTM IGNORAVA o consent update: quem
+  // clicava "Aceitar" continuava como negado até a PRÓXIMA página (quando o script do
+  // <head> relê o localStorage). Descoberto em 26/08 investigando por que 145 cliques
+  // de anúncio viravam 6 sessões no GA4.
+  function gtag(){ (window.dataLayer = window.dataLayer || []).push(arguments); }
   function update(value){
     const granted = value === 'accepted';
     gtag('consent','update',{

@@ -1,3 +1,12 @@
+## 29.76.0 — O "Aceitar" do banner de cookies era ignorado pelo GTM (achado do gap 145 cliques → 6 sessões)
+
+Investigando por que 145 cliques do Google Ads (19-25/08) viraram só 6 sessões google/cpc no GA4, o teste de ponta a ponta no site publicado mostrou: `clique_agendamento` dispara certo, o GTM manda pro GA4, **mas o hit sai com `gcs=G100` — consentimento negado**. O site tem banner LGPD com padrão negado, e quem não clica "Aceitar" fica invisível pro GA4. Isso é desenho, não bug — MAS havia um bug em cima:
+
+- **`privacy-consent-v22-4.js` empurrava o consent update como Array** (`push(args)` de arrow function com rest). O GTM só reconhece comando de consent num objeto `arguments` de verdade (o padrão do `gtag`). Resultado: **clicar "Aceitar" não mudava nada na página atual** — o consentimento só valia da página seguinte em diante (quando o script do `<head>` relê o localStorage), e todos os eventos da primeira página (inclusive o `clique_agendamento` de quem chegou por anúncio numa página de serviço) se perdiam mesmo para quem aceitou.
+- Corrigido com `function gtag(){ dataLayer.push(arguments) }`; cache `?v=29.76.0` bumpado nos 55 HTML que carregam o script.
+- **Consequência de leitura de dados**: o GA4 SUBCONTA tudo pela taxa de aceite do banner — as comparações entre origens continuam válidas (o desconto é igual pra todas), mas números absolutos (sessões, conversões) são piso, não teto.
+- **Decisão pendente do Juliano**: manter o padrão "negado até aceitar" (mais conservador) ou liberar `analytics_storage` por padrão mantendo ads negado (padrão comum no Brasil sob LGPD, mediria a sessão de quem ignora o banner). Não mexi — é decisão de postura de privacidade, não técnica.
+
 ## 29.74.0 — Revisão diária 26/08: resposta obsoleta não sai mais (caso Michele), desistir de remarcar (caso Tiago) e fim do rascunho institucional vago no cron das 8h
 
 Três correções da varredura das conversas de 25/08 + a causa-raiz dos três dias seguidos de rascunho genérico rejeitado no crivo.
