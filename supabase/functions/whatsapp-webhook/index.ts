@@ -517,7 +517,11 @@ Deno.serve(async (request: Request) => {
       .insert({ phone, direction: 'in', body: imageDescribed ? `📷 ${text}` : audioTranscribed ? `🎙️ ${text}` : text })
       .select('created_at')
       .single()
-    const inboundStampMs = inboundRow?.created_at ? new Date(inboundRow.created_at).getTime() : Date.now()
+    // O +1 é obrigatório: o created_at do Postgres tem MICROssegundos e o Date do JS trunca
+    // pra milissegundos — sem o ajuste, a régua fica fração de ms ANTES da própria mensagem
+    // e a resposta é descartada como obsoleta pela mensagem que a gerou (pego no teste de
+    // produção de 26/08: "resposta descartada" com uma única mensagem na conversa).
+    const inboundStampMs = inboundRow?.created_at ? new Date(inboundRow.created_at).getTime() + 1 : Date.now()
 
     // Buffer/debounce: junta esta mensagem com qualquer outra que ainda esteja "fresca"
     // (chegou nos últimos DEBOUNCE_MS) pro mesmo telefone, espera um pouco, e só a
