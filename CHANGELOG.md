@@ -1,3 +1,11 @@
+## 29.77.0 — Medição de audiência liberada por padrão; banner passa a decidir só cookies de anúncio (decisão do Juliano, 26/08)
+
+Sequência da 29.76.0: com o gap de rastreio explicado (banner negando tudo por padrão), o Juliano decidiu adotar o padrão comum no Brasil sob LGPD — **`analytics_storage` sempre concedido** (medição agregada de audiência) e o banner decidindo apenas os cookies de ANÚNCIO (`ad_storage`/`ad_user_data`/`ad_personalization`: "Aceitar" concede, "Somente essenciais" nega).
+
+- Default no `<head>` das 55 páginas: `analytics_storage:'granted'` incondicional; ads continuam condicionados ao aceite salvo.
+- `privacy-consent-v22-4.js` (`?v=29.77.0`): o update do banner não desliga mais o analytics; texto do banner reescrito para ficar honesto ("Usamos medição de audiência de forma agregada... aceitar também os cookies de anúncios ou continuar apenas com os essenciais").
+- Efeito esperado: GA4 volta a enxergar praticamente todas as sessões (inclusive os cliques do Ads de quem ignora o banner) — os números de sessões/conversões devem SUBIR a partir de 26/08 sem que nada tenha mudado no negócio; lembrar disso ao comparar semanas.
+
 ## 29.76.0 — O "Aceitar" do banner de cookies era ignorado pelo GTM (achado do gap 145 cliques → 6 sessões)
 
 Investigando por que 145 cliques do Google Ads (19-25/08) viraram só 6 sessões google/cpc no GA4, o teste de ponta a ponta no site publicado mostrou: `clique_agendamento` dispara certo, o GTM manda pro GA4, **mas o hit sai com `gcs=G100` — consentimento negado**. O site tem banner LGPD com padrão negado, e quem não clica "Aceitar" fica invisível pro GA4. Isso é desenho, não bug — MAS havia um bug em cima:
