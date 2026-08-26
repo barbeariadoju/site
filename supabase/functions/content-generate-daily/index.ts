@@ -507,9 +507,10 @@ ${NO_HARD_SELL}`
       const rotation = dayNumber % 3
       if (rotation === 0) {
         // v29.78.0 — "exclusividade de fato" entrou na lista (26/08, insight de um cliente
-        // diretor de escola: é o oceano azul da casa). REGRA: descrever o fato, nunca usar
-        // "exclusivo/premium" como adjetivo (segue proibido).
-        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE, sem listar os outros: a barbearia inteira é sua na sua hora (um barbeiro, um cliente por vez — você chega no seu horário e o Juliano está pronto te esperando, e a conversa na cadeira não tem plateia); café na chegada; atendimento com hora marcada respeitada (sem fila e sem espera); atendimento sem pressa; ambiente climatizado; cartão fidelidade (a cada 10 cortes, 1 é grátis). ATENÇÃO: nunca escreva a palavra "exclusivo/exclusividade" como elogio — descreva o fato ("um cliente por vez", "ninguém entra no seu horário"). ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
+        // diretor de escola: é o oceano azul da casa). v29.78.1 — o Juliano LIBEROU a palavra
+        // "exclusivo" (diferente de "premium", que segue proibido: exclusivo é fato, premium
+        // é auto-elogio) — mas SEMPRE ancorada no fato que a prova, nunca solta como enfeite.
+        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE, sem listar os outros: o ATENDIMENTO EXCLUSIVO (um barbeiro, um cliente por vez — a barbearia inteira é sua na sua hora, você chega e o Juliano está pronto te esperando, e a conversa na cadeira não tem plateia); café na chegada; atendimento com hora marcada respeitada (sem fila e sem espera); atendimento sem pressa; ambiente climatizado; cartão fidelidade (a cada 10 cortes, 1 é grátis). REGRA da palavra "exclusivo": pode usar, mas SEMPRE colada no fato que a prova ("atendimento exclusivo: um cliente por vez") — nunca solta como enfeite ("experiência exclusiva", "ambiente exclusivo" são proibidos). ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
         context = { tipo: 'experiencia' }
       } else if (rotation === 1) {
         contextFact = `Tema de hoje: o CARTÃO FIDELIDADE da Barbearia do Ju — a cada 10 cortes, 1 é grátis, e todo corte conta automaticamente, sem precisar carimbar nada. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
@@ -522,7 +523,7 @@ ${NO_HARD_SELL}`
           contextFact = `Tema de hoje: destaque o serviço "${featured.name}" (R$${priceLabel}, ${featured.duration_minutes} minutos) — o que acontece nesse atendimento, pra quem ele é, por que vale a pena. Descreva o serviço de verdade (gesto, etapa, resultado), não um elogio a ele. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
           context = { tipo: 'servico_destaque', servico: featured.name, preco: featured.price, duracao_minutos: featured.duration_minutes }
         } else {
-          contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE: a barbearia inteira é sua na sua hora (um barbeiro, um cliente por vez, o Juliano pronto te esperando, conversa sem plateia), café na chegada, hora marcada respeitada, atendimento sem pressa, ambiente climatizado. Nunca use "exclusivo/exclusividade" como elogio — descreva o fato. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
+          contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE: o atendimento exclusivo (um barbeiro, um cliente por vez, a barbearia inteira é sua na sua hora, o Juliano pronto te esperando, conversa sem plateia), café na chegada, hora marcada respeitada, atendimento sem pressa, ambiente climatizado. "Exclusivo" só colado no fato que a prova ("atendimento exclusivo: um cliente por vez"), nunca solto como enfeite. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
           context = { tipo: 'experiencia' }
         }
       }
