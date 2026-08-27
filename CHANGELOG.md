@@ -1,3 +1,12 @@
+## Reativação de 30 dias — o número de 48h: 0 de 16 (27/08)
+
+Fechamento honesto da estreia da alavanca que o Juliano ligou para atacar a retenção de 16%. **16 convites, zero respostas, zero agendamentos** em 48 horas.
+
+- **Não foi falha técnica, e isso foi verificado**: os 16 envios voltaram com `evolution_message_id` (WhatsApp aceitou todos); no dia do disparo a barbearia recebeu 39 mensagens normais, provando que a entrada funciona; e o cron rodou certo em 25 e 26/08 (`succeeded`), com a leva de 26/08 encontrando zero elegíveis — o cooldown de 40 dias segurando os 16, exatamente como projetado.
+- **O padrão que os dados sustentam**: convite FRIO está em **0 de 18** (16 da reativação + 2 do convite manual de volta). No mesmo período, contato com **gancho imediato** — `walkin_turned_away`, cliente que veio e foi embora sem ser atendido — fez **2 de 2**. Rima com o teaser do Clube (15/08): 1.882 contas de alcance, zero comentários. Com 0/18, se a taxa real fosse 15% a chance de dar zero seria ~5% — dá para dizer que ela é baixa, sem fingir precisão que a amostra não tem.
+- **NÃO alterei a mensagem.** O texto foi aprovado pelo Juliano e mexer nele é decisão dele, não minha. Fica a hipótese registrada: a mensagem atual faz **pergunta aberta** ("me responde com o dia que fica melhor"), jogando o trabalho pro cliente. O convite de retorno da v29.56.0 já sabe oferecer **amostra de até 4 horários concretos** (nunca o total — regra da v29.51.0, caso Stevan); usar a mesma mecânica na reativação é a primeira coisa a testar antes de concluir que o canal não serve.
+- Aprendizado gravado em `marketing_memory` (category `aprendizado`, que não é lido pelo prompt da JuIA — só `campanha` é).
+
 ## 29.77.0 — Medição de audiência liberada por padrão; banner passa a decidir só cookies de anúncio (decisão do Juliano, 26/08)
 
 Sequência da 29.76.0: com o gap de rastreio explicado (banner negando tudo por padrão), o Juliano decidiu adotar o padrão comum no Brasil sob LGPD — **`analytics_storage` sempre concedido** (medição agregada de audiência) e o banner decidindo apenas os cookies de ANÚNCIO (`ad_storage`/`ad_user_data`/`ad_personalization`: "Aceitar" concede, "Somente essenciais" nega).
