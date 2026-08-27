@@ -60,6 +60,7 @@ Deno.serve(async(req:Request)=>{
     const email=String(booking?.customer_email||'').trim().toLowerCase()
 
     let whatsappOk=false
+    let fecharSemPesquisa=false // v29.81.0 — venda só de produto: comprovante sem pesquisa 1/2
     // v29.43.0 — fila unica de perguntas numeradas: se este telefone ja tem outra pergunta
     // sem resposta (convite, confirmacao, follow-up), a pesquisa espera o proximo cron
     // (roda a cada 15 min). Sem isso o "1" do cliente responde a pergunta errada.
@@ -121,7 +122,24 @@ Deno.serve(async(req:Request)=>{
       // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
       // mensagem separada (send-walkin-welcome, 9 min antes desta) agora é UMA linha aqui.
       const ehBalcao=String(booking?.channel||'')==='balcao'
-      const waText=[
+      // v29.81.0 (caso Eduardo, 27/08) — venda SÓ de produto ganha mensagem própria:
+      // agradece a COMPRA (não "a visita"), oferece ajuda com o produto e NÃO faz a
+      // pesquisa 1/2 (quem só levou uma pomada não sentou na cadeira; muitos já
+      // responderam a pesquisa do atendimento real dias antes). O registro em
+      // experience_requests é fechado logo após o envio pra um "1" solto nunca ser
+      // lido como resposta de pesquisa.
+      const soProduto=servicoValor<=0&&produtos.length>0
+      fecharSemPesquisa=soProduto
+      const waText=(soProduto?[
+        `Olá, ${first}! Obrigado pela compra na Barbearia do Ju 💈`,
+        '',
+        `Segue seu comprovante${hora?` — hoje às ${hora}`:''}:`,
+        ...linhas,
+        `*Total: ${money(total)}*`,
+        ...(pagamentoLinha?[pagamentoLinha]:[]),
+        '',
+        'Qualquer dúvida sobre como usar o produto, é só me chamar por aqui que eu te oriento 😉',
+      ]:[
         `Olá, ${first}! Muito obrigado pela visita à Barbearia do Ju 💈`,
         '',
         `Segue seu comprovante${hora?` — hoje às ${hora}`:''}:`,
@@ -133,7 +151,7 @@ Deno.serve(async(req:Request)=>{
         'Como foi seu atendimento?',
         'Digite *1* para 😊 Satisfeito',
         'Digite *2* para 🙁 Insatisfeito',
-      ].join('\n')
+      ]).join('\n')
       try{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',
@@ -155,7 +173,12 @@ Deno.serve(async(req:Request)=>{
 
     if(whatsappOk){
       sentWhatsapp++
-      await admin.from('experience_requests').update({status:'sent',sent_at:new Date().toISOString(),last_error:null,updated_at:new Date().toISOString()}).eq('id',row.id)
+      // v29.81.0 — venda só de produto: fecha o registro na hora ('expired' fica fora do
+      // find_pending_experience_by_phone), senão um "1" solto do cliente viraria resposta
+      // de uma pesquisa que nunca foi feita.
+      await admin.from('experience_requests').update(fecharSemPesquisa
+        ?{status:'expired',sent_at:new Date().toISOString(),last_error:'Venda só de produto — comprovante enviado sem pesquisa.',updated_at:new Date().toISOString()}
+        :{status:'sent',sent_at:new Date().toISOString(),last_error:null,updated_at:new Date().toISOString()}).eq('id',row.id)
       continue
     }
 
