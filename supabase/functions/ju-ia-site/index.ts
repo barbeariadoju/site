@@ -621,7 +621,7 @@ Deno.serve(async req=>{
  // Limpa o horário (e o completed) sempre que aparece uma data nova, forçando perguntar
  // o horário de novo em vez de herdar o de um agendamento já encerrado.
  if(next.completed&&ai.updates?.date&&ai.updates.date!==state.date){next.time=null;next.completed=false}
- const chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+ let chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
  // v29.14.0 — vira true quando o CÓDIGO monta uma resposta afirmativa depois de consultar
  // a agenda de verdade. A trava anti-promessa (lá no fim) precisa disso pra saber a
@@ -1849,6 +1849,27 @@ Deno.serve(async req=>{
   }
  }
  let offerTurn=false // true = esta resposta é a reação à oferta — o "retomar fluxo" abaixo não pode atropelar
+ // v29.79.0 (caso Rodrigo, 26/08 19h33): resposta à escolha "combo em outro horário ×
+ // manter o original". Depois do "não fecha pra X (50 min)", o "Só cabelo então" precisa
+ // VOLTAR pro horário que o cliente pediu — antes o modelo regerava a mesma negativa, o
+ // anti-papagaio do webhook trocava tudo por "me embolei" + handoff e o Juliano tinha que
+ // converter na mão, na cadeira. pending_fit_choice é one-shot: consumido aqui, sempre.
+ const pfc=state?.pending_fit_choice
+ if(pfc&&pfc.time){
+  next.pending_fit_choice=null
+  const soBase=/\bso\b[\s\S]*?\b(corte|cabelo)\b|\bsem (a )?barba\b|\bdeixa (so )?o corte\b/.test(normalizedQuestion)
+  if(soBase){
+   const manter=pfc.added
+    ?next.services.filter((n:string)=>n!==pfc.added)
+    :next.services.filter((n:string)=>normalize(n).includes('corte'))
+   if(manter.length){
+    next.services=manter
+    chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+    next.time=pfc.time
+    intent='book';handoff=false
+   }
+  }
+ }
  const pendingOffer=Array.isArray(next.upsell_offer_options)&&next.upsell_offer_options.length?next.upsell_offer_options as string[]:null
  // v29.54.0 (caso Aletéia): pergunta de preço no meio da oferta numerada não é resposta à
  // oferta nem "mudou de assunto" (que matava a venda) — é uma pergunta legítima que PRECISA
@@ -1910,8 +1931,38 @@ Deno.serve(async req=>{
     }else if(!next.services.includes(addName))next.services.push(addName)
     const newChosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
     const total=newChosen.reduce((a:number,s:any)=>a+s.price,0),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
-    reply=`Boa escolha! Então fica ${newChosen.map((s:any)=>s.name).join(' + ')} — ${money(total)} (${dur} min)${next.date&&next.time?`, ${formatDateBR(next.date)} às ${next.time}`:''}. Posso confirmar?`
-    actions=[{label:'Confirmar',message:'Sim, pode confirmar'}]
+    // v29.79.0 (caso Rodrigo, 26/08 19h33): a oferta prometia o MESMO horário com a
+    // duração nova sem conferir a agenda — "fica Corte + Barba às 08:00, posso
+    // confirmar?" e, no "pode sim", "poxa, 08:00 não fecha" (8h + 50 min batia no
+    // cliente das 8h30). A promessa só sai depois de revalidar o encaixe; se não
+    // couber, a MESMA resposta já traz as alternativas do combo E a opção de manter só
+    // o serviço original no horário escolhido — decisão do cliente em uma rodada.
+    let encaixa=true,alternativas:string[]=[]
+    if(next.date&&next.time){
+     const {data:slotsFit}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:dur})
+     const listaFit=(slotsFit||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+     if(!listaFit.includes(String(next.time).slice(0,5))){
+      encaixa=false
+      const mins=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
+      const alvoT=String(next.time).slice(0,5)
+      alternativas=listaFit.slice().sort((a:string,b:string)=>Math.abs(mins(a)-mins(alvoT))-Math.abs(mins(b)-mins(alvoT))).slice(0,2)
+     }
+    }
+    if(encaixa){
+     reply=`Boa escolha! Então fica ${newChosen.map((s:any)=>s.name).join(' + ')} — ${money(total)} (${dur} min)${next.date&&next.time?`, ${formatDateBR(next.date)} às ${next.time}`:''}. Posso confirmar?`
+     actions=[{label:'Confirmar',message:'Sim, pode confirmar'}]
+    }else{
+     const alvoT=String(next.time).slice(0,5)
+     const baseNames=next.services.filter((n:string)=>n!==addName).join(' + ')||'o que você já tinha escolhido'
+     next.pending_fit_choice={time:alvoT,added:addName}
+     next.time=null
+     const comboNome=newChosen.map((s:any)=>s.name).join(' + ')
+     reply=alternativas.length
+      ?`Posso incluir sim! Só que com ${addName} o atendimento fica com ${dur} min, e às ${alvoT} não fecha 😕 Pra ${comboNome} consigo ${alternativas.join(' ou ')}. Ou, se preferir, mantenho só ${baseNames} às ${alvoT} — o que fica melhor?`
+      :`Posso incluir sim! Só que com ${addName} o atendimento fica com ${dur} min, e às ${alvoT} não fecha — e não sobrou outro horário nesse dia 😕 Quer que eu mantenha só ${baseNames} às ${alvoT}, ou vejo outro dia pro combo?`
+     actions=[...alternativas.map((t:string)=>({label:t,message:t})),{label:`Manter só ${baseNames} às ${alvoT}`,message:`Manter só o ${baseNames} às ${alvoT}`}]
+     respostaConferidaNaAgenda=true
+    }
     intent='other';handoff=false;offerTurn=true
    }
   }
@@ -2573,6 +2624,10 @@ Deno.serve(async req=>{
        ?`Poxa, ${alvo} não fecha pra ${nomes} (${duration} min) 😕 O mais perto que consigo é ${perto.join(' ou ')} — serve pra você?`
        :`Poxa, ${alvo} não fecha pra ${nomes} (${duration} min) e não sobrou horário nesse dia 😕 Quer que eu veja outro dia?`
       actions=perto.map((t:string)=>({label:t,message:t}))
+      // v29.79.0 (caso Rodrigo): arma a saída "só o corte então" — se o cliente abrir
+      // mão do serviço que não coube, o horário original volta e o agendamento fecha
+      // direto (sem isso o modelo regerava a mesma negativa e caía no "me embolei").
+      next.pending_fit_choice={time:alvo,added:null}
      }else if(error.message.includes('antecedência')){
       // v29.62.3 (caso Cleiton, 21/08/2026, 14h58): às 12h51 a JuIA ofereceu 15:00 com a
       // pergunta de complemento; ele só respondeu "4" (fechar) às 14h58 — 2 minutos antes
