@@ -1395,7 +1395,13 @@ Deno.serve(async (request: Request) => {
               // deu pra medir. Quem clica é marcado como avaliado e nunca mais é cobrado.
               const trackedReviewLink = `${supabaseUrl}/functions/v1/go-review?t=${pending.token}`
               const reply = alreadyReviewed
-                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju. Se tiver alguma 💬 sugestão, pode deixar aqui.'
+                // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
+                // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
+                // da rede do cliente. Quem ainda não avaliou continua recebendo SÓ o pedido
+                // de avaliação (um CTA por mensagem; o Google vale mais pro SEO local).
+                // ATENÇÃO: existe uma conta homônima @barbeariadoju (SEM underline) — cliente
+                // real já marcou a errada. O underline no fim faz parte do nosso handle.
+                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
                   : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
