@@ -394,9 +394,16 @@ Deno.serve(async (request: Request) => {
         text = transcribed
         audioTranscribed = true
       } else {
-        const fallback = `${greetingNow()}! 😊 Recebi seu áudio, mas por aqui ainda não consigo ouvir mensagens de voz — poderia escrever, por gentileza? Como posso ajudar você hoje?`
+        // v29.82.0 (caso Rodrigo/número do Juliano, 26-27/08): o texto antigo ("por aqui
+        // ainda não consigo ouvir mensagens de voz") era FALSO — a JuIA transcreve áudio
+        // normalmente; cair aqui é falha pontual de download/Whisper. Agora: verdade +
+        // caminho real (o áudio está no WhatsApp e o Juliano ouve) + push pra ele saber.
+        const fallback = 'Recebi seu áudio! 🙏 Não consegui escutar direitinho por aqui, mas o Juliano vai ouvir e já te responde. Se quiser adiantar, pode me escrever 😉'
         await sendWhatsapp(phone, fallback)
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[áudio recebido, não foi possível transcrever]' })
+        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+        if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+          body: JSON.stringify({ custom: { title: '🎙️ Áudio não transcrito', body: `${pushName || phone} mandou um áudio que não consegui ouvir — escuta no WhatsApp e responde por lá.`, url: '/admin-mensagens.html?app=1', tag: `audio-fail-${phone}` } }) }).catch(() => {})
         return json({ ok: true, skipped: 'audio_not_transcribed' })
       }
     }
@@ -493,6 +500,26 @@ Deno.serve(async (request: Request) => {
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, sem relação com corte/barba/cor identificada]' })
         return json({ ok: true, skipped: 'image_not_related' })
       } else if (description) {
+        // v29.82.0 (caso Rodrigo, 27/08 12h35): cliente COM horário marcado mandou selfie
+        // de referência e a JuIA respondeu com o MENU de barba (venda) — sendo que a barba
+        // já estava no agendamento dele; o áudio seguinte repetiu o menu e caiu no "me
+        // embolei". Foto de referência de quem já tem horário não é intenção de compra: é
+        // material pro atendimento. Guarda no agendamento, agradece e avisa o Juliano —
+        // sem menu, sem passar pelo modelo.
+        const { data: proxRef } = await admin.rpc('phone_upcoming_bookings', { p_phone: phone })
+        const bRef = Array.isArray(proxRef) && proxRef.length ? proxRef[0] : null
+        if (bRef) {
+          const quandoRef = `${String(bRef.booking_date).split('-').reverse().slice(0, 2).join('/')} às ${String(bRef.start_time).slice(0, 5)}`
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: `[foto de referência recebida: ${description.slice(0, 140)}]` })
+          const { data: bNota } = await admin.from('bookings').select('notes').eq('id', bRef.id).maybeSingle()
+          const notaRef = `Foto de referência no WhatsApp (${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}): ${description.slice(0, 160)}${caption ? ` — legenda do cliente: "${caption.slice(0, 80)}"` : ''}`
+          await admin.from('bookings').update({ notes: `${String(bNota?.notes || '').trim()} [${notaRef}]`.trim() }).eq('id', bRef.id)
+          await sendWhatsapp(phone, `Boa! 📸 Recebi sua foto e já deixei guardada como referência pro seu horário de ${quandoRef}. O Juliano vai dar uma olhada antes de te atender 😉`)
+          const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+          if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({ custom: { title: '📸 Foto de referência recebida', body: `${pushName || phone} mandou foto pro atendimento de ${quandoRef} — dá uma olhada no WhatsApp.`, url: `/admin-agenda.html?data=${bRef.booking_date}&app=1`, tag: `ref-photo-${bRef.id}` } }) }).catch(() => {})
+          return json({ ok: true, reference_saved: bRef.id })
+        }
         text = `Cliente enviou uma foto de referência de corte/barba/cor. Descrição da imagem: ${description}${caption ? ` Legenda que o cliente escreveu junto: "${caption}"` : ''}`
         imageDescribed = true
       } else {

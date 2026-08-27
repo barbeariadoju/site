@@ -632,6 +632,16 @@ Deno.serve(async req=>{
  let respostaConferidaNaAgenda=false
 
  const normalizedQuestion=normalize(message)
+ // v29.82.0 (caso Alex Leal, 27/08 12h33): corte ASSUMIDO (v29.72) + "Preciso só de
+ // Barba" fechava "Barboterapia + Corte" — o modelo adicionava a barba e ninguém tirava
+ // o corte que o cliente nunca pediu. "só/apenas/somente ... barba" (sem citar corte)
+ // = manter apenas a família da barba; lista vazia deixa o bareBarbaAsk (logo abaixo)
+ // perguntar QUAL barba, como deve ser. Precisa rodar ANTES do bloco do bareBarbaAsk —
+ // o texto do menu lista os "outros" serviços e sairia com o corte fantasma.
+ if(/\b(so|apenas|somente)\b[\s\S]{0,24}\bbarba\b/.test(normalizedQuestion)&&!/\bcorte\b/.test(normalizedQuestion)&&next.services.some((n:string)=>normalize(n).includes('corte'))){
+  next.services=next.services.filter((n:string)=>{const k=normalize(n);return (k.includes('barba')||k.includes('barboterapia'))&&!k.includes('corte')})
+  chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+ }
  // v29.69.0: a última fala da JuIA nesta conversa, usada pelas travas de repetição abaixo
  // (não repetir a pergunta do dia, não repetir a mesma negativa de agenda).
  const ultimaFalaJuIA=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
