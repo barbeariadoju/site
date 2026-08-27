@@ -159,7 +159,10 @@
 
     if (!name) { msg.textContent = 'Informe o nome do cliente.'; return; }
     if (phoneDigits.length < 10) { msg.textContent = 'Informe um telefone válido, com DDD.'; return; }
-    if (!services.length) { msg.textContent = 'Selecione ao menos um serviço.'; return; }
+    // v29.80.0 (pedido do Juliano, 27/08): venda SÓ de produto agora é permitida — o
+    // registro entra como "Venda de produtos" (serviço R$0/0min, canal balcão) e o
+    // comprovante mostra apenas as linhas de produto.
+    if (!services.length && !products.length) { msg.textContent = 'Selecione ao menos um serviço ou produto.'; return; }
     if (!date || !time) { msg.textContent = 'Informe a data e o horário aproximado.'; return; }
     if (!payment) { msg.textContent = 'Selecione a forma de pagamento.'; return; }
 
@@ -169,7 +172,7 @@
       const { data, error } = await sb.rpc('admin_register_walkin_visit', {
         p_customer_name: name,
         p_customer_phone: phone,
-        p_service_name: services.map(s => s.name).join(' + '),
+        p_service_name: services.length ? services.map(s => s.name).join(' + ') : 'Venda de produtos',
         p_service_price: services.reduce((a, s) => a + s.price, 0),
         p_duration_minutes: services.reduce((a, s) => a + s.duration, 0),
         p_booking_date: date,

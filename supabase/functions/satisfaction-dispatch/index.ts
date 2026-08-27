@@ -98,7 +98,9 @@ Deno.serve(async(req:Request)=>{
       const total=servicoValor+produtosValor-desconto
 
       const linhas:string[]=[]
-      linhas.push(`✂️ ${servico} — ${money(servicoValor)}`)
+      // v29.80.0 — venda só de produto no balcão (serviço "Venda de produtos" R$0): o
+      // comprovante pula a linha de serviço zerada e lista direto os produtos.
+      if(servicoValor>0||produtos.length===0)linhas.push(`✂️ ${servico} — ${money(servicoValor)}`)
       for(const p of produtos){
         const nome=String((p as Record<string,unknown>)?.name||'Produto')
         const preco=Number((p as Record<string,unknown>)?.price||0)

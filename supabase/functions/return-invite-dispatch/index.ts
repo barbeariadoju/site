@@ -112,6 +112,9 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(futurePhones.has(phone)){await skip('ja_tem_agendamento_futuro');continue}
+    // v29.80.0 — venda só de produto no balcão (serviço R$0) não é atendimento na
+    // cadeira: convidar pra "reservar o próximo horário" não faz sentido aqui.
+    if(Number(b.service_price||0)<=0){await skip('venda_so_produto');continue}
 
     const {data:lastInvites}=await admin.from('return_invites').select('status,sent_at')
       .eq('phone',phone).neq('status','skipped').order('sent_at',{ascending:false}).limit(2)
