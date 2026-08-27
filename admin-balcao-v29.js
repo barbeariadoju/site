@@ -48,6 +48,16 @@
     $('balcao-products').innerHTML = renderProductPicker();
     bindServicePicker();
     bindProductPicker();
+    // v29.80.1 — os preços reais chegam do banco DEPOIS da primeira renderização
+    // (products-catalog-v1.js sincroniza com a tabela products e avisa por este evento;
+    // ninguém escutava). Sem re-render a lista mostrava o preço antigo do fallback
+    // estático — caso real 27/08: Leave-in R$44,99 na tela, preço verdadeiro R$33,00.
+    document.addEventListener('bdj:products-updated', () => {
+      const marcados = selectedProducts().map(p => p.name);
+      $('balcao-products').innerHTML = renderProductPicker();
+      marcados.forEach(n => { const el = document.querySelector(`input[name="balcao-product"][value="${CSS.escape(n)}"]`); if (el) el.checked = true; });
+      updateTotal();
+    });
     bindCustomerSearch();
     setDefaultDateTime();
     $('balcao-save').onclick = saveWalkin;
