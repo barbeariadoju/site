@@ -24,7 +24,31 @@ Deno.serve(async (req: Request) => {
   const token = Deno.env.get('META_SYSTEM_TOKEN')?.trim()
   if (!token) return json({ error: 'META_SYSTEM_TOKEN ausente.' }, 500)
 
-  const { dias = 7, snapshot = false } = await req.json().catch(() => ({}))
+  const { dias = 7, snapshot = false, media_id = '' } = await req.json().catch(() => ({}))
+
+  // v29.87.0 (28/08): métricas de UMA publicação específica (ex.: views de um Reel).
+  // Chamada: {"media_id":"<ig media id>"} → campos da mídia + insights por métrica
+  // (uma chamada por métrica, mesma razão do relatório semanal: lote com métrica
+  // inválida derruba o lote inteiro; métrica que falha vira "indisponível").
+  if (media_id) {
+    const g = async (path: string) => {
+      try {
+        const r = await fetch(`https://graph.facebook.com/${GRAPH}/${path}`, { headers: { Authorization: `Bearer ${token}` } })
+        const body = await r.json()
+        return r.ok ? body : { erro: body?.error?.message || `HTTP ${r.status}` }
+      } catch (e) { return { erro: e instanceof Error ? e.message : String(e) } }
+    }
+    const midia = await g(`${media_id}?fields=caption,timestamp,media_type,media_product_type,like_count,comments_count,permalink`)
+    const metricas = ['views', 'reach', 'likes', 'comments', 'shares', 'saved', 'total_interactions', 'ig_reels_avg_watch_time']
+    const insights: Record<string, unknown> = {}
+    for (const m of metricas) {
+      const d = await g(`${media_id}/insights?metric=${m}`)
+      if ((d as any)?.erro) { insights[m] = { valor: 'indisponível', motivo: (d as any).erro }; continue }
+      const row = (d as any)?.data?.[0]
+      insights[m] = { valor: row?.total_value?.value ?? row?.values?.[0]?.value ?? 0 }
+    }
+    return json({ midia, insights })
+  }
   const ate = Math.floor(Date.now() / 1000)
   const desde = ate - Number(dias) * 86400
 
