@@ -825,7 +825,11 @@ Deno.serve(async (request: Request) => {
         const { data: pendingConfirmationRows } = await admin.rpc('find_pending_confirmation_by_phone', { p_phone: phone })
         const pendingConfirmation = Array.isArray(pendingConfirmationRows) ? pendingConfirmationRows[0] : pendingConfirmationRows
 
-        if (pendingConfirmation && (!quotedTarget || quotedTarget === 'presence')) {
+        // v29.86.0: o interceptador de presença também respeita juiaAwaitingAnswer (regra da
+        // v29.17 — pergunta em aberto da PRÓPRIA JuIA tem prioridade). Pego no teste do caso
+        // Walter: a JuIA perguntou "remarcar pra hoje às 18:30, certo? Responda sim" e o "Sim"
+        // caiu aqui, confirmando presença no horário VELHO em vez de remarcar.
+        if (pendingConfirmation && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'presence')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           const ambiguousShortReply = trimmedNormalized.length <= 40
@@ -835,18 +839,29 @@ Deno.serve(async (request: Request) => {
           // compatibilidade com quem responde por texto.
           // Remarcar checado PRIMEIRO: "não consigo nesse horário, quero remarcar" tem
           // negação E intenção de remarcar — cancelar aqui seria perder o cliente.
-          const isReschedule = /^2[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|mudar\s+(o\s+)?horari|trocar\s+(o\s+)?horari|outro\s+horari|outro\s+dia/.test(normalizedReply)
+          // v29.86.0 (caso Walter, 28/08 11h40): "Consegue mudar para hj as 19:30?" não casava
+          // (o regex exigia "mudar horário" literal), caía no re-ask do menu e forçou o cliente
+          // no 3-cancelar. "mudar"/"trocar"/"passar pra" soltos dentro da confirmação de
+          // presença são sempre remarcação.
+          const isReschedule = /^2[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(normalizedReply)
           // "não" decide sobre confirmação solta: "não vou poder ir, pode cancelar".
           // Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
           const isDecline = !isReschedule && (/^3[\s!.,]*$/.test(trimmedNormalized) || /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply))
           const isConfirm = !isReschedule && !isDecline && (/^1[\s!.,]*$/.test(trimmedNormalized) || /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply))
 
           if (isReschedule) {
-            // Só orienta e devolve pro fluxo normal da JuIA — ela já sabe remarcar
-            // (intent reschedule + phone_reschedule_booking, que desde a migration 090
-            // marca o horário novo como confirmado).
-            await sendWhatsapp(phone, 'Sem problema! 🔄 Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.')
-            return
+            // v29.86.0: se a mensagem JÁ traz o dia/horário novo ("mudar para hoje às 19:30"),
+            // não pede de novo — deixa descer pro fluxo da JuIA, que remarca com o dado que
+            // veio (o agendamento continua confirmado até a remarcação acontecer). Só quando
+            // falta o destino é que a resposta curta de orientação faz sentido.
+            const jaTrouxeDiaOuHora = /\d{1,2}[:h]\d{0,2}\b/.test(normalizedReply) || /\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/.test(normalizedReply)
+            if (!jaTrouxeDiaOuHora) {
+              // Só orienta e devolve pro fluxo normal da JuIA — ela já sabe remarcar
+              // (intent reschedule + phone_reschedule_booking, que desde a migration 090
+              // marca o horário novo como confirmado).
+              await sendWhatsapp(phone, 'Sem problema! 🔄 Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.')
+              return
+            }
           }
 
           if (isDecline) {
@@ -883,7 +898,7 @@ Deno.serve(async (request: Request) => {
               await sendWhatsapp(phone, `Confirmado! ✅ Te esperamos ${confirmedDayWord} às ${String(confirmed.start_time).slice(0, 5)}. Qualquer imprevisto, é só me chamar por aqui. 😊`)
               return
             }
-          } else if (ambiguousShortReply) {
+          } else if (ambiguousShortReply && !isReschedule) {
             const pendingTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
             const pendingDayWord = String(pendingConfirmation.booking_date) === pendingTodaySP ? 'hoje' : 'amanhã'
             await sendWhatsapp(phone, `Só pra eu não te perder na agenda 😊 Sobre seu horário de ${pendingDayWord} às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name}), me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌`)
@@ -898,9 +913,16 @@ Deno.serve(async (request: Request) => {
         // de confirmação e existe um cancelamento AUTOMÁTICO recente (últimas 3h, com
         // pedido de confirmação pendente, horário ainda futuro), o horário é reativado
         // na hora — desde que ninguém tenha ocupado (a RPC valida colisão e bloqueio).
-        if (!pendingConfirmation && (!quotedTarget || quotedTarget === 'presence')) {
+        // v29.86.0 (caso Walter, 28/08 11h44): o "Sim" que respondia à pergunta da PRÓPRIA JuIA
+        // ("consigo te encaixar às 19:30, posso confirmar?") foi engolido por este bloco, que
+        // REATIVOU o agendamento que o cliente tinha acabado de cancelar de propósito no menu
+        // (a RPC não distingue cancelamento automático de escolha do cliente — e o cancelamento
+        // automático nem existe mais desde a v28.66). Agora: (1) respeita juiaAwaitingAnswer;
+        // (2) só palavras EXPLÍCITAS de arrependimento reativam — "sim"/"1"/"confirmo" soltos
+        // nunca mais, porque quase sempre respondem a outra pergunta em aberto.
+        if (!pendingConfirmation && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'presence')) {
           const reactivateReply = normalize(text)
-          const wantsBack = /^1[\s!.,]*$/.test(reactivateReply.trim()) || (/\bsim\b|confirmo|confirmado|ainda quero|ainda vou|consigo ir|vou conseguir|pode manter|reativa/.test(reactivateReply) && !/\bnao\b/.test(reactivateReply))
+          const wantsBack = /\bainda (quero|vou)\b|\bconsigo ir\b|\bvou conseguir\b|\bpode manter\b|\breativa|\bquero de volta\b|\bvolta(r)? (o |meu )?horari/.test(reactivateReply) && !/\bnao\b/.test(reactivateReply)
           if (wantsBack) {
             const { data: reactivatedRows, error: reactivateError } = await admin.rpc('phone_reactivate_recent_booking', { p_phone: phone })
             const reactivated = Array.isArray(reactivatedRows) ? reactivatedRows[0] : reactivatedRows
@@ -910,7 +932,9 @@ Deno.serve(async (request: Request) => {
             }
             if (!reactivateError && reactivated) {
               const reactTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-              const reactDayWord = String(reactivated.booking_date) === reactTodaySP ? 'hoje' : `dia ${formatDateBR(reactivated.booking_date)}`
+              const reactTomorrowSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 86400000))
+              // v29.86.0: "dia 29/08/2026" é formato de sistema — datas em linguagem humana.
+              const reactDayWord = String(reactivated.booking_date) === reactTodaySP ? 'hoje' : String(reactivated.booking_date) === reactTomorrowSP ? 'amanhã' : `dia ${formatDateBR(reactivated.booking_date)}`
               await sendWhatsapp(phone, `Prontinho! ✅ Reativei seu horário de ${reactDayWord} às ${String(reactivated.start_time).slice(0, 5)} (${reactivated.service_name}). Te esperamos! 💈`)
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {

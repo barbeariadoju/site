@@ -1,3 +1,13 @@
+## 29.86.0 — Caso Walter (28/08 11h40): confirmação de presença não briga mais com remarcação; "sim" solto não reativa cancelado; total a cobrar virou rodapé fixo
+
+O caso, visto ao vivo pelo Juliano: Walter (a 1ª conversão da reativação!) respondeu ao pedido de confirmação de presença com "Consegue mudar para hj as 19:30?" e a cadeia quebrou em três pontos — menu 1/2/3 repetido por cima do pedido, o "3" forçado cancelou, e o "Sim" do encaixe estendido das 19:30 foi engolido pelo bloco de reativação, que ressuscitou o agendamento CANCELADO de amanhã ("Reativei seu horário de dia 29/08/2026 às 11:30"). O Juliano assumiu na mão ("a IA bugou, rsrs") e acertou o sistema.
+
+- **whatsapp-webhook — remarcação dentro da confirmação de presença**: "mudar"/"trocar"/"transferir"/"passar pra" agora contam como remarcar (o regex antigo exigia "mudar horário" literal); e se a mensagem JÁ traz o dia/horário novo, nem responde o texto de orientação — cai direto no fluxo da JuIA, que remarca com o dado que veio. Re-ask do menu nunca mais atropela pedido de remarcação.
+- **whatsapp-webhook — interceptador de presença respeita juiaAwaitingAnswer** (regra da v29.17): pego no teste — a JuIA perguntou "remarcar pra hoje às 18:30? Responda sim" e o "Sim" caiu no interceptador, confirmando presença no horário VELHO.
+- **whatsapp-webhook — reativação pós-cancelamento só com arrependimento EXPLÍCITO** ("ainda quero", "pode manter", "reativa", "quero de volta") — "sim"/"1"/"confirmo" soltos nunca mais (quase sempre respondem a outra pergunta em aberto). O bloco também respeita juiaAwaitingAnswer, e a mensagem humanizou a data ("amanhã" em vez de "dia 29/08/2026"). Contexto: o cancelamento automático que motivou esse bloco (caso Kelvin) nem existe mais desde a v28.66 — hoje ele só pegava cancelamento escolhido pelo cliente.
+- **Teste em produção do ciclo inteiro** (telefone fictício): "Consegue mudar para hj as 18:30?" → proposta de remarcação → "sim" → confirmação → agendamento movido; "Sim" solto após cancelar → NÃO reativa; "pode reativar" → reativa. Dados limpos.
+- **Admin — "Total a cobrar" repaginado (feedback do Juliano na v29.84)**: a caixa ficava no meio do modal e sumia da vista ao rolar. Agora total + botão "Concluir atendimento" vivem num RODAPÉ FIXO (sticky) do modal — sempre visíveis enquanto a lista de serviços/produtos rola atrás, como um checkout de verdade. Suíte 26/26 + verificação visual. Cache 29.86.0 (agenda+core) nos 7 HTMLs.
+
 ## 29.85.0 — Varredura semanal da JuIA: 3 defeitos corrigidos (áudio no filtro comercial, "não obrigado" reabrindo oferta, bot atropelando o Juliano)
 
 Correções da varredura profunda de sexta 28/08 (semana 22–28/08, ~35 conversas lidas), aprovadas pelo Juliano:
