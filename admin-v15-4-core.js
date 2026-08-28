@@ -84,7 +84,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.80.1'
+  const ADMIN_VERSION='29.84.0'
   async function checkForUpdate(){
     try{
       const r=await fetch('/admin-version.json',{cache:'no-store'})
@@ -113,7 +113,9 @@
   async function renderAuth(){if(!session){showLogin();return}$('admin-login').hidden=true;$('admin-app').hidden=false;await loadBaseData();if(page==='dashboard')renderDashboard();if(page==='agenda')initAgenda();if(page==='clientes')initCRM();if(page==='agendamento')initBookingForm();if(page==='atendimento')initServiceMode()}
   async function loadBaseData(){
     const [{data:b,error:be},{data:p,error:pe},{data:e,error:ee}]=await Promise.all([
-      sb.from('bookings').select('*').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),
+      // v29.84.0: payments embutido pra Agenda mostrar COMO o cliente pagou online
+      // (Pix/débito/crédito) — pedido do Juliano ao ver "Pago online (PagBank)" sem o meio.
+      sb.from('bookings').select('*, payments(method,status)').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),
       sb.from('customer_profiles').select('*').order('name',{ascending:true}),
       sb.from('experience_requests').select('id,customer_id,booking_id,status,feedback,created_at,answered_at').order('created_at',{ascending:false}).limit(3000)
     ]);

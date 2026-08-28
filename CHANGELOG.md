@@ -1,3 +1,12 @@
+## 29.84.0 — Conclusão vira checkout: total a cobrar na tela + meio do pagamento online no card (pedidos do Juliano, 28/08)
+
+Dois pedidos da manhã de 28/08, ao ver o primeiro pagamento online real (Pedro, Pix pelo Checkout PagBank):
+
+- **Card da Agenda diz COMO o cliente pagou online**: "✅ Pago online (PagBank · Pix) — automático" (ou cartão de crédito/débito). O webhook já gravava `payments.method` desde a v29.22.0 — só ninguém mostrava. `loadBaseData` agora embute `payments(method,status)` na consulta de bookings (FK existe; RLS de `payments` já permitia admin ler desde a migration 106).
+- **"Concluir atendimento" ganhou resumo de checkout**: caixa com Serviços + Produtos e **"Total a cobrar"** em destaque, atualizando ao vivo conforme marca/desmarca serviço, produto ou cortesia — e **descontando o que já foi pago online** ("✅ Já pago online (Pix): R$ 40,00 — descontado do total"; Pix antecipado manual confirmado vale o preço do serviço da reserva). É a orientação na hora de cobrar que faltava.
+- **Uma tela só de pagamento**: a seção "Pagamento dos produtos" (caso raro da v28.23.0 — água no débito com corte no Pix) saiu da frente e virou um toggle recolhido "▸ Produtos pagos de outra forma? (raro)", no Concluir e no ✎ Editar. No Editar ela abre já expandida se o registro tem pagamento de produto diferente gravado. Fechar o toggle limpa a seleção (não salva resto invisível).
+- Verificação: suíte admin 26/26 + spec visual descartável (mock) confirmando selo "PagBank · Pix", total com desconto do pago online e toggle. Cache `?v=29.84.0` em core+agenda nos 7 HTMLs; ADMIN_VERSION/admin-version.json 29.84.0.
+
 ## Reativação de 30 dias — o número de 48h: 0 de 16 (27/08)
 
 Fechamento honesto da estreia da alavanca que o Juliano ligou para atacar a retenção de 16%. **16 convites, zero respostas, zero agendamentos** em 48 horas.

@@ -34,14 +34,18 @@
     const prepayKeyLabel=x.prepay_key==='picpay'?'PicPay · e-mail contato@barbeariadoju.com.br':'PagBank · celular 11967073038';
     // v29.22.0: prepay_key='checkout' é pagamento pela API PagBank, confirmado por
     // webhook — nasce já confirmado, sem botão de conferência (nada a conferir).
+    // v29.84.0: o selo diz COMO o cliente pagou (Pix/débito/crédito) — o webhook já
+    // gravava payments.method, só ninguém mostrava (pedido do Juliano, caso Pedro 28/08).
+    const paidOnline=(x.payments||[]).find(p=>p&&p.status==='paid'&&p.method);
+    const onlineVia=paidOnline?({pix:'Pix',credito:'cartão de crédito',debito:'cartão de débito'}[paidOnline.method]||paidOnline.method):'';
     const prepay=x.prepay_declared_at
       ? (x.prepay_confirmed_at
         ? (x.prepay_key==='checkout'
-          ? `<span class="admin-prepay-flag is-confirmed" title="Pago pelo Checkout PagBank — confirmação automática">✅ Pago online (PagBank) — automático</span>`
+          ? `<span class="admin-prepay-flag is-confirmed" title="Pago pelo Checkout PagBank — confirmação automática">✅ Pago online (PagBank${onlineVia?` · ${onlineVia}`:''}) — automático</span>`
           : `<span class="admin-prepay-flag is-confirmed" title="Você confirmou o recebimento">✅ Pix recebido e confirmado</span>`)
         : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
       : '';
-    const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?'Pix confirmado':'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
+    const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
     return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}<small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){
@@ -190,7 +194,7 @@
     if(document.getElementById('booking-modals-style'))return;
     const style=document.createElement('style');
     style.id='booking-modals-style';
-    style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"],.payment-method-grid button[data-payment-option="fidelidade"]{grid-column:1/-1}.payment-method-grid button.is-selected{border-color:var(--gold);background:rgba(240,201,135,.12);color:var(--gold2)}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;max-height:220px;overflow:auto}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:.88rem}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}.booking-edit-card{max-height:88vh;overflow:auto}.booking-edit-card [data-service-slot]{max-height:220px;overflow:auto}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}';
+    style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"],.payment-method-grid button[data-payment-option="fidelidade"]{grid-column:1/-1}.payment-method-grid button.is-selected{border-color:var(--gold);background:rgba(240,201,135,.12);color:var(--gold2)}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;max-height:220px;overflow:auto}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:.88rem}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}.booking-edit-card{max-height:88vh;overflow:auto}.booking-edit-card [data-service-slot]{max-height:220px;overflow:auto}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}.checkout-total{border:1px solid rgba(240,201,135,.45);background:rgba(240,201,135,.07);border-radius:14px;padding:12px 14px;margin:14px 0 4px}.checkout-total small{display:block;color:#bbb;margin-bottom:4px}.checkout-total strong{display:block;color:var(--gold2);font-size:1.25rem}.checkout-total em{display:block;color:#8fd694;font-style:normal;font-size:.84rem;margin-top:4px}.checkout-split-toggle{display:block;background:none;border:none;color:#999;font:inherit;font-size:.84rem;cursor:pointer;padding:8px 0 0;text-align:left}.checkout-split-toggle:hover{color:var(--gold2)}';
     document.head.appendChild(style);
   }
   // Serviço editável já no "Concluir" (não só no "✎ Editar" depois) — pedido do Juliano
@@ -210,7 +214,7 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><h3 style="margin:16px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><div data-google-review-block><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-already-reviewed><small>⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)</small></label></div><p class="privacy-note" data-already-reviewed-note hidden style="margin-top:10px">⭐ Este cliente já avaliou no Google — o pedido de avaliação não será enviado.</p><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o serviço realmente feito e escolha a forma de pagamento pra fechar o registro. O pagamento em si acontece normalmente aqui na barbearia, depois do atendimento — isso é só um controle interno pro seu financeiro, o cliente não vê essa tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><div data-checkout-total></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><div data-google-review-block><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-already-reviewed><small>⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)</small></label></div><p class="privacy-note" data-already-reviewed-note hidden style="margin-top:10px">⭐ Este cliente já avaliou no Google — o pedido de avaliação não será enviado.</p><button type="button" class="btn primary" data-payment-confirm style="width:100%;margin-top:16px">Concluir atendimento</button></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
@@ -257,6 +261,35 @@
       visitInput.value='';
       visitInput.placeholder=booking.id?`o sistema conta ${visitNumber(booking)}ª`:'';
       let selectedPayment=prepaid?'pix':'',selectedProductsPayment='';
+      // v29.84.0 — "checkout" na conclusão (pedido do Juliano, 28/08): total a cobrar sempre
+      // visível, descontando o que já foi pago online (Checkout PagBank grava payments.amount_cents;
+      // Pix antecipado manual confirmado vale o preço do serviço da reserva).
+      const totalBox=modal.querySelector('[data-checkout-total]');
+      const paidRow=(booking.payments||[]).find(p=>p&&p.status==='paid');
+      const paidLabel=paidRow?({pix:'Pix',credito:'crédito',debito:'débito'}[paidRow.method]||'online'):'Pix';
+      const paidValue=paidRow?Number(paidRow.amount_cents||0)/100:(prepaid?Number(booking.service_price||0):0);
+      const renderTotal=()=>{
+        const sv=readChecklistServices(modal).reduce((a,s)=>a+Number(s.price||0),0);
+        const pr=readChecklistProducts(modal).reduce((a,p)=>a+Number(p.price||0),0);
+        const isCourtesy=courtesyBox.checked;
+        const svShow=isCourtesy?0:sv;
+        const due=Math.max(0,svShow+pr-paidValue);
+        totalBox.innerHTML=`<div class="checkout-total"><small>${isCourtesy?'🎁 Cortesia — serviço por conta da casa':`Serviços ${money(svShow)}`} · Produtos ${money(pr)}</small><strong>Total a cobrar: ${money(due)}</strong>${paidValue>0?`<em>✅ Já pago online (${paidLabel}): ${money(paidValue)} — descontado do total</em>`:''}</div>`;
+      };
+      const onAnyItemChange=e=>{if(e.target.matches('[data-service-name],[data-product-name],[data-courtesy]'))renderTotal()};
+      modal.addEventListener('change',onAnyItemChange);
+      // Toggle do caso raro "produto pago diferente" — recolhido por padrão (enxugada de 28/08)
+      const splitToggle=modal.querySelector('[data-split-toggle]');
+      const splitWrap=modal.querySelector('[data-products-payment-wrap]');
+      splitWrap.hidden=true;
+      splitToggle.textContent='▸ Produtos pagos de outra forma? (raro)';
+      const onSplitToggle=()=>{
+        splitWrap.hidden=!splitWrap.hidden;
+        splitToggle.textContent=(splitWrap.hidden?'▸':'▾')+' Produtos pagos de outra forma? (raro)';
+        if(splitWrap.hidden){selectedProductsPayment='';splitWrap.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.remove('is-selected'))}
+      };
+      splitToggle.addEventListener('click',onSplitToggle);
+      renderTotal();
       modal.hidden=false;
       // v29.57.0 — caso Aletéia (21/08/2026): a trava da v29.49.0 decidia com o que a PÁGINA
       // tinha carregado. O Pix dela foi registrado e confirmado com a Agenda já aberta, então
@@ -318,7 +351,7 @@
       };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
       const confirmEl=modal.querySelector('[data-payment-confirm]');
-      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle);alreadyBox.removeEventListener('change',onAlreadyToggle)}
+      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle);alreadyBox.removeEventListener('change',onAlreadyToggle);modal.removeEventListener('change',onAnyItemChange);splitToggle.removeEventListener('click',onSplitToggle)}
       cancelEls.forEach(el=>el.addEventListener('click',onCancel));
       paymentSlot.addEventListener('click',onPaymentClick);
       productsPaymentSlot.addEventListener('click',onProductsPaymentClick);
@@ -341,7 +374,7 @@
         modal.id='booking-edit-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-edit-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-edit-cancel>&times;</button><h2>✎ Editar atendimento</h2><p class="privacy-note">Ajuste o que foi realizado de verdade — funciona pra qualquer agendamento (site ou balcão), concluído ou não.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin-top:16px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin-top:16px">Forma de pagamento <small class="field-help" style="font-weight:400">opcional</small></h3><div data-payment-slot></div><h3 style="margin-top:16px">Pagamento dos produtos <small class="field-help" style="font-weight:400">opcional, só se for diferente do serviço</small></h3><div data-products-payment-slot></div><button type="button" class="btn primary" data-edit-save style="width:100%;margin-top:16px">Salvar alterações</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-edit-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-edit-cancel>&times;</button><h2>✎ Editar atendimento</h2><p class="privacy-note">Ajuste o que foi realizado de verdade — funciona pra qualquer agendamento (site ou balcão), concluído ou não.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin-top:16px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin-top:16px">Forma de pagamento <small class="field-help" style="font-weight:400">opcional</small></h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><button type="button" class="btn primary" data-edit-save style="width:100%;margin-top:16px">Salvar alterações</button></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
@@ -349,6 +382,18 @@
       modal.querySelector('[data-payment-slot]').innerHTML=paymentPickerHtml(booking.payment_method||'');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml(booking.products_payment_method||'');
       let selectedPayment=booking.payment_method||'',selectedProductsPayment=booking.products_payment_method||'';
+      // v29.84.0 — caso raro recolhido por padrão; abre já expandido se o registro tem
+      // pagamento de produto diferente gravado (senão o dado ficaria invisível ao editar).
+      const splitToggle=modal.querySelector('[data-split-toggle]');
+      const splitWrap=modal.querySelector('[data-products-payment-wrap]');
+      splitWrap.hidden=!selectedProductsPayment;
+      splitToggle.textContent=(splitWrap.hidden?'▸':'▾')+' Produtos pagos de outra forma? (raro)';
+      const onSplitToggle=()=>{
+        splitWrap.hidden=!splitWrap.hidden;
+        splitToggle.textContent=(splitWrap.hidden?'▸':'▾')+' Produtos pagos de outra forma? (raro)';
+        if(splitWrap.hidden){selectedProductsPayment='';splitWrap.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.remove('is-selected'))}
+      };
+      splitToggle.addEventListener('click',onSplitToggle);
       modal.hidden=false;
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);
@@ -378,7 +423,7 @@
       };
       const cancelEls=modal.querySelectorAll('[data-edit-cancel]');
       const saveEl=modal.querySelector('[data-edit-save]');
-      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);saveEl.removeEventListener('click',onSave)}
+      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);saveEl.removeEventListener('click',onSave);splitToggle.removeEventListener('click',onSplitToggle)}
       cancelEls.forEach(el=>el.addEventListener('click',onCancel));
       paymentSlot.addEventListener('click',onPaymentClick);
       productsPaymentSlot.addEventListener('click',onProductsPaymentClick);
