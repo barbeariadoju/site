@@ -1558,8 +1558,16 @@ Deno.serve(async (request: Request) => {
           })
 
           const ai = await aiResponse.json().catch(() => ({}))
-          if (!aiResponse.ok || !ai?.reply) {
+          if (!aiResponse.ok) {
             console.error('[whatsapp-webhook] ju-ia-site falhou', aiResponse.status, ai)
+            return
+          }
+          // v29.85.0: resposta VAZIA com HTTP 200 é silêncio de propósito (despedida repetida
+          // da v29.64, segunda dispensa da v29.85) — antes caía no return de "falhou" e o
+          // estado da conversa se perdia sem ser salvo. Salva e sai em silêncio.
+          if (!String(ai?.reply || '').trim()) {
+            await admin.from('whatsapp_conversations').update({ state: ai?.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
+            console.log('[whatsapp-webhook] JuIA em silêncio de propósito', phone)
             return
           }
 
@@ -1637,6 +1645,21 @@ Deno.serve(async (request: Request) => {
             await admin.from('whatsapp_conversations').update({ state: ai.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
             console.log('[whatsapp-webhook] JuIA em silêncio de propósito (despedida já respondida)', phone)
             return
+          }
+          // v29.85.0 — casos Rodrigo 16h07 e Lucas Bueno 17h13 (27/08): o Juliano respondeu
+          // NA MÃO enquanto a IA pensava e as duas vozes saíram no mesmo segundo. Última
+          // checagem antes do envio: mensagem HUMANA nesta conversa nos últimos 3 minutos =
+          // a conversa é dele, a resposta da IA morre em silêncio (o eco fromMe já ligou o
+          // takeover; isto aqui só fecha a janela de corrida do processamento em andamento).
+          {
+            const { data: humanRecente } = await admin.from('whatsapp_messages').select('id')
+              .eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
+              .gte('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+              .limit(1)
+            if (humanRecente && humanRecente.length) {
+              console.warn('[whatsapp-webhook] resposta da IA descartada: o Juliano respondeu enquanto a IA pensava', phone)
+              return
+            }
           }
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',

@@ -2047,7 +2047,14 @@ Deno.serve(async req=>{
  // padronizada pelo Juliano: educada, este canal é exclusivo de agendamento, comercial é
  // pelo e-mail. Regex conservador (sinais claros de prospecção) pra nunca pegar cliente;
  // o prompt também aprendeu, como rede pros casos que o regex não cobre.
- const commercialPitch=/\b(sou (consultor|consultora|representante|vendedor|vendedora|assessor|assessora|corretor|corretora)\b|proposta comercial|parceria comercial|oportunidade de negocio|desconto na conta de (luz|energia)|energia (solar|fotovoltaica)|consorcio|emprestimo|credito consignado|maquininha|plano (odontologico|de saude) (empresarial|para empresas)|marketing digital|trafego pago|impulsionar (seu|o) (negocio|perfil|instagram)|(comprar|ganhar) seguidores|criacao de sites?|panfletagem|permuta)\b/.test(normalizedQuestion)
+ // v29.85.0 — caso Rodrigo (27/08, 12h34): áudio de cliente fiel ("tenho uma maquininha lá
+ // em casa e meu cunhado corta pra mim") caiu neste filtro porque "maquininha" aqui é
+ // máquina de CORTAR CABELO, não vendedor de maquininha de cartão. Dois consertos:
+ // (1) o termo virou "maquininha de cartao/credito" (o único sentido de prospecção);
+ // (2) cliente CONHECIDO (agendamento futuro ou histórico de atendimento) nunca cai no
+ // filtro — quem já senta na cadeira não é prospecção, por mais que a frase engane.
+ const knownClientForPitch=upcomingBookings.length>0||(Array.isArray(context?.last_services)?context.last_services.length>0:Boolean(String(context?.last_services||'').trim()))||Boolean(context?.last_visit)
+ const commercialPitch=!knownClientForPitch&&/\b(sou (consultor|consultora|representante|vendedor|vendedora|assessor|assessora|corretor|corretora)\b|proposta comercial|parceria comercial|oportunidade de negocio|desconto na conta de (luz|energia)|energia (solar|fotovoltaica)|consorcio|emprestimo|credito consignado|maquininha de (cartao|credito|debito)|plano (odontologico|de saude) (empresarial|para empresas)|marketing digital|trafego pago|impulsionar (seu|o) (negocio|perfil|instagram)|(comprar|ganhar) seguidores|criacao de sites?|panfletagem|permuta)\b/.test(normalizedQuestion)
  const commercialContactAsk=/\bassuntos? comercia(l|is)\b|\b(contato|canal|e-?mail|email|numero|telefone|endereco)\b[^.!?]{0,40}\bcomercia(l|is)\b/.test(normalizedQuestion)
  if(commercialPitch||((state?.commercial_contact||commercialPitch)&&commercialContactAsk)){
   reply=commercialContactAsk&&!commercialPitch
@@ -2057,6 +2064,28 @@ Deno.serve(async req=>{
   intent='other'
   handoff=false
   next.commercial_contact=true
+ }
+ // v29.85.0 — recusa/dispensa educada (casos 555194446803 e 5511971921610, 22/08): depois
+ // de uma negativa de agenda, "Não, obrigado" fazia o modelo REABRIR a oferta ("consigo te
+ // atender em vários horários…"), o cliente recusava de novo e a conversa morria no
+ // "me embolei". Regra de gente: recusa se aceita UMA vez, com porta aberta — sem reoferta.
+ // Só dispara com marcador claro de dispensa (nunca um "não" seco, que pode ser resposta a
+ // pergunta do fluxo) e nunca no meio de uma confirmação pendente (pending_*).
+ {
+  const temPendencia=Object.keys(state||{}).some(k=>k.startsWith('pending_')&&(state as any)[k])
+  const q=normalizedQuestion.trim()
+  const temPedidoNovo=/\?|\bmarc|agend|horari|remarc|cancel|quanto|qual |pode ser|tem |teria|preciso|quero (ver|saber|marcar|agendar)/.test(q)
+  const dispensaPura=q.length<=60&&!temPedidoNovo&&!temPendencia&&/\b(nao|n),?\s*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q)
+  if(dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+   reply=next.dismissed?'':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈'
+   actions=[]
+   intent='other'
+   handoff=false
+   next.dismissed=true
+  }else if(next.dismissed&&(temPedidoNovo||intent==='book'||intent==='availability')){
+   // Cliente voltou com pedido de verdade depois da dispensa — conversa reabre normal.
+   next.dismissed=null
+  }
  }
  // v29.68.0 — resposta da pergunta de primeira visita (feita uma única vez logo após a
  // confirmação do agendamento, ver bloco do intent 'book'). "1"/"primeira vez" ou
@@ -2997,7 +3026,9 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   // tarde/boa noite" ficam de fora de propósito: são aberturas de conversa, não fechamento.
   const q=normalizedQuestion.trim()
   const pedidoNaFala=/\?|quer|queria|gostaria|marc|agend|horari|pode|consig|tem |teria|preciso|cancel|remarc|quanto|qual|como|onde|quando|vaga|amanha|hoje/.test(q)
-  const despedidaPura=q.length<=60&&!pedidoNaFala&&/^(muito |ok |beleza |show |top )?(obrigad|valeu|brigad|grat[oa]|bom trabalho|otimo dia|otima tarde|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve|a proxima)|tchau|tmj|fique com deus|deus abencoe|excelente (dia|fds|final de semana))/.test(q)
+  // v29.85.0: "vou deixar obrigado" e "não, obrigado" também são fechamento (2ª dispensa
+  // seguida cai no mesmo silêncio da despedida repetida).
+  const despedidaPura=q.length<=60&&!pedidoNaFala&&/^(muito |ok |beleza |show |top )?(obrigad|valeu|brigad|grat[oa]|vou deixar|nao,? obrigad|bom trabalho|otimo dia|otima tarde|boa semana|bom (fds|final de semana|descanso)|um abraco|abraco|abracos|ate (mais|logo|breve|a proxima)|tchau|tmj|fique com deus|deus abencoe|excelente (dia|fds|final de semana))/.test(q)
   const jaFechou=/agradec|obrigad|otimo dia|bom descanso|abraco|ate (mais|logo|breve)|desejo/.test(lastAssistant)
   if(despedidaPura&&jaFechou&&!isQuestion&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'){reply='';actions=[];handoff=false;intent='other'}
  }

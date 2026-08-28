@@ -99,8 +99,28 @@ Deno.serve(async (request: Request) => {
     return json({ error: error.message }, 500)
   }
 
-  const staleCandidates = (stale || []).map((row) => row.phone as string)
+  let staleCandidates = (stale || []).map((row) => row.phone as string)
   if (!staleCandidates.length) return json({ ok: true, reactivated: 0 })
+
+  // v29.85.0 — caso Rodrigo (27/08, 13h30): o Juliano tinha respondido na mão às 13h07 e o
+  // cliente mandou um áudio às 13h09; 20 min depois o watchdog devolveu o controle pra JuIA
+  // e mandou o "ainda estou por aqui" (com link do site!) POR CIMA da conversa que era dele.
+  // Regra: mensagem HUMANA na conversa nos últimos 90 min = o Juliano está conduzindo — o
+  // takeover fica como está e nada de cochicho; o push de "cliente te escreveu" (webhook)
+  // já avisa ele. O watchdog só destrava conversa realmente abandonada.
+  {
+    const humanCutoff = new Date(Date.now() - 90 * 60 * 1000).toISOString()
+    const keep: string[] = []
+    for (const phone of staleCandidates) {
+      const { data: humanRecente } = await admin.from('whatsapp_messages').select('id')
+        .eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
+        .gte('created_at', humanCutoff).limit(1)
+      if (!humanRecente || !humanRecente.length) keep.push(phone)
+      else console.log('[whatsapp-reactivation-watchdog] pulado: Juliano respondeu há pouco, conversa é dele', phone)
+    }
+    staleCandidates = keep
+    if (!staleCandidates.length) return json({ ok: true, reactivated: 0, kept_with_human: (stale || []).length })
+  }
 
   // Reconfirma human_takeover=true e last_message_at < cutoff no próprio UPDATE
   // (não só no SELECT de cima), pra evitar reativar uma conversa que o cliente
