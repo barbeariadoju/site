@@ -1,3 +1,7 @@
+## 29.88.0 — Concluir sem pagamento: a tela rola sozinha até a forma de pagamento
+
+Sugestão do Juliano (28/08, print do modal): ao clicar "Concluir ✓" sem ter escolhido a forma de pagamento, o aviso aparecia mas ele ainda tinha que caçar a seção no meio do modal. Agora, além do aviso, o modal rola suavemente até "Forma de pagamento" (centralizada na tela) e a grade de botões pisca 2x em dourado — é só escolher e finalizar. Verificação visual com Playwright + mock (antes: rodapé; depois: seção centralizada com o pisca). Cache 29.88.0 (agenda+core+ux+version.json) nos 7 HTMLs.
+
 ## 29.86.0 — Caso Walter (28/08 11h40): confirmação de presença não briga mais com remarcação; "sim" solto não reativa cancelado; total a cobrar virou rodapé fixo
 
 O caso, visto ao vivo pelo Juliano: Walter (a 1ª conversão da reativação!) respondeu ao pedido de confirmação de presença com "Consegue mudar para hj as 19:30?" e a cadeia quebrou em três pontos — menu 1/2/3 repetido por cima do pedido, o "3" forçado cancelou, e o "Sim" do encaixe estendido das 19:30 foi engolido pelo bloco de reativação, que ressuscitou o agendamento CANCELADO de amanhã ("Reativei seu horário de dia 29/08/2026 às 11:30"). O Juliano assumiu na mão ("a IA bugou, rsrs") e acertou o sistema.
