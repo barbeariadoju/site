@@ -1,3 +1,13 @@
+## 29.93.0 — Atribuição de anúncio: dá pra saber quantos CLIENTES o anúncio trouxe, não só quantas conversas
+
+Antes de ligar o anúncio de clique-para-WhatsApp (R$ 5/dia), a conta não fechava: o Meta informa "X conversas iniciadas" e para aí. Sem ligar o agendamento ao anúncio não existe custo por cliente, só custo por conversa — que é vaidade. Foi exatamente o que faltou pra entender os R$ 219 queimados no anúncio anterior.
+
+`extrairOrigemAnuncio()` lê o bloco que a primeira mensagem carrega quando a pessoa vem de um anúncio (`externalAdReply` / `ctwaContext`), varrendo os caminhos que a Evolution/Baileys usa conforme a versão — inclusive quando essa primeira mensagem é carrinho, figurinha ou áudio, por isso o carimbo roda antes de qualquer outro tratamento. Grava uma vez por telefone+anúncio na tabela nova `whatsapp_ad_clicks`; se a pessoa voltar pelo mesmo anúncio não duplica, e se vier por outro anúncio registra de novo, porque aí é outra origem. Falha na gravação nunca derruba o atendimento (try/catch).
+
+A view `ad_attribution_report` fecha o ciclo: por anúncio, quantas conversas, quantos agendamentos, quantos foram atendidos e quanto faturou — cruzando telefone com `phone_match_key` (o número chega em formatos diferentes) e janela de 30 dias após o clique. Dividindo o gasto por "atendidos" sai o custo por cliente de verdade.
+
+Cuidado deliberado: link comum com preview NÃO conta como clique de anúncio (exige id do anúncio ou ctwa_clid), senão o relatório encheria de falso positivo. Testado com 5 payloads, incluindo esse negativo. `deno check` limpo.
+
 ## 29.92.0 — Carrinho do catálogo do WhatsApp deixa de cair no silêncio e vira agendamento
 
 Achado ao responder uma pergunta do Juliano (29/08): "se o cliente compra no catálogo, dá pra integrar na agenda?". Fui ver e o carrinho chega SEM texto (`conversation` e `extendedTextMessage.text` vazios), caía no `if (!text)`, era registrado como "[mídia ou mensagem sem texto]" e a função retornava — **o cliente recebia silêncio absoluto**, nem um "não entendi". O beco disparou 104 vezes no total e 66 nos últimos 30 dias (~2/dia, contando também figurinha, contato e localização), a última no próprio dia 29/08 às 11:52.

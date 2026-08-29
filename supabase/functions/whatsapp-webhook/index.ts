@@ -203,6 +203,54 @@ const isTakeoverActive = (row: { human_takeover?: boolean; human_takeover_at?: s
 //   orderMessage   — carrinho fechado (traz contagem e total; os nomes dos itens
 //                    dependem de consulta extra que nem toda versão expõe)
 // Por isso a leitura é defensiva: aproveita o que vier e nunca quebra.
+// ---------------------------------------------------------------------------
+// v29.93.0 — DE QUAL ANÚNCIO VEIO ESTE CLIENTE (clique-para-WhatsApp)
+//
+// Sem isto, o Meta informa "X conversas iniciadas" e a conta para aí: não dá pra
+// ligar um agendamento ao anúncio, então não se sabe o custo por CLIENTE — só o
+// custo por conversa, que é vaidade. Foi exatamente o que faltou pra entender os
+// R$ 219 queimados no anúncio anterior.
+//
+// Quando alguém clica num anúncio de clique-para-WhatsApp, a PRIMEIRA mensagem
+// dela carrega um bloco com o id do anúncio. A Evolution/Baileys entrega isso em
+// lugares diferentes conforme a versão, então a busca varre os caminhos conhecidos.
+// O carimbo é gravado uma vez por telefone+anúncio; depois o relatório cruza com
+// bookings por telefone e data pra dizer quantos viraram cliente de verdade.
+const extrairOrigemAnuncio = (data: any): Record<string, unknown> | null => {
+  const msg = data?.message || {}
+  const candidatos: any[] = []
+  // O bloco pode vir no contextInfo de qualquer tipo de mensagem (texto, imagem...).
+  for (const valor of Object.values(msg)) {
+    const ctx = (valor as any)?.contextInfo
+    if (ctx?.externalAdReply) candidatos.push(ctx.externalAdReply)
+    if (ctx?.ctwaContext) candidatos.push(ctx.ctwaContext)
+  }
+  // ...e algumas versões colocam direto na raiz do evento.
+  for (const raiz of [data?.contextInfo, msg?.contextInfo]) {
+    if (raiz?.externalAdReply) candidatos.push(raiz.externalAdReply)
+    if (raiz?.ctwaContext) candidatos.push(raiz.ctwaContext)
+  }
+  const ad = candidatos.find(Boolean)
+  if (!ad) return null
+
+  const txt = (v: unknown) => {
+    const s = typeof v === 'string' ? v.trim() : ''
+    return s ? s.slice(0, 500) : null
+  }
+  const sourceId = txt(ad.sourceId ?? ad.source_id ?? ad.adId ?? ad.ad_id)
+  const clid = txt(ad.ctwaClid ?? ad.ctwa_clid)
+  // Sem id de anúncio nem clid não é clique de anúncio — pode ser link comum com preview.
+  if (!sourceId && !clid) return null
+  return {
+    source_id: sourceId,
+    source_type: txt(ad.sourceType ?? ad.source_type),
+    source_url: txt(ad.sourceUrl ?? ad.source_url),
+    title: txt(ad.title),
+    body: txt(ad.body),
+    ctwa_clid: clid,
+  }
+}
+
 const catalogoParaTexto = (msg: any): string => {
   if (!msg) return ''
   const moeda = (n: number) => `R$ ${n.toFixed(2).replace('.', ',')}`
@@ -362,6 +410,31 @@ Deno.serve(async (request: Request) => {
     const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
     const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
     const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
+
+    // v29.93.0 — carimba de qual anuncio veio ANTES de qualquer outro tratamento, pra
+    // valer inclusive quando a 1a mensagem do anuncio for carrinho, figurinha ou audio
+    // (ver extrairOrigemAnuncio no topo). Grava 1x por telefone+anuncio: se a pessoa
+    // voltar pelo mesmo anuncio depois, nao duplica; se vier por OUTRO anuncio, registra
+    // de novo, porque ai e outra origem. Falha aqui nunca derruba o atendimento.
+    if (!fromMe) {
+      try {
+        const origem = extrairOrigemAnuncio(data)
+        if (origem) {
+          const { data: jaTem } = await admin
+            .from('whatsapp_ad_clicks')
+            .select('id')
+            .eq('phone', phone)
+            .eq('source_id', origem.source_id ?? '')
+            .maybeSingle()
+          if (!jaTem) {
+            await admin.from('whatsapp_ad_clicks').insert({ phone, ...origem, raw: origem })
+            console.log(JSON.stringify({ tag: 'anuncio_clique', phone, origem }))
+          }
+        }
+      } catch (e) {
+        console.log(JSON.stringify({ tag: 'anuncio_clique_erro', erro: String(e) }))
+      }
+    }
 
     if (fromMe) {
       if (messageId) {
