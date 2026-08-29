@@ -473,8 +473,17 @@ Deno.serve(async (request: Request) => {
       ...(recentesIa || []).map((r) => palavrasTema(String(r.caption || ''))),
       ...(agendadosHoje || []).map((r) => palavrasTema(String(r.caption || ''))),
     ].filter((s) => s.size > 0)
+    // Palavra "quente" = aparece em 3+ referências. É o assunto martelado (caso real: "cafe"
+    // estava em 5+ legendas seguidas) — basta ela sozinha pra reprovar, porque foi exatamente
+    // assim que o café passou 4 dias: cada legenda nova compartilhava só 1-2 palavras com
+    // cada legenda antiga individualmente, mas TODAS giravam em torno da mesma.
+    const freqTema = new Map<string, number>()
+    for (const ref of referenciasTema) for (const w of ref) freqTema.set(w, (freqTema.get(w) || 0) + 1)
+    const palavrasQuentes = new Set([...freqTema.entries()].filter(([, n]) => n >= 3).map(([w]) => w))
     const temaRepetido = (candidato: string): string[] => {
       const cand = palavrasTema(candidato)
+      const quentes = [...cand].filter((w) => palavrasQuentes.has(w))
+      if (quentes.length) return quentes
       for (const ref of referenciasTema) {
         const comuns = [...cand].filter((w) => ref.has(w))
         if (comuns.length >= 3) return comuns
