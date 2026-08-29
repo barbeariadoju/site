@@ -54,7 +54,12 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
 .admin-booking-time-mini{flex:0 0 auto;min-width:50px;color:var(--gold2);font-weight:800;font-size:.98rem}
 .admin-booking-summary-main{flex:1;min-width:0;display:grid;gap:2px}
 .admin-booking-summary-main strong{font-size:.95rem;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.admin-booking-summary-main small{color:#8a8a8a;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* v29.91.0 — pedido do Juliano (29/08, print do card Lucas Red Bull): "Corte de cabelo + Barba
+   Express ..." cortado escondia o que o cliente contratou e obrigava abrir o ✎ Editar.
+   O resumo fechado agora mostra até 2 linhas de serviço (clamp) em vez de 1 linha com "...". */
+.admin-booking-summary-main small{color:#8a8a8a;font-size:.78rem;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+/* Lista COMPLETA dos serviços no card expandido — sem truncar, pra nunca precisar do Editar só pra ler. */
+.admin-booking-detail-inner .admin-services-full{display:block;color:var(--gold2);font-weight:700;font-size:.84rem;line-height:1.35;white-space:normal;margin-bottom:2px}
 .admin-visit-badge{justify-self:start;display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.68rem;font-weight:800;white-space:nowrap;margin:1px 0}
 .admin-visit-badge.is-new{background:rgba(255,255,255,.08);color:#c9c9c9}
 .admin-visit-badge.is-recurring{background:rgba(240,201,135,.16);color:var(--gold2)}

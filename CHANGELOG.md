@@ -1,3 +1,7 @@
+## 29.91.0 — Agenda: serviços contratados visíveis no card, sem precisar do ✎ Editar
+
+Pedido do Juliano (29/08, print do card do Lucas às 10h): "Corte de cabelo + Barba Express ..." aparecia cortado e nem expandindo o card dava pra ver o que o cliente contratou — só abrindo o Editar. Duas mudanças: (1) o resumo fechado agora mostra até 2 linhas do serviço (line-clamp) em vez de 1 linha com "..."; (2) o card expandido ganhou uma linha dourada "✂ <serviços completos>" acima do telefone, sem truncar nunca. Cache 29.91.0 (agenda+core+style+version.json) nos admin HTMLs.
+
 ## 29.88.0 — Concluir sem pagamento: a tela rola sozinha até a forma de pagamento
 
 Sugestão do Juliano (28/08, print do modal): ao clicar "Concluir ✓" sem ter escolhido a forma de pagamento, o aviso aparecia mas ele ainda tinha que caçar a seção no meio do modal. Agora, além do aviso, o modal rola suavemente até "Forma de pagamento" (centralizada na tela) e a grade de botões pisca 2x em dourado — é só escolher e finalizar. Verificação visual com Playwright + mock (antes: rodapé; depois: seção centralizada com o pisca). Cache 29.88.0 (agenda+core+ux+version.json) nos 7 HTMLs.
