@@ -1,3 +1,13 @@
+## 29.92.0 — Carrinho do catálogo do WhatsApp deixa de cair no silêncio e vira agendamento
+
+Achado ao responder uma pergunta do Juliano (29/08): "se o cliente compra no catálogo, dá pra integrar na agenda?". Fui ver e o carrinho chega SEM texto (`conversation` e `extendedTextMessage.text` vazios), caía no `if (!text)`, era registrado como "[mídia ou mensagem sem texto]" e a função retornava — **o cliente recebia silêncio absoluto**, nem um "não entendi". O beco disparou 104 vezes no total e 66 nos últimos 30 dias (~2/dia, contando também figurinha, contato e localização), a última no próprio dia 29/08 às 11:52.
+
+Agora `catalogoParaTexto()` lê os dois formatos que a Evolution/Baileys entrega — `productMessage` (item único, com título e preço) e `orderMessage` (carrinho, com contagem e total) — e transforma em texto que a JuIA entende, antes do skip. O prefixo "[pedido pelo catálogo]" mantém o histórico do admin honesto: fica claro que veio do catálogo e não foi digitado pelo cliente. Quando os nomes dos itens não vêm no payload, o texto diz isso e orienta a confirmar com o cliente antes de fechar horário — em vez de inventar o que ele pediu.
+
+Isso fecha o funil que faltava: o cliente chega com o serviço JÁ escolhido e a JuIA só precisa combinar o dia. Vira pré-requisito do anúncio de clique-para-WhatsApp (pagar pra mandar gente pro catálogo com o carrinho mudo seria pagar pra perder o cliente no pico de intenção).
+
+Um `console.log` com tag `catalogo_pedido` grava o payload cru no primeiro carrinho real, pra afinar a leitura com dado de verdade em vez de suposição. Testado com 6 payloads (item único, carrinho com nomes, carrinho só com total, carrinho de 1 item, figurinha e nulo) — os dois últimos seguem corretamente pro caminho antigo. `deno check` limpo.
+
 ## 29.91.0 — Agenda: serviços contratados visíveis no card, sem precisar do ✎ Editar
 
 Pedido do Juliano (29/08, print do card do Lucas às 10h): "Corte de cabelo + Barba Express ..." aparecia cortado e nem expandindo o card dava pra ver o que o cliente contratou — só abrindo o Editar. Duas mudanças: (1) o resumo fechado agora mostra até 2 linhas do serviço (line-clamp) em vez de 1 linha com "..."; (2) o card expandido ganhou uma linha dourada "✂ <serviços completos>" acima do telefone, sem truncar nunca. Cache 29.91.0 (agenda+core+style+version.json) nos admin HTMLs.

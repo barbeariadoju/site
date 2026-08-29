@@ -183,6 +183,63 @@ const isTakeoverActive = (row: { human_takeover?: boolean; human_takeover_at?: s
 // do mesmo cliente, chegando quase ao mesmo tempo, sejam respondidas em paralelo com
 // estado desatualizado (uma delas via ver o resultado da outra antes de responder).
 // Se a trava expirar (função anterior travou/caiu), libera sozinha depois de leaseMs.
+// ---------------------------------------------------------------------------
+// v29.92.0 — CARRINHO E PRODUTO DO CATÁLOGO DO WHATSAPP
+//
+// Achado em 29/08/2026: quando o cliente monta um carrinho no catálogo e envia,
+// a mensagem chega SEM texto (`conversation` e `extendedTextMessage.text` vazios).
+// Ela caía no `if (!text)` lá embaixo, virava "[mídia ou mensagem sem texto]" e a
+// função RETORNAVA — o cliente recebia silêncio absoluto. Esse beco disparou 66
+// vezes nos últimos 30 dias (~2/dia, contando também figurinha, contato e
+// localização). Com anúncio pago apontando pro catálogo seria pagar pra perder o
+// cliente no momento de MAIOR intenção que existe: ele já escolheu o serviço.
+//
+// Agora o carrinho vira texto que a JuIA entende e ela só precisa fechar o
+// horário. O prefixo "[pedido pelo catálogo]" mantém o histórico honesto pro
+// Juliano no admin: fica claro que veio do catálogo, não foi digitado pelo cliente.
+//
+// Baileys/Evolution entregam dois formatos:
+//   productMessage — cliente mandou UM item (traz título e preço)
+//   orderMessage   — carrinho fechado (traz contagem e total; os nomes dos itens
+//                    dependem de consulta extra que nem toda versão expõe)
+// Por isso a leitura é defensiva: aproveita o que vier e nunca quebra.
+const catalogoParaTexto = (msg: any): string => {
+  if (!msg) return ''
+  const moeda = (n: number) => `R$ ${n.toFixed(2).replace('.', ',')}`
+
+  // Um item só: o título vem junto, é o caso mais rico.
+  const p = msg.productMessage?.product || msg.productMessage
+  const titulo = String(p?.title || p?.productTitle || '').trim()
+  if (titulo) {
+    const preco = Number(p?.priceAmount1000 || 0) / 1000
+    return `[pedido pelo catálogo] ${titulo}${preco > 0 ? ` — ${moeda(preco)}` : ''}`
+  }
+
+  const o = msg.orderMessage
+  if (!o) return ''
+
+  // Algumas versões mandam os itens junto; se vierem, os nomes valem mais que tudo.
+  const itens: string[] = []
+  for (const lista of [o.items, o.products, o.orderItems]) {
+    if (!Array.isArray(lista)) continue
+    for (const it of lista) {
+      const nome = String(it?.name || it?.title || it?.product?.title || '').trim()
+      if (nome) itens.push(nome)
+    }
+  }
+  const total = Number(o.totalAmount1000 || 0) / 1000
+  const qtd = Number(o.itemCount || itens.length || 0)
+
+  if (itens.length) {
+    return `[pedido pelo catálogo] ${itens.join(' + ')}${total > 0 ? ` — total ${moeda(total)}` : ''}`
+  }
+  // Sem os nomes: informa o que dá e deixa a JuIA confirmar com o cliente.
+  const partes = [`[pedido pelo catálogo] carrinho com ${qtd || 'alguns'} ${qtd === 1 ? 'item' : 'itens'}`]
+  if (total > 0) partes.push(`total ${moeda(total)}`)
+  partes.push('os itens não vieram detalhados, então confirme com o cliente o que ele escolheu antes de fechar o horário')
+  return partes.join(' — ')
+}
+
 async function acquireLock(admin: any, phone: string, leaseMs = 20000, maxWaitMs = 18000, pollMs = 400): Promise<boolean> {
   const deadline = Date.now() + maxWaitMs
   while (true) {
@@ -527,6 +584,18 @@ Deno.serve(async (request: Request) => {
         await sendWhatsapp(phone, fallback)
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, não foi possível analisar]' })
         return json({ ok: true, skipped: 'image_not_analyzed' })
+      }
+    }
+
+    // v29.92.0 — carrinho/produto do catalogo vira texto ANTES do beco sem saida abaixo
+    // (ver catalogoParaTexto no topo). O console.log guarda o formato cru que a Evolution
+    // mandou: no primeiro carrinho real da pra conferir nos logs se os nomes dos itens vem
+    // junto e, se vierem, afinar a leitura com dado de verdade em vez de suposicao.
+    if (!text) {
+      const doCatalogo = catalogoParaTexto(data?.message)
+      if (doCatalogo) {
+        text = doCatalogo
+        console.log(JSON.stringify({ tag: 'catalogo_pedido', phone, tipos: Object.keys(data?.message || {}), order: data?.message?.orderMessage ?? null, product: data?.message?.productMessage ?? null }))
       }
     }
 
