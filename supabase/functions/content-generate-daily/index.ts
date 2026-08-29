@@ -313,15 +313,27 @@ Deixe o canto inferior direito limpo e desimpedido — a marca é aplicada depoi
 // seguidos vieram institucionais vagos, reprovados no crivo. Dia útil continua barato
 // (primeira tentativa em esforço baixo); só quando cai no filtro é que paga a segunda
 // tentativa em modo exigente.
-async function captionComQualidade(openaiKey: string | undefined, prompt: string, emocional: boolean): Promise<string> {
+// v29.88.0 — além de texto raso, a segunda chance agora também é acionada por TEMA REPETIDO
+// (café saiu 4 dias seguidos, 26-29/08, inclusive canibalizando um post real já agendado).
+// `checarTema` devolve as palavras que entregaram a repetição (vazio = tema inédito).
+async function captionComQualidade(openaiKey: string | undefined, prompt: string, emocional: boolean, checarTema?: (t: string) => string[]): Promise<string> {
   let texto = await generateCaption(openaiKey, prompt, emocional)
-  if (textoRaso(texto)) {
-    console.warn('[content-generate-daily] 1a versao rasa, pedindo de novo')
+  const repetiu = checarTema ? checarTema(texto) : []
+  if (textoRaso(texto) || repetiu.length) {
+    console.warn('[content-generate-daily] 1a versao reprovada:', repetiu.length ? `tema repetido (${repetiu.join(', ')})` : 'texto raso')
+    const motivo = repetiu.length
+      ? `REPROVADA por REPETIR o assunto de um post dos últimos dias ou de um post que já vai sair hoje (as palavras que entregaram a repetição: ${repetiu.join(', ')}). Escolha um assunto COMPLETAMENTE diferente e não use nenhuma dessas palavras.`
+      : 'REPROVADA por soar vazia ou institucional: clichê de cartão, elogio genérico à própria barbearia ("seu visual merece", "experiência premium", "cuidado e precisão"), repetição da palavra do dia ou lista de objetos. Abra com uma pessoa, uma cena ou um fato concreto desta barbearia, não com um elogio. Nada de frase que caberia em qualquer negócio.'
     const promptDuro = `${prompt}
 
-ATENÇÃO — sua tentativa anterior foi REPROVADA por soar vazia ou institucional: clichê de cartão, elogio genérico à própria barbearia ("seu visual merece", "experiência premium", "cuidado e precisão"), repetição da palavra do dia ou lista de objetos. Recomece do zero. Abra com uma pessoa, uma cena ou um fato concreto desta barbearia, não com um elogio. Nada de frase que caberia em qualquer negócio.`
+ATENÇÃO — sua tentativa anterior foi ${motivo} Recomece do zero.`
     const segunda = await generateCaption(openaiKey, promptDuro, true)
-    if (!textoRaso(segunda)) texto = segunda
+    const segundaRasa = !segunda || textoRaso(segunda)
+    const segundaRepetiu = !segunda || (checarTema ? checarTema(segunda) : []).length > 0
+    if (!segundaRasa && !segundaRepetiu) texto = segunda
+    // Se a segunda também falhou, fica a "menos ruim": texto raso é pior que tema repetido.
+    else if (textoRaso(texto) && !segundaRasa) texto = segunda
+    else if (segunda) console.warn('[content-generate-daily] 2a versao tambem reprovada, mantendo a menos ruim')
   }
   return texto
 }
@@ -415,6 +427,70 @@ Deno.serve(async (request: Request) => {
       .order('created_at', { ascending: false })
       .limit(1)
     const campaign = Array.isArray(campaignRows) && campaignRows.length ? campaignRows[0] : null
+
+    // v29.88.0 — ANTI-REPETIÇÃO DE TEMA (29/08/2026). O bug real: com uma campanha ativa,
+    // TODO dia útil cai no ramo "campanha" (a rotação de temas nunca roda), o modelo recebe
+    // a ficha inteira e escolhe sempre o mesmo gancho — café saiu 4 dias seguidos (26-29/08),
+    // reprovado no crivo todos eles, e no sábado ainda competia com um post REAL de café já
+    // agendado pra mesma manhã. Duas defesas, na mesma filosofia dos filtros acima
+    // (instrução textual + trava determinística, porque instrução sozinha o modelo fura):
+    //   1. o prompt lista o que saiu nos últimos dias e o que JÁ está agendado pra hoje,
+    //      com ordem de escolher outro assunto;
+    //   2. temaRepetido() compara palavras significativas da legenda nova com cada
+    //      referência — 3+ palavras em comum = mesma pauta, descarta e pede outra versão.
+    const quatroDiasAtrasISO = new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString()
+    const fimDeHojeISO = new Date(`${todaySP}T23:59:59-03:00`).toISOString()
+    const { data: recentesIa } = await admin
+      .from('content_posts')
+      .select('caption')
+      .eq('source', 'ia')
+      .gte('created_at', quatroDiasAtrasISO)
+      .lt('created_at', startOfTodayISO)
+      .order('created_at', { ascending: false })
+      .limit(9)
+    const { data: agendadosHoje } = await admin
+      .from('content_posts')
+      .select('caption')
+      .eq('status', 'agendado')
+      .gte('scheduled_for', startOfTodayISO)
+      .lte('scheduled_for', fimDeHojeISO)
+    // Palavras que aparecem em praticamente toda legenda da casa não denunciam pauta — como
+    // sinal de repetição são ruído e saem da comparação. O que sobra é o assunto de verdade
+    // (cafe, fidelidade, espelho, garantia, climatizado...). Lista em forma NORMALIZADA
+    // (sem acento), porque a comparação roda depois do normalize.
+    const RUIDO_TEMA = new Set(['barbearia', 'agende', 'agendar', 'agendamento', 'horario', 'horarios', 'atendimento', 'cliente', 'clientes', 'whatsapp', 'corte', 'cortes', 'cabelo', 'barba', 'braganca', 'paulista', 'chame', 'link', 'hoje', 'momento', 'experiencia', 'marcada', 'marcado', 'juliano', 'chegada', 'chegar', 'chega', 'sente', 'sentar', 'cadeira', 'espera', 'esperamos', 'semana', 'antes', 'depois', 'comecar', 'comeca', 'sempre', 'quando', 'ainda', 'aquele', 'aquela', 'voce', 'aqui', 'para', 'pelo', 'pela', 'seu', 'sua', 'nao', 'bio'])
+    const palavrasTema = (texto: string): Set<string> =>
+      new Set(
+        String(texto || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length >= 4 && !RUIDO_TEMA.has(w)),
+      )
+    const referenciasTema: Set<string>[] = [
+      ...(recentesIa || []).map((r) => palavrasTema(String(r.caption || ''))),
+      ...(agendadosHoje || []).map((r) => palavrasTema(String(r.caption || ''))),
+    ].filter((s) => s.size > 0)
+    const temaRepetido = (candidato: string): string[] => {
+      const cand = palavrasTema(candidato)
+      for (const ref of referenciasTema) {
+        const comuns = [...cand].filter((w) => ref.has(w))
+        if (comuns.length >= 3) return comuns
+      }
+      return []
+    }
+    const trechosDe = (rows: { caption?: unknown }[] | null | undefined) =>
+      (rows || []).map((r) => `«${String(r.caption || '').replace(/\s+/g, ' ').slice(0, 120)}»`).filter((t) => t.length > 2)
+    const avisoAntiRepeticao = [
+      trechosDe(recentesIa).length
+        ? `POSTS DOS ÚLTIMOS DIAS (é PROIBIDO repetir o assunto central de qualquer um deles — hoje o assunto tem que ser DIFERENTE): ${trechosDe(recentesIa).slice(0, 6).join(' ')}`
+        : '',
+      trechosDe(agendadosHoje).length
+        ? `POST QUE JÁ VAI SAIR HOJE (é PROIBIDO falar do mesmo assunto — o post de agora não pode competir com ele): ${trechosDe(agendadosHoje).slice(0, 3).join(' ')}`
+        : '',
+    ].filter(Boolean).join('\n')
 
     const NO_AGENDA_TALK = 'É PROIBIDO mencionar a agenda de hoje, disponibilidade, encaixe, janela de horário, vaga aberta ou qualquer coisa que sugira que existe horário sobrando — a barbearia é procurada e o post vende a experiência, não a vacância.'
 
@@ -529,6 +605,16 @@ ${NO_HARD_SELL}`
       }
     }
 
+    // v29.88.0 — dias úteis recebem o aviso do que já saiu e do que já vai sair hoje.
+    // Domingo/segunda ficam de fora: os ângulos emocionais já rotacionam por semana e o
+    // aviso só poluiria um prompt que precisa de foco no tom.
+    const diaEmocionalAviso = context.tipo === 'domingo' || context.tipo === 'segunda'
+    if (!diaEmocionalAviso && avisoAntiRepeticao) {
+      contextFact = `${contextFact}
+
+${avisoAntiRepeticao}`
+    }
+
     // Domingo e segunda são os dias de conteúdo emocional (a barbearia está fechada e o post
     // constrói marca, não vende) — vale o custo de gerar com mais esforço e revisar.
     const diaEmocional = context.tipo === 'domingo' || context.tipo === 'segunda'
@@ -565,7 +651,7 @@ ${NO_HARD_SELL}`
 
     if (platformsToGenerate.includes('whatsapp_business')) {
       const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
-      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaption, 'whatsapp_business'), 'whatsapp_status', diaEmocional)
+      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaption, 'whatsapp_business'), 'whatsapp_status', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'whatsapp_business', caption, status: 'rascunho', source: 'ia', context })
@@ -577,7 +663,7 @@ ${NO_HARD_SELL}`
 
     if (platformsToGenerate.includes('facebook')) {
       const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, premium e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
-      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaptionFacebook, 'facebook'), 'facebook', diaEmocional)
+      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaptionFacebook, 'facebook'), 'facebook', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'facebook', caption, status: 'rascunho', source: 'ia', context })
@@ -595,7 +681,7 @@ ${NO_HARD_SELL}`
       // 16/08/2026): eles repostam no story e o post alcança duas redes pessoais além da
       // barbearia. Só no Instagram — @ de Instagram não vira link no Facebook nem no Status.
       // Vai numa linha separada, depois de uma linha em branco, para não atropelar o texto.
-      const caption = comMarcacoes(stripSiteUrls(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional), fallbackCaptionInstagram, 'instagram')))
+      const caption = comMarcacoes(stripSiteUrls(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaptionInstagram, 'instagram')))
       const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
       const themeText = themeTextFor(context, campaign ? String(campaign.content) : '')
       const { data: inserted, error } = await admin
