@@ -94,6 +94,13 @@ Deno.serve(async(req:Request)=>{
       const produtosValor=Number(booking?.products_price||0)
       const desconto=Number(booking?.loyalty_discount||0)
       const hora=String(booking?.start_time||'').slice(0,5)
+      // v29.90.0 (caso Walter, 29/08) — comprovante segurado pelo horário de silêncio saía
+      // "hoje às 19:30" na manhã SEGUINTE. O dia certo vem do booking_date.
+      const spDia=(d:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)
+      const dataBooking=String(booking?.booking_date||'')
+      const diaLabel=!dataBooking||dataBooking===spDia(new Date())?'hoje'
+        :dataBooking===spDia(new Date(Date.now()-24*3600*1000))?'ontem'
+        :`dia ${dataBooking.slice(8,10)}/${dataBooking.slice(5,7)}`
       const pagServico=metodoLabel(booking?.payment_method)
       const pagProdutos=metodoLabel(booking?.products_payment_method)||pagServico
       const total=servicoValor+produtosValor-desconto
@@ -133,7 +140,7 @@ Deno.serve(async(req:Request)=>{
       const waText=(soProduto?[
         `Olá, ${first}! Obrigado pela compra na Barbearia do Ju 💈`,
         '',
-        `Segue seu comprovante${hora?` — hoje às ${hora}`:''}:`,
+        `Segue seu comprovante${hora?` — ${diaLabel} às ${hora}`:''}:`,
         ...linhas,
         `*Total: ${money(total)}*`,
         ...(pagamentoLinha?[pagamentoLinha]:[]),
@@ -142,7 +149,7 @@ Deno.serve(async(req:Request)=>{
       ]:[
         `Olá, ${first}! Muito obrigado pela visita à Barbearia do Ju 💈`,
         '',
-        `Segue seu comprovante${hora?` — hoje às ${hora}`:''}:`,
+        `Segue seu comprovante${hora?` — ${diaLabel} às ${hora}`:''}:`,
         ...linhas,
         `*Total: ${money(total)}*`,
         ...(pagamentoLinha?[pagamentoLinha]:[]),

@@ -843,11 +843,13 @@ Deno.serve(async (request: Request) => {
           // (o regex exigia "mudar horário" literal), caía no re-ask do menu e forçou o cliente
           // no 3-cancelar. "mudar"/"trocar"/"passar pra" soltos dentro da confirmação de
           // presença são sempre remarcação.
-          const isReschedule = /^2[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(normalizedReply)
+          // v29.90.0 (caso Pedro, "1111!!"): dígito repetido conta como o dígito em TODOS os
+          // menus numerados — cliente animado repete a tecla.
+          const isReschedule = /^2+[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(normalizedReply)
           // "não" decide sobre confirmação solta: "não vou poder ir, pode cancelar".
           // Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
-          const isDecline = !isReschedule && (/^3[\s!.,]*$/.test(trimmedNormalized) || /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply))
-          const isConfirm = !isReschedule && !isDecline && (/^1[\s!.,]*$/.test(trimmedNormalized) || /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply))
+          const isDecline = !isReschedule && (/^3+[\s!.,]*$/.test(trimmedNormalized) || /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply))
+          const isConfirm = !isReschedule && !isDecline && (/^1+[\s!.,]*$/.test(trimmedNormalized) || /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply))
 
           if (isReschedule) {
             // v29.86.0: se a mensagem JÁ traz o dia/horário novo ("mudar para hoje às 19:30"),
@@ -1023,7 +1025,7 @@ Deno.serve(async (request: Request) => {
           const pendUnsat = unsatState.pending_unsat as any
           if (pendUnsat?.token && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
             const rawUnsat = normalize(text).trim()
-            const nUnsat = /^[123][\s!.,]*$/.test(rawUnsat) ? Number(rawUnsat[0]) : 0
+            const nUnsat = /^([123])\1*[\s!.,]*$/.test(rawUnsat) ? Number(rawUnsat[0]) : 0
             const clearUnsat = async () => {
               await admin.from('whatsapp_conversations').update({ state: { ...unsatState, pending_unsat: null }, updated_at: new Date().toISOString() }).eq('phone', phone)
             }
@@ -1193,7 +1195,8 @@ Deno.serve(async (request: Request) => {
         // v29.43.4 — caso Adriano: numero solto (1/2/3) com convite E pesquisa pendentes ao mesmo
         // tempo e ambiguo. Em vez de chutar (antes ganhava o convite, por ser "mais recente"), a
         // JuIA pergunta a qual dos dois o numero se refere e guarda o numero pra proxima mensagem.
-        if (returnInvite && !juiaAwaitingAnswer && !quotedTarget && /^[123][\s!.,]*$/.test(normalize(text).trim())) {
+        // v29.90.0 — dígito repetido ("1111!!") também conta como número solto aqui.
+        if (returnInvite && !juiaAwaitingAnswer && !quotedTarget && /^([123])\1*[\s!.,]*$/.test(normalize(text).trim())) {
           const { data: pendSurveyRows } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
           const pendSurvey = Array.isArray(pendSurveyRows) ? pendSurveyRows[0] : pendSurveyRows
           if (pendSurvey) {
@@ -1216,9 +1219,9 @@ Deno.serve(async (request: Request) => {
           // quiser me chama" a quem quis outro dia seria perder a venda por detalhe de versão.
           // Os convites antigos expiram sozinhos em 48h e esta trava sai junto.
           const inviteV2 = Date.parse(String(returnInvite.sent_at || '')) >= Date.parse('2026-08-21T13:30:00Z')
-          const inviteOtherDay = (!inviteV2 && /^2[\s!.,]*$/.test(inviteTrimmed)) || /outro dia|outro horari|prefiro outr|remarc|mudar o dia|mudar o horari/.test(inviteReply)
-          const inviteDecline = !inviteOtherDay && ((inviteV2 ? /^2[\s!.,]*$/.test(inviteTrimmed) : /^3[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
-          const inviteAccept = !inviteOtherDay && !inviteDecline && (/^1[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply))
+          const inviteOtherDay = (!inviteV2 && /^2+[\s!.,]*$/.test(inviteTrimmed)) || /outro dia|outro horari|prefiro outr|remarc|mudar o dia|mudar o horari/.test(inviteReply)
+          const inviteDecline = !inviteOtherDay && ((inviteV2 ? /^2+[\s!.,]*$/.test(inviteTrimmed) : /^3+[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
+          const inviteAccept = !inviteOtherDay && !inviteDecline && (/^1+[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply))
           const canonInvitePhone = (v: unknown) => {
             const d = String(v || '').replace(/\D/g, '')
             return d.length === 10 || d.length === 11 ? `55${d}` : d
@@ -1281,7 +1284,7 @@ Deno.serve(async (request: Request) => {
           const openAsk = Array.isArray(openAskRows) ? openAskRows[0] : openAskRows
           if (openAsk) {
             const askReply = normalize(text).trim()
-            const jaAvaliou = /^1[\s!.,]*$/.test(askReply)
+            const jaAvaliou = /^1+[\s!.,]*$/.test(askReply)
               || /ja avaliei|ja fiz a avaliacao|ja deixei a avaliacao|ja tinha avaliado|ja avaliamos|avaliei voces|ja fiz/.test(askReply)
             if (jaAvaliou) {
               await admin.rpc('declare_already_reviewed', { p_token: openAsk.token })
@@ -1295,7 +1298,29 @@ Deno.serve(async (request: Request) => {
         const { data: pendingExperience } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
         const pending = Array.isArray(pendingExperience) ? pendingExperience[0] : pendingExperience
 
-        if (pending && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
+        // v29.90.0 — caso Walter (29/08): o comprovante adiado pelo horário de silêncio saiu
+        // às 8h e o "1" dele caiu no pending_reschedule de ONTEM ("não encontrei mais esse
+        // agendamento"), porque juiaAwaitingAnswer segurava a prioridade. O reset de 6h do
+        // state não socorre: o próprio satisfaction-dispatch carimba last_message_at ao
+        // enviar. A regra da v29.17 levada a sério ("a pergunta mais recente do PRÓPRIO bot
+        // tem prioridade"): se o cliente NÃO mandou nada entre o envio da pesquisa e esta
+        // mensagem, a pesquisa é a pergunta mais recente e leva a resposta — o pending_*
+        // velho não intercepta. A janela de 90s exclui a própria rajada atual (picadas do
+        // debounce e sequências de áudio já estão gravadas como 'in' quando chegamos aqui).
+        let surveyEhMaisRecente = false
+        if (pending?.sent_at && juiaAwaitingAnswer) {
+          const { count: inboundsAposPesquisa } = await admin
+            .from('whatsapp_messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('phone', phone)
+            .eq('direction', 'in')
+            .gte('created_at', String(pending.sent_at))
+            .lt('created_at', new Date(Date.now() - 90 * 1000).toISOString())
+          surveyEhMaisRecente = (inboundsAposPesquisa ?? 0) === 0
+          if (surveyEhMaisRecente) console.log('[whatsapp-webhook] pesquisa é mais recente que o pending_* da JuIA — pesquisa leva a resposta', phone)
+        }
+
+        if (pending && (!juiaAwaitingAnswer || surveyEhMaisRecente) && (!quotedTarget || quotedTarget === 'survey')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
@@ -1337,7 +1362,10 @@ Deno.serve(async (request: Request) => {
           // e caía no "não entendi". Quem cita a pesquisa/avaliação e diz 1 ou 2 no meio da
           // frase está respondendo a ela, mesmo sem o número vir sozinho no início.
           const refersToSurvey = /pesquis|avaliacao/.test(normalizedReply)
-          const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2[\s!.,]*$/.test(trimmedNormalized) || leadingTwo
+          // v29.90.0 — caso Pedro (28/08): respondeu "1111!!" (entusiasmo) e levou "não
+          // entendi". Dígito REPETIDO com pontuação/exclamação conta como o dígito ("1111!!",
+          // "22...", "1!"). Nunca mistura: "12" continua não casando nada.
+          const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2+[\s!.,]*$/.test(trimmedNormalized) || leadingTwo
             || (refersToSurvey && /\b2\b/.test(normalizedReply) && !/\b1\b/.test(normalizedReply))
           // v29.51.0 — caso Vivian/Theo (19/08): "O Theo tá muito inquieto com o cabelo…😁"
           // caiu como SATISFEITO só por causa do emoji, e a JuIA respondeu "Que ótimo saber
@@ -1349,7 +1377,7 @@ Deno.serve(async (request: Request) => {
           // `&& !isUnsatisfied` é essencial: "não gostei" contém "gostei" e cairia como
           // elogio, mandando pedido de avaliação pra quem reclamou.
           const isSatisfied = !isUnsatisfied && !asksSomethingElse && !mentionsProblem
-            && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1[\s!.,]*$/.test(trimmedNormalized) || leadingOne
+            && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1+[\s!.,]*$/.test(trimmedNormalized) || leadingOne
               || (refersToSurvey && /\b1\b/.test(normalizedReply)))
           if (mentionsProblem && !isUnsatisfied) {
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
