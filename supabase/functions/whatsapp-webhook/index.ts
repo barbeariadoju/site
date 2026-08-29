@@ -1317,7 +1317,14 @@ Deno.serve(async (request: Request) => {
             .gte('created_at', String(pending.sent_at))
             .lt('created_at', new Date(Date.now() - 90 * 1000).toISOString())
           surveyEhMaisRecente = (inboundsAposPesquisa ?? 0) === 0
-          if (surveyEhMaisRecente) console.log('[whatsapp-webhook] pesquisa é mais recente que o pending_* da JuIA — pesquisa leva a resposta', phone)
+          if (surveyEhMaisRecente) {
+            console.log('[whatsapp-webhook] pesquisa é mais recente que o pending_* da JuIA — pesquisa leva a resposta', phone)
+            // O pending_* que perdeu a vez é zumbi (o cliente nunca respondeu e uma pesquisa
+            // chegou depois): limpa pra ele não devorar a PRÓXIMA mensagem também.
+            const semPendencias = { ...aiState }
+            for (const k of ['pending_cancel_booking_id', 'pending_cancel_options', 'pending_reschedule_booking_id', 'pending_reschedule_new_date', 'pending_products_summary', 'pending_change_service_new_name']) delete semPendencias[k]
+            await admin.from('whatsapp_conversations').update({ state: semPendencias, updated_at: new Date().toISOString() }).eq('phone', phone)
+          }
         }
 
         if (pending && (!juiaAwaitingAnswer || surveyEhMaisRecente) && (!quotedTarget || quotedTarget === 'survey')) {
