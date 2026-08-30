@@ -54,6 +54,17 @@
   // colidir no banco ("ON CONFLICT DO UPDATE cannot affect row a second time").
   function phoneKeyDb(s=''){const d=phoneDigits(s);return (d.length>=11&&d.length<=13)?d.slice(-8):null}
   function visitNumber(x){const ph=phoneKey(x.customer_phone);if(!ph)return 1;const before=allBookings.filter(b=>b.status==='completed'&&phoneKey(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;const profile=customerProfiles.find(p=>phoneKey(p.phone)===ph);const prior=Number(profile?.prior_visits||0);return before+prior+1}
+  // v29.98.0 — o sistema so conhece o que passou por ele (desde 12/03/2026). Cliente que o
+  // Juliano ja atendia ANTES disso entra como '1ª visita' e leva mensagem de boas-vindas de
+  // cliente novo. Este teste diz de quem vale a pena perguntar na cadeira: ninguem com
+  // atendimento concluido no sistema e ninguem com prior_visits ja preenchido - pra esses o
+  // numero ja e conhecido e a pergunta so atrapalharia.
+  function podeMarcarPrimeiraVez(x){
+    const ph=phoneKey(x.customer_phone);if(!ph)return false;
+    const before=allBookings.filter(b=>b.status==='completed'&&phoneKey(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;
+    if(before>0)return false;
+    return !(Number(customerProfiles.find(p=>phoneKey(p.phone)===ph)?.prior_visits||0)>0)
+  }
   function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
@@ -90,7 +101,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.97.0'
+  const ADMIN_VERSION='29.98.0'
   async function checkForUpdate(){
     try{
       const r=await fetch('/admin-version.json',{cache:'no-store'})

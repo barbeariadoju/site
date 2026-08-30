@@ -247,3 +247,12 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 
 .admin-phone-warning{display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(240,201,135,.12);border:1px solid rgba(240,201,135,.45);color:#f0c987;font-size:.78rem;font-weight:600;line-height:1.35;white-space:normal}
 .admin-phone-warning[hidden]{display:none}
+
+/* v29.98.0 - pergunta 'primeira vez / ja e cliente' no cartao do Atendimento */
+.admin-firsttime{flex-basis:100%;margin:2px 0 8px;padding:10px;border:1px dashed rgba(240,201,135,.4);border-radius:10px;background:rgba(240,201,135,.06)}
+.admin-firsttime>small{display:block;color:#bdb2a0;font-size:.76rem;line-height:1.35;margin-bottom:8px}
+.admin-firsttime-opts{display:flex;gap:8px;flex-wrap:wrap}
+.admin-firsttime-opts button{flex:1 1 auto;min-width:120px;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:#090909;color:#bdb2a0;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+.admin-firsttime-opts button.is-on{background:var(--gold2,#f0c987);border-color:var(--gold2,#f0c987);color:#17130f}
+.admin-firsttime-opts button[disabled]{opacity:.55;cursor:progress}
+.admin-firsttime>em{display:block;margin-top:7px;color:var(--gold2,#f0c987);font-size:.75rem;font-style:normal;font-weight:700;line-height:1.35}

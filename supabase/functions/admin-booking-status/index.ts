@@ -157,7 +157,18 @@ Deno.serve(async (request: Request) => {
     log('payload_validated', { requestId, bookingId, status, hasProducts: Boolean(selectedProducts), hasServiceUpdate: Boolean(serviceUpdate), userId: authData.user.id })
 
     if (!bookingId) return fail('validation_booking_id', 'Agendamento não informado.', 400, { requestId })
-    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate) {
+    const loyaltyDelta = Number(body?.loyalty_delta || 0)
+    const markRecurring = Boolean(body?.mark_recurring)
+    // v29.15.0: a tela manda o Nº TOTAL da visita (contando esta) digitado pelo Juliano;
+    // a RPC converte pra prior_visits usando esta reserva como referência (migration 104).
+    // mark_recurring segue aceito pra JS antigo em cache (?v= atrasado no PWA dele).
+    const visitNumberRaw = Number(body?.visit_number)
+    const visitNumber = Number.isFinite(visitNumberRaw) && visitNumberRaw >= 1 ? Math.floor(visitNumberRaw) : null
+    // v29.98.0 — os extras agora podem vir SOZINHOS, sem troca de status: o botao
+    // "ja e cliente" da tela de Atendimento (prior_visits) grava na hora, antes e
+    // independente de concluir o atendimento.
+    const wantsExtras = Boolean(loyaltyDelta || markRecurring || visitNumber !== null)
+    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate && !wantsExtras) {
       return fail('validation_nothing_to_update', 'Informe um status, o serviço, os produtos ou a forma de pagamento a atualizar.', 400, { requestId })
     }
     if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
@@ -325,15 +336,8 @@ Deno.serve(async (request: Request) => {
     // de admin que já foi validado acima (authClient, não service_role — a RPC exige
     // is_admin(), que depende do auth.uid() do Juliano), o resultado entra na resposta e o
     // erro aparece no log da function em vez de morrer num alert que passa batido.
-    const loyaltyDelta = Number(body?.loyalty_delta || 0)
-    const markRecurring = Boolean(body?.mark_recurring)
-    // v29.15.0: a tela manda o Nº TOTAL da visita (contando esta) digitado pelo Juliano;
-    // a RPC converte pra prior_visits usando esta reserva como referência (migration 104).
-    // mark_recurring segue aceito pra JS antigo em cache (?v= atrasado no PWA dele).
-    const visitNumberRaw = Number(body?.visit_number)
-    const visitNumber = Number.isFinite(visitNumberRaw) && visitNumberRaw >= 1 ? Math.floor(visitNumberRaw) : null
     let extras: { attempted: boolean; applied: boolean; error: string } = { attempted: false, applied: false, error: '' }
-    if (hasStatusChange && status === 'completed' && (loyaltyDelta || markRecurring || visitNumber !== null)) {
+    if (wantsExtras && (!hasStatusChange || status === 'completed')) {
       extras.attempted = true
       const { error: extrasError } = await authClient.rpc('admin_apply_completion_extras', {
         p_phone: String(current.customer_phone || ''),
