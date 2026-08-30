@@ -66,10 +66,10 @@
   }
 
   .item{
-    display:grid;grid-template-columns:1fr auto;gap:14px;align-items:baseline;
+    display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:baseline;
     padding:13px 0;border-bottom:1px solid var(--rule)
   }
-  .item .nome{font-size:16px;font-weight:500}
+  .item .nome{font-size:16px;font-weight:500;min-width:0;overflow-wrap:anywhere}
   .item .dur{display:block;font-size:13px;color:var(--faint);font-weight:400;margin-top:1px}
   .item .valor{
     font-family:"Bebas Neue",Inter,sans-serif;font-size:26px;letter-spacing:.02em;
