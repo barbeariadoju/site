@@ -1,3 +1,15 @@
+## 29.101.0 — A régua do Juliano: desejar eleva, afirmar invade
+
+Ele mandou duas referências que admira e resumiu a segunda numa frase que virou regra: *"eleva a estima do leitor, pega no coração sem ser invasivo ou antiético"*.
+
+O @filtrodocafe escreve à mão num filtro de papel — o objeto mais banal do próprio ofício — e fotografa segurando na mão, no corredor real: *"a felicidade é o melhor filtro que existe"*. O Canal do Mensageiro publica *"Que seu domingo seja tão incrível quanto você!"*.
+
+As duas parecem coisas diferentes, mas têm a mesma regra por baixo, e é ela que separa o que ele aprova do que reprovou hoje de manhã: **é o modo verbal**. *Afirmar* sobre a vida de quem lê invade ("eu sei que você fingiu que estava tudo bem"). *Desejar* acolhe e ainda eleva ("que seu domingo…"). *Falar do mundo* também acolhe, porque o sujeito não é o leitor ("pressa nunca fez corte bom").
+
+O LIMITE DE INTIMIDADE da v29.100.0 era só a metade proibitiva. Agora ele diz também o que FAZER: todo texto tem que estar em um de dois caminhos — desejar, ou falar do mundo/do lado de cá da cadeira — e termina com um teste explícito ("o texto afirma alguma coisa sobre a vida, o cansaço ou o sentimento de quem lê?"). Vale todos os dias, e entra por último no prompt.
+
+Junto nasceu a série **Recado de Domingo**: frase escrita à mão na gola de papel, fotografada pelo Juliano na barbearia, com as 12 primeiras frases prontas e o guia de foto. Quando entrar no ar, o domingo deixa de ser gerado por IA e passa a usar foto real — que é a resposta definitiva para "a arte parece sempre a mesma".
+
 ## 29.100.0 — Crivo do Juliano: frase invasiva e "a arte parece sempre a mesma"
 
 Reprovação dele sobre o post de domingo 30/08: *"não gostei da frase, achei meio invasiva, sem contar a arte genérica que parece sempre a mesma arte mesmo não sendo."* Os dois problemas eram reais, e nenhum era azar do gerador — os dois estavam escritos no prompt.

@@ -540,7 +540,15 @@ Deno.serve(async (request: Request) => {
     // sol e noite em que fingiu que estava tudo bem". A barbearia afirmando saber o que o
     // cliente sente e esconde. O modelo não inventou isso sozinho: o ângulo mandava
     // "reconheça o que ninguém viu", e ele escalou pro íntimo. Regra vale TODO dia.
-    const NAO_INVASIVO = `LIMITE DE INTIMIDADE (se cruzar, reescreva do zero): você é uma barbearia, não é amigo íntimo nem terapeuta de quem lê. É PROIBIDO afirmar o que o leitor sente, esconde, sofre ou viveu na intimidade dele. Proibido começar com "Eu sei que você...", "Eu sei: você...", e proibido descrever a vida privada dele como fato ("você fingiu que estava tudo bem", "engoliu o cansaço", "chorou escondido", "chegou ao limite", "ninguém te aplaude", "você está exausto", "a semana te consumiu"). Isso soa invasivo e presunçoso para quem só quer cortar o cabelo. O QUE FAZER NO LUGAR: fale a partir do que o JULIANO vê e vive do lado dele da cadeira ("tem semana que a pessoa senta aqui e nem fala, só respira"), ou faça um convite aberto que a pessoa aceita se quiser ("se der, tira uma hora sua hoje"). Reconhecimento sim, diagnóstico não. Na dúvida entre afirmar algo sobre a vida do leitor e não afirmar, não afirme.`
+    const NAO_INVASIVO = `LIMITE DE INTIMIDADE — a regra que decide se o texto é aprovado (o Juliano definiu isso em 30/08/2026 comparando duas referências que ele admira):
+
+NUNCA AFIRME NADA SOBRE A VIDA DE QUEM LÊ. Você é uma barbearia, não é amigo íntimo nem terapeuta do leitor, e não sabe como foi a semana dele. É PROIBIDO abrir com "Eu sei que você..." / "Eu sei: você..." e é PROIBIDO descrever a vida privada dele como fato: "você fingiu que estava tudo bem", "engoliu o cansaço", "chorou escondido", "chegou ao limite", "ninguém te aplaude", "você está exausto", "a semana te consumiu", "você acordou cedo cinco dias seguidos". Isso invade e ainda rebaixa — trata a pessoa como alguém que sofre escondido.
+
+EXISTEM EXATAMENTE DOIS CAMINHOS PERMITIDOS, e todo texto tem que estar em um deles:
+1) DESEJAR (a fórmula que ELEVA a estima de quem lê): frase no modo do desejo, começando por "que" — "que seu domingo te trate tão bem quanto você trata os seus", "que hoje ninguém te cobre nada". Deseja algo bom, entrega um elogio sem cobrar nada em troca, e não presume NADA sobre o dia da pessoa. Referência do Juliano: "Que seu domingo seja tão incrível quanto você!".
+2) FALAR DO MUNDO (ou do lado de cá da cadeira): uma verdade do ofício que também é verdade da vida — "pressa nunca fez corte bom", "todo recomeço começa com um corte" — ou o que o JULIANO vê e vive na barbearia ("hoje a cadeira descansa"). O sujeito é o mundo ou a casa, nunca a intimidade do leitor.
+
+O TESTE, antes de entregar: o texto afirma alguma coisa sobre a vida, o cansaço ou o sentimento de quem lê? Se afirma, está reprovado — reescreva como desejo ou como verdade do mundo. Elogiar e desejar sempre pode; diagnosticar nunca.`
     const NO_AGENDA_TALK = 'É PROIBIDO mencionar a agenda de hoje, disponibilidade, encaixe, janela de horário, vaga aberta ou qualquer coisa que sugira que existe horário sobrando — a barbearia é procurada e o post vende a experiência, não a vacância.'
 
     // v29.74.0 — a mesma lição do domingo (v29.31.2) aplicada ao dia útil: conceito abstrato
