@@ -1,3 +1,9 @@
+## 29.95.0 — Dia fechado: a JuIA não troca mais a data calada
+
+Caso Rafael (29/08/2026, 21h37): o cliente escreveu só "31" — que cai numa segunda, dia em que a barbearia não abre. Em vez de dizer isso, a JuIA respondeu "Na terça (01/09), no período da manhã, tenho horários entre 08:00 e 11:45", trocando a data sem avisar. O cliente estranhou ("tem 31?"), ela se perdeu, caiu no "me embolei aqui" e o Juliano teve que entrar na mão pra explicar que segunda não abre.
+
+A troca aconteceu no modelo, antes do sistema: o prompt já mandava avisar quando o HORÁRIO pedido estava fora do expediente, mas não dizia nada sobre o DIA. Agora diz: pedido em dia fechado (domingo, segunda ou fechamento excepcional) obriga a resposta a começar dizendo que naquele dia não abrimos, e só então oferecer a alternativa — com a instrução extra de conferir em que dia da semana cai quando o cliente manda só o número ("31").
+
 ## 29.94.0 — Fim da ficha duplicada: cliente passa a ser casado pelos últimos 8 dígitos do telefone
 
 O mesmo cliente virava duas fichas quando o telefone era salvo em formatos diferentes (com/sem o 55, com/sem DDD) — e aí o Juliano digitava um nome levemente diferente e ficavam dois cadastros da mesma pessoa, cada um com metade do histórico. A comparação por dígitos exatos era a causa: '11974998541' não "encontrava" '5511974998541'.
