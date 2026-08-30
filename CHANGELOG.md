@@ -1,3 +1,15 @@
+## 29.99.0 — O painel abria e só ficava "carregando": loop de recarregamento
+
+Manhã de 30/08/2026, relatado pelo Juliano: abrir o app da barbearia no iPhone e ficar carregando, carregando, sem nunca entrar.
+
+A causa foi a checagem de versão criada na v29.12.0. Ela compara o `ADMIN_VERSION` de dentro do JavaScript com o arquivo `admin-version.json` publicado, e recarrega a tela quando os dois diferem. As versões 29.96.0, 29.97.0 e 29.98.0 subiram o número dentro do JavaScript e esqueceram o arquivo, que ficou parado no 29.94.0. Os dois nunca mais iam bater — então toda abertura do painel caía no recarregamento, que abria o painel de novo, que recarregava de novo. Loop infinito. Não era lentidão nem internet: era a tela se recarregando pra sempre.
+
+Duas correções:
+1. O `admin-version.json` voltou a acompanhar o código (agora 29.99.0), o que já destrava o painel.
+2. Trava anti-loop: o recarregamento automático agora acontece no máximo UMA vez por versão anunciada. Se depois de recarregar o arquivo continuar anunciando a mesma versão, é sinal de que o código publicado já é o que está rodando — o painel abre normalmente e só mostra o aviso dourado de atualização. Recarregar em loop nunca conserta nada; deixar o painel abrir sempre conserta.
+
+Vale para as sete telas que carregam o núcleo do admin: Visão geral, Agenda, Modo Atendimento, CRM, Mensagens, Notificações e Novo agendamento.
+
 ## 29.96.0 — Prospecção disfarçada de cliente: agradecer, orientar e encerrar
 
 Continuação do caso Rafael (29/08/2026, 21h44). Depois de cinco mensagens fingindo querer agendar, ele revelou que vende sistemas de agendamento por WhatsApp e mandou um número pra "testar como funciona na prática" — prospecção disfarçada de cliente, feita por um concorrente da mesma cidade, entrando pelo canal do site.

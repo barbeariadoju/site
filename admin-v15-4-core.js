@@ -101,7 +101,15 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.98.0'
+  const ADMIN_VERSION='29.99.0'
+  // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
+  // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
+  // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
+  // pra sempre: o Juliano abria o app no iPhone e só via "carregando" (manhã de 30/08).
+  // Agora o recarregamento só acontece UMA vez por versão anunciada. Se depois de
+  // recarregar o arquivo continuar anunciando a mesma versão, o código publicado é o que
+  // está rodando — então em vez de recarregar de novo, o painel abre normal e mostra o
+  // aviso. Recarregar em loop nunca conserta nada; deixar o painel abrir sempre conserta.
   async function checkForUpdate(){
     try{
       const r=await fetch('/admin-version.json',{cache:'no-store'})
@@ -109,7 +117,10 @@
       const {v}=await r.json()
       if(!v||v===ADMIN_VERSION)return
       const modalAberto=document.querySelector('.admin-modal:not([hidden])')
-      if(modalAberto){showUpdateBanner();return}
+      let jaTentou=false
+      try{jaTentou=sessionStorage.getItem('bdj-admin-reload')===v}catch(_){jaTentou=true}
+      if(modalAberto||jaTentou){showUpdateBanner();return}
+      try{sessionStorage.setItem('bdj-admin-reload',v)}catch(_){return}
       location.reload()
     }catch(e){/* offline ou arquivo ausente: silencioso de propósito */}
   }
