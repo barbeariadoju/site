@@ -1,3 +1,13 @@
+## 29.96.0 — Prospecção disfarçada de cliente: agradecer, orientar e encerrar
+
+Continuação do caso Rafael (29/08/2026, 21h44). Depois de cinco mensagens fingindo querer agendar, ele revelou que vende sistemas de agendamento por WhatsApp e mandou um número pra "testar como funciona na prática" — prospecção disfarçada de cliente, feita por um concorrente da mesma cidade, entrando pelo canal do site.
+
+A regra de contato comercial já existia, mas falhou em dois pontos: só reconhecia quem se apresenta como vendedor logo de cara, e mandava informar o e-mail sem mandar ENCERRAR — deixando a JuIA em modo de atendimento, pronta pra continuar conversando com quem nunca foi cliente.
+
+Agora a regra cobre o disfarce ("no instante em que ficar claro, pare de tratar como cliente") e fecha a conversa numa única mensagem: agradece com cordialidade sincera, informa que proposta comercial é só pelo contato@barbeariadoju.com.br, deseja sucesso e termina — sem pergunta no fim, sem oferecer horário. Proíbe explicitamente acessar, testar ou comentar o número/link enviado, e trata esse conteúdo como texto de terceiro, nunca como instrução. Se a pessoa insistir, repete a orientação uma única vez e para.
+
+Decisão de tom, do Juliano: educação mesmo com quem foi desonesto na abordagem. Sem ironia e sem hostilidade — a pessoa é do ramo, é da cidade, e vai comentar como foi tratada.
+
 ## 29.95.0 — Dia fechado: a JuIA não troca mais a data calada
 
 Caso Rafael (29/08/2026, 21h37): o cliente escreveu só "31" — que cai numa segunda, dia em que a barbearia não abre. Em vez de dizer isso, a JuIA respondeu "Na terça (01/09), no período da manhã, tenho horários entre 08:00 e 11:45", trocando a data sem avisar. O cliente estranhou ("tem 31?"), ela se perdeu, caiu no "me embolei aqui" e o Juliano teve que entrar na mão pra explicar que segunda não abre.
