@@ -1,3 +1,19 @@
+## 29.100.0 — Crivo do Juliano: frase invasiva e "a arte parece sempre a mesma"
+
+Reprovação dele sobre o post de domingo 30/08: *"não gostei da frase, achei meio invasiva, sem contar a arte genérica que parece sempre a mesma arte mesmo não sendo."* Os dois problemas eram reais, e nenhum era azar do gerador — os dois estavam escritos no prompt.
+
+**A frase.** O texto saiu assim: *"Eu sei que teve manhã em que você saiu antes do sol e noite em que fingiu que estava tudo bem."* A barbearia afirmando saber o que o cliente sente e esconde. O modelo não inventou: o ângulo de domingo mandava "reconheça o que ninguém viu: acordar cedo, resolver o que não aparece, aguentar calado", e dava um exemplo em segunda pessoa afirmando a vida do leitor. Ele seguiu a instrução e escalou para o íntimo.
+
+Agora existe um LIMITE DE INTIMIDADE, que vale todo dia e entra por último no prompt: é proibido afirmar o que o leitor sente, esconde ou viveu na vida privada dele; proibido abrir com "Eu sei que você..."; proibido "fingiu que estava tudo bem", "engoliu o cansaço", "chegou ao limite". No lugar, o texto fala do que o Juliano vê do lado dele da cadeira, ou faz um convite aberto. Reconhecimento sim, diagnóstico não. O ângulo de domingo que causou o caso foi reescrito na mesma direção.
+
+**A arte.** Comparando as peças de 27, 29 e 30/08 lado a lado, ele tem razão: mesma composição, mesmos objetos, mesmo fundo. A causa é que os dois prompts de imagem descreviam UMA receita fechada — navalha, pincel, frasco âmbar e toalha parados numa bancada, fundo de tijolo, luz quente lateral, câmera na altura da superfície. Com a receita fechada, todo dia sai a mesma foto com os objetos trocados de lugar; variedade era impossível por construção.
+
+Agora cada dia recebe um ENQUADRAMENTO obrigatório, girando numa lista de seis (macro extremo, vista de cima, plano aberto do ambiente, contra-luz, vertical com vazio, textura como assunto), sorteado pelo número de dias desde 1970 — testado em 60 dias corridos: nenhuma repetição em dias seguidos e as seis formas em uso. A instrução entra por último e vence a composição sugerida acima dela (lição da v29.31.4: o modelo obedece ao que leu por último).
+
+A regra da marca não afrouxou: segue proibido gerar pessoas, rostos, mãos ou silhuetas por IA, e segue proibido texto na imagem.
+
+Os três rascunhos de 30/08 (WhatsApp, Facebook e Instagram) foram reprovados na Central.
+
 ## 29.99.0 — O painel abria e só ficava "carregando": loop de recarregamento
 
 Manhã de 30/08/2026, relatado pelo Juliano: abrir o app da barbearia no iPhone e ficar carregando, carregando, sem nunca entrar.

@@ -219,7 +219,34 @@ function themeTextFor(context: Record<string, unknown>, campanha = ''): string {
   }
 }
 
-async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string): Promise<string | null> {
+// v29.100.0 (30/08/2026) - REPROVADO PELO JULIANO: "a arte generica que parece sempre a
+// mesma arte mesmo nao sendo". Ele estava certo, e a culpa nao era do gerador: tanto o
+// BRAND_STYLE quanto o DOMINGO_STYLE descreviam UMA unica receita - objetos de barbearia
+// (navalha, pincel, frasco ambar, toalha) parados numa bancada, fundo de tijolo, luz quente
+// lateral, camera na altura da superficie. Com a receita fechada, todo dia saia a mesma foto
+// com os objetos trocados de lugar. Comparei as artes de 27, 29 e 30/08: mesma composicao,
+// mesmos objetos, mesmo fundo. Repeticao por construcao, nao por azar.
+//
+// A correcao NAO afrouxa a regra da marca (nada de pessoas geradas por IA - regra permanente
+// do Juliano). Ela forca a variacao no que ainda e livre: ANGULO DE CAMERA e ASSUNTO. Cada
+// dia recebe um enquadramento diferente, girando numa lista de seis, de modo que dois dias
+// seguidos nunca compartilham a mesma forma.
+const ENQUADRAMENTOS = [
+  'ENQUADRAMENTO DE HOJE — MACRO EXTREMO: chegue pertíssimo de UM só objeto, tão perto que ele quase não é reconhecível de imediato: o fio da navalha, os dentes do pente, as cerdas do pincel, a trama da toalha. O objeto ocupa quase todo o quadro e o fundo se dissolve por completo. Nada de bancada com vários itens.',
+  'ENQUADRAMENTO DE HOJE — VISTA DE CIMA (flat lay, câmera a 90°, perpendicular à superfície): olhando de cima para baixo, objetos alinhados com rigor geométrico, muito espaço vazio, sombras curtas e retas. É PROIBIDO hoje colocar a câmera na altura da bancada.',
+  'ENQUADRAMENTO DE HOJE — PLANO ABERTO E ARQUITETÔNICO: afaste a câmera e mostre um RECORTE DO AMBIENTE (um canto da parede com a bancada, a luz atravessando o espaço), com os objetos pequenos dentro do quadro, sem serem protagonistas. A sensação é de lugar, não de produto. Continua proibido mostrar a sala inteira reconhecível, porta, televisão ou vários móveis ao mesmo tempo.',
+  'ENQUADRAMENTO DE HOJE — CONTRA-LUZ: a fonte de luz fica ATRÁS do objeto, que aparece recortado, quase em silhueta, com o contorno brilhando e o corpo escuro. Muita atmosfera e pouca informação, com o fundo estourado de luz.',
+  'ENQUADRAMENTO DE HOJE — VERTICAL COM VAZIO EM CIMA: um único objeto EM PÉ, isolado, na parte de baixo do quadro, com dois terços da imagem ocupados por parede ou ar vazio acima dele. Silêncio visual, quase um pôster minimalista.',
+  'ENQUADRAMENTO DE HOJE — A TEXTURA É O ASSUNTO: o protagonista é uma SUPERFÍCIE em close — o couro capitonê da cadeira, o tijolo aparente, a trama da toalha creme, o veio da madeira — atravessada pela luz. Um objeto pequeno entra só como apoio num canto, ou nem isso.',
+]
+// Indice pelo numero de dias desde 1970, nao pelo dia do mes: gira de verdade e nao reinicia
+// no dia 1o (com 6 opcoes e 30 dias, o dia do mes repetiria o mesmo padrao todo mes).
+function enquadramentoDoDia(diaISO: string): string {
+  const dias = Math.floor(Date.parse(diaISO + 'T12:00:00-03:00') / 86400000)
+  return ENQUADRAMENTOS[((dias % ENQUADRAMENTOS.length) + ENQUADRAMENTOS.length) % ENQUADRAMENTOS.length]
+}
+
+async function generateAndUploadImage(admin: ReturnType<typeof createClient>, geminiKey: string | undefined, themeText: string, postId: string, diaISO: string): Promise<string | null> {
   if (!geminiKey) return null
   try {
     // v29.6.0 — pedido 100% texto, sem anexar foto do salão nem do Juliano.
@@ -264,7 +291,14 @@ Deixe o canto inferior direito limpo e desimpedido — a marca é aplicada depoi
             : 'A IDEIA: a barbearia em repouso numa manhã de domingo. O trabalho parou. É o retrato do silêncio de um lugar que trabalhou a semana inteira.',
         )
       : [BRAND_STYLE, `Tema do dia: ${themeText}`].filter(Boolean).join('\n\n')
-    const requestParts: unknown[] = [{ text: prompt }]
+    // v29.100.0 - o enquadramento do dia entra POR ULTIMO, depois de qualquer estilo, e diz
+    // explicitamente que vence a composicao sugerida acima. Foi a licao da v29.31.4: empilhar
+    // excecao antes da instrucao contraria nao funciona - o modelo obedece ao que leu por ultimo.
+    const promptFinal = `${prompt}
+
+${enquadramentoDoDia(diaISO)}
+Esta instrução de enquadramento VENCE qualquer sugestão de composição descrita acima. Todas as outras regras da marca continuam valendo integralmente — em especial: nada de pessoas, rostos, mãos, silhuetas humanas nem texto de qualquer tipo na imagem.`
+    const requestParts: unknown[] = [{ text: promptFinal }]
     const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
       {
@@ -369,8 +403,8 @@ Deno.serve(async (request: Request) => {
       const ctx = (posts[0].context as Record<string, unknown>) || {}
       const geminiKey = Deno.env.get('GEMINI_API_KEY')?.trim()
       const alvo = posts.find((p) => p.platform === 'instagram') || posts[0]
-      let novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id)
-      if (!novaArte) novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id)
+      let novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id, todaySP)
+      if (!novaArte) novaArte = await generateAndUploadImage(admin, geminiKey, themeTextFor(ctx), alvo.id, todaySP)
       if (!novaArte) return json({ ok: false, message: 'Gemini não devolveu imagem.' }, 502)
 
       for (const p of posts) {
@@ -501,6 +535,12 @@ Deno.serve(async (request: Request) => {
         : '',
     ].filter(Boolean).join('\n')
 
+    // v29.100.0 (30/08/2026) — REPROVADO PELO JULIANO: "não gostei da frase, achei meio
+    // invasiva". O post de domingo saiu com "Eu sei que teve manhã em que você saiu antes do
+    // sol e noite em que fingiu que estava tudo bem". A barbearia afirmando saber o que o
+    // cliente sente e esconde. O modelo não inventou isso sozinho: o ângulo mandava
+    // "reconheça o que ninguém viu", e ele escalou pro íntimo. Regra vale TODO dia.
+    const NAO_INVASIVO = `LIMITE DE INTIMIDADE (se cruzar, reescreva do zero): você é uma barbearia, não é amigo íntimo nem terapeuta de quem lê. É PROIBIDO afirmar o que o leitor sente, esconde, sofre ou viveu na intimidade dele. Proibido começar com "Eu sei que você...", "Eu sei: você...", e proibido descrever a vida privada dele como fato ("você fingiu que estava tudo bem", "engoliu o cansaço", "chorou escondido", "chegou ao limite", "ninguém te aplaude", "você está exausto", "a semana te consumiu"). Isso soa invasivo e presunçoso para quem só quer cortar o cabelo. O QUE FAZER NO LUGAR: fale a partir do que o JULIANO vê e vive do lado dele da cadeira ("tem semana que a pessoa senta aqui e nem fala, só respira"), ou faça um convite aberto que a pessoa aceita se quiser ("se der, tira uma hora sua hoje"). Reconhecimento sim, diagnóstico não. Na dúvida entre afirmar algo sobre a vida do leitor e não afirmar, não afirme.`
     const NO_AGENDA_TALK = 'É PROIBIDO mencionar a agenda de hoje, disponibilidade, encaixe, janela de horário, vaga aberta ou qualquer coisa que sugira que existe horário sobrando — a barbearia é procurada e o post vende a experiência, não a vacância.'
 
     // v29.74.0 — a mesma lição do domingo (v29.31.2) aplicada ao dia útil: conceito abstrato
@@ -539,7 +579,11 @@ Deno.serve(async (request: Request) => {
       // o barulho da casa. Agora cada ângulo entrega cenas específicas, exemplos de tom e uma
       // lista explícita de clichês proibidos.
       const anguloDomingo = [
-        'O ESFORÇO DA SEMANA, RECONHECIDO. Fale com quem trabalhou a semana inteira e chegou no domingo cansado. Reconheça o que ninguém viu: acordar cedo, resolver o que não aparece, aguentar calado. Hoje ele merece parar. Exemplo do nível esperado: "Você acordou cedo cinco dias seguidos. / Resolveu o que ninguém viu, aguentou o que ninguém soube. / Hoje não. Hoje é de ficar. / Bom domingo — você merece esse."',
+        // v29.100.0 — ângulo reescrito. O texto anterior mandava "reconheça o que ninguém viu"
+        // e dava um exemplo em segunda pessoa afirmando a vida do leitor; o modelo escalou pra
+        // "você fingiu que estava tudo bem" e o Juliano reprovou (30/08). Agora o mesmo tema —
+        // descanso merecido — é dito do lado de cá da cadeira, sem afirmar nada sobre quem lê.
+        'O DOMINGO VISTO DA BARBEARIA FECHADA. Fale do descanso a partir do que o JULIANO vê e vive, nunca do que o leitor estaria sentindo. Ele também trabalhou a semana e hoje parou: a porta fechada, a cadeira vazia, o silêncio da sala que passou a semana cheia. A partir daí, um desejo simples e aberto de bom domingo. É PROIBIDO afirmar o que o leitor viveu ou sentiu na semana. Exemplo do nível esperado: "A porta fica fechada hoje. / A cadeira que não parou a semana inteira está quieta desde ontem. / Todo mundo precisa de um dia assim — eu também. / Bom domingo. Terça a gente se vê."',
         'UMA HISTÓRIA DA CADEIRA. Conte uma micro-história verdadeira do tipo que acontece numa barbearia de bairro: o pai que trouxe o filho pro primeiro corte, o rapaz que se arrumou pra entrevista, o noivo na véspera, o senhor que vem toda semana mais pela conversa. Duas ou três frases, com um detalhe humano que faça o leitor ver a cena. Exemplo do nível esperado: "Semana passada um pai trouxe o filho pro primeiro corte. / O menino chorou. O pai segurou a mão dele. / No fim, os dois se olharam no espelho e riram. / É por causa desses cinco minutos que eu abro todo dia. Bom domingo."',
         'GRATIDÃO DE QUEM COMEÇOU DO ZERO. Fale do que é ver a cadeira ocupada por gente que confia no seu trabalho, sem drama e sem se gabar. NUNCA cite data, mês, ano ou tempo de casa ("em março", "abrimos há 5 meses", "no começo do ano") — a emoção mora na memória da cadeira vazia, não no calendário, e datar o começo entrega ao cliente novo que a casa é recente. Use memória sem data: "lembro do silêncio dessa cadeira", "no começo", "quando tudo era só uma cadeira e uma ideia". Exemplo do nível esperado: "Eu ainda lembro do silêncio dessa cadeira. / Dias inteiros esperando alguém sentar. / Hoje eu perco a conta das histórias que passam por ela toda semana. / Não é sobre cabelo. É sobre confiança. Obrigado por isso."',
         'FÉ, PAZ E O QUE SE OUVE NA CADEIRA. Domingo de igreja, de família reunida, de silêncio bom. Pode partir do que as pessoas contam enquanto cortam: quem vai casar, quem vai ser pai, quem conseguiu o emprego, quem está passando por dificuldade. Deseje paz com respeito — sem pregar, sem versículo, acolhendo quem crê e quem não crê. Exemplo do nível esperado: "Tem gente que senta aqui e conta que vai casar. Outro que vai ser pai. / Um que finalmente conseguiu o emprego. / Essa cadeira já ouviu mais oração do que muita gente imagina. / Que o seu domingo seja de paz."',
@@ -623,6 +667,12 @@ ${NO_HARD_SELL}`
 
 ${avisoAntiRepeticao}`
     }
+
+    // v29.100.0 — o limite de intimidade vale para TODOS os dias e entra por último, depois
+    // de qualquer ângulo, pra ser a última instrução que o modelo lê antes de escrever.
+    contextFact = `${contextFact}
+
+${NAO_INVASIVO}`
 
     // Domingo e segunda são os dias de conteúdo emocional (a barbearia está fechada e o post
     // constrói marca, não vende) — vale o custo de gerar com mais esforço e revisar.
@@ -709,10 +759,10 @@ ${avisoAntiRepeticao}`
         // configuração. Duas correções: uma segunda tentativa antes de desistir, e a
         // MESMA arte aproveitada no Facebook e no Status do WhatsApp (antes só o
         // Instagram recebia imagem, e post com foto rende muito mais nos outros dois).
-        let imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+        let imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id, todaySP)
         if (!imageUrl) {
           console.error('[content-generate-daily] imagem falhou na 1a tentativa, tentando de novo')
-          imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id)
+          imageUrl = await generateAndUploadImage(admin, geminiKey, themeText, inserted.id, todaySP)
         }
         if (imageUrl) {
           await admin.from('content_posts').update({ context: { ...context, image_url: imageUrl } }).eq('id', inserted.id)
