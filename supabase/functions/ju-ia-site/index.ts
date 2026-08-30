@@ -2101,8 +2101,13 @@ Deno.serve(async req=>{
    try{
     const fvDigits=String(verifiedPhone).replace(/\D/g,'')
     const fvSem=(fvDigits.length>=12&&fvDigits.startsWith('55'))?fvDigits.slice(2):fvDigits
+    // v29.94.0 — casa o cliente pela chave canonica (ultimos 8 digitos, mesma regra da
+    // funcao phone_key() do banco). Antes eram tres .eq() encadeados com OR, que so
+    // pegavam os formatos que alguem lembrou de listar: '11...', '5511...' e '55'+sem DDI.
+    // Qualquer variacao fora dessa lista criava ficha nova pro mesmo cliente.
+    const fvKey=(fvDigits.length>=11&&fvDigits.length<=13)?fvDigits.slice(-8):null
     const fvTag=fvFirst?'primeira-visita-declarada':'ja-era-cliente-declarado'
-    const {data:fvRows}=await supabase.from('customer_profiles').select('id,internal_tags,prior_visits').or(`phone.eq.${fvDigits},phone.eq.${fvSem},phone.eq.55${fvSem}`).limit(1)
+    const {data:fvRows}=await supabase.from('customer_profiles').select('id,internal_tags,prior_visits').eq('phone_key',fvKey).limit(1)
     const fvRow=Array.isArray(fvRows)&&fvRows.length?fvRows[0]:null
     if(fvRow){
      const fvTags=(Array.isArray(fvRow.internal_tags)?fvRow.internal_tags:[]).filter((t:string)=>t!=='primeira-visita-declarada'&&t!=='ja-era-cliente-declarado')
@@ -2116,7 +2121,7 @@ Deno.serve(async req=>{
      // declaração não se perder; telefone no formato do booking (com 55), que é o que
      // os fluxos de conclusão/fidelidade procuram. upsert por telefone (não insert):
      // se um perfil nascer entre o select acima e este write, ninguém duplica.
-     const {error:fvInsErr}=await supabase.from('customer_profiles').upsert({name:String(next.name||'Cliente WhatsApp').trim(),phone:fvDigits,internal_tags:[fvTag],prior_visits:fvFirst?0:1},{onConflict:'phone'})
+     const {error:fvInsErr}=await supabase.from('customer_profiles').upsert({name:String(next.name||'Cliente WhatsApp').trim(),phone:fvDigits,internal_tags:[fvTag],prior_visits:fvFirst?0:1},{onConflict:'phone_key'})
      if(fvInsErr)console.error('[ju-ia-site] first-visit insert',fvInsErr)
     }
     reply=fvFirst
@@ -2804,7 +2809,12 @@ Deno.serve(async req=>{
        try{
         const fvDigits=String(verifiedPhone).replace(/\D/g,'')
         const fvSem=(fvDigits.length>=12&&fvDigits.startsWith('55'))?fvDigits.slice(2):fvDigits
-        const {data:fvRows}=await supabase.from('customer_profiles').select('id,internal_tags,prior_visits').or(`phone.eq.${fvDigits},phone.eq.${fvSem},phone.eq.55${fvSem}`).limit(1)
+    // v29.94.0 — casa o cliente pela chave canonica (ultimos 8 digitos, mesma regra da
+    // funcao phone_key() do banco). Antes eram tres .eq() encadeados com OR, que so
+    // pegavam os formatos que alguem lembrou de listar: '11...', '5511...' e '55'+sem DDI.
+    // Qualquer variacao fora dessa lista criava ficha nova pro mesmo cliente.
+        const fvKey=(fvDigits.length>=11&&fvDigits.length<=13)?fvDigits.slice(-8):null
+        const {data:fvRows}=await supabase.from('customer_profiles').select('id,internal_tags,prior_visits').eq('phone_key',fvKey).limit(1)
         const fvRow=Array.isArray(fvRows)&&fvRows.length?fvRows[0]:null
         const fvDeclared=fvRow&&(Number(fvRow.prior_visits)>0||(Array.isArray(fvRow.internal_tags)&&fvRow.internal_tags.some((t:string)=>t==='primeira-visita-declarada'||t==='ja-era-cliente-declarado')))
         if(!fvDeclared){

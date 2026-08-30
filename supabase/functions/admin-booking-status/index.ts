@@ -215,12 +215,15 @@ Deno.serve(async (request: Request) => {
     if (markGoogleReviewed) {
       updatePayload.request_google_review = false
       const d = String(current.customer_phone || '').replace(/\D/g, '')
-      const semDDI = d.replace(/^55/, '')
+      // v29.94.0 — chave canonica (ultimos 8 digitos, regra da funcao phone_key() do banco)
+      // no lugar do OR de tres formatos: se o telefone tivesse sido salvo em qualquer outra
+      // variacao, a marca de 'ja avaliou' nao colava na ficha e o cliente era convidado de novo.
+      const chave = (d.length >= 11 && d.length <= 13) ? d.slice(-8) : null
       const agora = new Date().toISOString()
       const { error: reviewedError } = await admin
         .from('customer_profiles')
         .update({ google_reviewed: true, google_reviewed_at: agora, google_review_declared_at: agora, updated_at: agora })
-        .or(`phone.eq.${d},phone.eq.${semDDI},phone.eq.55${semDDI}`)
+        .eq('phone_key', chave)
       if (reviewedError) console.error('[admin-booking-status] mark_google_reviewed', reviewedError)
     }
     if (hasTipAmount) updatePayload.tip_amount = tipAmount
@@ -282,7 +285,8 @@ Deno.serve(async (request: Request) => {
         const { data: customer } = await admin
           .from('customer_profiles')
           .select('id')
-          .eq('phone', String(current.customer_phone || '').replace(/\D/g, ''))
+          // v29.94.0 — mesma chave canonica usada no resto do sistema
+          .eq('phone_key', (() => { const n = String(current.customer_phone || '').replace(/\D/g, ''); return (n.length >= 11 && n.length <= 13) ? n.slice(-8) : null })())
           .maybeSingle()
         const title = isStatusChange
           ? `Agendamento marcado como ${statusLabels[status] || status}`

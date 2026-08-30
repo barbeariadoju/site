@@ -47,6 +47,12 @@
   // telefone gravado no outro formato voltava a aparecer como "1ª visita". Mesma regra da
   // função phone_match_key do banco: DDD + os 8 últimos dígitos, ignorando o 55 e o 9.
   function phoneKey(s=''){const d=phoneDigits(s).replace(/^55/,'');return d.length>=10?d.slice(0,2)+d.slice(-8):d}
+  // v29.94.0 — MESMA REGRA da funcao phone_key() do banco: ultimos 8 digitos, e nulo
+  // quando o telefone tem menos de 11 ou mais de 13 digitos. Existe separada de phoneKey()
+  // (que e DDD + 8) porque o indice unico uq_customer_profiles_phone_key usa ESTA regra —
+  // se o lote do upsert fosse deduplicado pela outra, duas linhas do mesmo lote poderiam
+  // colidir no banco ("ON CONFLICT DO UPDATE cannot affect row a second time").
+  function phoneKeyDb(s=''){const d=phoneDigits(s);return (d.length>=11&&d.length<=13)?d.slice(-8):null}
   function visitNumber(x){const ph=phoneKey(x.customer_phone);if(!ph)return 1;const before=allBookings.filter(b=>b.status==='completed'&&phoneKey(b.customer_phone)===ph&&(b.booking_date<x.booking_date||(b.booking_date===x.booking_date&&b.start_time<x.start_time))).length;const profile=customerProfiles.find(p=>phoneKey(p.phone)===ph);const prior=Number(profile?.prior_visits||0);return before+prior+1}
   function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
@@ -84,7 +90,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.91.0'
+  const ADMIN_VERSION='29.94.0'
   async function checkForUpdate(){
     try{
       const r=await fetch('/admin-version.json',{cache:'no-store'})
@@ -132,10 +138,10 @@
       // upsert criava uma ficha nova — automaticamente, toda vez que o admin abria. Foi
       // assim que o John voltou a duplicar 3 minutos depois de eu unificar as fichas dele.
       // Agora a comparação usa a chave canônica (mesma regra do phone_match_key do banco).
-      const existing=new Set(customerProfiles.map(x=>phoneKey(x.phone)));
+      const existing=new Set(customerProfiles.map(x=>phoneKeyDb(x.phone)).filter(Boolean));
       const latestByPhone=new Map();
       allBookings.forEach(x=>{
-        const ph=phoneKey(x.customer_phone);
+        const ph=phoneKeyDb(x.customer_phone);
         if(!ph || existing.has(ph) || latestByPhone.has(ph))return;
         latestByPhone.set(ph,{
           name:String(x.customer_name||'Cliente').trim(),
@@ -149,7 +155,7 @@
       });
       const missing=[...latestByPhone.values()];
       if(missing.length){
-        const {error:syncError}=await sb.from('customer_profiles').upsert(missing,{onConflict:'phone'});
+        const {error:syncError}=await sb.from('customer_profiles').upsert(missing,{onConflict:'phone_key'});
         if(syncError)console.error('Falha ao sincronizar clientes do CRM:',syncError);
         else{
           const {data:refreshed,error:refreshError}=await sb.from('customer_profiles').select('*').order('name',{ascending:true});

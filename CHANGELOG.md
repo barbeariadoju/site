@@ -1,3 +1,14 @@
+## 29.94.0 — Fim da ficha duplicada: cliente passa a ser casado pelos últimos 8 dígitos do telefone
+
+O mesmo cliente virava duas fichas quando o telefone era salvo em formatos diferentes (com/sem o 55, com/sem DDD) — e aí o Juliano digitava um nome levemente diferente e ficavam dois cadastros da mesma pessoa, cada um com metade do histórico. A comparação por dígitos exatos era a causa: '11974998541' não "encontrava" '5511974998541'.
+
+Agora a chave é a coluna gerada `customer_profiles.phone_key` (últimos 8 dígitos, nula fora da faixa de 11 a 13 dígitos), com o índice único parcial `uq_customer_profiles_phone_key` garantindo no banco que não exista segunda ficha para a mesma chave. Pontos trocados:
+- `ju-ia-site`: as duas buscas que usavam `.or(phone.eq.A, phone.eq.B, phone.eq.55C)` — uma lista de formatos que alguém precisava lembrar de manter — viraram `.eq('phone_key', ...)`; o upsert virou `onConflict: 'phone_key'`.
+- `admin-booking-status`: a marca "já avaliou no Google" e a busca do cliente pelo telefone exato passaram pela mesma chave. Antes, telefone em outro formato fazia a marca não colar e o cliente ser convidado a avaliar de novo.
+- `admin-v15-4-core.js`: o upsert de sincronização do CRM (que era a fábrica de duplicadas) agora resolve por `phone_key`, e o lote é deduplicado pela MESMA regra do banco através da nova `phoneKeyDb()` — sem isso, duas linhas do mesmo lote colidiriam no índice ("ON CONFLICT DO UPDATE cannot affect row a second time"). A `phoneKey()` antiga (DDD + 8) continua servindo à contagem de visitas.
+
+Cuidado que quase passou: a substituição em massa pegou também um upsert de `conversation_leads`, que não tem `phone_key` — revertido. Conferido: os 155 perfis existentes não têm nenhuma colisão, os erros de type-check são os mesmos de antes em `admin-booking-status` e um a menos em `ju-ia-site`, e as quatro variações do mesmo telefone (salvo, sem 55, com 55, com máscara) casam na mesma ficha.
+
 ## 29.93.0 — Atribuição de anúncio: dá pra saber quantos CLIENTES o anúncio trouxe, não só quantas conversas
 
 Antes de ligar o anúncio de clique-para-WhatsApp (R$ 5/dia), a conta não fechava: o Meta informa "X conversas iniciadas" e para aí. Sem ligar o agendamento ao anúncio não existe custo por cliente, só custo por conversa — que é vaidade. Foi exatamente o que faltou pra entender os R$ 219 queimados no anúncio anterior.
