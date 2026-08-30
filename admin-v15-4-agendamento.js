@@ -98,7 +98,25 @@
   }
 
   function renderServicePicker(){const groups={};catalog.forEach(s=>(groups[s.category]??=[]).push(s));return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" name="booking-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')}
-  function fillKnownCustomer(){const n=$('booking-name').value.trim().toLowerCase(),p=phoneDigits($('booking-phone').value),c=customers.find(x=>x.phone===p||x.name.toLowerCase()===n);if(c){$('booking-name').value=c.name;$('booking-phone').value=c.phone}}
+  // Casa o cliente pela chave canonica do telefone (ultimos 8 digitos) e nao
+  // pelos digitos exatos: assim 11 9xxxx, 55 11 9xxxx e variacoes de formato
+  // caem no mesmo cadastro em vez de virar duas fichas do mesmo cliente.
+  function fillKnownCustomer(){
+    const digitado=$('booking-name').value.trim(),n=digitado.toLowerCase(),
+      chave=phoneKeyDb($('booking-phone').value),
+      porTelefone=chave?customers.find(x=>phoneKeyDb(x.phone)===chave):null,
+      porNome=porTelefone?null:(n?customers.find(x=>x.name.toLowerCase()===n):null);
+    if(porTelefone){
+      const divergente=Boolean(digitado)&&porTelefone.name.toLowerCase()!==n;
+      $('booking-name').value=porTelefone.name;$('booking-phone').value=porTelefone.phone;
+      avisoTelefoneRepetido(divergente?porTelefone.name:null);return
+    }
+    avisoTelefoneRepetido(null);
+    // Match so pelo nome: completa o telefone apenas enquanto ele ainda nao
+    // comecou a digitar outro numero, para nao atropelar o que esta digitando.
+    if(porNome&&phoneDigits($('booking-phone').value).length<3){$('booking-name').value=porNome.name;$('booking-phone').value=porNome.phone}
+  }
+  function avisoTelefoneRepetido(nomeSalvo){const el=$('booking-phone-warning');if(!el)return;if(!nomeSalvo){el.hidden=true;el.textContent='';return}el.textContent='⚠ Esse WhatsApp já está cadastrado como '+nomeSalvo+'. Usei o nome do cadastro para não criar uma segunda ficha do mesmo cliente. Se for mesmo outra pessoa, confira o número.';el.hidden=false}
   function selectedServices(){return [...document.querySelectorAll('input[name="booking-service"]:checked')].map(i=>catalog.find(s=>s.name===i.value)).filter(Boolean)}
   function selectServicesByNames(text=''){const names=text.split(' + ').map(s=>s.trim());document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.name===i.value);i.checked=!!s&&names.includes(s.name);i.dispatchEvent(new Event('change',{bubbles:true}))})}
   function prefillReturnStorage(x){if(!x)return;const d=new Date(x.booking_date+'T12:00:00');d.setDate(d.getDate()+15);sessionStorage.setItem('bdj-prefill-booking',JSON.stringify({name:x.customer_name,phone:x.customer_phone,date:isoLocal(d),time:x.start_time.slice(0,5),services:x.service_name,notes:'Retorno'}))}

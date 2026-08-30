@@ -244,3 +244,6 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 
 /* v29.46.0 — card Cadeira (camera) em alerta quando diverge dos registrados ou contador parado */
 .admin-metrics article.admin-metric-warn{border-color:rgba(255,180,168,.55);background:#1a1010}.admin-metrics article.admin-metric-warn strong{color:#ffb4a8}
+
+.admin-phone-warning{display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(240,201,135,.12);border:1px solid rgba(240,201,135,.45);color:#f0c987;font-size:.78rem;font-weight:600;line-height:1.35;white-space:normal}
+.admin-phone-warning[hidden]{display:none}

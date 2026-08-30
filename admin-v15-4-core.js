@@ -90,7 +90,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.94.0'
+  const ADMIN_VERSION='29.97.0'
   async function checkForUpdate(){
     try{
       const r=await fetch('/admin-version.json',{cache:'no-store'})
