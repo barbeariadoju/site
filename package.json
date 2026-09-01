@@ -12,6 +12,7 @@
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "cross-env": "^7.0.3",
+    "supabase": "^2.116.0",
     "vitest": "^2.1.0"
   }
 }
