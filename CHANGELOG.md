@@ -1,3 +1,30 @@
+## 29.103.0 — Pergunta de explicação não vira pergunta de agenda, e a trava do ju-ia-site voltou
+
+Continuação direta da v29.102.0. Testando aquela versão apareceu um buraco que ninguém tinha visto: **o cliente perguntava o que É um serviço e recebia uma pergunta de agenda de volta.**
+
+```
+cliente: o que é a barba express?
+JuIA:    Perfeito! Anotei Barba Express. Para qual dia você quer ver os horários?
+```
+
+Nenhuma palavra de resposta. A causa: o modelo devolvia `intent: services` com o serviço reconhecido, e o código assumia que quem cita serviço quer marcar. A trava de preço da v29.54.0 (`isPriceOrInfoQuestion`) cobria "quanto custa" e "quanto dura", mas não cobria "o que é", "como funciona", "qual a diferença", "vale a pena", "pra que serve", "nunca fiz" — que é exatamente onde o argumento de venda de cada serviço deveria aparecer, e onde a venda se ganha ou se perde. Agora essas perguntas viram `faq`: a resposta do modelo passa inteira, com o benefício do serviço, e só depois vem o convite pro horário. Pergunta de agenda ("como funciona o agendamento?", "o que tem de horário?") continua no fluxo normal, de propósito.
+
+Testado com 35 perguntas simuladas, uma por serviço do catálogo mais as de comparação. Três defeitos apareceram e foram corrigidos junto:
+
+- **"o que é pigmentação de barba?"** recebia a lista das três barbas. O gatilho de "qual barba você prefere?" casava a palavra *barba* dentro do nome de um serviço específico — o mesmo valia para quem escrevesse "quero pigmentação de barba". Agora serviço específico com "barba" no nome não dispara a pergunta genérica.
+- **"qual a diferença entre barboterapia e barba express?"** vinha com o aviso "tirei Barba Express pra você não pagar em dobro". Comparar não é comprar: a regra das famílias não roda em pergunta de explicação.
+- **"o que é a fidelidade?"** e **"o que é o clube do ju?"** recebiam "Para consultar sua fidelidade, informe seu WhatsApp com DDD" — pedido de dado no lugar da resposta. Agora explica a regra real (1 ponto por corte concluído, 10 pontos = 1 corte por nossa conta, sem cartão de papel e sem custo) e só então oferece consultar o saldo. O texto diz "hoje o que temos é o cartão fidelidade" de propósito: a assinatura ainda não está no ar e a JuIA não pode confirmar um produto que não existe.
+
+**Sobre a saudação**, que o Juliano perguntou: é "Bom dia/Boa tarde/Boa noite" pelo relógio de Brasília, não pelo que o cliente escreveu — quem manda "boa tarde" às 10h recebe "Bom dia", que é o certo. Corte às 12h e às 18h.
+
+**A divergência do `verify_jwt` foi resolvida.** O `supabase/config.toml` pedia `verify_jwt = true` para o `ju-ia-site` e a produção estava com `false` desde o primeiro deploy pela CLI (v28.56.1). Na v29.102.0 eu preservei o estado de cada function e deixei anotado; agora foi verificado e ligado. O que faltava saber era se o widget do site continuaria funcionando, já que ele manda só o header `apikey` — e a resposta é sim: o gateway aceita a chave publicável nesse header. Provado com três testes antes e depois:
+
+- site (só `apikey`) → **200**, resposta normal;
+- sem chave nenhuma → **401** (antes, qualquer um chamava o cérebro da JuIA);
+- function chamando function com `Authorization: Bearer SERVICE_ROLE` → **200**, que é o caminho do WhatsApp a cada mensagem de cliente. Esse último foi medido de verdade, com uma function temporária publicada só para o teste e apagada em seguida (`jwt-selfcheck`) — não valia deduzir num canal que é a porta de entrada da barbearia.
+
+Também entrou a limpeza de espaço antes de `)` no filtro de emoji: sem ela sobrava "não pagar em dobro )" onde havia uma piscadinha.
+
 ## 29.102.0 — Sem emoji, e a Barba Express não tem navalha
 
 Três correções do Juliano em cima de conversas reais de hoje de manhã.

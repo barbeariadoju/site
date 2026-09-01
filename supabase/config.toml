@@ -12,6 +12,12 @@
 # sessão) preserva a configuração correta automaticamente. SEMPRE conferir com
 # `npx supabase functions list --project-ref rpkqluaxhqsxnewunhfm` depois de publicar.
 
+# v29.103.0 (01/09/2026): o ju-ia-site estava em produção com verify_jwt=false, divergindo
+# do que este arquivo pede. Voltou para true e foi testado: o widget do site manda só o
+# header `apikey` com a chave publicável, e o gateway ACEITA (200); sem chave nenhuma dá
+# 401; e function chamando function com Authorization: Bearer SERVICE_ROLE também passa
+# (é o caminho do WhatsApp). Ou seja: exigir JWT aqui não quebra nenhum dos três.
+
 project_id = "rpkqluaxhqsxnewunhfm"
 
 # --- Funções que EXIGEM JWT (chamadas pelo admin logado ou pelo site com a chave) ---

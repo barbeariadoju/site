@@ -605,7 +605,7 @@ Deno.serve(async req=>{
   if(fam.removed.length){
    next.services=fam.items.map((x:any)=>x.name)
    const r=fam.removed.find((x:any)=>x.name!==x.keptBy)
-   if(r)serviceRuleNote=`Só pra ajustar: ${r.keptBy} já inclui o que ${r.name} faria, então fica ${next.services.join(' + ')} 😉`
+   if(r)serviceRuleNote=`Só pra ajustar: ${r.keptBy} já inclui o que ${r.name} faria, então fica ${next.services.join(' + ')}.`
   }
  }
  // v29.63.0 — GRUPO (caso Plinio, 22/08/2026): "2 cortes masculinos e 1 infantil" virou
@@ -734,6 +734,25 @@ Deno.serve(async req=>{
  const explicitConfirm=includesAny(normalizedQuestion,['pode confirmar','confirma pra mim','pode fechar','pode marcar','pode agendar','confirmo','isso mesmo'])
  if(intent==='book'&&isQuestion&&!explicitConfirm&&!simpleYes)intent='faq'
 
+ // v29.103.0 — PERGUNTA DE EXPLICAÇÃO NÃO VIRA AGENDAMENTO (achado testando a v29.102.0,
+ // 01/09/2026). "o que é a barba express?" recebia "Perfeito! Anotei Barba Express. Para
+ // qual dia você quer ver os horários?" — o cliente perguntou o QUE É o serviço e levou de
+ // volta uma pergunta de agenda, sem uma palavra de resposta. A causa: o modelo devolvia
+ // intent 'services' com o serviço reconhecido, e o bloco de disponibilidade assumia que
+ // quem cita serviço quer marcar. A trava de preço (v29.54.0, isPriceOrInfoQuestion) já
+ // cobria "quanto custa"/"quanto dura", mas não cobria "o que é", "como funciona",
+ // "qual a diferença", "vale a pena" — que é justamente onde o argumento de venda de cada
+ // serviço deveria aparecer, e onde a venda se ganha ou se perde.
+ // Não casa pergunta de AGENDA de propósito: "como funciona o agendamento?", "o que tem de
+ // horário?" seguem pelo fluxo normal.
+ const explicaPergunta=/\bo que (e|eh|seria|significa|acontece)\b|\bque que e\b|\bcomo (e|eh|funciona|faz|e feit|e feita|e feito)\b|\bqual (e )?(a |as )?(diferenca|diferencas)\b|\bo que (inclui|entra|vem junto|vem incluso|tem nesse|tem nessa)\b|\b(pra|para) que serve\b|\bserve (pra|para) que\b|\bvale a pena\b|\bem que consiste\b|\bdo que se trata\b|\b(me )?explica(r)?\b|\bcomo assim\b|\bnunca fiz\b|\bnao conheco\b/.test(normalizedQuestion)
+ const perguntaDeAgenda=/\bhorario|\bhorarios|\bvaga|\bagenda|\bagendamento|\bmarcar|\bagendar|\breservar|\bencaix|\bfila|\bespera/.test(normalizedQuestion)
+ const isExplainQuestion=explicaPergunta&&!perguntaDeAgenda&&!explicitConfirm&&!simpleYes
+ // 'faq' deixa a resposta do modelo passar inteira — é ela que traz o argumento de venda do
+ // catálogo. O serviço reconhecido continua guardado no estado: se ele emendar "quero
+ // marcar", a JuIA já sabe do que se trata.
+ if(isExplainQuestion&&(intent==='availability'||intent==='book'||intent==='services'||intent==='upsell_services'))intent='faq'
+
  // v29.18.0 — caso Paulo Spina (13/08/2026): cliente recorrente perguntou "consigo um
  // horário hoje 16h30?" e levou interrogatório ("qual serviço?"), mesmo com o histórico
  // dizendo que ele sempre faz Corte de cabelo. Pedido do Juliano: pra quem já é de casa,
@@ -761,7 +780,11 @@ Deno.serve(async req=>{
  // serviço de barba mais completo; nunca faz sentido somar outro serviço de barba a ela.
  // Regra: da família barba (Barba Express / Barboterapia / Barboterapia c/ ozônio) fica só
  // o MAIS completo (ozônio > barboterapia > express); os demais saem com aviso ao cliente.
+ // v29.103.0: em pergunta de explicação/comparação ("qual a diferença entre barboterapia e
+ // barba express?") o cliente não está pedindo os dois — sai "tirei X pra você não pagar em
+ // dobro" numa conversa em que ninguém pediu nada. Comparar não é comprar.
  const dropBarbaRedundante=()=>{
+  if(isExplainQuestion)return
   const rank=(n:string)=>/oz[oô]ni/i.test(n)?3:/barboterapia/i.test(n)?2:/barba/i.test(n)?1:0
   const barbas=chosen.filter((c:any)=>rank(String(c.name))>0)
   if(barbas.length<2)return
@@ -769,7 +792,7 @@ Deno.serve(async req=>{
   const removidos=barbas.filter((b:any)=>b!==melhor)
   for(const r of removidos){const i=chosen.indexOf(r);if(i>=0)chosen.splice(i,1)}
   next.services=chosen.map((c:any)=>c.name)
-  if(!pezinhoNota)pezinhoNota=`(${melhor.name} já é o cuidado completo da barba — tirei ${removidos.map((r:any)=>r.name).join(' e ')} pra você não pagar em dobro 😉)`
+  if(!pezinhoNota)pezinhoNota=`(${melhor.name} já é o cuidado completo da barba — tirei ${removidos.map((r:any)=>r.name).join(' e ')} pra você não pagar em dobro.)`
  }
  let avisoAbertoHoje=''
  // v29.43.0 — caso Alfredo (17/08): o "de sempre" dele era "Corte de cabelo + Pezinho" e o
@@ -939,7 +962,13 @@ Deno.serve(async req=>{
  const barbaNegated=/\bsem\b[^.!?]{0,15}\bbarba\b/i.test(message)
  // v29.43.2 (bateria): "esqueci de pedir o oleo de barba" abria o menu de servicos de barba — produto nao e servico.
  const barbaProduto=/\b(oleo|óleo|balm|pomada|shampoo|creme|locao|loção|produto|kit)\b/i.test(message)
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&intent!=='handoff'
+ // v29.103.0 — a pergunta "qual barba você prefere?" só vale quando o cliente falou de
+ // BARBA em geral. Dois casos achados testando: "o que é pigmentação de barba?" recebia a
+ // lista das três barbas em vez da resposta (o nome do serviço tem "barba" dentro), e uma
+ // pergunta de explicação ("qual a diferença entre...") também caía aqui. Serviço específico
+ // com "barba" no nome — Pigmentação de Barba, Corte + Barba Express — não é pedido genérico.
+ const barbaServicoEspecifico=findServicesLoose(message).some((x:any)=>normalize(x.name).includes('barba')&&x.category!=='barba')
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
  // v28.30.5 — pedido do Juliano (31/07/2026): "cabelo" solto ("eu queria cabelo", "CABELO!")
  // não era entendido — a JuIA respondia com pergunta genérica ou a lista de mais procurados.
  // Igual ao padrão da barba: confirma o serviço óbvio ("seria um Corte de cabelo?") em vez
@@ -1017,14 +1046,23 @@ Deno.serve(async req=>{
   intent='availability'
  }
  if(intent==='loyalty'){
-  if(!knownPhone){reply='Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}
-  else if(!context?.customer_id){reply='Ainda não encontrei um cadastro de fidelidade nesse número. Posso fazer seu agendamento e iniciar seu histórico.'}
+  // v29.103.0 — achado testando: "o que é a fidelidade?" e "o que é o clube do ju?" recebiam
+  // "Para consultar sua fidelidade, informe seu WhatsApp com DDD" — o cliente perguntou o que
+  // É o programa e levou um pedido de dado, sem uma palavra de resposta. Quem pergunta o que é
+  // ouve a REGRA primeiro; o saldo vem junto quando já dá pra consultar.
+  // A regra é a do gatilho no banco (migration 013): 1 ponto por atendimento com corte
+  // concluído, 10 pontos = 1 corte grátis. Nada de "clube" — a assinatura ainda não existe,
+  // e a JuIA não pode confirmar um produto que não está no ar.
+  const regraFidelidade='Hoje o que temos é o cartão fidelidade, e ele é automático: a cada corte concluído você ganha 1 ponto, e com 10 pontos o próximo corte é por nossa conta. Não tem cartão de papel nem custo nenhum, os pontos ficam ligados ao seu WhatsApp.'
+  if(!knownPhone){reply=isExplainQuestion?`${regraFidelidade} Se quiser saber quantos pontos você já tem, me manda seu número com DDD.`:'Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}
+  else if(!context?.customer_id){reply=isExplainQuestion?`${regraFidelidade} Ainda não encontrei um cadastro nesse número — posso fazer seu agendamento e já começar seu histórico.`:'Ainda não encontrei um cadastro de fidelidade nesse número. Posso fazer seu agendamento e iniciar seu histórico.'}
   else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} corte(s) gratuito(s) disponível(is)! 🎁 No ciclo atual, está com ${points}/10 pontos.`}
   else{
    const missing=Math.max(0,10-points)
    const encouragement=points===0?'Seu cartão está pronto para começar.':points>=9?'Falta apenas 1 atendimento para ganhar seu corte gratuito! 🎉':points>=5?'Você já passou da metade do caminho.':'Cada corte concluído soma 1 ponto.'
    reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um corte gratuito. ${encouragement}`
   }
+  if(isExplainQuestion&&context?.customer_id&&!reply.startsWith('Hoje o que temos'))reply=`${regraFidelidade} ${reply}`
  }
  // Detecta cancelamento mesmo quando o modelo não classificou certo (ex.: "pode
  // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver

@@ -16,6 +16,7 @@
 export const semEmoji = (t = '') => String(t || '')
   .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, m => m === '\u{1F64F}' ? m : '')
   .replace(/[ \t]{2,}/g, ' ')
-  .replace(/ +([,.!?;:])/g, '$1')
+  .replace(/ +([,.!?;:)\]])/g, '$1')
+  .replace(/([(\[]) +/g, '$1')
   .replace(/ +\n/g, '\n')
   .trim()
