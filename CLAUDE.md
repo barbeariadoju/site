@@ -107,6 +107,17 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   alternativas; combos "Corte + X" já incluem a barba; pezinho já vem no corte.
   Única exceção: corte adulto + corte infantil (pai e filho). Fonte única:
   `assets/js/service-rules.js` (+ cópia TS em `supabase/functions/_shared/`).
+- **Nenhuma mensagem para cliente leva emoji** (regra do Juliano, 01/09/2026): quem
+  aparece como remetente do WhatsApp é ele, o cliente não sabe que quem responde é uma
+  IA, e piscadinha entre homens é lida como outra coisa. Tom formal e cordial, simpatia
+  na palavra escrita. Único permitido: 🙏, e só em agradecimento. Fonte única:
+  `supabase/functions/_shared/sem-emoji.ts`, aplicado na SAÍDA de toda function que
+  escreve no WhatsApp. Nunca aplicar na entrada — as regex que detectam emoji do cliente
+  (👍, 🤝) precisam do texto original.
+- **Barba Express é feita SÓ na máquina.** Navalha e toalha quente são da Barboterapia;
+  a com vaporizador de ozônio é a mais completa. Toda oferta de barba (JuIA e site) sai
+  com esse resumo entre parênteses. Já saiu errado uma vez, vendido a cliente
+  (01/09/2026), porque o `sales_pitch` no banco dizia "com navalha no acabamento".
 - **`admin-version.json` e a constante `ADMIN_VERSION` são separados de propósito**
   da versão do site. É o que decide o reload do painel aberto durante atendimento.
 

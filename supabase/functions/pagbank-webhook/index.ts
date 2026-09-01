@@ -13,6 +13,7 @@
 // confirmar um pagamento que o cliente acabou de fazer é resposta, não incômodo
 // (mesma exceção da JuIA respondendo mensagens).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
         const res = await fetch(`${url}/message/sendText/${instance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey },
-          body: JSON.stringify({ number: phone, text: texto }),
+          body: JSON.stringify({ number: phone, text: semEmoji(texto) }),
         })
         const sent = await res.json().catch(() => ({}))
         await admin.from('whatsapp_messages').insert({

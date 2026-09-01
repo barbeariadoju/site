@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const headers={
   'Access-Control-Allow-Origin':'*',
@@ -163,7 +164,7 @@ Deno.serve(async(req:Request)=>{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',
           headers:{'Content-Type':'application/json',apikey:evolutionApiKey},
-          body:JSON.stringify({number:phone,text:waText}),
+          body:JSON.stringify({number:phone,text:semEmoji(waText)}),
         })
         whatsappOk=sendResponse.ok
         if(whatsappOk){

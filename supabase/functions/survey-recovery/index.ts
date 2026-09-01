@@ -18,6 +18,7 @@
 // Janela de contato: roda por cron às segundas de manhã e a guarda do agendador
 // (migration 110) garante que nunca sai em domingo, feriado ou sábado à tarde.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
         const res = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: evolutionKey },
-          body: JSON.stringify({ number: phone, text: texto }),
+          body: JSON.stringify({ number: phone, text: semEmoji(texto) }),
         })
         const sentData = await res.json().catch(() => ({}))
         if (!res.ok) {

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 // Chamada pelo admin (admin-balcao) logo depois de registrar um atendimento de balcão
 // cujo telefone AINDA não constava no CRM (admin_register_walkin_visit devolve
@@ -99,7 +100,7 @@ Deno.serve(async (request: Request) => {
       const response = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: phone, text }),
+        body: JSON.stringify({ number: phone, text: semEmoji(text) }),
       })
       sent = response.ok
       if (sent) {

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -240,7 +241,7 @@ Deno.serve(async (request: Request) => {
         const response = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-          body: JSON.stringify({ number: waPhone, text }),
+          body: JSON.stringify({ number: waPhone, text: semEmoji(text) }),
         })
         const data = await response.json().catch(() => ({}))
         if (response.ok) {

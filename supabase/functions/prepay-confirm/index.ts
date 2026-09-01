@@ -6,6 +6,7 @@
 // Autorização: a própria sessão do admin. A RPC confirm_prepay checa is_admin() por
 // dentro, então usamos o token de quem chamou — não o service role — para essa parte.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
         const res = await fetch(`${url}/message/sendText/${instance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey },
-          body: JSON.stringify({ number: phone, text: texto }),
+          body: JSON.stringify({ number: phone, text: semEmoji(texto) }),
         })
         avisou = res.ok
         const sent = await res.json().catch(() => ({}))

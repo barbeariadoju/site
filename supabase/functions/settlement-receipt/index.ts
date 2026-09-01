@@ -13,6 +13,7 @@
 // O token vai no link e só o HASH fica no banco: link vazado não é link reutilizável para
 // quem tiver acesso ao banco, e quem tem o link é quem recebeu a mensagem.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -173,7 +174,7 @@ Deno.serve(async (req: Request) => {
       const res = await fetch(`${evolutionUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionKey },
-        body: JSON.stringify({ number: phone, text: texto }),
+        body: JSON.stringify({ number: phone, text: semEmoji(texto) }),
       })
       enviado = res.ok
       if (!res.ok) erroEnvio = `Evolution respondeu ${res.status}`

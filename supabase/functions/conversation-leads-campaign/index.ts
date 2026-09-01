@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 // v28.34.0 — item 0(c) do funil de reativação avançado: disparo MANUAL (sob demanda,
 // nunca automático) de uma mensagem de reengajamento pra leads antigos de
@@ -73,7 +74,7 @@ Deno.serve(async (request: Request) => {
     const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({ number, text: textBody }),
+      body: JSON.stringify({ number, text: semEmoji(textBody) }),
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null

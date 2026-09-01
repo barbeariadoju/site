@@ -7,6 +7,7 @@
 // O aviso vai pro WhatsApp do COMPRADOR (não do presenteado): quem pagou é quem precisa
 // receber o código para entregar do jeito que quiser.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
         const res = await fetch(`${url}/message/sendText/${instance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey },
-          body: JSON.stringify({ number: phone, text: texto }),
+          body: JSON.stringify({ number: phone, text: semEmoji(texto) }),
         })
         notified = res.ok
         const sent = await res.json().catch(() => ({}))

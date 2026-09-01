@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -488,6 +489,9 @@ Deno.serve(async (request: Request) => {
     }
 
     const sendWhatsapp = async (to: string, body: string) => {
+      // v29.102.0 (regra do Juliano, 01/09/2026): nenhuma mensagem nossa sai com emoji —
+      // o semEmoji() no corpo do POST, logo abaixo, vale para TODAS as mensagens deste
+      // arquivo, inclusive as escritas à mão. Ver supabase/functions/_shared/sem-emoji.ts.
       if (await respostaFicouObsoleta()) {
         console.warn('[whatsapp-webhook] resposta descartada: cliente escreveu de novo antes do envio', to)
         return true
@@ -495,7 +499,7 @@ Deno.serve(async (request: Request) => {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: to, text: body }),
+        body: JSON.stringify({ number: to, text: semEmoji(body) }),
       })
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null
@@ -1865,7 +1869,7 @@ Deno.serve(async (request: Request) => {
           const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-            body: JSON.stringify({ number: phone, text: reply }),
+            body: JSON.stringify({ number: phone, text: semEmoji(reply) }),
           })
           const sendData = await sendResponse.json().catch(() => ({}))
           const sentMessageId = String(sendData?.key?.id || '') || null

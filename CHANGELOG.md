@@ -1,3 +1,28 @@
+## 29.102.0 — Sem emoji, e a Barba Express não tem navalha
+
+Três correções do Juliano em cima de conversas reais de hoje de manhã.
+
+**"Bom dia" recebia uma frase seca.** Ele mandou "bom dia" pelo WhatsApp e levou "Como posso ajudar você?" — sem nem devolver o bom dia. Duas coisas somadas: a saudação que o modelo escreve é apagada de propósito (a v28.62.0 tirou porque saía duplicada), e o prefixo determinístico "Bom dia, Fulano!" só era colado na PRIMEIRA mensagem da conversa. Como aquela conversa já tinha uma mensagem anterior (um convite de grupo que caiu ali às 06h02), não era a primeira — e o cliente ficou sem saudação nenhuma. Agora saudação isolada tem resposta própria, calorosa, e o prefixo com o horário do dia + nome vale sempre que o cliente cumprimenta: *"Bom dia, José! Espero que esteja tudo bem com você! Como posso te ajudar hoje?"*.
+
+**Ela vendeu um serviço que não existe.** Na conversa do cliente José Reis Imóveis, 10h26: *"Inclui o corte estilo americano e a barba alinhada com acabamento na navalha"* — para uma **Barba Express**, que é feita SÓ na máquina. Navalha e toalha quente são da Barboterapia. A JuIA não inventou: o argumento de venda cadastrado no banco (migration 097) dizia, com todas as letras, "com navalha no acabamento". O texto errado estava na fonte e ela repetiu — o cliente ia chegar esperando uma coisa e receber outra.
+
+Corrigido em quatro lugares: o `sales_pitch` no banco (migration 133, Barba Express e Corte + Barba Express), a regra fixa no prompt da JuIA (é proibido dizer que a Express tem navalha), a página `servico-barba-express.html` e a home, que também repetiam "acabamento rápido na navalha e máquina". E, atendendo ao pedido dele, toda oferta de barba agora sai com a diferença entre parênteses, o que também tira do modelo a chance de preencher esse vazio sozinho:
+
+```
+Pra barba, qual você prefere?
+• Barboterapia com vaporizador de ozônio (a mais completa) — R$ 50,00, 40 min
+• Barboterapia (navalha e toalha quente) — R$ 40,00, 30 min
+• Barba Express (só na máquina) — R$ 25,00, 20 min
+```
+
+**Nenhum emoji para cliente.** Regra dele, textual: *"pra JuIA parar de mandar piscadinha pra homem, os caras podem achar estranho até eles entenderem que não sou eu"*. Quem assina o WhatsApp é o Juliano, o cliente não sabe que quem responde é uma IA, e 😉 entre homens é lido como outra coisa. O tom passa a ser formal e cordial, com a simpatia vindo da palavra escrita — nas palavras dele, *"ética não tem sentimento"*. Único emoji permitido: as duas mãos juntas (🙏), e só em agradecimento.
+
+A instrução entrou no prompt, mas a garantia é `supabase/functions/_shared/sem-emoji.ts`: um filtro determinístico aplicado no ponto de SAÍDA de toda mensagem para cliente — a resposta da JuIA e as 17 outras functions que escrevem no WhatsApp (confirmação, lembrete, aniversário, reativação, pesquisa, recibo, fidelidade, vale-presente, Pix). Só instrução no prompt não seguraria (precedente: a saudação duplicada da v28.62.0), e existiam dezenas de emojis escritos à mão nas mensagens fixas do próprio código — caçar um por um deixaria passar os que ainda vão ser escritos. O filtro nunca toca na ENTRADA: as regex que detectam emoji do cliente (👍 de reação, 🤝 de encerramento) continuam vendo o texto original.
+
+Testado em produção depois do deploy, com os cinco casos: saudação isolada, "corte e barba", pergunta de preço do combo (o caso do erro) e "corte e pezinho" — todos sem emoji e com a Barba Express descrita certo.
+
+Uma coisa fica anotada e NÃO foi mexida: `supabase/config.toml` declara `verify_jwt = true` para o `ju-ia-site`, mas em produção ele está `false`. O widget do site manda só o header `apikey`, sem `Authorization` — ligar o JWT agora derrubaria o chat do site. Os deploys desta versão preservaram o estado atual de cada function, um por um. Resolver isso é tarefa separada: primeiro o widget manda o Bearer, depois liga o JWT.
+
 ## 29.101.0 — A régua do Juliano: desejar eleva, afirmar invade
 
 Ele mandou duas referências que admira e resumiu a segunda numa frase que virou regra: *"eleva a estima do leitor, pega no coração sem ser invasivo ou antiético"*.
