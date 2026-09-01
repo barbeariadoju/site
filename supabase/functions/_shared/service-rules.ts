@@ -6,9 +6,9 @@
 // Usada por ju-ia-site (normaliza o que a JuIA entendeu e avisa o cliente) e por
 // create-public-booking (rede de segurança do formulário do site).
 
-const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barboterapia', 'Corte + Barba Express']
+const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express']
 const CORTE_INFANTIL = ['Corte de cabelo infantil']
-const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barboterapia', 'Barba Express', 'Corte + Barboterapia', 'Corte + Barba Express']
+const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express']
 const INCLUSOS: Record<string, string[]> = { 'Pezinho (acabamento)': ['corte', 'infantil'] }
 
 const norm = (s = '') => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()

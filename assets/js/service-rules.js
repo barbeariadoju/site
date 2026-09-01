@@ -14,9 +14,9 @@
 // supabase/functions/_shared/service-rules.ts (Deno não importa daqui) — mudou aqui,
 // mude lá também.
 
-const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barboterapia', 'Corte + Barba Express'];
+const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express'];
 const CORTE_INFANTIL = ['Corte de cabelo infantil'];
-const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barboterapia', 'Barba Express', 'Corte + Barboterapia', 'Corte + Barba Express'];
+const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express'];
 // Itens que já vêm INCLUSOS em qualquer serviço da(s) família(s) deles: nunca se somam a
 // um corte, e saem sozinhos da lista quando um corte entra.
 const INCLUSOS = { 'Pezinho (acabamento)': ['corte', 'infantil'] };

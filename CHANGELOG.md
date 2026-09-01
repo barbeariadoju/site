@@ -1,3 +1,21 @@
+## 29.104.0 — Identidade da JuIA, nome duplicado, Barboterapia renomeada e confirmação falsa
+
+Quatro correções do Juliano em cima de conversas reais de hoje (WhatsApp).
+
+**"Com quem eu falo?" recebia "Você fala com a equipe da Barbearia do Ju"** — frio e impessoal (caso Alex, 01/09/2026). Agora, quando o cliente pergunta diretamente quem está respondendo ou se é uma pessoa/IA, a JuIA se identifica com honestidade: "Aqui é a Juia, assistente virtual da Barbearia do Ju." Fora desse caso pontual, ela continua sem anunciar por conta própria que é uma IA — não muda a regra de tom/emoji da v29.102.0, só cobre a pergunta direta.
+
+**Nome do cliente duplicado na saudação** (caso Juliano, 01/09/2026, 12h47): "Boa Tarde Ju" recebeu "Boa tarde, Juliano! Juliano! Como posso ajudar?". A regra da v29.64.0 (caso Helder) já cortava o nome quando o modelo abria a resposta com "Nome, ..." (vírgula), mas não cobria "Nome! ..." (exclamação), que foi como o modelo pontuou dessa vez. A regex agora cobre vírgula, ponto ou exclamação depois do nome.
+
+**Barboterapia virou dois nomes.** A pedido do Juliano, o serviço de R$ 40 (navalha e toalha quente, sem ozônio) passou a se chamar **"Barba na navalha com toalha quente"**; "Barboterapia" (bare) deixou de existir como nome próprio — o que continua com esse nome completo é só a versão com ozônio, "Barboterapia com vaporizador de ozônio" (R$ 50), que não foi tocada. Atualizado em: `services` e o combo correspondente no Supabase, `services-catalog-v7.js`, as listas de família de serviço (`service-rules.ts`/`.js`, cópia dupla de propósito), o prompt da JuIA e os dois lugares com nome de serviço fixo no código (menu "mais procurados" e o mapa de palavras-chave de "adicionar ao meu agendamento"). Site público (páginas de serviço, blog, preços) **não foi alterado** — ver nota abaixo.
+
+Isso abriu um buraco novo: cliente que digitasse só "barboterapia" (sem dizer se queria ozônio) caía no find* solto, que casava pelo nome mais curto e escolhia a de R$ 40 **em silêncio**, sem perguntar. Resolvido com o mesmo padrão do `bareBarbaAsk` (pergunta "barba" isolada → lista as 3 opções), só que encurtado pra 2: quem diz "barboterapia" já descartou a Express, então a JuIA pergunta só "com vaporizador de ozônio ou sem?".
+
+**Confirmação falsa e agendamento fantasma** (caso José Reis Imóveis, 01/09/2026, 12h59–14h37): depois de a JuIA listar as 3 opções de barba, o cliente perguntou só "Seria qual valor?" — e ela respondeu "Perfeito! Anotei Corte + Barba Express. Para qual dia?", travando um serviço que ele nunca tinha escolhido. Minutos depois, ela chegou a dizer "você já tem um agendamento para hoje às 16:15 (Corte + Barboterapia)" — agendamento que nunca tinha sido fechado, só uma disponibilidade citada antes. O Juliano teve que entrar na conversa na mão pra desfazer os dois. Duas instruções novas no prompt: uma pergunta de valor depois de uma lista de opções não é escolha (não preenche `updates.services` com nenhuma delas), e "já tem um agendamento" só pode ser dito se o registro aparecer de fato em `upcomingBookings`.
+
+**O que ficou de fora, de propósito:** as páginas de marketing/SEO que usam "Barboterapia" como nome do serviço de R$ 40 (`servico-barboterapia.html`, `blog-barboterapia.html`, `/precos/`, menções na home) não foram renomeadas. A regra da seção 5 do `CLAUDE.md` — "não reduzir as menções de barboterapia na home" — é sobre exatamente essa palavra-chave de SEO, e um rename de conteúdo público é uma decisão maior (URLs, título de página, todo o texto ao redor) que cabe ao Juliano decidir separadamente, não uma correção de bug da JuIA. Por ora o nome muda só no que a JuIA fala e no fluxo de agendamento (Supabase + `services-catalog-v7.js`); o site público continua chamando o serviço de R$ 40 de "Barboterapia".
+
+Testado: `npm run test:unit` (32 testes) e `npm run test:e2e` (46 testes) passando depois da mudança, incluindo o teste de `?servico=barboterapia` no carrinho. `service-rules.spec.js` também foi atualizado pra usar os nomes novos como fixture.
+
 ## 29.103.0 — Pergunta de explicação não vira pergunta de agenda, e a trava do ju-ia-site voltou
 
 Continuação direta da v29.102.0. Testando aquela versão apareceu um buraco que ninguém tinha visto: **o cliente perguntava o que É um serviço e recebia uma pergunta de agenda de volta.**
