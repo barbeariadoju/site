@@ -288,4 +288,17 @@ export const scenarios = [
     history: [{ role: 'user', content: 'Maravilha' }, { role: 'assistant', content: 'Obrigado, José. Até mais tarde!' }],
     red_flags: ['Até mais tarde', 'prazer', 'atendê-lo', 'Como posso ajudar'],
     note: 'CASO JOSÉ REIS, terceira despedida. "Até" sozinho depois de um fechamento é silêncio.' },
+  // v29.119.0 — pedido do Juliano (02/09/2026): "tudo bem?" recebia só "Tudo bem." — seco. Gente
+  // devolve a pergunta ("e você?"); e quando o cliente responde como está, reage curto sem
+  // perguntar "e você?" de novo.
+  { id: 'saudacao-01', category: 'saudacao', message: 'Boa tarde meu amigo\nTudo bem?',
+    red_flags: ['Como posso ajudar você hoje', 'Espero que esteja tudo bem'],
+    note: 'CASO JOSÉ REIS (02/09/2026, 12h09). Deve devolver a gentileza: "Tudo bem por aqui, e você?" — nunca só "Tudo bem".' },
+  { id: 'saudacao-02', category: 'saudacao', message: 'bom dia meu amigo, tudo bem por ai?',
+    red_flags: ['Como posso ajudar você hoje', 'obrigado. Como'],
+    note: 'CASO KELVIN (02/09/2026, 11h16). Mesma regra com vocativo e "por aí".' },
+  { id: 'saudacao-03', category: 'saudacao', message: 'tudo bem tbm, obrigado por perguntar',
+    history: [{ role: 'user', content: 'Boa tarde, tudo bem?' }, { role: 'assistant', content: 'Boa tarde, José! Tudo bem por aqui, e você? Como posso te ajudar hoje?' }],
+    red_flags: ['e você?', 'Espero que esteja tudo bem', 'Tudo bem por aqui'],
+    note: 'Resposta ao nosso "e você?": reage curto ("Que bom!") e vai pro que ele precisa — sem perguntar "e você?" de novo.' },
 ]

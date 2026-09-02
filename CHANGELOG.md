@@ -1,3 +1,20 @@
+## 29.119.0 — JuIA: "tudo bem?" devolve a pergunta ("e você?")
+
+Complemento da v29.118.0, apontado pelo Juliano em cima do mesmo print do José Reis: *"Boa tarde meu amigo / Tudo bem?"* recebeu *"Tudo bem, José. Como posso ajudar você hoje?"* — seco. O correto, nas palavras dele: *"tudo bem e você?"*. O Kelvin, mais cedo (*"bom dia meu amigo, tudo bem por ai?"*), recebeu a mesma resposta sem devolver a pergunta (*"Tudo bem por aqui, obrigado."*).
+
+**Por que passava pelo modelo.** A resposta fixa de saudação (v29.102.0) só disparava com "oi"/"bom dia" isolados em até 20 caracteres. Qualquer vocativo ("meu amigo") ou o próprio "tudo bem?" tirava a mensagem desse caminho e ela caía no modelo, que responde curto e não devolve a gentileza — mesmo com o prompt pedindo cordialidade.
+
+**Corrigido em código** (`saudacaoIsolada` reescrita, em `ju-ia-site`):
+- A saudação isolada passa a aceitar mais de uma abertura ("opa, e aí"), vocativo ("meu amigo", "irmão", "chefe", "Juliano"…) e a pergunta "tudo bem/tudo bom/como vai/beleza?", até 60 caracteres, inclusive quando o webhook agrupa duas mensagens ("Boa tarde meu amigo" + "Tudo bem?").
+- Quando o cliente pergunta como estamos, a resposta é fixa: *"Tudo bem por aqui, e você? Como posso te ajudar hoje?"* (com o prefixo "Boa tarde, Fulano!" que já existia). Se há pedido em aberto, só a abertura é fixa e o resto continua sendo a resposta do modelo.
+- "beleza"/"suave"/"tranquilo" sem "?" continuam sendo confirmação, não pergunta.
+- A resposta dele ao nosso "e você?" (*"tudo bem também"*, *"ótimo, obrigado por perguntar"*) tem tratamento próprio: *"Que bom! Me diz o que você precisa que eu já vejo pra você."* — sem "e você?" de novo, que viraria loop. Essa checagem vem ANTES da detecção de pergunta de propósito (um "Tudo bem" seco como resposta é resposta, não pergunta).
+- Prompt: regra correspondente (devolver a pergunta; ao receber a resposta, reagir curto e ir ao pedido).
+
+**Testes.** 13 frases offline (positivas, negativas e a ordem resposta/pergunta) passaram. Três cenários novos (`saudacao-01/02/03`) em `tests/juia/scenarios.mjs`. `npm run test:unit` (32) passou. Sem bump de cache: só edge function e testes.
+
+**NO AR** (02/09, 13h20 BRT): `ju-ia-site` via CLI. Conferido em produção com os três cenários novos e os quatro da v29.118.0 (regressão), telefone de teste, sessões `deploy-check-v29119-*` apagadas: *"Boa tarde, Marcos! Tudo bem por aqui, e você? Como posso te ajudar hoje?"* nos dois casos de pergunta, *"Que bom! Me diz o que você precisa…"* na resposta, e os quatro anteriores iguais à v29.118.0 — nenhuma red flag.
+
 ## 29.118.0 — JuIA no WhatsApp: "quais horários" é pedido de lista, e despedida se responde uma vez
 
 O Juliano mandou print de duas conversas de 02/09 pedindo pra achar onde a JuIA errou. As duas têm a mesma raiz: ela não age como gente numa conversa curta.
