@@ -73,7 +73,7 @@
 .logo-frame,
 .logo-frame picture{
   display:block !important;
-  width:100% !important;
+  width:auto !important;
   margin-left:auto !important;
   margin-right:auto !important;
   text-align:center !important;

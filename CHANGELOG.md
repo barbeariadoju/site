@@ -1,3 +1,21 @@
+## 29.110.0 — Logo nova em alta resolução, e cinco versões de CSS "aumenta o logo" removidas
+
+O Juliano mandou print da home: a logo "consome quase que a tela inteira" e "parece que não tem muita qualidade". Foram duas causas diferentes, e as duas precisavam ser corrigidas.
+
+**Causa 1 — a imagem de origem.** `assets/logo-topo-wide.jpg/webp` vinha de um arquivo de 1600×688, provavelmente já reamostrado uma vez antes de chegar no repo. Substituído pelo arquivo novo que o Juliano forneceu (`barbearia-do-ju-logo-fundo-transparente.png`, 2528×877, com canal alfa real — 50% dos pixels são transparentes de propósito, é a arte recortada rente aos pôsteres/letreiro, sem sobra). Reprocessado com `sharp` (instalado à parte, fora deste repo, só para gerar os arquivos — não é dependência do site) em:
+- `assets/logo-topo-wide.jpg` (1200px, fundo real do site #0b0b0b) e `.webp` (1200px, alfa mantido) — home, avaliacao.html, instagram.html, whatsapp.html.
+- `assets/marca-selo-transparente.png` (600px, alfa) — precos/index.html, precos/setembro/index.html, home.
+- `assets/icon-192.png`, `icon-512.png`, `apple-touch-icon-180.png`, `vcard-logo-contact.jpg` — a arte inteira centralizada num canvas quadrado na cor de fundo do site, nunca cortando os pôsteres (era esse recorte quadrado cru, sem letterbox, que cortava o pôster em algumas páginas — o segundo problema que o Juliano apontou).
+- `logo.webp` nos três repositórios separados (wifi-barbearia-do-ju, pix-barbearia-do-ju, contato), substituindo um placeholder de 1536×1024 sem relação com a marca real.
+
+Tamanho final por arquivo ficou igual ou menor que o antigo em quase todos os casos (ex.: `marca-selo-transparente.png` caiu de 361KB pra 61KB; os três `logo.png` de ~1MB cada viraram `logo.webp` de 72KB) — a exceção é `logo-topo-wide.webp`, que foi de 42KB pra 101KB por manter o canal alfa de uma arte com textura fina (bigode, poste), compensado por continuar leve o bastante pro hero.
+
+**Causa 2 — cinco camadas de CSS competindo.** `css/01-site-base.css` tinha blocos "Ajustes v2" a "v6", cada um regravando `.logo-frame`/`.logo`/`.hero-content` com `!important`, sempre aumentando (620px → 860px → 1080px → 1180px → `min(1240px,97vw)`, e no mobile `100vw` liso). Nenhum desses blocos nunca tinha sido removido — só empilhado por cima do anterior, e como todos usavam `!important`, o último declarado (v6) sempre vencia. Removidas as cinco camadas, mantendo intactas as outras regras que dividiam o mesmo bloco (`.product-card`, `.link-card`, `.about-section`, `.info-card` etc. — nada disso mudou). `css/03-site-mobile-contato.css` tinha ainda uma sexta regra, incondicional (fora de media query): `.logo-frame{width:100% !important}`, um fix de centralização no iOS que também forçava o card a ocupar toda a largura do container pai. Trocado para `width:auto !important`, mantendo o `display:block` + `margin:auto` que faz a centralização real funcionar no iOS — `max-width` (não mais disputado por ninguém) agora é quem decide o tamanho.
+
+Resultado: `.logo-frame` cabe em `min(640px, 92vw)`, do tamanho que já era no "Ajustes v2" original, antes da escalada.
+
+`npm run test:unit` (32) e os e2e de `analytics.spec.js` e `routes.spec.js` (13) passaram antes de publicar. Conferido visualmente (local, antes do build) em desktop e mobile: home, `/precos/`, `avaliacao.html`, `whatsapp.html`, `salvar-contato.html` (foto do vCard, formato circular) e os três repositórios separados.
+
 ## 29.109.0 — whatsapp.html, instagram.html e salvar-contato.html no mesmo padrão visual
 
 Continuação do pedido do Juliano na v29.107.0/108.0: depois de acertar `servicos.html`, ele pediu pra padronizar "as outras páginas soltas" pra parecer o mesmo site. Primeira leva: as três páginas de redirecionamento rápido do repo principal (WhatsApp, Instagram, Salvar contato) — hoje usadas em QR code/link direto, sem indexação (`noindex`).
