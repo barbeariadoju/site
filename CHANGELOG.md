@@ -1,3 +1,34 @@
+## 29.106.0 — Troca de URL: "barboterapia.html" volta a ser a página do ozônio
+
+Continuação direta da v29.105.0. O Juliano perguntou se não valia a pena mudar a URL de
+`servico-barboterapia.html` pra refletir o rename (ele acredita que "barba na navalha" tem
+busca própria no Google). Resposta inicial: não mexer, pra não perder o histórico de indexação
+de uma URL que já existe. Ele então sugeriu a saída melhor: em vez de mandar a URL antiga pro
+nome novo, **trocar o conteúdo dela pelo que agora se chama Barboterapia de verdade** (a versão
+com ozônio) — assim a URL com mais tempo de indexação fica presa à palavra que ela sempre
+rankeou, e só o serviço novo (sem ozônio) ganha um endereço novo, sem nenhum histórico pra
+perder.
+
+Feito:
+- `servico-barboterapia.html` (URL preservada) agora serve o conteúdo da Barboterapia com
+  vaporizador de ozônio — título, meta, Open Graph, JSON-LD e corpo todos trocados.
+- `servico-barba-na-navalha.html` (URL nova) é a página da Barba na navalha com toalha quente
+  — o conteúdo que antes vivia em `servico-barboterapia.html`.
+- `servico-barboterapia-ozonio.html` virou uma página de redirect (mesmo padrão já usado em
+  `agendar.html`: `meta refresh` + `canonical` + `window.location.replace`, com
+  `noindex,follow` pra passar autoridade sem competir no índice) apontando pra
+  `servico-barboterapia.html`.
+- `sitemap.xml`: removida a entrada da URL antiga do ozônio, adicionada a URL nova da navalha.
+- Atualizados os ~13 links internos que apontavam pra uma das duas páginas (alguns arquivos,
+  como `guia-barba-masculina.html` e `servicos.html`, linkam pras duas — cada href foi
+  conferido individualmente pra apontar pro serviço certo, não só trocado por busca-e-substitui
+  cega, que na primeira tentativa aqui mesmo grudou os dois links no mesmo destino por engano
+  — revertido via `git checkout` e refeito com substituição exata por trecho).
+
+Testado: `npm test` (32 unit + 46 e2e) passando. Verificado ao vivo depois do deploy: título de
+`servico-barboterapia.html` mostra o conteúdo do ozônio, `servico-barba-na-navalha.html` mostra
+o conteúdo sem ozônio, e o redirect da URL antiga do ozônio funciona.
+
 ## 29.105.0 — Rename de "Barboterapia" completo no site público (marketing/SEO)
 
 Continuação direta da v29.104.0. Naquela versão o rename "Barboterapia" (R$ 40, sem ozônio) →
