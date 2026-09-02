@@ -1,3 +1,16 @@
+## 29.111.0 — Hero da home: logo x título rebalanceados
+
+Segundo round direto em cima da v29.110.0. Depois de corrigir o tamanho da logo, o Juliano mandou novo print: agora ela "ficou pequena e as letras gigantes, não está estético nem harmônico". Ele tinha razão — o `<h1>` da hero e os `<h2>` de seção dividiam a mesma regra (`.hero h1,.section h2{font-size:clamp(2.7rem,9vw,6.8rem)}`), então o título podia chegar a 108px, quase do tamanho do card da logo (760px de largura, ~268px de altura) sentado bem acima dele — dois elementos gritando no mesmo peso visual, sem hierarquia.
+
+Perguntei o tamanho do ajuste antes de mexer (só a hero da home, um cabeçalho padrão pro site inteiro, ou os dois) — ele confirmou só a hero por agora. Feito:
+
+- `.hero h1` separado de `.section h2` (que fica como estava — é usado mais abaixo na página, em "Sobre", e não tinha reclamação ali). Novo clamp: `clamp(2rem,5.5vw,4.2rem)` — de 32px a 67px, contra os 43px–108px de antes.
+- `.logo-frame` voltou de `min(640px,92vw)` pra `min(760px,92vw)` — o valor original do "Ajustes v2", antes de qualquer escalada. Com o título mais contido, a logo pode respirar sem tomar a tela inteira de novo.
+
+Resultado: a logo volta a ser a âncora visual (é ela que carrega "BARBEARIA DO JU"), e o título funciona como linha de apoio, não como segundo grito. Conferido visualmente em 1280px, 900px e mobile (375px) antes de publicar. `npm run test:unit` (32) e os e2e de `analytics.spec.js` e `routes.spec.js` (13) passaram.
+
+Repaginação de cabeçalho padrão pro resto do site (servicos, blog, admin — hoje sem header nenhum) fica pra quando o Juliano pedir; não é o mesmo problema e é bem mais trabalho.
+
 ## 29.110.0 — Logo nova em alta resolução, e cinco versões de CSS "aumenta o logo" removidas
 
 O Juliano mandou print da home: a logo "consome quase que a tela inteira" e "parece que não tem muita qualidade". Foram duas causas diferentes, e as duas precisavam ser corrigidas.
