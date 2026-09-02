@@ -1,3 +1,16 @@
+## 29.109.0 — whatsapp.html, instagram.html e salvar-contato.html no mesmo padrão visual
+
+Continuação do pedido do Juliano na v29.107.0/108.0: depois de acertar `servicos.html`, ele pediu pra padronizar "as outras páginas soltas" pra parecer o mesmo site. Primeira leva: as três páginas de redirecionamento rápido do repo principal (WhatsApp, Instagram, Salvar contato) — hoje usadas em QR code/link direto, sem indexação (`noindex`).
+
+Nenhuma delas carregava a fonte Bebas Neue (a família de título usada em toda a home, `servicos.html`, `/precos/`), então o `<h1>`/`<h2>` caía no Inter padrão — e por isso destoavam do resto do site mesmo já usando as mesmas cores (`--gold`, `--panel`, `--line`). Corrigido:
+
+- Adicionado o link da fonte Bebas Neue (mesmo `<link>` que `servicos.html` já usa) nas três páginas.
+- `whatsapp.html` e `instagram.html`: título passou a usar Bebas Neue, e ganhou o `<p class="eyebrow">Barbearia do Ju • Bragança Paulista</p>` acima dele — mesmo padrão de `servicos.html`/`/precos/` (a classe `.eyebrow` já existe em `css/01-site-base.css`, nada novo).
+- `salvar-contato.html`: o `<style>` da própria página tinha `.panel h2{font-family:inherit}`, uma decisão explícita de NÃO usar Bebas Neue — revertido pra usar, já que a fonte nunca chegou a ser carregada nessa página (o `inherit` caía no Inter de qualquer forma).
+- Emoji tirado dos botões (`💬 Abrir WhatsApp` → `Abrir WhatsApp`, `📸 Instagram` → `Ver no Instagram`) pra bater com o padrão dos outros CTAs do site (`Agendar meu horário`, `Falar no WhatsApp`), que são só texto.
+
+Layout de card arredondado mantido como estava — é o mesmo padrão usado em `.panel`/`.link-card`/`.mini-grid` na home, não precisa mudar. `npm run test:unit` (32) passou antes de publicar; não há teste e2e cobrindo essas três páginas.
+
 ## 29.108.0 — Links de conteúdo sem estilo, e sequência de servicos.html
 
 O Juliano voltou depois de ver a v29.107.0 no ar: "o resto ficou ótimo", mas o link inline dentro do parágrafo ("corte masculino em Bragança Paulista") aparecia azul e sublinhado — o estilo padrão do navegador, feio e fora do padrão do site. Fui atrás da causa: **nenhuma regra de CSS estilizava `<a>` dentro de texto corrido em lugar nenhum do site.** `.text-link` (dourado, negrito, sem sublinhado) existe e é usado em botões/CTAs isolados, mas link no meio de parágrafo — usado em `servicos.html` e em toda página que usa o template `.privacy-card` (as ~23 páginas de serviço, os 15 posts de blog, perguntas-frequentes, sobre-o-juliano, privacidade) — sempre caiu no azul/sublinhado padrão do navegador porque não havia seletor nenhum pra ele.
