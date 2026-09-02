@@ -1,3 +1,13 @@
+## 29.107.0 — Serviços com o visual da tabela de preços
+
+O Juliano pediu para usar a página `/precos/` (a plaquinha impressa, com tipografia Bebas Neue e linhas de item enxutas) como modelo visual e trazer isso pra `servicos.html`. Antes, cada serviço aparecia como item de lista com "— R$ X,00 · cerca de Y min" em texto corrido; agora é uma linha de tabela — nome e duração à esquerda, preço grande em dourado à direita, separadas por um traço fino — igual à plaquinha.
+
+Escopo deliberadamente pequeno: só o CSS da própria página mudou (bloco `<style>` isolado em `servicos.html`, no mesmo padrão que `/vale-presente/` já usa), nada em `css/01-05` nem em `style.css`. Preço, duração, texto, links internos, FAQ, schema JSON-LD e author box continuam exatamente como estavam.
+
+Essa mudança foi feita em cima da v29.106.0 (depois do rename de Barboterapia e da troca de URL) — a primeira tentativa tinha sido feita antes desses commits chegarem ao remoto; o push foi rejeitado (fast-forward), o commit antigo foi descartado localmente sem nunca ir ao ar, e a transformação foi refeita sobre o conteúdo já renomeado, então não há regressão de nome nem link. `npm run test:unit` (32) e os e2e de `analytics.spec.js`, `cart.spec.js` e `routes.spec.js` (19) passaram antes de publicar.
+
+Próximas páginas a receber o mesmo tratamento ficam para quando o Juliano pedir — não vale generalizar pro resto do site sem ele apontar qual.
+
 ## 29.106.0 — Troca de URL: "barboterapia.html" volta a ser a página do ozônio
 
 Continuação direta da v29.105.0. O Juliano perguntou se não valia a pena mudar a URL de
