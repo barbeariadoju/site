@@ -78,6 +78,12 @@ html{background:#0b0b0b;color:#f7f1e8}body{margin:0;background:#0b0b0b;color:#f7
 .service-btn:hover{background:var(--gold2)}
 .service-btn:disabled{opacity:.65;cursor:default}
 @media(max-width:560px){.service-card{padding:14px 2px !important}.service-meta,.service-btn{margin-left:auto}}
+/* Hero enxuta: título grande escondia a lista lá embaixo, exigindo scroll antes de ver qualquer serviço. */
+.services-hero{padding:28px 0 16px !important}
+.services-hero p{margin:8px auto}
+.services-hero .schedule-warning{margin-top:12px !important;padding:10px 14px !important;font-size:.88rem}
+#servicos.service-section{padding-top:20px !important}
+.service-section .section-head{margin-bottom:14px !important}
 </style>
 <script>
 // V28.0.11: /agendar/ permanece funcional; links para #servicos rolam sem ocultar o catálogo.
@@ -119,18 +125,18 @@ window.addEventListener('load', function(){
 </div>
 </section>
 <section class="section service-section">
-<div class="section-head"><p class="eyebrow">Cortes e Barba</p><h2>Combos para sair pronto.</h2><p>Combinações práticas para renovar cabelo e barba em um único atendimento.</p></div>
-<div class="service-grid">
-<article class="service-card"><div class="service-content"><h3>Corte + Barba na navalha com toalha quente<small>(toalha quente + navalha)</small></h3><span class="service-tag hot">Melhor experiência</span><p>Corte de cabelo aliado ao ritual de barba com toalha quente, navalha e acabamento caprichado.</p></div><div class="service-meta"><span>1h</span><strong>R$ 80</strong></div><button class="service-btn" data-name="Corte + Barba na navalha com toalha quente" data-price="80.00" data-time="1h" type="button">Adicionar</button></article>
-<article class="service-card"><div class="service-content"><h3>Corte + Barba Express</h3><span class="service-tag">Prático</span><p>Corte masculino + alinhamento de barba em versão rápida, ideal para manutenção do visual no dia a dia.</p></div><div class="service-meta"><span>50 min</span><strong>R$ 65</strong></div><button class="service-btn" data-name="Corte + Barba Express" data-price="65.00" data-time="50 min" type="button">Adicionar</button></article>
-</div>
-</section>
-<section class="section service-section">
 <div class="section-head"><p class="eyebrow">Barba</p><h2>Barba, cuidado e acabamento.</h2><p>Serviços especializados em barba, desde acabamentos rápidos até tratamentos completos.</p></div>
 <div class="service-grid">
 <article class="service-card"><div class="service-content"><h3>Barboterapia com vaporizador de ozônio</h3><span class="service-tag premium">Premium</span><p>Transforme seu barbear em um verdadeiro ritual de cuidado utilizando vaporizador de ozônio, toalha quente, espuma e acabamento com navalha.</p></div><div class="service-meta"><span>40 min</span><strong>R$ 50</strong></div><button class="service-btn" data-name="Barboterapia com vaporizador de ozônio" data-price="50.00" data-time="40 min" type="button">Adicionar</button></article>
 <article class="service-card"><div class="service-content"><h3>Barba na navalha com toalha quente</h3><span class="service-tag">Toalha quente + navalha</span><p>Ritual de barba completo com foco em cuidado, toalha quente, espuma, acabamento na navalha e finalização com produtos profissionais.</p></div><div class="service-meta"><span>30 min</span><strong>R$ 40</strong></div><button class="service-btn" data-name="Barba na navalha com toalha quente" data-price="40.00" data-time="30 min" type="button">Adicionar</button></article>
 <article class="service-card"><div class="service-content"><h3>Barba Express</h3><span class="service-tag">Rápida</span><p>Alinhamento rápido da barba com acabamento realizado na máquina, ideal para manutenção do visual.</p></div><div class="service-meta"><span>20 min</span><strong>R$ 25</strong></div><button class="service-btn" data-name="Barba Express" data-price="25.00" data-time="20 min" type="button">Adicionar</button></article>
+</div>
+</section>
+<section class="section service-section">
+<div class="section-head"><p class="eyebrow">Cortes e Barba</p><h2>Combos para sair pronto.</h2><p>Combinações práticas para renovar cabelo e barba em um único atendimento.</p></div>
+<div class="service-grid">
+<article class="service-card"><div class="service-content"><h3>Corte + Barba na navalha com toalha quente<small>(toalha quente + navalha)</small></h3><span class="service-tag hot">Melhor experiência</span><p>Corte de cabelo aliado ao ritual de barba com toalha quente, navalha e acabamento caprichado.</p></div><div class="service-meta"><span>1h</span><strong>R$ 80</strong></div><button class="service-btn" data-name="Corte + Barba na navalha com toalha quente" data-price="80.00" data-time="1h" type="button">Adicionar</button></article>
+<article class="service-card"><div class="service-content"><h3>Corte + Barba Express</h3><span class="service-tag">Prático</span><p>Corte masculino + alinhamento de barba em versão rápida, ideal para manutenção do visual no dia a dia.</p></div><div class="service-meta"><span>50 min</span><strong>R$ 65</strong></div><button class="service-btn" data-name="Corte + Barba Express" data-price="65.00" data-time="50 min" type="button">Adicionar</button></article>
 </div>
 </section>
 <section class="section service-section">

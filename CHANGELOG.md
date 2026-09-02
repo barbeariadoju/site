@@ -1,3 +1,17 @@
+## 29.114.0 — Ordem de /agendar/ igual à de servicos.html, hero mais curta, produtos.html no mesmo padrão
+
+Três pedidos do Juliano em cima da v29.113.0:
+
+**1) Ordem das categorias em `/agendar/` não batia com `servicos.html`.** Lá a sequência é Cortes → Barba → Combos (mudou na v29.108.0, "barba é o que mais sai, junto do corte"); em `/agendar/` continuava Cortes → Combos → Barba, a ordem antiga. Corrigido pra bater exatamente. Os 20 `data-name` conferidos de novo depois do reordenamento (nenhuma duplicata, nenhum sumiço).
+
+**2) A hero escondia a lista, exigindo scroll antes de ver qualquer serviço.** Título grande + assunto + 3 botões + aviso da agenda própria empurravam "Cortes masculinos" pra fora da tela mesmo em desktop. Reduzido `.services-hero{padding:28px 0 16px}` (era 64px 0 34px), aviso mais compacto, e `margin-bottom` do cabeçalho de cada categoria de 28px pra 14px. Em mobile (375×812) ainda sobra ~70px de scroll até o primeiro card — não dava pra zerar sem cortar os botões de atalho, que têm função real (ir direto pra agenda, ver produtos).
+
+**3) `produtos.html` no mesmo visual enxuto.** Diferente de `servicos.html`/`agendar/`, os produtos têm foto de verdade — vira item de prateleira, não texto puro — então não faz sentido remover a foto pra virar lista igual às outras. O card em si (`.product-card`, grid de 128px+texto) já era razoavelmente compacto, sem a guerra de especificidade que `.service-card` tinha; o que destoava era a hero (mesmos 64px de padding) e `.product-section{margin-top:52px}` empilhado com `.section{padding:40px 20px}` — quase 100px de vão antes do primeiro produto. Reduzido pro mesmo padrão da hero de `/agendar/`, preço trocado pra Bebas Neue dourado (igual a todo o resto do site — antes era só Inter bold), e botão "Adicionar ao carrinho" (26 ocorrências, uma por produto) encurtado pra "Adicionar", igual ao padrão do catálogo de serviços. O botão "Adicionar cortesia" do café e o botão do modal (`#modal-add`, mais espaço disponível) ficaram como estavam de propósito.
+
+**Correção de contagem:** a v29.113.0 disse "~30 serviços" — são 20 (2+3+2+5+7+1 por categoria). Sem efeito no código, só a mensagem do commit estava errada.
+
+`npm run test:unit` (32) e os e2e de `analytics.spec.js`, `routes.spec.js`, `cart.spec.js` e `booking-review.spec.js` (20) passaram antes de publicar. `produtos.html` não tem teste e2e dedicado — testado manualmente (adicionar produto, abrir carrinho, conferir total).
+
 ## 29.113.0 — /agendar/ enxuto, no padrão de servicos.html — carrinho intacto
 
 Pedido do Juliano: usar `servicos.html` como modelo pra `/agendar/#servicos`, mantendo a diferença real entre as duas — `/agendar/` é a página de conversão, com carrinho de compras e descrição curta por serviço; `servicos.html` é conteúdo/SEO, sem carrinho. "Enxugar o layout" era a parte pedida: os ~30 serviços apareciam em cards grandes (grid de até 3 colunas, badge, parágrafo inteiro, metadados empilhados, card com até 430px de altura mínima) — a mesma dispersão visual já corrigida em outras páginas nesta sessão.
