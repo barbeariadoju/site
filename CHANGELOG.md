@@ -1,3 +1,15 @@
+## 29.108.0 — Links de conteúdo sem estilo, e sequência de servicos.html
+
+O Juliano voltou depois de ver a v29.107.0 no ar: "o resto ficou ótimo", mas o link inline dentro do parágrafo ("corte masculino em Bragança Paulista") aparecia azul e sublinhado — o estilo padrão do navegador, feio e fora do padrão do site. Fui atrás da causa: **nenhuma regra de CSS estilizava `<a>` dentro de texto corrido em lugar nenhum do site.** `.text-link` (dourado, negrito, sem sublinhado) existe e é usado em botões/CTAs isolados, mas link no meio de parágrafo — usado em `servicos.html` e em toda página que usa o template `.privacy-card` (as ~23 páginas de serviço, os 15 posts de blog, perguntas-frequentes, sobre-o-juliano, privacidade) — sempre caiu no azul/sublinhado padrão do navegador porque não havia seletor nenhum pra ele.
+
+Corrigido na fonte, uma vez só: `.privacy-card p a, .privacy-card li a, .privacy-card details a` em `css/04-agenda-admin-core.css`, dourado (`--gold2`), negrito, sem sublinhado em repouso, sublinhado só no hover. Os links de nome de serviço em `servicos.html` (`.price-item .nome a`) passaram a usar exatamente a mesma cor por padrão (antes só ficavam dourados no hover) — agora um padrão único, não dois parecidos.
+
+Como isso mexe em CSS compartilhado, bumpei `?v=` em style.css (import do css/04) **e em toda página que carrega style.css** — 79 arquivos rastreados pelo git (`git ls-files`), 81 ocorrências. Descartei de propósito os ~130 arquivos "style.css?v=..." que o grep bruto encontrava no disco: são cópias antigas soltas na pasta (o próprio CLAUDE.md avisa sobre isso), não fazem parte do site publicado. Sincronizei também o `<link rel="preload">` de `css/04` em `index.html`, que estava preso numa versão (28.43.2) desde antes desta mudança.
+
+**Sequência de `servicos.html` reordenada**, a pedido: "Barba e barba na navalha com toalha quente" agora vem logo depois de "Cortes masculinos" (antes vinha depois de "Combos de corte e barba") — barba é o que mais sai, junto do corte, então sobe pro segundo lugar. Mesma lógica de agrupamento da `/precos/`, mantendo os parágrafos de cada seção como estavam.
+
+`npm run test:unit` (32) e os e2e de `analytics.spec.js`, `cart.spec.js` e `routes.spec.js` (19) passaram antes de publicar.
+
 ## 29.107.0 — Serviços com o visual da tabela de preços
 
 O Juliano pediu para usar a página `/precos/` (a plaquinha impressa, com tipografia Bebas Neue e linhas de item enxutas) como modelo visual e trazer isso pra `servicos.html`. Antes, cada serviço aparecia como item de lista com "— R$ X,00 · cerca de Y min" em texto corrido; agora é uma linha de tabela — nome e duração à esquerda, preço grande em dourado à direita, separadas por um traço fino — igual à plaquinha.
