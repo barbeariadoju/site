@@ -1,3 +1,13 @@
+## 29.112.0 — O mesmo rebalanceamento, mas em toda a home (e produtos.html)
+
+Correção direta em cima da v29.111.0, que fechei cedo demais. Ajustei só `.hero h1`, mas `.section h2` — usado nos outros 16 títulos de seção da home ("Garantias e mimos de cliente.", "Olá, eu sou Juliano.", "O que nossos clientes dizem." etc.) — continuou na regra antiga, `clamp(2.7rem,9vw,6.8rem)`, chegando a 108px pra frases inteiras. O Juliano mandou print de "Garantias e mimos de cliente." pra mostrar que o problema não era só a hero: "você precisa criar este padrão e aplicar a todas as páginas do site."
+
+Unifiquei `.hero h1` e `.section h2` de volta numa regra só (`clamp(2rem,5.5vw,4.2rem)`, os mesmos 32px–67px da v29.111.0) — não faz mais sentido ter duas regras quando o padrão é o mesmo. Apliquei o valor idêntico em `.products-hero h1` (usado só em `produtos.html`, antes ainda maior: `clamp(3rem,10vw,7rem)`). Conferi que não sobrava mais nenhum outro título de marketing nessa escala — o resto dos usos de Bebas Neue no CSS é painel administrativo e fluxo de agenda (`.agenda-summary h2`, `.admin-page-header h1`, `.booking-step-heading h2` etc.), já modestos, não faz parte do problema.
+
+Como voltei a mexer em `css/01-site-base.css` e `css/03-site-mobile-contato.css` (o `width:auto!important` do iOS da v29.110.0 continua igual, só o arquivo já tinha sido tocado), bumpei `?v=` de novo: `29.111.0` no `@import` de style.css e nas 79 páginas rastreadas que carregam `/style.css`, mais os `<link rel="preload">` de `css/01` e `css/03` em `index.html` que a v29.110.0/111.0 tinham deixado passar (só o de `css/04` tinha sido sincronizado até agora).
+
+Conferido visualmente (local) na home inteira, rolando por todas as 16 seções, e em `produtos.html`. `npm run test:unit` (32) e os e2e de `analytics.spec.js` e `routes.spec.js` (13) passaram antes de publicar.
+
 ## 29.111.0 — Hero da home: logo x título rebalanceados
 
 Segundo round direto em cima da v29.110.0. Depois de corrigir o tamanho da logo, o Juliano mandou novo print: agora ela "ficou pequena e as letras gigantes, não está estético nem harmônico". Ele tinha razão — o `<h1>` da hero e os `<h2>` de seção dividiam a mesma regra (`.hero h1,.section h2{font-size:clamp(2.7rem,9vw,6.8rem)}`), então o título podia chegar a 108px, quase do tamanho do card da logo (760px de largura, ~268px de altura) sentado bem acima dele — dois elementos gritando no mesmo peso visual, sem hierarquia.
