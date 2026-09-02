@@ -1,3 +1,13 @@
+## 29.117.0 — Badges de /agendar/ unificados, link de /precos/ sem sublinhado
+
+Dois retoques pequenos do Juliano, os dois casos de "duas variações da mesma coisa" que ele foi pegando ao navegar pelo site publicado:
+
+**1) Badges de serviço em `/agendar/` tinham dois estilos.** `.service-tag` no CSS compartilhado sempre teve dois níveis: contornado/discreto por padrão, e sólido dourado só para `.hot`/`.premium` (destaque de best-seller). O Juliano apontou "Finalização completa" (contornado) como diferente do padrão de "Mais procurado" (sólido) — pra ele, sólido dourado é o único padrão certo. Adicionado ao bloco `<style>` já escopado a `/agendar/`: todo `.service-tag` agora sai sólido dourado, sem distinção hot/premium. Conferido nas 9 badges da página (Finalização completa, Mais procurado, Premium, Toalha quente + navalha, Rápida, Melhor experiência, Prático, Transformação, Atendimento reservado) — todas idênticas agora.
+
+**2) O link "Ver os preços que valem até 30/09 →" (dentro do aviso amarelo de `/precos/`) usava sublinhado via `border-bottom`**, diferente do padrão limpo (dourado, negrito, sem sublinhado em repouso) usado em todo o resto do site desde a v29.108.0 — ex.: "Conheça minha trajetória e formação →" na home. Eram duas convenções de link coexistindo. `.aviso .link` corrigido em `precos/index.html` e `precos/setembro/index.html` (que tem o mesmo aviso, com o link "Ver a tabela que passa a valer em outubro →").
+
+`npm run test:unit` (32) e os e2e de `cart.spec.js`/`routes.spec.js` (10) passaram antes de publicar.
+
 ## 29.116.0 — Logo de /precos/ (e as páginas irmãs) no mesmo tamanho da home
 
 O Juliano mandou print: a logo de `/precos/` continuava pequena (`min(300px,72vw)`) enquanto a da home já tinha sido ajustada pra `min(760px,92vw)` na v29.111.0. `/precos/` é uma página autocontida (CSS próprio, não usa `style.css`), então não herda nada do site — precisava do mesmo ajuste manual.
