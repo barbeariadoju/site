@@ -11,6 +11,14 @@
 // `red_flags` são checagens automáticas; qualquer um que aparecer na resposta é
 // reportado como possível regressão. `note` é o que um humano deve conferir.
 
+// v29.118.0: próximo dia com a barbearia aberta (terça a sábado), N dias a partir de hoje,
+// em ISO — pros cenários que precisam de uma data real de agenda no `state`.
+const proximoDiaAberto = (offset = 1) => {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  d.setDate(d.getDate() + offset)
+  while (d.getDay() === 0 || d.getDay() === 1) d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
 export const scenarios = [
   // ---------- Primeiro atendimento ----------
   { id: 'first-01', category: 'primeiro_atendimento', message: 'oi, vcs cortam cabelo?', note: 'Deve responder que sim e oferecer ver serviços/agendar.' },
@@ -258,4 +266,26 @@ export const scenarios = [
     note: 'CASOS DE SABADO (22/08/2026). Recusa a oferta de outro dia: deve agradecer e encerrar com a porta aberta, NUNCA seguir listando horarios.' },
   { id: 'dias-06', category: 'pergunta_de_dias', message: 'Vou deixar obrigado', state: { services: ['Corte de cabelo'], date: '2099-01-01', pending_waitlist: { date: '2099-01-01', period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 30 } },
     note: 'CASO DE SABADO. Recusa educada SEM a palavra "nao" — o simpleNo nao pegava, e a JuIA continuava empurrando agenda.' },
+  // v29.118.0 — dois casos reais de 02/09/2026 com a mesma raiz (a JuIA não age como gente):
+  // Kelvin: horário citado numa pergunta anterior ("hoje às 16h") continuava valendo quando
+  // ele mudou pra amanhã e perguntou QUAIS horários tinha — saiu "Sim, 16:00 está
+  // disponível" duas vezes e morreu no "me embolei". José Reis: três despedidas seguidas
+  // ("Maravilha" e "Até" não contavam como fechamento). `state.date` é sempre o próximo dia
+  // útil a partir de hoje, calculado na hora, pra bater com uma agenda real.
+  { id: 'horarios-01', category: 'lista_de_horarios', message: 'amanha voce teria quais horarios?', state: { services: ['Corte de cabelo'], date: proximoDiaAberto(1), time: '16:00' },
+    history: [{ role: 'user', content: 'tem horario para cortar somente o cabelo hoje as 16h' }, { role: 'assistant', content: '16:00 já está reservado nesse dia. O mais perto que consigo é 15:45 ou 17:15 — algum desses serve pra você?' }],
+    red_flags: ['Sim, 16:00', 'Quer reservar esse horário', 'está disponível para esse atendimento'],
+    note: 'CASO KELVIN (02/09/2026, 11h23). Pergunta QUAIS horários com 16:00 grudado no state: deve listar a agenda do dia, nunca "Sim, 16:00 está disponível… Quer reservar?".' },
+  { id: 'horarios-02', category: 'lista_de_horarios', message: 'quais outros horarios teria', state: { services: ['Corte de cabelo'], date: proximoDiaAberto(1), time: '16:00' },
+    history: [{ role: 'user', content: 'amanha voce teria quais horarios?' }, { role: 'assistant', content: 'Sim, 16:00 está disponível para esse atendimento de 30 minutos. Quer reservar esse horário?' }],
+    red_flags: ['Sim, 16:00', 'Quer reservar esse horário', 'me embolei'],
+    note: 'CASO KELVIN, segunda mensagem. "Outros horários" é pedido de lista — repetir o mesmo horário é o que disparou o anti-papagaio e o handoff.' },
+  { id: 'despedida-01', category: 'despedida', message: 'Maravilha', state: { services: ['Corte de cabelo'] },
+    history: [{ role: 'user', content: 'Está confirmado para 16:15 hoje?' }, { role: 'assistant', content: 'Sim, está confirmado para hoje às 16:15. Até mais tarde, José!' }],
+    red_flags: ['Até mais tarde', 'prazer', 'Obrigado, José', 'Como posso ajudar'],
+    note: 'CASO JOSÉ REIS (02/09/2026, 12h11). A JuIA já se despediu; "Maravilha" é só gentileza de volta — resposta certa é vazia (silêncio), nunca outra despedida.' },
+  { id: 'despedida-02', category: 'despedida', message: 'Até', state: { services: ['Corte de cabelo'] },
+    history: [{ role: 'user', content: 'Maravilha' }, { role: 'assistant', content: 'Obrigado, José. Até mais tarde!' }],
+    red_flags: ['Até mais tarde', 'prazer', 'atendê-lo', 'Como posso ajudar'],
+    note: 'CASO JOSÉ REIS, terceira despedida. "Até" sozinho depois de um fechamento é silêncio.' },
 ]

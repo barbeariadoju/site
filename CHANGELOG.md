@@ -1,3 +1,23 @@
+## 29.118.0 — JuIA no WhatsApp: "quais horários" é pedido de lista, e despedida se responde uma vez
+
+O Juliano mandou print de duas conversas de 02/09 pedindo pra achar onde a JuIA errou. As duas têm a mesma raiz: ela não age como gente numa conversa curta.
+
+**1) Kelvin (11h16–11h24) — horário antigo grudado no estado.** Às 11h16 ele pediu "corte hoje às 16h" (sem vaga; a JuIA ofereceu 15:45/17:15 e outros). Sete minutos depois mudou o pedido: *"amanhã dia 03, você teria quais horários?"* — e a resposta foi *"Sim, 16:00 está disponível para esse atendimento de 30 minutos. Quer reservar esse horário?"*. Três erros numa frase: "Sim" pra uma pergunta que não era sim/não, um horário só quando ele pediu a lista, e o 16:00 que ninguém tinha pedido pra amanhã. Ele insistiu (*"quais outros horários teria"*), a mesma frase foi regerada, o anti-papagaio do webhook (v29.27.0) trocou por *"me embolei"* + handoff, e o Juliano fechou na mão (às 10h de amanhã).
+
+Causa no código: `next.time` guardava o 16:00 da pergunta anterior, e o `effectiveTime` (que existe de propósito pra não fazer o cliente repetir o horário quando as perguntas de complemento entram no meio) reaproveitava esse horário mesmo com dia novo. O reset de horário só existia pra agendamento **concluído** (v29.x, `next.completed`) — não pra pedido em andamento que muda de dia.
+
+Corrigido com trava de código (`perguntaDeHorarios`, antes do `effectiveTime`): "quais/que/outros/mais/demais horários", "horários disponíveis/livres", "opções de horário" = pedido de LISTA → `next.time` é limpo e o intent vira `availability`, então o bloco de disponibilidade responde com a agenda do dia (hoje, com muitos horários, ele pergunta manhã/tarde/fim do dia — comportamento já existente). Pergunta de funcionamento ("que horas abre/fecha") fica de fora. O prompt também aprendeu (regra LISTA DE HORÁRIOS) — mas, como sempre, a trava de código é a garantia.
+
+**2) José Reis (12h09–12h12) — três despedidas seguidas.** *"Está confirmado para 16:15 hoje?"* → *"Sim, está confirmado para hoje às 16:15. Até mais tarde, José!"* (correto: o agendamento existe, `bookings` 16:15 Corte + Barboterapia) → *"Maravilha"* → *"Obrigado, José. Até mais tarde!"* → *"Até"* → *"Até mais tarde, José. Será um prazer atendê-lo!"*. É o caso Helder (v29.64.0) de novo: "Maravilha" e "Até" sozinhos não casavam no regex de despedida pura (só "até mais/logo/breve/a próxima"), e "até amanhã"/"até hoje" caíam em `pedidoNaFala` por conter "amanha"/"hoje". Somado ao nome em toda frase, o cliente percebe que não é o Juliano.
+
+Corrigido em `despedidaPura`: confirmação curta ancorada no fim da frase (`ackCurto`: maravilha, perfeito, ótimo, show, top, beleza, blz, combinado, fechado, certo, joia, ok, tranquilo, "até", "até lá/já/amanhã/hoje/mais tarde"…) depois de um fechamento da JuIA = silêncio. Ancorada de propósito: "fechado, me manda o pix" e "certo, e amanhã?" continuam recebendo resposta. `jaFechou` passou a reconhecer também "até lá/já/amanhã", "te esperamos", "pode vir tranquilo", "será um prazer". No prompt: regra DESPEDIDA UMA VEZ, NOME UMA VEZ (não repetir o nome em mensagens seguidas nem em despedida curta).
+
+**O que NÃO era erro:** a confirmação do 16:15 (agendamento real, conferido no banco) e o "Obrigado" no masculino (quem assina o WhatsApp é o Juliano, regra da v29.102). O 🙏 do "me embolei" é o único emoji permitido.
+
+**Testes.** Regex testadas offline com as frases reais e 12 negativos (todos passaram). Quatro cenários novos em `tests/juia/scenarios.mjs` (`horarios-01/02`, `despedida-01/02`, com `state`/`history` recriando o ponto exato das conversas; `proximoDiaAberto()` calcula a data pra bater com a agenda real). `npm run test:unit` (32) passou. Sem bump de cache: só edge function e testes.
+
+**NO AR** (02/09, 12h56 BRT): `ju-ia-site` **versão 204**, deploy direto via CLI (`npx supabase functions deploy ju-ia-site`), sem ponte por SHA. Conferido em produção logo depois com os quatro cenários (telefone de teste `5599900011234`, sessões `deploy-check-v29118-*` apagadas de `site_chat_messages` em seguida): Kelvin 1 e 2 → `state.time` null, lista de amanhã (pergunta de período), sem "Sim, 16:00"; José 1 e 2 → resposta vazia (silêncio), sem red flags.
+
 ## 29.117.0 — Badges de /agendar/ unificados, link de /precos/ sem sublinhado
 
 Dois retoques pequenos do Juliano, os dois casos de "duas variações da mesma coisa" que ele foi pegando ao navegar pelo site publicado:
