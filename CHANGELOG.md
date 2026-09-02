@@ -1,3 +1,15 @@
+## 29.115.0 — Varredura: avaliacao.html sem a fonte Bebas Neue
+
+O Juliano pediu pra conferir se ficou algum campo pra fora do padrão. Varri todo o site rastreado pelo git procurando páginas que usam tipografia Bebas Neue sem carregar a fonte (o mesmo bug corrigido em whatsapp.html/instagram.html/salvar-contato.html na v29.109.0) — `grep` por `font-family:'Bebas` sem o `<link>` do Google Fonts correspondente.
+
+Achado: só `avaliacao.html` (pesquisa de satisfação pós-atendimento, várias telas controladas por `avaliacao-v27.js`). O `<link>` da fonte nunca existiu nela, e pior — o próprio `.experience-card h1` não tinha `font-family` nenhum declarado, então nem adiantaria só linkar a fonte. Adicionado o link e a declaração de fonte (`clamp(1.8rem,6vw,3rem)`, mesmo espírito das outras correções). Não toquei em mais nada da página — não li o `avaliacao-v27.js` a fundo, então qualquer mudança além de CSS/tipografia ficaria pra outra hora.
+
+Outras páginas verificadas e descartadas: `agendar.html` e `experiencia.html` são só redirects (sem conteúdo real); `cliente.html` e `meu-agendamento.html` não usam Bebas Neue em lugar nenhum, então não têm esse bug específico (não quer dizer que estejam 100% no padrão novo — só não têm *esse* problema). `blog.html` já estava bem: usa `.link-card` (grid de texto, sem imagem, `min-height:128px`), nunca teve o inchaço do `.service-card`/`.product-card` antigo.
+
+**Ainda não revisadas nesta varredura** (fora do escopo do que foi pedido até agora, então não mexi): `cliente.html`, `meu-agendamento.html`, `reagendar.html`, `recibo.html`, `na-barbearia.html` — são páginas de pós-agendamento/conta, não de conversão. Se quiser, entro nelas também.
+
+`npm run test:unit` (32) passou. Sem teste e2e pra `avaliacao.html`; conferido manualmente que o h1 renderiza em Bebas Neue depois da mudança.
+
 ## 29.114.0 — Ordem de /agendar/ igual à de servicos.html, hero mais curta, produtos.html no mesmo padrão
 
 Três pedidos do Juliano em cima da v29.113.0:
