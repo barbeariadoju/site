@@ -1,3 +1,13 @@
+## 29.116.0 — Logo de /precos/ (e as páginas irmãs) no mesmo tamanho da home
+
+O Juliano mandou print: a logo de `/precos/` continuava pequena (`min(300px,72vw)`) enquanto a da home já tinha sido ajustada pra `min(760px,92vw)` na v29.111.0. `/precos/` é uma página autocontida (CSS próprio, não usa `style.css`), então não herda nada do site — precisava do mesmo ajuste manual.
+
+Corrigido `header img.marca` pra `min(520px,88vw)` em `precos/index.html` e `precos/setembro/index.html` (essa estava ainda menor, 280px). O valor é menor que os 760px da home de propósito: o `.wrap` dessas páginas tem só 640px de largura máxima (são plaquinhas pensadas pra impressão/QR code, não a hero cheia da home), então 520px preenche a coluna na mesma proporção que 760px preenche os 960px da home.
+
+Mesma correção replicada nos três repositórios irmãos (wifi-barbearia-do-ju, pix-barbearia-do-ju, contato) — usam exatamente o mesmo padrão de página (`header img.marca`), copiado de `/precos/` quando foram criados na v29.110.0, com a logo ainda menor (240px). Ajustados os quatro juntos pra não deixar essa mesma pergunta voltar por outra página da mesma família.
+
+`npm run test:unit` (32) passou. Sem teste e2e pra essas páginas autocontidas; conferido visualmente em `/precos/` antes de publicar.
+
 ## 29.115.0 — Varredura: avaliacao.html sem a fonte Bebas Neue
 
 O Juliano pediu pra conferir se ficou algum campo pra fora do padrão. Varri todo o site rastreado pelo git procurando páginas que usam tipografia Bebas Neue sem carregar a fonte (o mesmo bug corrigido em whatsapp.html/instagram.html/salvar-contato.html na v29.109.0) — `grep` por `font-family:'Bebas` sem o `<link>` do Google Fonts correspondente.
