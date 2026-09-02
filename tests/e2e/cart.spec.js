@@ -37,11 +37,11 @@ test.describe('carrinho de serviços', () => {
 });
 
 test.describe('pré-seleção por ?servico=', () => {
-  test('?servico=barboterapia já entra com o serviço no carrinho', async ({ page }) => {
-    await page.goto('/agendar/?servico=barboterapia');
+  test('?servico=barba-na-navalha-com-toalha-quente já entra com o serviço no carrinho', async ({ page }) => {
+    await page.goto('/agendar/?servico=barba-na-navalha-com-toalha-quente');
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
-    await expect(page.locator('#service-items')).toContainText('Barboterapia');
+    await expect(page.locator('#service-items')).toContainText('Barba na navalha com toalha quente');
     await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
   });
 
@@ -66,7 +66,7 @@ test.describe('pré-seleção por ?servico=', () => {
 test('recarregar com ?servico= não duplica o serviço no carrinho', async ({ page }) => {
   // O service worker recarrega a página no controllerchange e o carrinho
   // persiste em storage: sem guarda, a segunda carga somava de novo.
-  await page.goto('/agendar/?servico=barboterapia');
+  await page.goto('/agendar/?servico=barba-na-navalha-com-toalha-quente');
   await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
   await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
 

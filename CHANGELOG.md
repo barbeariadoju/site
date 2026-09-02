@@ -1,3 +1,46 @@
+## 29.105.0 — Rename de "Barboterapia" completo no site público (marketing/SEO)
+
+Continuação direta da v29.104.0. Naquela versão o rename "Barboterapia" (R$ 40, sem ozônio) →
+"Barba na navalha com toalha quente" tinha ficado restrito à JuIA e ao catálogo (Supabase +
+`services-catalog-v7.js`) — decisão registrada no CHANGELOG anterior como fora de escopo por
+ser mudança de marketing/SEO, não bug de IA, contrariando a nota da seção 5 do `CLAUDE.md`
+("não reduzir as menções de barboterapia na home"). Pedido explícito do Juliano depois: alinhar
+todo o site público também. "Barboterapia" (sozinha) fica reservada só pra versão com
+vaporizador de ozônio; a de R$ 40 é "Barba na navalha com toalha quente" em todo lugar.
+
+**Achado crítico durante a varredura:** `agendar/index.html` (a página real de agendamento)
+tinha os nomes de serviço **fixos no HTML** (`data-name="Barboterapia"`,
+`data-name="Corte + Barboterapia"`), uma terceira cópia do catálogo além do Supabase e do
+`services-catalog-v7.js` que a v29.104.0 não sabia que existia. Sem corrigir isso, o botão
+"Adicionar" continuaria mandando um nome de serviço que não existe mais no banco — teria
+quebrado agendamento de verdade pelo site. Mesma causa quebrou `vale-presente-v29.js`: os
+pacotes prontos "Vale Barboterapia" e "Vale Corte + Barboterapia" faziam `catalog.find(s =>
+s.name === n)` pelo nome antigo — sem o fix, o vale ficava com a lista de serviços vazia, em
+silêncio (o `.filter(Boolean)` engolia o `undefined`).
+
+Atualizado: home, `/agendar/`, `/servicos.html`, `/precos/` (as duas versões, atual e a de
+outubro), `/perguntas-frequentes.html`, os guias de barba, o post de blog dedicado
+(`blog-barboterapia.html` — virou sobre a versão sem ozônio, com link pra Barboterapia como
+upgrade) e as ~15 páginas que só citavam o serviço de passagem. Em cada página: título, meta
+description, Open Graph, Twitter Card, JSON-LD (`Service`/`FAQPage`/`Article`/`ItemList`,
+inclusive `breadcrumb`), H1/H2, texto corrido e o link de agendamento (`?servico=` — a
+slugificação em `service-cart-v22-5.js` já lida com o nome novo automaticamente, ela normaliza
+por `data-name`, não por uma lista fixa).
+
+**Decisão de escopo, de novo:** URLs não mudam (`servico-barboterapia.html` continua sendo a
+página da versão sem ozônio) — mesma lógica já registrada no `CLAUDE.md` contra migrar URLs do
+blog. Só o nome visível muda.
+
+**Capitalização:** primeira tentativa usou "Barba na Navalha com Toalha Quente" (inicial
+maiúscula em cada palavra) em títulos e H1 — inconsistente com o nome exato do catálogo
+("Barba na navalha com toalha quente", só a primeira letra) e com a voz editorial do resto do
+site (nenhum outro título usa Title Case). Corrigido com normalização em massa antes de
+publicar — pegou também um teste que ia quebrar por causa da comparação de texto.
+
+Testado: `npm test` (32 unit + 46 e2e) passando. `tests/e2e/cart.spec.js` atualizado pra usar
+`?servico=barba-na-navalha-com-toalha-quente` (o slug antigo `barboterapia` não bate mais com
+nenhum serviço, de propósito — é assim que a desambiguação funciona).
+
 ## 29.104.0 — Identidade da JuIA, nome duplicado, Barboterapia renomeada e confirmação falsa
 
 Quatro correções do Juliano em cima de conversas reais de hoje (WhatsApp).

@@ -15,8 +15,8 @@
   // Pacotes prontos: os três combos que o Juliano quer vender como presente.
   const PACKAGES = [
     { id: 'corte-lavagem', title: 'Vale Corte + Lavagem', desc: 'Corte masculino com lavagem profissional e acabamento caprichado.', services: ['Corte + Lavagem'] },
-    { id: 'barboterapia', title: 'Vale Barboterapia', desc: 'Toalha quente, espuma, navalha e produtos profissionais — o ritual completo.', services: ['Barboterapia'] },
-    { id: 'corte-barbo', title: 'Vale Corte + Barboterapia', desc: 'A experiência completa: corte e barboterapia num só atendimento.', services: ['Corte + Barboterapia'] },
+    { id: 'barboterapia', title: 'Vale Barba na navalha com toalha quente', desc: 'Toalha quente, espuma, navalha e produtos profissionais — o ritual completo.', services: ['Barba na navalha com toalha quente'] },
+    { id: 'corte-barbo', title: 'Vale Corte + Barba na navalha com toalha quente', desc: 'A experiência completa: corte e barba na navalha num só atendimento.', services: ['Corte + Barba na navalha com toalha quente'] },
   ];
 
   const state = { kind: 'package', items: [], pixPayload: '', orderRef: '' };
