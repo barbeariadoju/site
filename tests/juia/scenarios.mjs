@@ -301,4 +301,11 @@ export const scenarios = [
     history: [{ role: 'user', content: 'Boa tarde, tudo bem?' }, { role: 'assistant', content: 'Boa tarde, José! Tudo bem por aqui, e você? Como posso te ajudar hoje?' }],
     red_flags: ['e você?', 'Espero que esteja tudo bem', 'Tudo bem por aqui'],
     note: 'Resposta ao nosso "e você?": reage curto ("Que bom!") e vai pro que ele precisa — sem perguntar "e você?" de novo.' },
+  // v29.120.0 — pedido do Juliano (02/09/2026, print da Michele): dia de agenda cheia era
+  // anunciado como "em vários horários". "Vários" é abundância, e abundância lê como cadeira
+  // vazia — o certo é "ainda tenho alguns", que diz que dá pra encaixar sem anunciar folga.
+  { id: 'agenda-cheia-01', category: 'lista_de_horarios', message: 'Vc tem algum horário disponível amanhã?',
+    state: { services: ['Corte de cabelo'], date: proximoDiaAberto(1) },
+    red_flags: ['vários horários', 'varios horarios', 'muitos horários', 'diversos horários'],
+    note: 'CASO MICHELE (02/09/2026, 13h36). Dia inteiro livre: deve dizer que consegue atender e "ainda tenho alguns horários", nunca "vários" — e seguir perguntando manhã/tarde/fim do dia.' },
 ]

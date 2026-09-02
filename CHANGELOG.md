@@ -1,3 +1,21 @@
+## 29.120.0 — JuIA: agenda cheia é "ainda tenho alguns horários", nunca "vários"
+
+O Juliano mandou o print da conversa com a Michele (02/09, 13h36): *"Vc tem algum horário disponível hoje?"* → *"Consigo te atender hoje em **vários horários** para Corte de cabelo (30 min)."* O resto da conversa foi bem (ela escolheu tarde, recebeu a lista, fechou 14:30) — o problema é a palavra. Nas palavras dele: *"consigo te atender hoje sim, ainda tenho alguns horários, não vários horários, percebe a diferença"*.
+
+**Por que "vários" é o erro.** É a mesma questão da v29.12.0, que tirou o NÚMERO de horários livres da resposta ("Tenho 42 horários disponíveis") porque era a agenda vazia anunciada ao cliente. Trocar o número por "vários" resolveu o dado e manteve o recado: "vários" é abundância, e abundância na agenda de barbearia lê como cadeira vazia. "Ainda tenho alguns" diz exatamente a mesma verdade operacional — dá pra encaixar você — sem anunciar folga. E o "sim!" na frente responde a pergunta que a cliente fez de verdade ("tem horário?"), em vez de começar pela oferta.
+
+**Mudado em código** (`ju-ia-site`, ramo `allSlots.length>10` da disponibilidade):
+- Antes: *"Consigo te atender hoje em vários horários para Corte de cabelo (30 min). Você prefere manhã, tarde ou final do dia?"*
+- Agora: *"Consigo te atender hoje sim! Ainda tenho alguns horários para Corte de cabelo (30 min). Você prefere manhã, tarde ou final do dia?"*
+
+Só essa frase mudou. O resto do fluxo continua igual: a pergunta de período, a amostra de horários ("Alguns exemplos: 12:00, 14:00…") e o fechamento seguem como estavam — o print mostrou os três funcionando.
+
+**O que NÃO foi mexido:** o ramo que lista todos os horários quando são poucos (aí a escassez é real e mostrar a lista é o certo) e a amostra espalhada do dia inteiro quando o cliente já disse que qualquer horário serve. Nenhum dos dois usa palavra de quantidade.
+
+**Testes.** `npm run test:unit` (32) passou. Cenário novo `agenda-cheia-01` em `tests/juia/scenarios.mjs`, com "vários/muitos/diversos horários" como red flags. Sem bump de cache: só edge function e testes.
+
+**NO AR** (02/09, 17h30 BRT): `ju-ia-site` via CLI. Conferido em produção com telefone de teste (`5599900011234`, sessões `deploy-check-v29120-*` apagadas de `site_chat_messages` em seguida): o caso da Michele nos dois canais (WhatsApp e site) devolveu a frase nova, o follow-up "Tarde" devolveu a lista de exemplos normalmente, e os sete cenários das v29.118/119 (`horarios-01/02`, `despedida-01/02`, `saudacao-01/02/03`) passaram sem red flag — nenhuma regressão.
+
 ## 29.119.0 — JuIA: "tudo bem?" devolve a pergunta ("e você?")
 
 Complemento da v29.118.0, apontado pelo Juliano em cima do mesmo print do José Reis: *"Boa tarde meu amigo / Tudo bem?"* recebeu *"Tudo bem, José. Como posso ajudar você hoje?"* — seco. O correto, nas palavras dele: *"tudo bem e você?"*. O Kelvin, mais cedo (*"bom dia meu amigo, tudo bem por ai?"*), recebeu a mesma resposta sem devolver a pergunta (*"Tudo bem por aqui, obrigado."*).

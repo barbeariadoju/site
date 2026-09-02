@@ -2662,7 +2662,11 @@ Deno.serve(async req=>{
    // v29.12.0: não dizer mais o NÚMERO de horários livres ("Tenho 42 horários disponíveis")
    // — é a agenda vazia anunciada ao cliente, o mesmo erro que a trava de vacância impede no
    // conteúdo público. O que ele precisa saber é que dá pra encaixar, não quanto sobra.
-   reply=`Consigo te atender ${emDia(next.date)} em vários horários para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
+   // v29.120.0 (print da Michele, 02/09): "em vários horários" resolvia o número mas mantinha
+   // o recado — "vários" é abundância, e abundância na agenda de barbearia lê como cadeira
+   // vazia. "Ainda tenho alguns" diz a mesma verdade operacional (dá pra encaixar) sem
+   // anunciar folga, e o "sim!" na frente responde a pergunta que o cliente fez de verdade.
+   reply=`Consigo te atender ${emDia(next.date)} sim! Ainda tenho alguns horários para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
    actions=[
     {label:'Manhã',message:'Prefiro manhã'},
     {label:'Tarde',message:'Prefiro tarde'},
