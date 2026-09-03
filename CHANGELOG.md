@@ -1,3 +1,37 @@
+## 29.125.0 — Três defeitos numa tela só: a nota ignorada, o link que parecia golpe e o nome em minúscula
+
+O Juliano mandou o print da conversa com o **Kelvin** (03/09/2026, 12h43) com a pergunta certa: *"parece que esta resposta ficou um pouco confusa, não parece"*. Ficou — e por três motivos diferentes.
+
+### 1) A nota foi ignorada, e o cliente teve que responder duas vezes
+
+12h43:39 — *"obrigado meu amigo"*. Três segundos depois, 12h43:42 — *"1"*. E a JuIA respondeu: *"Nós que agradecemos, kelvin! Quando puder, me conta como foi o atendimento: digite 1 se ficou satisfeito, ou 2 se ficou insatisfeito."*
+
+Ele **acabou de digitar 1**. Teve que responder de novo, por escrito: *"foi excelente, sempre muito bom"*.
+
+**Causa:** o debounce (6 s) junta mensagens em rajada separando por `\n` — o texto virou `"obrigado meu amigo\n1"`. Nenhum padrão casava: `leadingOne` exige o dígito no INÍCIO, `/^1+$/` exige o dígito SOZINHO na mensagem. Sobrou o `ambiguousShortReply`, que viu "obrigad" e respondeu a gentileza.
+
+O detalhe cruel é que o defeito pune justamente quem é educado: quem manda só "1" é entendido; quem agradece antes, não.
+
+**Correção:** dígito numa **linha própria** conta como resposta da pesquisa. Testado offline com 11 casos — pega `"obrigado meu amigo\n1"`, `"valeu\n1\nate mais"`, `"1!!"`, e não sequestra `"quero 1 corte"`, `"pode ser 1 hora antes"` nem `"12"`.
+
+### 2) O link de avaliação parecia golpe
+
+O card que o cliente via dizia **"Sign in - Google Accounts"**, com **`rpkqluaxhqsxnewunhfm.supabase.co`** embaixo. O link ia direto para a edge function, e a pré-visualização do WhatsApp segue o redirecionamento — sem cookies, ela chegava numa tela de login do Google e usou aquele título.
+
+Pedir avaliação com um card assim é pedir para não ser clicado. E avaliação no Google é a maior alavanca de SEO local da casa (81 avaliações contra 467 do concorrente).
+
+**Correção:** o link passou a ser `barbeariadoju.com.br/avaliar/`, página nova com Open Graph da marca — título *"Avaliar a Barbearia do Ju no Google"* e a imagem da barbearia. Ela repassa o mesmo token para a mesma function, então o rastreio de cliques da v29.29.0 continua idêntico; só a cara do link mudou. Redirecionamento por JavaScript, de propósito: crawler não executa JS, lê as meta tags e vai embora — `<meta http-equiv="refresh">` seria seguido por alguns e estragaria o card de novo.
+
+### 3) "kelvin", em minúscula
+
+O cadastro tem o nome em caixa baixa e isso vazou para o cupom (*"Olá, kelvin"*) e para a resposta (*"Nós que agradecemos, kelvin"*). Numa mensagem que se apresenta como documento, passa desleixo — e quem assina o WhatsApp é o Juliano.
+
+Corrigido na **exibição** (`primeiroNome` em `_shared/comprovante.ts`), não no cadastro: o que o cliente digitou continua guardado como veio.
+
+**Testes.** 53 unit (5 novos para `primeiroNome`) + 46 e2e. Regex da nota testada offline com 11 casos.
+
+**NO AR** (03/09): `whatsapp-webhook` e `survey-recovery` via CLI; `/avaliar/` conferido em produção com as meta tags corretas.
+
 ## 29.124.0 — O contador de cadeira volta, entra no Git e ganha quem o vigie
 
 Três coisas sobre o mesmo assunto, no mesmo dia.
