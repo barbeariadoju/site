@@ -308,4 +308,50 @@ export const scenarios = [
     state: { services: ['Corte de cabelo'], date: proximoDiaAberto(1) },
     red_flags: ['vários horários', 'varios horarios', 'muitos horários', 'diversos horários'],
     note: 'CASO MICHELE (02/09/2026, 13h36). Dia inteiro livre: deve dizer que consegue atender e "ainda tenho alguns horários", nunca "vários" — e seguir perguntando manhã/tarde/fim do dia.' },
+
+  // ---------- Reajuste de 01/10/2026 (v29.128.0) ----------
+  // O Juliano pediu em 03/09: "cria situações aí e ensina ela". A regra vive na ficha de
+  // campanha (marketing_memory), que a JuIA e o gerador de conteúdo leem da MESMA fonte.
+  // O que não pode acontecer, em nenhum destes: pedir desculpa pelo aumento, justificar com
+  // custos/inflação, oferecer desconto ou "congelar" preço, ou citar o Clube do Ju (que só
+  // é lançado depois do reajuste).
+  { id: 'reajuste-01', category: 'reajuste', message: 'vai aumentar o preço do corte?',
+    red_flags: ['desculpa', 'infelizmente', 'custos aumentaram', 'inflação', 'desconto', 'Clube'],
+    note: 'PERGUNTA DIRETA: deve dizer que sim, a partir de 01/10, que o corte passa a R$ 50, e que até 30/09 vale R$ 40. Sem rodeio e sem se desculpar.' },
+
+  { id: 'reajuste-02', category: 'reajuste', message: 'ouvi falar que vcs vao aumentar, e verdade?',
+    red_flags: ['desculpa', 'custos', 'inflação', 'desconto', 'Clube'],
+    note: 'BOATO: confirma com naturalidade, dá a data (01/10) e manda a tabela nova (com barra no final: /precos/).' },
+
+  { id: 'reajuste-03', category: 'reajuste', message: 'quanto vai ficar a barba na navalha depois do aumento?',
+    red_flags: ['desculpa', 'desconto', 'R$ 45', 'R$ 60'],
+    note: 'VALOR ESPECÍFICO: perguntou direto, então pode responder — barba na navalha com toalha quente vai a R$ 50 em 01/10. Citar o valor de hoje junto é correto; o que não pode é inventar valor.' },
+
+  { id: 'reajuste-04', category: 'reajuste', message: 'quero marcar um corte pro dia 5 de outubro de manha',
+    red_flags: ['reajust', 'tabela nova', 'aumento', 'passa a custar', 'antes que aumente'],
+    note: 'AGENDAMENTO PARA DEPOIS DA VIRADA: NÃO deve avisar nada sobre reajuste (regra do Juliano, 03/09 — anunciar o tempo todo instiga a sensação de caro). Segue o fluxo normal de agendamento. Deve também dizer que 05/10 é segunda e a barbearia não abre, antes de oferecer outro dia.' },
+
+  { id: 'reajuste-05', category: 'reajuste', message: 'da pra marcar pro dia 29 de setembro?',
+    red_flags: ['R$ 50', 'R$50'],
+    note: 'ANTES da virada: preço é o de hoje (R$ 40). Não deve assustar o cliente com o valor novo nem tratar como se já tivesse subido.' },
+
+  { id: 'reajuste-06', category: 'reajuste', message: 'nossa aumentou muito hein, ta caro',
+    red_flags: ['desculpa', 'infelizmente', 'custos', 'inflação', 'desconto', 'condição especial', 'Clube'],
+    note: 'RECLAMAÇÃO: sem defensiva e sem desculpa. Reconhece com respeito, lembra em UMA frase o que sustenta o valor (hora marcada, sem pressa, garantia de ajuste, fidelidade) e encerra com convite leve. Nunca discutir, nunca oferecer desconto.' },
+
+  { id: 'reajuste-07', category: 'reajuste', message: 'e se eu pagar adiantado agora, mantem o preco velho?',
+    red_flags: ['sim, mantemos', 'pode pagar adiantado', 'congelo', 'garanto o preço', 'Clube'],
+    note: 'PEDIDO DE EXCEÇÃO: não existe pacote antecipado aprovado. Não pode prometer congelar preço nem inventar condição. Pode dizer que até 30/09 o valor de hoje vale para quem for atendido nesse prazo, e oferecer marcar um horário ainda em setembro.' },
+
+  { id: 'reajuste-08', category: 'reajuste', message: 'pq vcs estao aumentando?',
+    red_flags: ['custos aumentaram', 'inflação', 'aumento dos custos', 'desculpa', 'infelizmente'],
+    note: 'POR QUÊ: nunca justificar com custos ou inflação. Fala do que a casa entrega (hora marcada respeitada, atendimento individual sem pressa, garantia de ajuste), sem defensiva.' },
+
+  { id: 'reajuste-09', category: 'reajuste', message: 'e o platinado, tbm vai subir?',
+    red_flags: ['vai subir', 'aumenta', 'R$ 180', 'R$ 170'],
+    note: 'SERVIÇO QUE NÃO MUDA: Nevou/Platinado continua R$ 150. A química inteira e o Freestyle não mudam — não pode dizer que sobe.' },
+
+  { id: 'reajuste-10', category: 'reajuste', message: 'bom dia, queria marcar um corte',
+    red_flags: ['reajuste', '01/10', 'aumento', 'tabela nova', 'primeiro de outubro'],
+    note: 'NÃO PUXAR DO NADA: agendamento comum, sem data de outubro e sem pergunta sobre preço. A JuIA NÃO deve levantar o reajuste sozinha — só nos dois casos obrigatórios.' },
 ]

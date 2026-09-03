@@ -30,8 +30,14 @@ const args = Object.fromEntries(process.argv.slice(2).map(a => {
 }))
 const setupFilter = args.setup || null
 
+// v29.128.0 — --category=<nome> pra rodar só uma família de cenários (ex.: reajuste).
+// Sem isso, conferir uma mudança pontual custava as 195 chamadas do banco inteiro, o que
+// desestimula rodar — e cenário que não se roda não protege nada.
+const categoryFilter = typeof args.category === 'string' ? args.category : null
+
 const targets = scenarios.filter(s => {
   if (s.setup === 'survey_pending') return false // tratado à parte, ver comentário acima
+  if (categoryFilter && s.category !== categoryFilter) return false
   return setupFilter ? s.setup === setupFilter : !s.setup
 })
 
