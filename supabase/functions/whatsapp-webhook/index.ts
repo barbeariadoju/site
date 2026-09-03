@@ -120,7 +120,15 @@ const describeReferenceImage = async (
     const openaiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
     if (!openaiKey) return ''
 
-    const visionPrompt = 'Você ajuda uma barbearia a entender fotos de referência enviadas por clientes no WhatsApp. Descreva em português do Brasil, em até 2 frases objetivas, o corte de cabelo, estilo de barba ou coloração capilar mostrado na imagem, com detalhes úteis pra um barbeiro entender o que o cliente quer (comprimento, tipo de degradê, risco, formato da barba, técnica de cor etc.). Não sugira nome de serviço nem preço. Se a imagem não mostrar claramente um corte de cabelo, barba ou coloração capilar em uma pessoa, responda SOMENTE o texto NAO_RELACIONADO, sem mais nada.'
+    // v29.122.0 — o analisador agora reconhece COMPROVANTE DE PAGAMENTO, não só corte.
+    // Caso Israel Paula (02/09/2026): às 19h45 a JuIA mandou o comprovante do atendimento
+    // (R$ 95,00) e às 19h50 ele respondeu PAGANDO — print do Pix, mesmo valor. A JuIA
+    // respondeu "não consegui identificar nela um corte, barba ou coloração", porque a
+    // detecção de comprovante era por METADADO (nome do arquivo, legenda, ou a chave Pix ter
+    // saído nos últimos 60 min) e nenhum dos três existia: ele já tinha a chave e mandou a
+    // imagem sem legenda. Um comprovante de Pix é visualmente inconfundível — quem tem que
+    // reconhecer isso é quem olha a imagem, não o nome do arquivo.
+    const visionPrompt = 'Você ajuda uma barbearia a entender imagens enviadas por clientes no WhatsApp. Primeiro classifique a imagem. (1) Se for um COMPROVANTE ou RECIBO DE PAGAMENTO (Pix, transferência, TED, cartão, print de aplicativo de banco, com valor pago, nome do pagador ou do recebedor), responda SOMENTE "COMPROVANTE_PAGAMENTO" seguido do valor pago quando ele estiver legível, no formato COMPROVANTE_PAGAMENTO|95,00 — sem mais nada, sem explicação. Se o valor não estiver legível, responda só COMPROVANTE_PAGAMENTO. (2) Se for uma foto de referência mostrando claramente um corte de cabelo, barba ou coloração capilar em uma pessoa, descreva em português do Brasil, em até 2 frases objetivas, com detalhes úteis pra um barbeiro entender o que o cliente quer (comprimento, tipo de degradê, risco, formato da barba, técnica de cor etc.) — não sugira nome de serviço nem preço. (3) Em qualquer outro caso, responda SOMENTE o texto NAO_RELACIONADO, sem mais nada.'
     const r = await fetchWithTimeout('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
@@ -552,6 +560,12 @@ Deno.serve(async (request: Request) => {
     // Heurística pra imagem/PDF: nome do arquivo/legenda fala em comprovante/pix/pagamento,
     // OU a JuIA passou a chave Pix pra esse número nos últimos 60 min (aí foto sem legenda é
     // comprovante, não referência de corte).
+    // v29.122.0 — a análise da imagem passou a ser feita UMA vez e compartilhada entre os
+    // dois fluxos que precisam dela (comprovante de pagamento e foto de referência). Antes
+    // só o segundo olhava a imagem, e por isso um comprovante sem legenda era analisado
+    // como se fosse foto de corte.
+    let analiseImagem = ''
+    let analiseImagemFeita = false
     {
       const docMsg = data?.message?.documentMessage || data?.message?.documentWithCaptionMessage?.message?.documentMessage
       const imgMsg = data?.message?.imageMessage
@@ -560,12 +574,31 @@ Deno.serve(async (request: Request) => {
       const hasMedia = !!(docMsg || imgMsg)
       if (hasMedia || saysPaid) {
         let pixRecente = false
+        let cupomRecente = false
         if (hasMedia && !saysPaid) {
           const { data: ultimaChave } = await admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out')
             .ilike('body', '%Chave Pix%').gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString()).limit(1)
           pixRecente = !!(ultimaChave && ultimaChave.length)
+          // v29.122.0 (caso Israel, 02/09) — segundo gatilho, e o que vai ficar mais comum:
+          // MANDAMOS o comprovante do atendimento e o cliente responde com uma imagem. Ele
+          // está pagando a conta que acabou de receber, não mandando referência de corte.
+          // A v29.121.0 fez o cupom sair na hora (inclusive depois das 20h), então esse
+          // padrão — conta recebida, Pix pago em seguida — deixa de ser exceção.
+          if (!pixRecente) {
+            const { data: ultimoCupom } = await admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out')
+              .ilike('body', '%comprovante%').gte('created_at', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()).limit(1)
+            cupomRecente = !!(ultimoCupom && ultimoCupom.length)
+          }
         }
-        if (saysPaid || pixRecente) {
+        // Terceira rede: a própria imagem diz o que é. Só roda quando nenhum sinal de
+        // contexto pegou — e não custa chamada extra, porque a mesma análise seria feita
+        // logo abaixo, no fluxo de foto de referência (o resultado é reaproveitado lá).
+        if (imgMsg && !saysPaid && !pixRecente && !cupomRecente) {
+          analiseImagem = await describeReferenceImage(data?.key, imgMsg?.mimetype, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+          analiseImagemFeita = true
+        }
+        const ehComprovantePelaImagem = analiseImagem.startsWith('COMPROVANTE_PAGAMENTO')
+        if (saysPaid || pixRecente || cupomRecente || ehComprovantePelaImagem) {
           const { data: prox } = await admin.rpc('phone_upcoming_bookings', { p_phone: phone })
           let b = Array.isArray(prox) && prox.length ? prox[0] : null
           // v29.62.1 (caso Aletéia, 21/08/2026, 09h34): marcou 09:30, pediu a chave às 08:56 e
@@ -593,12 +626,49 @@ Deno.serve(async (request: Request) => {
             await admin.from('bookings').update({ prepay_declared_at: new Date().toISOString(), prepay_key: 'picpay' }).eq('id', b.id).is('prepay_confirmed_at', null)
             const { data: bk } = await admin.from('bookings').select('customer_name').eq('id', b.id).maybeSingle()
             const nome = String(bk?.customer_name || 'Cliente').split(/\s+/)[0]
-            await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: hasMedia ? `[comprovante recebido${docMsg?.fileName ? ': ' + docMsg.fileName : ''}]` : text })
-            await sendWhatsapp(phone, `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${total.toFixed(2).replace('.', ',')} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
+            // v29.122.0 — o valor lido NA IMAGEM do comprovante (quando legível) entra no
+            // aviso pro Juliano. Se não bater com o total do atendimento, ele vê a diferença
+            // antes de abrir o PicPay, em vez de descobrir conferindo.
+            const valorLido = analiseImagem.startsWith('COMPROVANTE_PAGAMENTO|')
+              ? analiseImagem.split('|')[1]?.trim().replace(/[^\d,.]/g, '') || ''
+              : ''
+            const totalFmt = total.toFixed(2).replace('.', ',')
+            const divergencia = valorLido && valorLido.replace(/\./g, '') !== totalFmt.replace(/\./g, '')
+              ? `\n⚠️ O comprovante mostra R$ ${valorLido}, e o atendimento fechou em R$ ${totalFmt}.`
+              : ''
+            await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: hasMedia ? `[comprovante recebido${docMsg?.fileName ? ': ' + docMsg.fileName : ''}${valorLido ? ` — R$ ${valorLido}` : ''}]` : text })
+            // v29.122.0 (caso Israel, 02/09) — atendimento JÁ CONCLUÍDO não tem horário a
+            // reservar: ele acabou de sair da cadeira e está quitando a conta. Dizer "seu
+            // horário segue reservado" pra quem já foi atendido soa como se não tivéssemos
+            // entendido nada do que aconteceu.
+            const jaAtendido = String(b.status) === 'completed'
+            await sendWhatsapp(phone, jaAtendido
+              ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
+              : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-              body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${total.toFixed(2).replace('.', ',')} · ${quando}\n${b.service_name}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
+              body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${totalFmt} · ${quando}${jaAtendido ? ' (já atendido)' : ''}\n${b.service_name}${divergencia}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
             return json({ ok: true, prepay_declared: b.id })
+          }
+          // v29.122.0 — COMPROVANTE SEM ATENDIMENTO ENCONTRADO. Antes, quando nenhuma reserva
+          // casava, o código simplesmente caía fora e a imagem seguia pro fluxo de "foto de
+          // referência", que respondia "não consegui identificar nela um corte" — para alguém
+          // que acabou de PAGAR. É a pior resposta possível: o cliente lê como se o dinheiro
+          // dele não tivesse chegado a lugar nenhum. Acontece de verdade em compra só de
+          // produto, pagamento de vale-presente, atendimento de mais de 3h atrás e telefone
+          // cadastrado diferente do que ele usa no WhatsApp. Aqui não dá pra dizer a que se
+          // refere o pagamento — então não inventamos: confirmamos o recebimento e passamos
+          // pro Juliano, que sabe.
+          if (ehComprovantePelaImagem || saysPaid) {
+            const valorSolto = analiseImagem.startsWith('COMPROVANTE_PAGAMENTO|')
+              ? analiseImagem.split('|')[1]?.trim().replace(/[^\d,.]/g, '') || ''
+              : ''
+            await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: `[comprovante recebido, sem atendimento vinculado${valorSolto ? ` — R$ ${valorSolto}` : ''}]` })
+            await sendWhatsapp(phone, `Recebi seu comprovante${valorSolto ? ` de R$ ${valorSolto}` : ''} 🙏 Vou passar pro Juliano conferir e ele te confirma por aqui.`)
+            const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+            if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+              body: JSON.stringify({ custom: { title: '💸 Comprovante sem atendimento vinculado', body: `${pushName || phone}${valorSolto ? ` — R$ ${valorSolto}` : ''}\nNão achei reserva pra esse telefone. Confere no PicPay e vê a que se refere.`, url: '/admin-mensagens.html?app=1', tag: `prepay-solto-${phone}` } }) }).catch(() => {})
+            return json({ ok: true, prepay_orphan: true })
           }
         }
       }
@@ -611,7 +681,19 @@ Deno.serve(async (request: Request) => {
     let imageDescribed = false
     if (!text && data?.message?.imageMessage) {
       const caption = String(data.message.imageMessage.caption || '').trim()
-      const description = await describeReferenceImage(data?.key, data.message.imageMessage?.mimetype, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+      // v29.122.0 — reusa a análise que o bloco de comprovante já fez (uma chamada de visão
+      // por imagem, não duas). Só chama aqui quando aquele bloco não precisou olhar.
+      const description = analiseImagemFeita
+        ? analiseImagem
+        : await describeReferenceImage(data?.key, data.message.imageMessage?.mimetype, evolutionApiUrl, evolutionApiKey, evolutionInstance)
+      // Comprovante que chegou até aqui já foi tratado e respondido no bloco acima; se ainda
+      // assim cair neste ponto (ex.: falha ao gravar), registra e cala — nunca responder a um
+      // comprovante com o aviso de "não identifiquei um corte".
+      if (description.startsWith('COMPROVANTE_PAGAMENTO')) {
+        console.log('[whatsapp-webhook] comprovante identificado na imagem mas não vinculado — silêncio em vez do aviso de referência', phone)
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[comprovante recebido]' })
+        return json({ ok: true, skipped: 'receipt_image' })
+      }
       if (description === 'NAO_RELACIONADO') {
         // v29.43.0 — o aviso "nao consegui identificar sua foto" saiu 5x para o mesmo numero
         // em 24h e, no caso Guilherme Silva (18/08, 09:19), chegou entre o "1" da pesquisa e
