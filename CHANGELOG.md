@@ -1,3 +1,31 @@
+## 29.133.0 — A última seta: o agendamento volta para o Google
+
+`database/migrations/134-v29.133.0-google-ads-offline-conversions.sql`
+
+O circuito da atribuição era **Google → gclid → site → WhatsApp → JuIA → agendamento → nada**. Sem a última seta, o algoritmo do Ads só aprendia com pedido de rota e clique — a única coisa que ele conseguia medir. Daí as 23 conversões de rota contra 1 de agendamento nos 30 dias até 02/09.
+
+A view `google_ads_offline_conversions` entrega as linhas no formato exato da importação de conversões offline:
+
+```
+Google Click ID | Conversion Name                    | Conversion Time            | Conversion Value | Conversion Currency
+Cj0KCQjw...     | Agendamento confirmado (WhatsApp)  | 2026-09-01 19:58:40-03:00  | 48.00            | BRL
+```
+
+**Eu estava errado na v29.131.0** ao dizer que isso dependia de developer token da API do Google Ads. Não depende: a importação por planilha (Google Sheets / Data Manager) nunca exigiu API. A auditoria do ChatGPT corrigiu isso, e é o que tirou a peça mais importante da fila de "esperar terceiro".
+
+**Decisões dentro da view:**
+
+- **Cancelamento e no-show ficam de fora.** Mandar ao Google uma conversão que não virou cadeira ocupada é ensinar o algoritmo a procurar mais gente que cancela.
+- **Deduplicação é por conta do Google** — `gclid` + nome + horário repetidos são ignorados. Então reenviar a planilha inteira todo dia é seguro e idempotente, sem precisar de coluna de controle "já enviei".
+- **Janela de 90 dias**, a mesma do `localStorage` do `whatsapp-attrib-v29.js` e a mesma que o Ads aceita.
+- **`security_invoker` + `revoke` de `anon`/`authenticated`**: a view não sai pelo PostgREST, só com service_role.
+
+**A view está vazia hoje, e pelo motivo certo.** Existe exatamente 1 registro com `gclid` e agendamento desde 11/08 — e o status dele é `cancelled`. O filtro fez o trabalho.
+
+Vazia é o estado esperado agora: a captura só passou a existir de verdade hoje, com a v29.131.0 e a v29.132.0. O cano ficou pronto antes da água chegar, de propósito.
+
+**O que falta, e é no painel:** criar no Google Ads a ação de conversão de importação com o nome `Agendamento confirmado (WhatsApp)` e apontar a planilha. Enquanto ela não existir, as linhas não têm onde entrar.
+
 ## 29.132.0 — A atribuição que capturava e não registrava, em 5 páginas
 
 Auditoria do ChatGPT em cima da v29.131.0 levantou a pergunta certa: *"eu não quero simplesmente capturar GCLID quando alguém entra, quero garantir que ele seja persistido até o momento da conversão"*.
