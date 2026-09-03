@@ -45,7 +45,9 @@ describe('montarCupom', () => {
     expect(cupom).toContain('Corte de cabelo — R$ 45,00');
     expect(cupom).toContain('*Total: R$ 45,00*');
     expect(cupom).toContain('Pago no Pix');
-    expect(cupom).toContain('Documento sem valor fiscal');
+    // v29.126.0: rodape fiscal e endereco removidos — mensagem gigante cansa o cliente
+    expect(cupom).not.toContain('Documento sem valor fiscal');
+    expect(cupom).not.toContain('Rua Dr');
     // Sem desconto não existe subtotal: linha a mais só confunde.
     expect(cupom).not.toContain('Subtotal');
   });
@@ -126,7 +128,7 @@ describe('montarMensagemComprovante', () => {
   it('abre com o primeiro nome e fecha com a pesquisa 1/2', () => {
     const msg = norm(montarMensagemComprovante(base));
     expect(msg.startsWith('Olá, Wellington. Muito obrigado pela visita à Barbearia do Ju.')).toBe(true);
-    expect(msg).toContain('Se algum valor não bater com o que combinamos');
+    expect(msg).not.toContain('Se algum valor não bater com o que combinamos');
     expect(msg).toContain('Digite *1* para Satisfeito');
     expect(msg).toContain('Digite *2* para Insatisfeito');
   });

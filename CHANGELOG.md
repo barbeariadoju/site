@@ -1,3 +1,42 @@
+## 29.126.0 — O cupom enxuto: cansar o cliente custa a pesquisa
+
+Pedido do Juliano em 03/09/2026, em cima do print do atendimento do Rafael: *"mensagem gigante cansa o cliente... esta parte pode remover do texto e deixar ele mais enxuto por padrão"*.
+
+Saíram três blocos, todos escritos hoje de manhã na v29.121.0:
+
+- `Documento sem valor fiscal, emitido para sua conferência.`
+- `Barbearia do Ju - Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista/SP`
+- `Se algum valor não bater com o que combinamos, me avise por aqui que eu confiro na hora.`
+
+**Ele tem razão, e o custo era medível.** A pesquisa 1/2 fica no FIM da mensagem — cada linha a mais reduz quem chega até ela. E a taxa de resposta da pesquisa alimenta o pedido de avaliação no Google, que é a maior alavanca de SEO local da casa. Rodapé bonito que ninguém lê custa avaliação.
+
+Os três blocos eram texto que só o documento queria, não o leitor: o cliente já sabe que não é nota fiscal, já sabe o endereço da barbearia onde acabou de ser atendido, e já pode responder no mesmo fio se algo não bater — o convite era redundante com o próprio canal.
+
+**O que fica**, e é o que responde à pergunta que originou o cupom (caso Wellington, 02/09): número do documento, item por item com valor, subtotal e desconto quando existem, total, forma de pagamento e caixinha.
+
+Resultado no caso real do Rafael: **de 17 para 11 linhas**, com o "Digite 1" subindo para logo depois do total.
+
+```
+Olá, Rafael. Muito obrigado pela visita à Barbearia do Ju.
+
+*COMPROVANTE DE ATENDIMENTO*
+Nº 030926-52E395 — hoje às 11:10
+
+Corte de cabelo infantil — R$ 40,00
+Coca-Cola Lata — R$ 8,00
+
+*Total: R$ 48,00*
+Pago no Pix
+
+Como foi seu atendimento?
+Digite *1* para Satisfeito
+Digite *2* para Insatisfeito
+```
+
+**Testes.** 53 unit — os dois casos que exigiam o rodapé viraram o inverso, garantindo que ele não volte por acidente.
+
+**NO AR** (03/09): `satisfaction-dispatch` via CLI.
+
 ## 29.125.0 — Três defeitos numa tela só: a nota ignorada, o link que parecia golpe e o nome em minúscula
 
 O Juliano mandou o print da conversa com o **Kelvin** (03/09/2026, 12h43) com a pergunta certa: *"parece que esta resposta ficou um pouco confusa, não parece"*. Ficou — e por três motivos diferentes.

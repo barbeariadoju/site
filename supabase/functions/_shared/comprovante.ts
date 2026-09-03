@@ -113,7 +113,17 @@ const agruparProdutos = (produtos: ItemComprovante[]) => {
   return linhas
 }
 
-const RODAPE_CASA = 'Barbearia do Ju - Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista/SP'
+// v29.126.0 — o rodapé ("Documento sem valor fiscal…" + endereço) e a linha "Se algum valor não
+// bater…" saíram, a pedido do Juliano em 03/09/2026: "mensagem gigante cansa o cliente".
+//
+// Ele tem razão, e o custo era medível: a pesquisa 1/2 fica no FIM da mensagem, então cada linha
+// a mais reduz quem chega até ela. O cliente já sabe que não é nota fiscal, já sabe o endereço da
+// barbearia onde acabou de ser atendido, e já pode responder no mesmo fio se algo não bater —
+// era texto que só o documento queria, não o leitor.
+//
+// O que continua: número do documento, item por item, subtotal/desconto quando existem, total,
+// forma de pagamento e caixinha. É o que responde à pergunta que originou o cupom (caso
+// Wellington, 02/09) — quanto foi cada coisa.
 
 export const ehVendaSoDeProduto = (d: Pick<DadosComprovante, 'servicoValor' | 'produtos'>) =>
   Number(d.servicoValor || 0) <= 0 && Array.isArray(d.produtos) && d.produtos.length > 0
@@ -174,9 +184,6 @@ export const montarCupom = (d: DadosComprovante) => {
     ...itens,
     '',
     ...totais,
-    '',
-    'Documento sem valor fiscal, emitido para sua conferência.',
-    RODAPE_CASA,
   ].join('\n')
 }
 
@@ -201,8 +208,6 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
     `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,
     '',
     montarCupom(d),
-    '',
-    'Se algum valor não bater com o que combinamos, me avise por aqui que eu confiro na hora.',
     ...(d.balcao ? ['', 'Da próxima vez, se quiser, é só me chamar aqui que eu já deixo seu horário reservado.'] : []),
     '',
     'Como foi seu atendimento?',
