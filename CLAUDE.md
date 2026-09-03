@@ -49,12 +49,34 @@ técnico", e todo tema de saúde termina com encaminhamento ao dermatologista.
   `@import` no `style.css`.
 - Publicação: `git push origin main` → GitHub Pages leva ~1 minuto.
   **Confirme no ar com curl** antes de dizer que está feito.
-- Testes reais: `npm test` = 17 unit (vitest) + 46 e2e (playwright).
+- Testes reais: `npm test` = 48 unit (vitest) + 46 e2e (playwright).
   **Rode sempre antes de publicar.**
-- ⚠️ **Nunca** rode `npm run test:e2e:live` — grava no Supabase de produção.
+- ⚠️ **Nunca** rode `npm run test:e2e:live` — grava no Supabase de produção. Desde
+  03/09/2026 isso é regra no `.claude/settings.json`, não só aviso escrito.
 
 Identificadores: GTM `GTM-T9KR76KB` · GA4 `G-4XZTP0550B` (propriedade `545112517`)
 · Supabase project `rpkqluaxhqsxnewunhfm`.
+
+### O WhatsApp (Evolution API) — onde mora
+
+Está aqui porque essa topologia só existia num `.md` solto na pasta do Claude, que já se
+perdeu uma vez numa formatação. **Nenhuma credencial nesta seção** — o repo é público para
+quem tem acesso a ele.
+
+- Servidor: Oracle Cloud, região `sa-saopaulo-1`, instância `evolution-api`
+  (VM.Standard.A1.Flex, Always Free), Oracle Linux 9.8 aarch64, IP `163.176.170.193`,
+  usuário SSH `opc`.
+- Stack: Docker Compose com `postgres` + `redis` + `evolution-api` (v2.1.1) + `caddy`.
+  Definição versionada em `whatsapp-ai/` (o `.env` real vive só no servidor).
+- O Supabase chama a Evolution pelos secrets `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e
+  `EVOLUTION_INSTANCE_NAME`; a Evolution chama de volta o `whatsapp-webhook`, que aceita o
+  segredo por header `x-webhook-secret` **ou** por `?token=` na URL.
+- ⚠️ Hoje a porta 8080 está aberta para `0.0.0.0/0` e o `EVOLUTION_API_URL` é **http**, não
+  https. O `Caddyfile` e o domínio `evolution.barbeariadoju.com.br` já estão prontos em
+  `whatsapp-ai/` para migrar isso quando o Juliano quiser — é melhoria de arquitetura, e ele
+  já decidiu (03/09/2026) que não é urgência.
+- As credenciais dessa infra vivem fora do repo, em `~/.claude/site barbearia/`. Nunca
+  copiar valor nenhum de lá para dentro deste repositório.
 
 ---
 
