@@ -55,6 +55,10 @@ function parseSensors(raw: string): Array<{ idx: number; mode: number; name: str
   } catch { return [] }
 }
 const MODE: Record<string, string> = { '1': 'armado', '2': 'desarmado', '3': 'casa' }
+// v29.124.0 — vigia do contador de cadeira. 30 min é folgado de propósito: o contador manda
+// sinal a cada 5 min, então 30 absorve uma queda de rede ou um reinício sem gerar alarme falso.
+const CAMERA_SILENT_MIN = 30
+const CAMERA_DEVICE = 'camera-cadeira'
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'POST' }, 405)
@@ -187,7 +191,51 @@ Deno.serve(async (req) => {
 
       out.push({ id: d.id, name: d.name, online: d.online, mode, alarmOn, lastSensorEvent, sensors: enriched.length, events: rows.length })
     }
-    return json({ ok: true, hubs: out })
+
+    // v29.124.0 — VIGIA DO CONTADOR DE CADEIRA (pedido do Juliano, 03/09/2026).
+    //
+    // O contador ficou DOIS DIAS parado depois da formatação (01/09 13h26 → 03/09 12h48) e
+    // ninguém percebeu: ele roda no notebook da barbearia, e quando morre, morre calado. O
+    // card no admin já mostrava o silêncio, mas só para quem abrisse a tela — e o Juliano
+    // abre a tela justamente quando está com cliente na cadeira.
+    //
+    // Por que aqui, e não numa rotina do computador: um vigia que roda na MESMA máquina que
+    // ele vigia não serve para nada — cai junto. Este cron roda no Supabase, de 10 em 10 min,
+    // e continua de pé mesmo com o notebook desligado, formatado ou fora da barbearia.
+    // Reaproveita o alert()/resolve() do alarme, que já não repete aviso em aberto e já
+    // fecha sozinho quando o problema passa.
+    const camera = { attempted: true, alerted: false, error: '' }
+    try {
+      const { data: hb } = await admin.from('camera_heartbeat').select('device, last_seen_at').order('last_seen_at', { ascending: false }).limit(1).maybeSingle()
+      const lastSeen = hb?.last_seen_at ? new Date(String(hb.last_seen_at)).getTime() : null
+      const minutosSemSinal = lastSeen === null ? null : Math.floor((now - lastSeen) / 60000)
+
+      // Só cobra sinal em horário de funcionamento (ter-sáb, 8h-19h). Fora disso o notebook
+      // pode estar desligado de propósito, e avisar seria ruído — a barbearia fecha domingo
+      // e segunda, e o Juliano não vai ligar o PC de madrugada para calar um alerta.
+      const spDia = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'numeric' } as Intl.DateTimeFormatOptions).format(new Date())) || new Date().getUTCDay()
+      const spHora = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+      const diaAberto = spDia >= 2 && spDia <= 6
+      const dentroDoExpediente = diaAberto && spHora >= 8 && spHora < 19
+
+      if (minutosSemSinal !== null && minutosSemSinal <= CAMERA_SILENT_MIN) {
+        await resolve(CAMERA_DEVICE, 'camera_offline', null)
+      } else if (dentroDoExpediente) {
+        const quanto = minutosSemSinal === null
+          ? 'nunca deu sinal'
+          : minutosSemSinal >= 1440
+            ? `parado há ${Math.floor(minutosSemSinal / 1440)} dia(s)`
+            : `parado há ${Math.floor(minutosSemSinal / 60)}h${String(minutosSemSinal % 60).padStart(2, '0')}`
+        camera.alerted = await alert(CAMERA_DEVICE, 'camera_offline', null,
+          `O contador de clientes na cadeira ${quanto}. Confira se o notebook da barbearia está ligado e conectado — enquanto isso os atendimentos não estão sendo contados pela câmera.`,
+          '📷 Contador de cadeira parado')
+      }
+    } catch (e) {
+      camera.error = e instanceof Error ? e.message : String(e)
+      console.error('[tuya-watch] camera_watchdog', camera.error)
+    }
+
+    return json({ ok: true, hubs: out, camera })
   } catch (e) {
     console.error('[tuya-watch]', e)
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)

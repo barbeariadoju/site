@@ -1,3 +1,39 @@
+## 29.124.0 — O contador de cadeira volta, entra no Git e ganha quem o vigie
+
+Três coisas sobre o mesmo assunto, no mesmo dia.
+
+### O que tinha acontecido
+
+O contador estava parado desde **01/09 às 13h26** e ninguém percebeu — dois dias. O `counter.log` terminava em *"sem quadro da câmera — reconectando"*, o que parece defeito de hardware, e não era: em 03/09 a câmera respondia normalmente, RTSP e ONVIF abertos, e o notebook estava na rede da barbearia.
+
+O que a formatação levou foi tudo que morava **fora da pasta do projeto**: o Python 3.12, o atalho de Startup (`BarbeariaContadorCadeira.vbs`) e o `barbearia-camera.env`. E o `start-counter.bat` continuava apontando para `C:\Users\julia\...`, o usuário de antes da formatação.
+
+Diagnóstico que vale guardar: *"sem quadro da câmera"* no log significa as duas coisas — câmera fora do ar **e** senha errada. O que separa é rodar com `--once` e olhar a linha do ffmpeg: `401 Unauthorized` é credencial, não é hardware. Aqui deu 401 nos dois lugares (RTSP e ingest do Supabase), que eram exatamente os dois campos vazios do `.env`.
+
+### 1) Restaurado (03/09, 12h48)
+
+Python reinstalado, dependências, `.env` refeito, `.bat` e `.vbs` reescritos com `%USERPROFILE%`/`%LOCALAPPDATA%` — nunca mais caminho fixo de usuário. Enquadramento conferido no `debug.jpg`, que é o único jeito honesto de saber se a câmera não girou: **a cadeira está inteira dentro da zona, e a poltrona e o sofá de espera ficaram fora dela** — quem senta para esperar não vira atendimento fantasma. A calibração de agosto sobreviveu intacta no `zone.json`.
+
+### 2) Versionado — `camera-cadeira/` (v29.123.0, commit 2112fdc)
+
+O contador nunca esteve no Git. Por isso quase morreu. Entraram no repo o `chair_counter.py`, o `zone.json`, os dois atalhos e um README com instalação em máquina nova, diagnóstico e os parâmetros de sessão. Ficam de fora, de propósito: o `.env` real (tem a senha da câmera) e o `yolov8n.pt` (o ultralytics baixa sozinho). Próxima formatação: `git clone` e preencher três valores.
+
+### 3) Vigiado — o alerta que faltava
+
+Pedido do Juliano: *"e se puder deixar tudo isso online, assim se formatar o computador a estrutura não depende daqui"*. É a pergunta certa, e ela decide onde o vigia mora.
+
+**Um vigia que roda na mesma máquina que ele vigia não serve para nada — cai junto.** Então a verificação foi pendurada no `tuya-watch`, o cron que já roda no Supabase de 10 em 10 minutos para o alarme: se o contador passa de **30 minutos** sem dar sinal **e** estamos em horário de funcionamento (ter-sáb, 8h-19h), sai push. Fecha sozinho quando o sinal volta.
+
+- **30 min** é folgado de propósito: o contador manda sinal a cada 5 min, então a janela absorve queda de rede e reinício sem alarme falso.
+- **Só no expediente** porque fora dele o notebook pode estar desligado de propósito — cobrar sinal de madrugada seria ruído, e alerta que grita à toa é alerta que se aprende a ignorar.
+- Reaproveita o `alert()`/`resolve()` do alarme, que já não repete aviso em aberto e já fecha sozinho. Nenhuma function nova para manter.
+
+O card "Cadeira (câmera)" no admin continua existindo — mas ele só avisa quem abre a tela, e o Juliano abre a tela justamente quando está com cliente na cadeira. O push vai atrás dele.
+
+**Testes.** `npm run test:unit` (48). Parse TypeScript conferido antes do deploy. Sem bump de cache: só edge function.
+
+**NO AR** (03/09): `tuya-watch` versão 7, `verify_jwt=true` preservado.
+
 ## 29.122.0 — A JuIA lê comprovante de Pix pela imagem, não pelo nome do arquivo
 
 O Juliano mandou o print da conversa com o **Israel Paula** (02/09/2026). A sequência, com hora:
