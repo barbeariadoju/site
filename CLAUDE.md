@@ -59,24 +59,20 @@ Identificadores: GTM `GTM-T9KR76KB` · GA4 `G-4XZTP0550B` (propriedade `54511251
 
 ### O WhatsApp (Evolution API) — onde mora
 
-Está aqui porque essa topologia só existia num `.md` solto na pasta do Claude, que já se
-perdeu uma vez numa formatação. **Nenhuma credencial nesta seção** — o repo é público para
-quem tem acesso a ele.
+⚠️ **ESTE REPOSITÓRIO É PÚBLICO.** Conferido em 03/09/2026 (`visibility: public`). Nada de
+endereço de servidor, usuário de acesso, porta, credencial ou detalhe de firewall pode ser
+escrito aqui — nem "para documentar". Em 03/09 eu mesmo publiquei o IP e o usuário SSH da
+instância nesta seção e tive que remover; o histórico do Git guarda o que já foi commitado,
+então o estrago de um deslize desse não se desfaz editando depois.
 
-- Servidor: Oracle Cloud, região `sa-saopaulo-1`, instância `evolution-api`
-  (VM.Standard.A1.Flex, Always Free), Oracle Linux 9.8 aarch64, IP `163.176.170.193`,
-  usuário SSH `opc`.
-- Stack: Docker Compose com `postgres` + `redis` + `evolution-api` (v2.1.1) + `caddy`.
-  Definição versionada em `whatsapp-ai/` (o `.env` real vive só no servidor).
+- Stack: Docker Compose com `postgres` + `redis` + `evolution-api` (v2.1.1) + `caddy`,
+  hospedada em nuvem. Definição versionada em `whatsapp-ai/` (o `.env` real vive só no
+  servidor, nunca aqui).
 - O Supabase chama a Evolution pelos secrets `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e
   `EVOLUTION_INSTANCE_NAME`; a Evolution chama de volta o `whatsapp-webhook`, que aceita o
   segredo por header `x-webhook-secret` **ou** por `?token=` na URL.
-- ⚠️ Hoje a porta 8080 está aberta para `0.0.0.0/0` e o `EVOLUTION_API_URL` é **http**, não
-  https. O `Caddyfile` e o domínio `evolution.barbeariadoju.com.br` já estão prontos em
-  `whatsapp-ai/` para migrar isso quando o Juliano quiser — é melhoria de arquitetura, e ele
-  já decidiu (03/09/2026) que não é urgência.
-- As credenciais dessa infra vivem fora do repo, em `~/.claude/site barbearia/`. Nunca
-  copiar valor nenhum de lá para dentro deste repositório.
+- **Endereços, usuário de acesso, portas e credenciais dessa infra ficam FORA do repo**, em
+  `~/.claude/site barbearia/` e na memória do projeto. É de lá que se consulta — nunca daqui.
 
 ---
 
