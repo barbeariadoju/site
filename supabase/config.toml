@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.tuya-watch]
 verify_jwt = true
+
+# v29.134.0 — CSV de conversões offline para o Google Ads buscar sozinho (Data Manager,
+# fonte HTTPS). SEM JWT porque o Google não manda Authorization do Supabase; quem protege
+# é o ADS_CSV_TOKEN, conferido no código em tempo constante.
+[functions.google-ads-conversions-csv]
+verify_jwt = false

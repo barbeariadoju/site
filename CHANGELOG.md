@@ -1,3 +1,46 @@
+## 29.134.0 — O CSV que o Google busca sozinho
+
+`supabase/functions/google-ads-conversions-csv/` · `supabase/functions/_shared/ads-csv.ts` · `tests/unit/ads-csv.spec.js` · `database/migrations/135-*.sql`
+
+A v29.133.0 deixou a view pronta, mas alguém ainda teria que exportar e subir a planilha na mão toda semana — e o que depende de alguém lembrar, para. Agora o Google busca sozinho.
+
+A function serve a view em CSV numa URL protegida por `ADS_CSV_TOKEN`, para ser apontada como **fonte HTTPS** no Data Manager. Também serve para download manual quando for preciso conferir na mão.
+
+**Sem JWT, de propósito.** O Data Manager do Google não manda `Authorization` do Supabase — está declarado no `config.toml` junto dos webhooks, com o motivo escrito. Quem protege é o token, conferido **em tempo constante**: comparação byte a byte com XOR acumulado, sem `return` no primeiro byte diferente, para o tempo de resposta não revelar quanto do prefixo estava certo.
+
+**O token nunca entra no repo.** Ele vive em `~/.claude/site barbearia/ADS_CSV_TOKEN.txt` e como secret no Supabase. No repositório só aparece o *nome* da variável — conferido com busca pelo valor antes do commit, porque este repositório é público e já custou um deslize em 03/09.
+
+### Três detalhes do formato que o Google recusa em silêncio
+
+Por isso o CSV virou `_shared/ads-csv.ts` com teste, em vez de ficar solto dentro da function:
+
+1. **CRLF** entre as linhas;
+2. **quebra de linha no fim do arquivo** — sem ela a última conversão é descartada sem aviso;
+3. **escaping RFC 4180** — aspas dobradas, campo entre aspas quando tem vírgula, aspas ou quebra.
+
+Os 6 testes cobrem exatamente isso, mais o arquivo só com cabeçalho (que é o estado de hoje) e campo ausente virando vazio em vez de `"undefined"`.
+
+### Erro meu, e como apareceu
+
+O `revoke all ... from anon, authenticated` da migração 134 deixou a view **sem SELECT também para o `service_role`** — ela ficou com TRUNCATE, REFERENCES e TRIGGER e mais nada. A function respondia 401 corretamente nas portas erradas e **500 "erro ao ler" com o token certo**.
+
+O deploy não reclamou. O `apply_migration` respondeu `success`. Só apareceu porque o endpoint foi chamado de verdade depois de publicado, com as três combinações — sem token, token errado, token certo. Corrigido na migração 135.
+
+### Testado no ar
+
+```
+sem token     -> HTTP 401
+token errado  -> HTTP 401
+token certo   -> HTTP 200   text/csv; charset=utf-8
+via header    -> HTTP 200
+```
+
+**Testes.** 59 unit (6 novos) + 46 e2e.
+
+**NO AR** (03/09): `google-ads-conversions-csv` via CLI; migração 135 aplicada.
+
+**Falta no painel:** criar no Google Ads a ação de conversão de importação com o nome exato `Agendamento confirmado (WhatsApp)` e apontar a fonte HTTPS para a URL da function. A URL completa com o token está no arquivo de credenciais, fora do repo.
+
 ## 29.133.0 — A última seta: o agendamento volta para o Google
 
 `database/migrations/134-v29.133.0-google-ads-offline-conversions.sql`
