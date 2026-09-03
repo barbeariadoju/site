@@ -1,3 +1,35 @@
+## 29.122.0 — A JuIA lê comprovante de Pix pela imagem, não pelo nome do arquivo
+
+O Juliano mandou o print da conversa com o **Israel Paula** (02/09/2026). A sequência, com hora:
+
+- **19h42** — atendimento: Corte + Lavagem + Barba na navalha com toalha quente, mais uma água. R$ 95,00.
+- **19h45** — a JuIA manda o comprovante do atendimento (o cupom da v29.121.0, que passou a sair na hora).
+- **19h50** — o Israel responde **pagando**: print do Pix, R$ 95,00, exatamente o total.
+- **19h50** — a JuIA: *"Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?"*
+
+O cliente estava quitando a conta que a gente acabou de mandar, e ouviu de volta uma pergunta sobre que corte ele queria.
+
+**Por que passou.** A detecção de comprovante (v29.47.0, caso Frei Bartolomeu) era por **metadado**, não por conteúdo: valia se o nome do arquivo ou a legenda falassem em pagamento, ou se a chave Pix tivesse saído para aquele número nos últimos 60 minutos. Nenhuma das três valia aqui — ele já tinha a chave de outra vez e mandou a imagem sem legenda nenhuma. Aí a foto seguiu para o fluxo de "referência de corte", que é o único que de fato **olhava** a imagem. Ou seja: o sistema tinha um analisador de visão apontado para a imagem e mesmo assim decidia o que ela era pelo nome do arquivo.
+
+**Correção, na raiz.** Quem olha a imagem passa a classificar a imagem:
+
+- `describeReferenceImage` agora responde `COMPROVANTE_PAGAMENTO|<valor>` quando a imagem é recibo (Pix, TED, cartão, print de banco), além de continuar descrevendo corte/barba/cor. Comprovante de Pix é visualmente inconfundível — tem valor, pagador, recebedor, banco.
+- A análise virou **uma** chamada, compartilhada pelos dois fluxos. Antes, só o de referência olhava; agora o de comprovante olha primeiro e o de referência reaproveita o resultado. Nenhuma chamada de visão a mais.
+
+**Três buracos que apareceram junto, todos fechados:**
+
+1. **Gatilho novo — cupom recente.** Se *nós* mandamos o comprovante do atendimento nas últimas 6h e o cliente responde com imagem, é pagamento. Isso vai deixar de ser exceção: a v29.121.0 fez o cupom sair na hora, inclusive depois das 20h, então "recebeu a conta → pagou → mandou o print" vira o caminho normal.
+2. **Comprovante sem atendimento vinculado.** Quando nenhuma reserva casava, o código simplesmente caía fora e a imagem ia parar no aviso de "não identifiquei um corte" — para quem acabou de pagar. Acontece de verdade em compra só de produto, vale-presente, atendimento de mais de 3h atrás e telefone do WhatsApp diferente do cadastrado. Agora confirma o recebimento e avisa o Juliano, sem inventar a que se refere.
+3. **Atendimento já concluído.** A resposta terminava em *"seu horário segue reservado"* — dita a alguém que já tinha saído da cadeira. Quem já foi atendido recebe outro fecho.
+
+**De brinde:** o valor lido na imagem entra no push. Se o comprovante mostra R$ 80 e o atendimento fechou em R$ 95, o Juliano vê a diferença antes de abrir o PicPay, em vez de descobrir conferindo.
+
+**O que NÃO mudou:** os gatilhos antigos (legenda/nome de arquivo, chave Pix nos últimos 60 min) continuam valendo, na frente — são mais baratos que uma chamada de visão. O `prepay_declared_at` segue sendo só declaração do cliente; quem confirma o pagamento continua sendo o Juliano na Agenda, e o "Pagamento confirmado" continua saindo pelo `prepay-confirm`.
+
+**Testes.** `npm test`: 48 unit + 46 e2e. Parse TypeScript das três functions conferido antes do deploy. Sem bump de cache: só edge function.
+
+**NO AR** (03/09, 09h47 BRT): `whatsapp-webhook` versão 98 via CLI, `verify_jwt=false` preservado.
+
 ## 29.121.0 — Cupom não fiscal do atendimento, e ele sai na hora mesmo depois das 20h
 
 O Juliano atendeu o Wellington em 02/09 e, terminado o serviço, o cliente questionou os valores. Não houve erro de cobrança — houve falta de documento. Pedido dele em 03/09: *"gostaria de aprimorar isto, fazer tipo um cupom não fiscal mesmo, especificando os serviços, produtos lançados na comanda e seus respectivos valores e o total e a forma que foi pago, assim não restará dúvidas sobre minha honestidade agindo com tal transparência"*. E, junto: *"existe uma regra de não enviar mensagem pro cliente após as 20hs, mas preciso de uma exceção, somente na conclusão do serviço"*.
