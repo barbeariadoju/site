@@ -45,6 +45,20 @@ export type DadosComprovante = {
   balcao: boolean
 }
 
+/**
+ * Primeiro nome, com a inicial maiúscula.
+ *
+ * v29.125.0 — caso Kelvin (03/09/2026): o cadastro dele tem "kelvin" em minúscula (foi digitado
+ * assim), e tanto o cupom quanto a resposta da JuIA saíram "Olá, kelvin" e "Nós que agradecemos,
+ * kelvin". Numa mensagem que se apresenta como documento, nome em caixa baixa passa desleixo —
+ * e quem assina o WhatsApp é o Juliano. Corrigido na EXIBIÇÃO, não no cadastro: o que o cliente
+ * digitou continua guardado como veio.
+ */
+export const primeiroNome = (nome: unknown, padrao = 'Cliente') => {
+  const bruto = String(nome || '').trim().split(/\s+/)[0] || padrao
+  return bruto.charAt(0).toLocaleUpperCase('pt-BR') + bruto.slice(1)
+}
+
 export const money = (v: unknown) =>
   Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -168,7 +182,7 @@ export const montarCupom = (d: DadosComprovante) => {
 
 /** A mensagem completa que sai no WhatsApp: abertura + cupom + fechamento. */
 export const montarMensagemComprovante = (d: DadosComprovante) => {
-  const primeiro = String(d.clienteNome || 'Cliente').trim().split(/\s+/)[0]
+  const primeiro = primeiroNome(d.clienteNome)
 
   // Venda só de produto (caso Eduardo, 27/08) não sentou na cadeira: agradece a COMPRA e não
   // faz a pesquisa 1/2. Quem decide fechar o registro sem pesquisa é o chamador, pelo mesmo

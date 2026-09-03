@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montarCupom, montarMensagemComprovante, numeroComprovante, ehVendaSoDeProduto } from '../../supabase/functions/_shared/comprovante.ts';
+import { montarCupom, montarMensagemComprovante, numeroComprovante, ehVendaSoDeProduto, primeiroNome } from '../../supabase/functions/_shared/comprovante.ts';
 
 // v29.121.0 — o cupom não fiscal é o documento que o cliente guarda como prova do que pagou
 // (caso Wellington, 02/09/2026, que questionou os valores depois do atendimento). Erro de
@@ -147,5 +147,30 @@ describe('montarMensagemComprovante', () => {
   it('não usa emoji em lugar nenhum', () => {
     const msg = norm(montarMensagemComprovante({ ...base, produtos: [{ nome: 'Água mineral', valor: 4 }], caixinha: 10, descontoFidelidade: 5 }));
     expect(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test(msg)).toBe(false);
+  });
+});
+
+// v29.125.0 — caso Kelvin (03/09/2026): o cadastro tem "kelvin" em minúscula e tanto o cupom
+// quanto a resposta da JuIA saíram "Olá, kelvin". Nome em caixa baixa numa mensagem que se
+// apresenta como documento passa desleixo — e quem assina o WhatsApp é o Juliano.
+describe('primeiroNome', () => {
+  it('capitaliza a inicial de quem foi cadastrado em minúscula', () => {
+    expect(primeiroNome('kelvin silva')).toBe('Kelvin');
+  });
+  it('pega só o primeiro nome e preserva o resto da grafia', () => {
+    expect(primeiroNome('Israel Paula')).toBe('Israel');
+    expect(primeiroNome('  wellington  souza ')).toBe('Wellington');
+  });
+  it('não estraga nome já correto nem acentuado', () => {
+    expect(primeiroNome('Ávila')).toBe('Ávila');
+    expect(primeiroNome('ávila')).toBe('Ávila');
+  });
+  it('cai no padrão quando não há nome', () => {
+    expect(primeiroNome('')).toBe('Cliente');
+    expect(primeiroNome(null)).toBe('Cliente');
+  });
+  it('é o mesmo nome que aparece no cupom', () => {
+    const cupom = norm(montarMensagemComprovante({ ...base, clienteNome: 'kelvin silva' }));
+    expect(cupom.startsWith('Olá, Kelvin.')).toBe(true);
   });
 });

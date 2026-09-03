@@ -93,7 +93,10 @@ Deno.serve(async (req) => {
         await admin.from('experience_requests').update({ recovery_attempts: 1, last_recovery_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', t.id)
         continue
       }
-      const trackedReviewLink = `${supabaseUrl}/functions/v1/go-review?t=${t.token}`
+      // v29.125.0 — mesmo motivo do whatsapp-webhook (caso Kelvin, 03/09): link do domínio da
+      // casa, porque a pré-visualização da URL da function mostrava "Sign in - Google Accounts"
+      // com "supabase.co" embaixo. A /avaliar/ repassa o token pra mesma function.
+      const trackedReviewLink = `https://www.barbeariadoju.com.br/avaliar/?t=${t.token}`
       const texto = recorrente
         ? `Oi${nome ? `, ${nome}` : ''}! 😊 Você voltar aqui já diz muito pra gente 🙏\n\nSe puder deixar sua avaliação no Google, ajuda demais a Barbearia do Ju — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉 E se algo não ficou como você esperava, me conta por aqui que a gente resolve. 💈`
         : `Oi${nome ? `, ${nome}` : ''}! 😊 Desculpe incomodar de novo — é rapidinho e prometo não insistir mais.\n\nComo foi seu último atendimento aqui na Barbearia do Ju?\n\n*1* — Satisfeito 👍\n*2* — Insatisfeito 👎\n\nObrigado! 💈`

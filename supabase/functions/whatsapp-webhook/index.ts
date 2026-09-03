@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/comprovante.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -625,7 +626,7 @@ Deno.serve(async (request: Request) => {
             const quando = `${String(b.booking_date).split('-').reverse().slice(0, 2).join('/')} às ${String(b.start_time).slice(0, 5)}`
             await admin.from('bookings').update({ prepay_declared_at: new Date().toISOString(), prepay_key: 'picpay' }).eq('id', b.id).is('prepay_confirmed_at', null)
             const { data: bk } = await admin.from('bookings').select('customer_name').eq('id', b.id).maybeSingle()
-            const nome = String(bk?.customer_name || 'Cliente').split(/\s+/)[0]
+            const nome = primeiroNome(bk?.customer_name)
             // v29.122.0 — o valor lido NA IMAGEM do comprovante (quando legível) entra no
             // aviso pro Juliano. Se não bater com o total do atendimento, ele vê a diferença
             // antes de abrir o PicPay, em vez de descobrir conferindo.
@@ -1600,7 +1601,21 @@ Deno.serve(async (request: Request) => {
           // v29.90.0 — caso Pedro (28/08): respondeu "1111!!" (entusiasmo) e levou "não
           // entendi". Dígito REPETIDO com pontuação/exclamação conta como o dígito ("1111!!",
           // "22...", "1!"). Nunca mistura: "12" continua não casando nada.
+          // v29.125.0 — caso Kelvin (03/09/2026, 12h43): mandou "obrigado meu amigo" e, TRÊS
+          // segundos depois, "1". O debounce juntou as duas numa mensagem só, separadas por \n
+          // (linha 794), e o texto virou "obrigado meu amigo\n1" — que não casa com nada: o
+          // dígito não está no início nem sozinho na mensagem. Caiu na gentileza e a JuIA pediu
+          // a nota que ele ACABOU de dar. Ele teve que responder duas vezes a mesma pergunta.
+          // Dígito numa LINHA PRÓPRIA é resposta da pesquisa. É preciso o bastante pra não
+          // confundir com pedido ("quero 1 corte" tem o 1 no meio da frase, nunca sozinho numa
+          // linha), e cobre exatamente o que o debounce produz quando o cliente manda a
+          // gentileza e a nota em mensagens separadas — que é o caminho natural de quem é
+          // educado.
+          const linhaSoDigito = (d: string) => new RegExp(`(^|\\n)\\s*${d}+\\s*[!.,]*\\s*(\\n|$)`).test(trimmedNormalized)
+          const linhaSoUm = linhaSoDigito('1')
+          const linhaSoDois = linhaSoDigito('2')
           const isUnsatisfied = /insatisfeit|ruim|pessimo|horrivel|nao gostei|nao curti|nao amei|nao recomendo/.test(normalizedReply) || negativeEmoji.test(text) || /^2+[\s!.,]*$/.test(trimmedNormalized) || leadingTwo
+            || (linhaSoDois && !linhaSoUm)
             || (refersToSurvey && /\b2\b/.test(normalizedReply) && !/\b1\b/.test(normalizedReply))
           // v29.51.0 — caso Vivian/Theo (19/08): "O Theo tá muito inquieto com o cabelo…😁"
           // caiu como SATISFEITO só por causa do emoji, e a JuIA respondeu "Que ótimo saber
@@ -1613,6 +1628,7 @@ Deno.serve(async (request: Request) => {
           // elogio, mandando pedido de avaliação pra quem reclamou.
           const isSatisfied = !isUnsatisfied && !asksSomethingElse && !mentionsProblem
             && (praise || (positiveEmoji.test(text) && trimmedNormalized.length <= 40) || /^bo[am]!?$/.test(trimmedNormalized) || /^1+[\s!.,]*$/.test(trimmedNormalized) || leadingOne
+              || linhaSoUm
               || (refersToSurvey && /\b1\b/.test(normalizedReply)))
           if (mentionsProblem && !isUnsatisfied) {
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
@@ -1680,7 +1696,13 @@ Deno.serve(async (request: Request) => {
               // O link agora é RASTREADO (go-review): em 60 dias, 65 clientes disseram
               // "satisfeito" e o sistema registrou zero cliques — porque o link direto nunca
               // deu pra medir. Quem clica é marcado como avaliado e nunca mais é cobrado.
-              const trackedReviewLink = `${supabaseUrl}/functions/v1/go-review?t=${pending.token}`
+              // v29.125.0 (caso Kelvin, 03/09) — o link passou a ser do domínio da casa. Antes
+              // ia a URL da function direto, e a pré-visualização do WhatsApp seguia o
+              // redirecionamento até uma tela de login do Google: o cliente via um card
+              // "Sign in - Google Accounts" com "supabase.co" embaixo, que parece golpe. A
+              // /avaliar/ repassa o mesmo token pra mesma function, então o rastreio de cliques
+              // da v29.29.0 continua idêntico — só a cara do link mudou.
+              const trackedReviewLink = `https://www.barbeariadoju.com.br/avaliar/?t=${pending.token}`
               const reply = alreadyReviewed
                 // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
                 // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
@@ -1735,7 +1757,7 @@ Deno.serve(async (request: Request) => {
             // Gentileza recebe gentileza; o lembrete da pesquisa vai junto, mas acolhendo.
             const courtesy = /eu que agradeco|obrigad|valeu|de nada|disponha|abraco|amem|\bamen\b|tmj|por nada/.test(trimmedNormalized)
             const reply = courtesy
-              ? `Nós que agradecemos${pending.customer_name ? `, ${String(pending.customer_name).trim().split(/\s+/)[0]}` : ''}! 🙏 Quando puder, me conta como foi o atendimento: digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito. 😊`
+              ? `Nós que agradecemos${pending.customer_name ? `, ${primeiroNome(pending.customer_name)}` : ''}! 🙏 Quando puder, me conta como foi o atendimento: digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito. 😊`
               : 'Não entendi 🙂 Digite *1* se ficou satisfeito, ou *2* se ficou insatisfeito.'
             await sendWhatsapp(phone, reply)
             return

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Avaliar a Barbearia do Ju no Google</title>
+<meta name="robots" content="noindex,nofollow"/>
+
+<!--
+  v29.125.0 — Ponte para a avaliação no Google (caso Kelvin, 03/09/2026).
+
+  Por que esta página existe: o pedido de avaliação mandava o link da edge function direto
+  (rpkqluaxhqsxnewunhfm.supabase.co/functions/v1/go-review). O WhatsApp gera pré-visualização
+  seguindo o redirecionamento, chegava numa tela de login do Google, e o card que o cliente via
+  dizia "Sign in - Google Accounts" com o domínio supabase.co embaixo. Para quem recebe, isso
+  parece golpe — e avaliação no Google é a maior alavanca de SEO local da barbearia.
+
+  Agora o link é do domínio da casa, e o card mostra a marca. O clique segue para a mesma
+  function (que registra o clique e manda pro Google), então o rastreio da v29.29.0 continua
+  igual. Crawler não executa JavaScript: ele lê as meta tags abaixo e vai embora — por isso o
+  redirecionamento é por JS, e não por <meta http-equiv="refresh">, que alguns crawlers seguem.
+-->
+<meta content="pt_BR" property="og:locale"/>
+<meta content="website" property="og:type"/>
+<meta content="Barbearia do Ju" property="og:site_name"/>
+<meta content="Avaliar a Barbearia do Ju no Google" property="og:title"/>
+<meta content="Sua avaliação leva menos de um minuto e ajuda muito a barbearia. Toque para abrir o Google." property="og:description"/>
+<meta content="https://www.barbeariadoju.com.br/avaliar/" property="og:url"/>
+<meta content="https://www.barbeariadoju.com.br/assets/og-barbearia-do-ju.jpg" property="og:image"/>
+<meta content="https://www.barbeariadoju.com.br/assets/og-barbearia-do-ju.jpg" property="og:image:secure_url"/>
+<meta content="Barbearia do Ju, Bragança Paulista" property="og:image:alt"/>
+<meta content="1200" property="og:image:width"/>
+<meta content="630" property="og:image:height"/>
+<meta content="image/jpeg" property="og:image:type"/>
+<meta content="summary_large_image" name="twitter:card"/>
+<meta content="Avaliar a Barbearia do Ju no Google" name="twitter:title"/>
+<meta content="Sua avaliação leva menos de um minuto e ajuda muito a barbearia." name="twitter:description"/>
+<meta content="https://www.barbeariadoju.com.br/assets/og-barbearia-do-ju.jpg" name="twitter:image"/>
+<meta name="description" content="Avalie a Barbearia do Ju no Google."/>
+<link rel="icon" href="/assets/apple-touch-icon-180.png"/>
+
+<style>
+  :root { --gold: #c89b55; --bg: #0c0c0c; --text: #f7f3e8; --muted: #b8b2a5; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--text); padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    text-align: center;
+  }
+  .card { max-width: 420px; }
+  h1 { font-size: 1.35rem; line-height: 1.35; margin: 0 0 12px; font-weight: 800; }
+  p { color: var(--muted); line-height: 1.6; margin: 0 0 22px; font-size: 1rem; }
+  .btn {
+    display: inline-block; background: var(--gold); color: #111; text-decoration: none;
+    font-weight: 800; padding: 15px 28px; border-radius: 999px; font-size: 1.02rem;
+  }
+  .marca { color: var(--gold); font-weight: 800; letter-spacing: .14em; font-size: .78rem; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="marca">BARBEARIA DO JU</div>
+    <h1>Abrindo sua avaliação no Google…</h1>
+    <p>Leva menos de um minuto, e ajuda demais a barbearia. Se não abrir sozinho, é só tocar no botão.</p>
+    <a class="btn" id="ir" href="https://g.page/r/CaQfC5axIQQIEBM/review" rel="noopener">Avaliar no Google</a>
+  </main>
+
+<script>
+(function () {
+  // O token identifica de quem é o clique. Ele vem do link mandado no WhatsApp e é repassado
+  // para a function, que registra e redireciona. Sem token, manda direto pro Google — perder o
+  // registro é aceitável, perder a avaliação não (mesma regra da function desde a v29.29.0).
+  var token = new URLSearchParams(location.search).get('t');
+  var destino = token
+    ? 'https://rpkqluaxhqsxnewunhfm.supabase.co/functions/v1/go-review?t=' + encodeURIComponent(token)
+    : 'https://g.page/r/CaQfC5axIQQIEBM/review';
+  document.getElementById('ir').href = destino;
+  // replace() para o botão "voltar" do navegador não trazer o cliente de volta para esta ponte.
+  location.replace(destino);
+})();
+</script>
+</body>
+</html>
