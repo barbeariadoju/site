@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(rg*)",
+      "Bash(sed -n*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git remote*)",
+      "Bash(git add*)",
+      "Bash(npm test)",
+      "Bash(npm run test:unit*)",
+      "Bash(npm run test:e2e)",
+      "Bash(npm run test:admin*)",
+      "Bash(npx vitest run*)",
+      "Bash(npx playwright test*)",
+      "Bash(npx supabase functions list*)",
+      "Bash(curl -I https://www.barbeariadoju.com.br*)",
+      "Bash(curl -s https://www.barbeariadoju.com.br*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git reset*)",
+      "Bash(git checkout*)",
+      "Bash(npx supabase functions deploy*)",
+      "Bash(npx supabase db*)"
+    ],
+    "deny": [
+      "Bash(npm run test:e2e:live*)",
+      "Bash(cross-env RUN_LIVE_TESTS*)"
+    ]
+  }
+}

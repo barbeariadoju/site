@@ -118,6 +118,15 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   a com vaporizador de ozônio é a mais completa. Toda oferta de barba (JuIA e site) sai
   com esse resumo entre parênteses. Já saiu errado uma vez, vendido a cliente
   (01/09/2026), porque o `sales_pitch` no banco dizia "com navalha no acabamento".
+- **O comprovante do atendimento FURA o silêncio das 20h** (regra do Juliano, 03/09/2026).
+  A guarda das 20h vale pra mensagem de marketing (lembrete, aniversário, reativação); o
+  cupom do que o cliente acabou de pagar sai na hora, com ele ainda na porta da barbearia —
+  é o que evita a dúvida do dia seguinte (caso Wellington, 02/09). A exceção é estreita e
+  deve continuar assim: só a chamada da conclusão (`immediate:true`), só aquele `booking_id`,
+  só atendimento do dia, nunca de madrugada, e o cron segue respeitando o silêncio inteiro.
+- **O cupom não fiscal tem fonte única:** `supabase/functions/_shared/comprovante.ts`, com
+  teste em `tests/unit/comprovante.spec.js`. Não reescrever o texto dentro da function. E o
+  **motivo da cortesia nunca vai pro cliente** — aquele campo é anotação interna.
 - **`admin-version.json` e a constante `ADMIN_VERSION` são separados de propósito**
   da versão do site. É o que decide o reload do painel aberto durante atendimento.
 

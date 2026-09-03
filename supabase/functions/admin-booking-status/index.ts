@@ -397,7 +397,12 @@ Deno.serve(async (request: Request) => {
       fetch(`${supabaseUrl}/functions/v1/satisfaction-dispatch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-webhook-secret': emailSecret },
-        body: JSON.stringify({ source: 'admin-booking-status', booking_id: bookingId }),
+        // v29.121.0 — immediate:true é a EXCEÇÃO ao horário de silêncio das 20h (pedido do
+        // Juliano, 03/09/2026): o comprovante do que o cliente acabou de pagar sai agora,
+        // mesmo às 21h, pra qualquer dúvida de valor ser resolvida ainda na porta da
+        // barbearia. Vale só para ESTE booking e só para atendimento do dia — o cron
+        // continua respeitando o silêncio integralmente (ver satisfaction-dispatch).
+        body: JSON.stringify({ source: 'admin-booking-status', booking_id: bookingId, immediate: true }),
       })
         .then(() => log('satisfaction_dispatch_triggered', { requestId, bookingId }))
         .catch((dispatchError) => console.error('[admin-booking-status] satisfaction_dispatch', JSON.stringify({ requestId, bookingId, error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError) })))

@@ -215,6 +215,21 @@
         const { error: extrasError } = await sb.rpc('admin_apply_completion_extras', { p_phone: phone, p_customer_name: name, p_loyalty_delta: loyaltyDelta, p_visit_number: visitNumberTyped >= 1 ? visitNumberTyped : null, p_booking_id: row?.booking_id || null });
         if (extrasError) note += ` (extras de fidelidade/nº da visita não salvos: ${extrasError.message})`;
       }
+
+      // v29.121.0 — comprovante na hora (pedido do Juliano, 03/09/2026). O walk-in nasce de
+      // uma RPC direto daqui e não passava por function nenhuma: quem mandava o comprovante
+      // era só o cron do satisfaction-dispatch, de 15 em 15 min — e, num atendimento depois
+      // das 20h, só no dia seguinte. Era o caso do Wellington: cliente sai da cadeira sem a
+      // conta na mão e a dúvida sobre valores nasce sem nada pra conferir.
+      // Falhar aqui não desfaz nada e nem trava a tela: o cron segue como rede de segurança.
+      if (row?.booking_id) {
+        try {
+          await sb.functions.invoke('satisfaction-dispatch', { body: { immediate: true, booking_id: row.booking_id, source: 'admin-balcao' } });
+        } catch (receiptError) {
+          console.error('[balcao] comprovante imediato', receiptError);
+        }
+      }
+
       msg.textContent = 'Atendimento registrado.' + note;
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';

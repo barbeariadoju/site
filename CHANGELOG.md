@@ -1,3 +1,37 @@
+## 29.121.0 — Cupom não fiscal do atendimento, e ele sai na hora mesmo depois das 20h
+
+O Juliano atendeu o Wellington em 02/09 e, terminado o serviço, o cliente questionou os valores. Não houve erro de cobrança — houve falta de documento. Pedido dele em 03/09: *"gostaria de aprimorar isto, fazer tipo um cupom não fiscal mesmo, especificando os serviços, produtos lançados na comanda e seus respectivos valores e o total e a forma que foi pago, assim não restará dúvidas sobre minha honestidade agindo com tal transparência"*. E, junto: *"existe uma regra de não enviar mensagem pro cliente após as 20hs, mas preciso de uma exceção, somente na conclusão do serviço"*.
+
+As duas coisas são o mesmo problema visto de dois ângulos. O comprovante existia desde a v29.30.0 e já trazia serviço, produtos, total e forma de pagamento — mas em linha corrida, sem cara de documento, e **o do Wellington nem tinha saído**: atendimento de fim de dia cai na guarda de silêncio das 20h (v29.21.0) e o comprovante só sairia às 8h do dia seguinte. O cliente saiu da cadeira sem nada na mão, exatamente na hora em que a dúvida nasceu.
+
+**1) O comprovante virou cupom.** O texto saiu de dentro da function e virou módulo próprio, `supabase/functions/_shared/comprovante.ts`, com teste unitário — o formato deste documento é o que o cliente guarda como prova do que pagou, e erro de conta aqui é erro na cara dele. O que mudou no conteúdo:
+
+- **Número do documento**, no formato `020926-4F2A1C` (data do atendimento + 6 dígitos do id do agendamento). Derivado de propósito, não sequencial: não depende de coluna nova nem de contador no banco, nunca colide, e dá pra achar o atendimento pelo prefixo do id.
+- **Itens um por linha**, com o valor de cada um. Produtos repetidos agrupam numa linha só (`Água mineral (2 x R$ 4,00) — R$ 8,00`) — duas linhas idênticas parecem cobrança dobrada.
+- **Subtotal e desconto separados** quando houve prêmio do cartão fidelidade. Sem desconto, não aparece subtotal: linha a mais só confunde.
+- **Caixinha aparece**, fora do total e identificada como recebida à parte. Ela continua fora do faturamento (é do barbeiro), mas o cliente entregou aquele dinheiro e a conta dele em casa tem que fechar.
+- **Cortesia zera o total.** Antes o atendimento por conta da casa saía com o valor cheio e sem nenhuma linha de pagamento — o cliente que NÃO pagou recebia um comprovante com cara de cobrança. O **motivo** da cortesia continua fora do documento: aquele campo é anotação interna ("João, funcionário"), o cliente não é o público dela.
+- **Pagamento com prêmio de fidelidade ganhou rótulo.** `fidelidade` é forma de pagamento aceita desde a v29.10.0 e não tinha texto aqui: quem trocou pontos por corte recebia a linha de pagamento em branco — o tipo exato de lacuna que gera a dúvida que esta versão existe pra eliminar.
+- **Rodapé de documento**: "Documento sem valor fiscal, emitido para sua conferência" + nome e endereço da casa.
+- **Convite direto**: *"Se algum valor não bater com o que combinamos, me avise por aqui que eu confiro na hora."* É a frase que transforma o cupom em canal de correção em vez de motivo de desconfiança silenciosa.
+- **Sem emoji**, agora de verdade. As versões anteriores escreviam ✂️/🛍️/💳 que o `semEmoji()` (v29.102.0) apagava na saída, deixando cada linha de item começando com um espaço órfão. O texto já nasce limpo.
+
+O que **não** mudou: a pesquisa 1/2 continua colada no mesmo envio, a venda só de produto (caso Eduardo, 27/08) segue com mensagem própria e sem pesquisa, o convite de agendamento do walk-in segue numa linha só dentro do cupom (v29.45.0), o pagamento antecipado confirmado segue valendo como forma de pagamento (caso Aletéia, v29.56.0) e o dia continua vindo do `booking_date`, não do dia do envio (caso Walter, v29.90.0).
+
+**2) A exceção das 20h.** A regra existe pra não incomodar quem já está em casa com mensagem de marketing — lembrete, aniversário, reativação. O comprovante não é isso: é o documento do que o cliente **acabou** de pagar, e ele ainda está na porta da barbearia. A exceção é estreita de propósito:
+
+- Vale **só** para a chamada direta da conclusão. O `admin-booking-status` passou a mandar `{immediate:true, booking_id}` ao `satisfaction-dispatch`.
+- Vale **só para aquele atendimento**: no modo imediato a busca é filtrada por `booking_id`. Sem isso, uma conclusão às 21h arrastaria junto todo comprovante represado do dia, de outros clientes, fora de hora.
+- Vale **só para atendimento do dia**: concluir às 21h um atendimento de ontem (acerto de agenda atrasado) não autoriza mensagem fora de hora — fica pendente e o cron manda às 8h.
+- **Nunca de madrugada**: a exceção vai das 8h à meia-noite. O expediente pode furar as 20h; a madrugada não é expediente.
+- O **cron continua respeitando o silêncio integralmente**. Nada mudou para lembrete, aniversário, reativação ou convite de retorno.
+
+Efeito colateral bem-vindo: some a classe de bug do caso Walter (29/08, v29.90.0), em que o comprovante represado saía às 8h da manhã seguinte e o "1" do cliente caía na pergunta errada do dia anterior.
+
+**3) O Balcão passou a mandar o comprovante na hora.** Achado ao ler o fluxo: o walk-in nasce de uma RPC chamada direto do navegador (`admin_register_walkin_visit`) e nunca passava por function nenhuma — o comprovante dele dependia **só** do cron de 15 em 15 minutos, e depois das 20h, do dia seguinte. Como walk-in de fim de tarde é justamente o cenário do Wellington, a tela do Balcão passou a chamar o `satisfaction-dispatch` logo depois de registrar. Para isso o `satisfaction-dispatch` ganhou um segundo caminho de autenticação — sessão de admin validada por `is_admin()`, mesmo padrão do `send-walkin-welcome` —, já que o navegador não tem o `EMAIL_WEBHOOK_SECRET`. Falha aqui não desfaz nem trava nada: o cron segue como rede de segurança.
+
+**Testes.** `npm run test:unit`: 48 (16 novos em `tests/unit/comprovante.spec.js` — soma, agrupamento de produtos, desconto, cortesia, caixinha, formas de pagamento diferentes, dia do atendimento, venda só de produto, ausência de emoji). `npm run test:e2e`: 46. Bump de cache em `admin-balcao.html` (`?v=29.121.0`), `ADMIN_VERSION` e `admin-version.json` para 29.121.0, que andam juntos desde a trava anti-loop da v29.99.0.
+
 ## 29.120.0 — JuIA: agenda cheia é "ainda tenho alguns horários", nunca "vários"
 
 O Juliano mandou o print da conversa com a Michele (02/09, 13h36): *"Vc tem algum horário disponível hoje?"* → *"Consigo te atender hoje em **vários horários** para Corte de cabelo (30 min)."* O resto da conversa foi bem (ela escolheu tarde, recebeu a lista, fechou 14:30) — o problema é a palavra. Nas palavras dele: *"consigo te atender hoje sim, ainda tenho alguns horários, não vários horários, percebe a diferença"*.

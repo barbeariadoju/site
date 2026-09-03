@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { montarMensagemComprovante, ehVendaSoDeProduto } from '../_shared/comprovante.ts'
 
 const headers={
   'Access-Control-Allow-Origin':'*',
@@ -32,25 +33,69 @@ Deno.serve(async(req:Request)=>{
   const emailSecret=Deno.env.get('EMAIL_WEBHOOK_SECRET')?.trim()||''
   const provided=req.headers.get('x-webhook-secret')||''
   if(!supabaseUrl||!serviceRole||!emailSecret) return json({error:'Secrets obrigatórios ausentes.'},500)
-  if(provided!==emailSecret) return json({error:'Não autorizado.'},401)
+
+  // v29.121.0 — segundo caminho de autenticação: sessão de ADMIN logado, mesmo padrão do
+  // send-walkin-welcome. Existe por causa do Balcão: o walk-in é criado por RPC direto do
+  // navegador (admin_register_walkin_visit) e nunca passava por function nenhuma, então o
+  // comprovante dependia só do cron de 15 min — e, depois das 20h, do dia seguinte. Agora a
+  // tela do Balcão chama esta function na hora, com a sessão do Juliano.
+  let autorizado=provided===emailSecret
+  const authorization=req.headers.get('Authorization')||''
+  if(!autorizado&&authorization.startsWith('Bearer ')){
+    const anonKey=Deno.env.get('SUPABASE_ANON_KEY')?.trim()||''
+    if(anonKey){
+      const authClient=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}})
+      const {data:{user}}=await authClient.auth.getUser()
+      if(user){
+        const {data:isAdmin}=await authClient.rpc('is_admin')
+        autorizado=isAdmin===true
+      }
+    }
+  }
+  if(!autorizado) return json({error:'Não autorizado.'},401)
+
+  // v29.121.0 — EXCEÇÃO ao horário de silêncio, pedida pelo Juliano em 03/09/2026: o
+  // comprovante da conclusão sai na hora, mesmo depois das 20h.
+  //
+  // A regra das 20h existe pra não incomodar quem já está em casa com mensagem de marketing
+  // (lembrete, aniversário, reativação). O comprovante não é isso: é o documento do que o
+  // cliente ACABOU de pagar, e ele ainda está na porta da barbearia. Segurar até as 8h do dia
+  // seguinte foi exatamente o que deixou o Wellington sair sem a conta na mão (02/09) e o que
+  // fez o "1" do Walter cair na pergunta errada no dia seguinte (29/08, v29.90.0).
+  //
+  // A exceção é estreita de propósito: só a chamada direta da conclusão (admin-booking-status
+  // manda {immediate:true, booking_id}), só aquele atendimento, só se for do dia, e nunca de
+  // madrugada. O cron continua respeitando o silêncio integralmente.
+  const payload=await req.json().catch(()=>({}))as Record<string,unknown>
+  const bookingIdImediato=String(payload?.booking_id||'').trim()
+  const imediato=payload?.immediate===true&&Boolean(bookingIdImediato)
+
   // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
   // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
   // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
   // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
-  const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
-  if (quietHour >= 20 || quietHour < 8) return json({ok:true,quiet_hours:true})
+  const emSP=(d:Date,opts:Intl.DateTimeFormatOptions)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',...opts}).format(d)
+  const quietHour=Number(emSP(new Date(),{hour:'2-digit',hourCycle:'h23'}))
+  const hojeSP=emSP(new Date(),{year:'numeric',month:'2-digit',day:'2-digit'})
+  const emSilencio=quietHour>=20||quietHour<8
+  // Das 8h à meia-noite: o expediente pode furar as 20h, madrugada nunca.
+  if(emSilencio&&!(imediato&&quietHour>=8)) return json({ok:true,quiet_hours:true})
 
   const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
   const evolutionApiUrl=Deno.env.get('EVOLUTION_API_URL')?.trim()||''
   const evolutionApiKey=Deno.env.get('EVOLUTION_API_KEY')?.trim()||''
   const evolutionInstance=Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim()||''
 
-  const {data:rows,error}=await admin
+  let query=admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,channel,prepay_confirmed_at)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
-    .limit(50)
+  // v29.121.0 — no modo imediato processa SÓ o atendimento recém-concluído. Sem isso, uma
+  // conclusão às 21h arrastaria junto todo comprovante represado do dia, de outros clientes,
+  // fora da hora — a exceção vale pra quem acabou de sair da cadeira, não pra fila inteira.
+  if(imediato) query=query.eq('booking_id',bookingIdImediato)
+  const {data:rows,error}=await query.limit(50)
   if(error) return json({error:error.message},500)
 
   let sentWhatsapp=0,sentEmail=0,failed=0,skipped=0
@@ -62,6 +107,15 @@ Deno.serve(async(req:Request)=>{
 
     let whatsappOk=false
     let fecharSemPesquisa=false // v29.81.0 — venda só de produto: comprovante sem pesquisa 1/2
+
+    // v29.121.0 — a exceção do silêncio é do atendimento de HOJE. Concluir às 21h um
+    // atendimento de ontem (acerto de agenda atrasado) não autoriza mensagem fora de hora:
+    // o registro fica pendente e o cron manda às 8h, como sempre.
+    if(emSilencio&&String(booking?.booking_date||'')!==hojeSP){
+      console.log('[satisfaction-dispatch] silêncio: atendimento não é de hoje, adiado',row.booking_id)
+      skipped++
+      continue
+    }
     // v29.43.0 — fila unica de perguntas numeradas: se este telefone ja tem outra pergunta
     // sem resposta (convite, confirmacao, follow-up), a pesquisa espera o proximo cron
     // (roda a cada 15 min). Sem isso o "1" do cliente responde a pergunta errada.
@@ -81,85 +135,44 @@ Deno.serve(async(req:Request)=>{
       //      comprovante = alguém percebe. Com a placa no balcão ("todo atendimento gera
       //      comprovante; não recebeu? avise"), é o próprio cliente quem fecha essa brecha —
       //      sem vigilância, sem câmera, sem constranger ninguém.
-      // Produtos entram quando existirem (o check-out lança bebida/pomada junto), e cada
-      // parte mostra sua forma de pagamento quando forem diferentes.
-      const money=(v:unknown)=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
-      const metodoLabel=(m:unknown)=>{
-        const k=String(m||'').toLowerCase()
-        return k==='pix'?'no Pix':k==='debito'?'no débito':k==='credito'?'no crédito'
-          :k==='dinheiro'?'em dinheiro':k==='cortesia'?'por cortesia':''
+      //
+      // v29.121.0 — o texto virou um CUPOM NÃO FISCAL de verdade (número do documento, itens,
+      // subtotal, desconto, total, forma de pagamento, caixinha, aviso de que não tem valor
+      // fiscal) e mudou de casa: está em _shared/comprovante.ts, com teste unitário. O que
+      // motivou foi o Wellington questionar os valores depois do atendimento (02/09/2026) — a
+      // conta aberta na mão do cliente é a resposta, e ela precisa ser conferível linha a linha.
+      const produtosBrutos=Array.isArray(booking?.selected_products)?booking.selected_products:[]
+      const dados={
+        bookingId:String(row.booking_id||''),
+        clienteNome:String(booking?.customer_name||'Cliente'),
+        data:String(booking?.booking_date||''),
+        // v29.90.0 (caso Walter, 29/08) — comprovante segurado pelo horário de silêncio saía
+        // "hoje às 19:30" na manhã SEGUINTE. O dia certo vem do booking_date contra hoje em SP.
+        hoje:hojeSP,
+        hora:String(booking?.start_time||'').slice(0,5),
+        servicoNome:String(booking?.service_name||'Atendimento'),
+        servicoValor:Number(booking?.service_price||0),
+        produtos:produtosBrutos.map((p:Record<string,unknown>)=>({nome:String(p?.name||'Produto'),valor:Number(p?.price||0)})),
+        descontoFidelidade:Number(booking?.loyalty_discount||0),
+        caixinha:Number(booking?.tip_amount||0),
+        cortesia:booking?.courtesy===true,
+        cortesiaMotivo:String(booking?.courtesy_reason||''),
+        pagamentoServico:String(booking?.payment_method||''),
+        pagamentoProdutos:String(booking?.products_payment_method||''),
+        // v29.56.0 (caso Aletéia, 21/08): quem pagou antecipado por Pix e teve o pagamento
+        // confirmado pelo Juliano recebia um comprovante sem NENHUMA linha de pagamento quando
+        // a forma não tinha sido preenchida na conclusão — e lê isso como "não registraram meu
+        // Pix". O pagamento antecipado confirmado vale como forma de pagamento por si só.
+        pagamentoAntecipado:Boolean(booking?.prepay_confirmed_at),
+        // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
+        // mensagem separada (send-walkin-welcome, 9 min antes desta) é uma linha do comprovante.
+        balcao:String(booking?.channel||'')==='balcao',
       }
-      const servico=String(booking?.service_name||'Atendimento')
-      const servicoValor=Number(booking?.service_price||0)
-      const produtos=Array.isArray(booking?.selected_products)?booking.selected_products:[]
-      const produtosValor=Number(booking?.products_price||0)
-      const desconto=Number(booking?.loyalty_discount||0)
-      const hora=String(booking?.start_time||'').slice(0,5)
-      // v29.90.0 (caso Walter, 29/08) — comprovante segurado pelo horário de silêncio saía
-      // "hoje às 19:30" na manhã SEGUINTE. O dia certo vem do booking_date.
-      const spDia=(d:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)
-      const dataBooking=String(booking?.booking_date||'')
-      const diaLabel=!dataBooking||dataBooking===spDia(new Date())?'hoje'
-        :dataBooking===spDia(new Date(Date.now()-24*3600*1000))?'ontem'
-        :`dia ${dataBooking.slice(8,10)}/${dataBooking.slice(5,7)}`
-      const pagServico=metodoLabel(booking?.payment_method)
-      const pagProdutos=metodoLabel(booking?.products_payment_method)||pagServico
-      const total=servicoValor+produtosValor-desconto
-
-      const linhas:string[]=[]
-      // v29.80.0 — venda só de produto no balcão (serviço "Venda de produtos" R$0): o
-      // comprovante pula a linha de serviço zerada e lista direto os produtos.
-      if(servicoValor>0||produtos.length===0)linhas.push(`✂️ ${servico} — ${money(servicoValor)}`)
-      for(const p of produtos){
-        const nome=String((p as Record<string,unknown>)?.name||'Produto')
-        const preco=Number((p as Record<string,unknown>)?.price||0)
-        linhas.push(`🛍️ ${nome} — ${money(preco)}`)
-      }
-      if(desconto>0) linhas.push(`🎁 Desconto fidelidade — ${money(desconto)}`)
-      // Só detalha as duas formas de pagamento quando forem realmente diferentes.
-      // v29.56.0 (caso Aletéia, 21/08): quem pagou ANTECIPADO por Pix e teve o pagamento
-      // confirmado pelo Juliano recebia um comprovante sem NENHUMA linha de pagamento quando
-      // a forma não tinha sido preenchida na conclusão — o cliente que já pagou lê isso como
-      // "não registraram meu Pix". O pagamento antecipado confirmado vale como forma de
-      // pagamento por si só.
-      const pagServicoEfetivo=pagServico||(booking?.prepay_confirmed_at?'no Pix (antecipado)':'')
-      const pagamentoLinha=produtos.length>0 && pagProdutos && pagServicoEfetivo && pagProdutos!==pagServicoEfetivo
-        ? `💳 Serviço ${pagServicoEfetivo} · Produtos ${pagProdutos}`
-        : pagServicoEfetivo ? `💳 Pago ${pagServicoEfetivo}` : ''
-
-      // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
-      // mensagem separada (send-walkin-welcome, 9 min antes desta) agora é UMA linha aqui.
-      const ehBalcao=String(booking?.channel||'')==='balcao'
-      // v29.81.0 (caso Eduardo, 27/08) — venda SÓ de produto ganha mensagem própria:
-      // agradece a COMPRA (não "a visita"), oferece ajuda com o produto e NÃO faz a
-      // pesquisa 1/2 (quem só levou uma pomada não sentou na cadeira; muitos já
-      // responderam a pesquisa do atendimento real dias antes). O registro em
-      // experience_requests é fechado logo após o envio pra um "1" solto nunca ser
-      // lido como resposta de pesquisa.
-      const soProduto=servicoValor<=0&&produtos.length>0
-      fecharSemPesquisa=soProduto
-      const waText=(soProduto?[
-        `Olá, ${first}! Obrigado pela compra na Barbearia do Ju 💈`,
-        '',
-        `Segue seu comprovante${hora?` — ${diaLabel} às ${hora}`:''}:`,
-        ...linhas,
-        `*Total: ${money(total)}*`,
-        ...(pagamentoLinha?[pagamentoLinha]:[]),
-        '',
-        'Qualquer dúvida sobre como usar o produto, é só me chamar por aqui que eu te oriento 😉',
-      ]:[
-        `Olá, ${first}! Muito obrigado pela visita à Barbearia do Ju 💈`,
-        '',
-        `Segue seu comprovante${hora?` — ${diaLabel} às ${hora}`:''}:`,
-        ...linhas,
-        `*Total: ${money(total)}*`,
-        ...(pagamentoLinha?[pagamentoLinha]:[]),
-        ...(ehBalcao?['','Da próxima vez, se quiser, é só me chamar aqui que eu já deixo seu horário reservado 😉']:[]),
-        '',
-        'Como foi seu atendimento?',
-        'Digite *1* para 😊 Satisfeito',
-        'Digite *2* para 🙁 Insatisfeito',
-      ]).join('\n')
+      // v29.81.0 (caso Eduardo, 27/08) — venda SÓ de produto ganha mensagem própria e NÃO faz a
+      // pesquisa 1/2. O registro em experience_requests é fechado logo após o envio pra um "1"
+      // solto nunca ser lido como resposta de pesquisa.
+      fecharSemPesquisa=ehVendaSoDeProduto(dados)
+      const waText=montarMensagemComprovante(dados)
       try{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',
