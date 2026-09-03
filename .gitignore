@@ -16,3 +16,7 @@ supabase/.temp/
 # Contador de cadeira: o .env real (senha da camera) nunca vai pro Git
 camera-cadeira/.env
 barbearia-camera.env
+
+# Artes: o PNG final vai pra Area de Trabalho, nao pro repo
+PLAQUINHA-*.png
+artes/.render-*.html

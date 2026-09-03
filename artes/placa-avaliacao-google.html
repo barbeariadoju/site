@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<style>
+  /* A5 em 300 dpi = 1748 x 2480. Peça usada DENTRO da loja, no momento em que o cliente
+     se levanta da cadeira — por isso "antes de ir embora" e nada de endereço/cidade. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1748px; height: 2480px; background: #0d0d0d; color: #f5f1e6;
+    font-family: Georgia, 'Times New Roman', serif;
+    padding: 96px 104px 80px; display: flex; flex-direction: column;
+  }
+  .topo { text-align: center; border-bottom: 3px solid #c89b55; padding-bottom: 40px; }
+  .marca { font-size: 92px; font-weight: 700; letter-spacing: .06em; line-height: 1; }
+  .tag { margin-top: 22px; font-family: Arial, Helvetica, sans-serif; font-size: 25px;
+         letter-spacing: .32em; color: #c89b55; text-transform: uppercase; }
+
+  .rotulo { font-family: Arial, Helvetica, sans-serif; font-size: 26px; letter-spacing: .3em;
+            color: #c89b55; text-transform: uppercase; margin: 96px 0 26px; }
+
+  .chamada { display: flex; gap: 60px; align-items: flex-start; }
+  .chamada-txt { flex: 1; }
+  h1 { font-size: 88px; line-height: 1.14; font-weight: 700; }
+  .estrelas { color: #c89b55; font-size: 60px; letter-spacing: .18em; margin: 48px 0 34px; }
+  .nota { font-family: Arial, Helvetica, sans-serif; font-size: 38px; font-weight: 700; }
+  .apoio { font-family: Arial, Helvetica, sans-serif; font-size: 31px; line-height: 1.55;
+           color: #b3ab9b; margin-top: 28px; max-width: 760px; }
+
+  .qr-google { width: 470px; height: 470px; background: #fff; padding: 26px;
+               border-radius: 16px; flex-shrink: 0; }
+  .qr-google img { width: 100%; height: 100%; display: block; }
+
+  .secao { font-family: Arial, Helvetica, sans-serif; font-size: 23px; letter-spacing: .28em;
+           color: #c89b55; text-transform: uppercase; border-top: 2px solid #3a3125;
+           padding-top: 54px; margin-top: 104px; }
+
+  /* 2x2, nunca 4 em linha: em A5, quatro lado a lado dão ~26 mm por código e o do Pix,
+     que é o mais denso, é o primeiro a falhar na leitura. */
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 46px; margin-top: 46px; }
+  .card { background: #151312; border: 1px solid #2b2620; border-radius: 16px;
+          padding: 46px 40px; display: flex; gap: 36px; align-items: center; }
+  .card .qr { width: 236px; height: 236px; background: #fff; padding: 14px;
+              border-radius: 10px; flex-shrink: 0; }
+  .card .qr img { width: 100%; height: 100%; display: block; }
+  .card-txt { font-family: Arial, Helvetica, sans-serif; }
+  .card-tit { font-size: 36px; font-weight: 700; }
+  .card-sub { font-size: 27px; color: #a9a294; line-height: 1.5; margin-top: 16px; word-break: break-word; }
+  .card-sub b { color: #d9d2c2; font-weight: 700; }
+
+  .rodape { display: flex; justify-content: space-between; align-items: flex-end;
+            border-top: 2px solid #3a3125; margin-top: auto; padding-top: 34px;
+            font-family: Arial, Helvetica, sans-serif; }
+  .rod-esq { font-size: 24px; line-height: 1.6; color: #b8b1a1; }
+  .rod-esq strong { color: #f5f1e6; font-size: 27px; }
+  .rod-dir { font-size: 23px; letter-spacing: .2em; color: #c89b55; text-transform: uppercase; }
+</style>
+</head>
+<body>
+  <div class="topo">
+    <div class="marca">BARBEARIA DO JU</div>
+    <div class="tag">Hora marcada &middot; Um cliente por vez</div>
+  </div>
+
+  <div class="rotulo">Antes de ir embora</div>
+
+  <div class="chamada">
+    <div class="chamada-txt">
+      <h1>Se o corte ficou bom,<br/>deixe sua avaliação.</h1>
+      <div class="estrelas">&#9733; &#9733; &#9733; &#9733; &#9733;</div>
+      <!-- CORREÇÃO (03/09/2026): saiu "com mais de 100 avaliações".
+           Regra do Juliano, criada por ele em 30/08 ao cortar a primeira versão desta peça:
+           nunca imprimir número que envelhece — "amanhã vamos ter 200, 300…". O argumento
+           perene já existia na linha de baixo, então bastou tirar o número.
+           A nota fica: ela só muda se alguém der menos de 5 estrelas, e isso ele saberia. -->
+      <div class="nota">Nota 5,0 no Google.</div>
+      <div class="apoio">Aponte a câmera e avalie no Google. Leva menos de um minuto e ajuda quem ainda não conhece a decidir.</div>
+    </div>
+    <div class="qr-google"><img src="QR_GOOGLE" alt="Avaliar no Google"/></div>
+  </div>
+
+  <div class="secao">Enquanto você está aqui</div>
+
+  <div class="grade">
+    <div class="card">
+      <div class="qr"><img src="QR_WIFI" alt="Wi-Fi"/></div>
+      <div class="card-txt">
+        <div class="card-tit">Wi-Fi</div>
+        <div class="card-sub">Rede <b>@barbeariadoju_</b><br/>Senha <b>Barbearia_2026</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="qr"><img src="QR_PIX" alt="Pix"/></div>
+      <div class="card-txt">
+        <div class="card-tit">Pix</div>
+        <!-- CORREÇÃO (03/09/2026): o titular estava como "Juliano Padilha". No app do banco
+             aparece o nome completo e a instituição PicPay — e é exatamente essa diferença
+             que faz o cliente achar que digitou a chave errada e desistir no meio (é a razão
+             de a JuIA ser obrigada a dizer nome + instituição junto da chave). -->
+        <div class="card-sub">contato@<br/>barbeariadoju.com.br<br/><b>Juliano Bruno Lopes Padilha</b> &middot; PicPay</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="qr"><img src="QR_INSTAGRAM" alt="Instagram"/></div>
+      <div class="card-txt">
+        <div class="card-tit">Instagram</div>
+        <div class="card-sub">Cortes, novidades e inspirações</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="qr"><img src="QR_SERVICOS" alt="Catálogo de serviços"/></div>
+      <div class="card-txt">
+        <div class="card-tit">Catálogo de serviços</div>
+        <div class="card-sub">Todos os preços e durações</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <div class="rod-esq">
+      Terça a sexta, 8h às 19h &middot; Sábado, 8h às 15h<br/>
+      <strong>WhatsApp (11) 96707-3038</strong>
+    </div>
+    <div class="rod-dir">Café cortesia</div>
+  </div>
+</body>
+</html>
