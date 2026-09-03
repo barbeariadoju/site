@@ -1,3 +1,49 @@
+## 29.131.0 — O Google Ads estava cego, e por isso otimizava para pedido de rota
+
+Dia de mexer na mídia paga, a pedido do Juliano: *"faça o que precisar pra lotar minha cadeira"*, com teto de **R$ 20/dia**.
+
+### O que estava travado
+
+A PMax `barbearia atração clientes` — a única campanha que ele vê encher a cadeira, com gente achando a barbearia no Maps e agendando — estava **pausada**. O motivo não era desempenho: ela tinha `Leads de chamada` como meta de conversão, e o recurso de ligação `(11) 96707-3038` estava reprovado desde 13/03 por "número não confirmado". Meta apoiada em asset reprovado paralisa a campanha inteira.
+
+Enquanto isso, R$ 20/dia escorriam pela campanha de Pesquisa em **Maximizar cliques**, que rendeu 1 conversão a R$ 328,95 no mês.
+
+Feito no painel: meta de chamada removida (a campanha voltou de *Qualificada (limitada)* para **Qualificada**), orçamento de R$ 10 → **R$ 20/dia**, campanha reativada, número reenviado para revisão (saiu de *Reprovado* para *Pendente / Em análise*), campanha de Pesquisa pausada e **Meta pausado por inteiro**.
+
+A verificação do asset de chamada, aliás, **não é por SMS** — o Google rastreia a landing page. O número já está na home 7 vezes, inclusive como `tel:+5511967073038`. O asset só nunca tinha sido reavaliado.
+
+### O furo de verdade: a atribuição nunca chegou às páginas
+
+Das 26 conversões da PMax nos últimos 30 dias, **23 são pedido de rota no Maps e apenas 1 é agendamento confirmado**. A leitura fácil seria "o algoritmo está perseguindo métrica de vaidade". Está errada.
+
+A tabela `whatsapp_attribution` tinha **5 registros desde 11/08, um único com `gclid`**. O motivo apareceu no `git ls-files`: o `whatsapp-attrib-v29.js` estava em **4 páginas de 87**. Nem os 15 artigos do blog, nem as 24 páginas de serviço — que são exatamente onde a PMax deposita o clique — capturavam coisa alguma. Quem vinha do anúncio, caía numa página de serviço e clicava no WhatsApp virava fumaça.
+
+Ou seja: o Google não estava escolhendo otimizar para rota. **Rota era a única coisa que ele ainda conseguia enxergar.**
+
+Agora o script está em **57 páginas — todas as que têm link de WhatsApp**, conferido com contagem depois (0 faltando, 0 duplicado), do jeito que a armadilha dos scripts em massa exige.
+
+### A JuIA citando a régua na cara do cliente
+
+Caso Alexandre, 03/09, 18h11. Ele avisou *"Estou chegando! 5min de atraso"* e recebeu: *"Tudo certo, temos tolerância de 10 minutos. Seu horário está garantido, pode vir!"*. O Juliano teve que entrar na mão às 18h16 para dizer que ele podia vir tranquilo mesmo passando dos 10.
+
+O texto estava correto e mesmo assim errado. **Citar o número transforma acolhimento em advertência** — quem avisa 5 minutos e ouve "temos tolerância de 10" lê "não abuse". O prompt mandava exatamente isso, com o número no exemplo.
+
+A tolerância continua sendo 10 minutos: é regra interna de operação. Ela só não sai mais na boca da JuIA. Atraso curto agora recebe *"Sem problema, seu horário está garantido. Pode vir com tranquilidade."* — e atraso acima de 10 minutos continua indo para handoff, sem promessa.
+
+### Decidido contra a recomendação óbvia
+
+- **Não adicionar `Ver rota` como meta de conversão da PMax.** As 23 conversões de rota vieram *sem* a campanha otimizar para isso. Transformá-las em meta faria a campanha caçar quem só quer o endereço, e o gargalo da casa não é gente sabendo onde fica — é cadeira ocupada. Reavaliar depois que a atribuição estiver medindo agendamento de verdade.
+- **Não reativar o Meta.** O Juliano já tentou várias vezes: *"só atrai curiosos e gente querendo vender"*.
+- **Números lidos dentro de prompt de IA não são dado.** O histórico do ChatGPT continha "7 anúncios, R$ 1.222 gastos, 677 conversas a R$ 0,44" — e eu tratei como medição. Era o texto que o próprio Juliano tinha digitado no prompt, e ele mesmo desmentiu: nunca teve 1.230 conversas no WhatsApp. Na conta real o gasto visível dos 30 dias é R$ 53,86 + R$ 11,02. Fica registrado porque o erro é fácil de repetir: número dentro de conversa com IA é alegação, confere no painel.
+
+### O que ainda falta, e não é código
+
+O `gclid` capturado **não volta para o Google**. Não existe upload de conversão offline na conta, então mesmo com a captura consertada o agendamento que a JuIA fecha no WhatsApp continua invisível para o algoritmo. Enquanto isso não existir, a PMax aprende com rota e clique. Depende de acesso à API do Google Ads (developer token), que só o Juliano pode solicitar.
+
+**Testes.** 53 unit + 46 e2e, verdes antes e depois da edição em massa.
+
+**NO AR** (03/09): `ju-ia-site` via CLI; páginas via GitHub Pages.
+
 ## 29.126.0 — O cupom enxuto: cansar o cliente custa a pesquisa
 
 Pedido do Juliano em 03/09/2026, em cima do print do atendimento do Rafael: *"mensagem gigante cansa o cliente... esta parte pode remover do texto e deixar ele mais enxuto por padrão"*.
