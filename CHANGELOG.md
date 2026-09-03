@@ -1,3 +1,27 @@
+## 29.132.0 — A atribuição que capturava e não registrava, em 5 páginas
+
+Auditoria do ChatGPT em cima da v29.131.0 levantou a pergunta certa: *"eu não quero simplesmente capturar GCLID quando alguém entra, quero garantir que ele seja persistido até o momento da conversão"*.
+
+A persistência já estava resolvida — `localStorage` com TTL de 90 dias, a mesma janela do Ads. Mas conferir isso expôs outra coisa, na linha 18 do `whatsapp-attrib-v29.js`:
+
+```js
+var ENDPOINT = CFG.supabaseUrl ? CFG.supabaseUrl + '/functions/v1/whatsapp-attribution' : null;
+```
+
+O script depende do `window.BDJ_AGENDA_CONFIG`, que vem do `agenda-config-v6.js`. Sem ele, `ENDPOINT` é `null`: a página guarda o `gclid` no navegador e **nunca registra o token no servidor**. Falha silenciosa, do jeito que este projeto já conhece.
+
+Das 57 páginas que ganharam o script ontem, **5 estavam nessa situação**: `404.html`, `na-barbearia.html`, `precos/index.html`, `precos/setembro/index.html` e `privacidade.html`.
+
+Duas delas doem: **`/precos/` é o destino do QR da plaquinha da barbearia**. Quem escaneia o código no balcão, vê os preços e clica no WhatsApp dali seria registrado como visita anônima.
+
+Agora as 57 têm config e script, nessa ordem — config síncrono primeiro, atribuição `defer` depois, então o objeto já existe quando o script roda. Conferido por contagem: 0 faltando.
+
+**Também da auditoria, e eu estava errado:** disse na v29.131.0 que devolver conversão ao Google dependia de developer token da API. Não depende. O upload de conversões offline por planilha (Google Sheets / Data Manager) não exige API nenhuma. Isso muda a próxima etapa de "esperar credencial de terceiro" para "trabalho que dá pra fazer aqui".
+
+**Testes.** 53 unit + 46 e2e.
+
+**NO AR** (03/09): GitHub Pages.
+
 ## 29.131.0 — O Google Ads estava cego, e por isso otimizava para pedido de rota
 
 Dia de mexer na mídia paga, a pedido do Juliano: *"faça o que precisar pra lotar minha cadeira"*, com teto de **R$ 20/dia**.
