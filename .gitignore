@@ -12,3 +12,7 @@ supabase/.temp/storage-migration
 supabase/.temp/storage-version
 whatsapp-ai/.env
 supabase/.temp/
+
+# Contador de cadeira: o .env real (senha da camera) nunca vai pro Git
+camera-cadeira/.env
+barbearia-camera.env

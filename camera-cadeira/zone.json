@@ -1,0 +1,6 @@
+{
+  "_comment": "Coordenadas no quadro original 2304x1296. chair = assento+encosto (centro da caixa da pessoa sentada cai aqui). Espelho (reflexo) fica fora.",
+  "frame_w": 2304, "frame_h": 1296,
+  "chair": [[560, 760], [1180, 760], [1180, 1296], [560, 1296]],
+  "seat_center_y_min": 800
+}
