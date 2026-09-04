@@ -1,3 +1,56 @@
+## 29.135.0 — O serviço que o cliente pediu fora da lista numerada
+
+Caso Guizo, 04/09/2026, 09h35. A JuIA fez a oferta numerada de sempre:
+
+```
+1 – Corte + Lavagem (vira R$ 50,00)
+2 – Sobrancelha Masculina (+ R$ 15,00)
+3 – Barba Express (+ R$ 25,00)
+4 – Não, pode fechar assim
+```
+
+Ele respondeu **"Barboterapia e corte + lavagem"** — aceitou a opção 1 *e* pediu um serviço que não estava na lista. A resposta que voltou:
+
+> "Boa escolha! Então fica Corte + Lavagem — R$ 50,00 (40 min), hoje às 13:30. Posso confirmar?"
+
+Ele disse "Pode". O agendamento nasceu 09h36 com **um serviço, R$ 50,00, 40 min**, e o Juliano refez na mão às 15h33 para **R$ 100,00 e 80 min**.
+
+**O que dói não é a agenda, é a combinação.** O cliente aceitou um orçamento e encontrou outro na cadeira — o caso Wellington (02/09) que originou o cupom não fiscal. E, no meio, 40 minutos de agenda que não existiam: o cliente das 14:15 pegaria a barbearia atrasada.
+
+### A causa
+
+No bloco da oferta numerada o código só procurava a resposta **dentro das opções oferecidas**:
+
+```js
+const modelAdded = pendingOffer.find(n => n!=='__none__' && next.services.includes(n) && !previousServices.includes(n))
+```
+
+Achou `Corte + Lavagem`, deu por resolvido e seguiu. A Barboterapia não estava em `pendingOffer`, então nunca foi olhada — sumiu sem erro, sem log, sem nada.
+
+### A correção, em duas partes
+
+**1. Serviço citado por extenso entra junto**, via `findServicesLoose(message)`, e o conjunto passa pela regra das famílias **antes** de virar preço e duração — o `normalizeServiceSet` do início do turno roda lá atrás e não enxergaria o que foi adicionado aqui.
+
+Isso importa porque o parser é generoso de propósito: em `"Barboterapia e corte + lavagem"` o token `corte` casa com **Corte de cabelo** além do Corte + Lavagem que o cliente quis. Quem impede isso de virar cobrança errada é a regra das famílias, não o parser — fica o corte mais completo, a barba é preservada, total R$ 100,00.
+
+Há guarda de negação: se a mensagem tem "não" ou "sem", nada é somado — senão "não quero barba" adicionaria barba.
+
+**2. Barba ambígua não entra calada.** `findService('Barboterapia')` resolve para a variante **com ozônio**, a mais cara. Somar isso em silêncio seria reintroduzir o que a v29.104.0 proibiu. Quando a mensagem diz "barboterapia" sem dizer se é com ozônio, a JuIA passa a perguntar qual das duas (R$ 40 sem, R$ 50 com) em vez de escolher pelo cliente.
+
+**O que NÃO mudou:** corte e barba continuam podendo somar. A regra sempre proibiu dois da MESMA família, não um de cada — e agora há teste explícito para isso, para ninguém "corrigir" no futuro.
+
+### Erro meu no caminho, registrado porque custa caro repetir
+
+Ao aplicar a mudança por script, usei `findIndex` num texto que existia **duas vezes** no arquivo: o bloco novo e o bloco original do `bareBarboterapiaAsk`, na linha 1021. O script casou com o primeiro e **apagou 651 linhas** do `ju-ia-site/index.ts`. Recuperado com `git checkout` — o arquivo estava commitado, então o estrago foi de tempo, não de código.
+
+A lição virou procedimento no script definitivo: **toda âncora de edição é verificada como única antes do splice**, e o script aborta se encontrar zero ou mais de uma ocorrência. Vale para qualquer edição por script neste repositório, junto da regra que já existia de conferir a contagem depois.
+
+Também levei três tentativas para escrever uma regex passando por heredoc: `\s` e `\b` chegavam ao arquivo como `s` e como um caractere **backspace** literal. O jeito que funciona é escrever o bloco num arquivo à parte e inseri-lo, sem escapes atravessando o shell.
+
+**Testes.** 62 unit (3 novos, cobrindo o caso Guizo) + 46 e2e.
+
+**NO AR** (04/09): `ju-ia-site` via CLI — e é o deploy que valida a sintaxe TypeScript. Foi ele que pegou uma quebra de linha inválida dentro de um template string antes que ela chegasse ao cliente.
+
 ## 29.134.0 — O CSV que o Google busca sozinho
 
 `supabase/functions/google-ads-conversions-csv/` · `supabase/functions/_shared/ads-csv.ts` · `tests/unit/ads-csv.spec.js` · `database/migrations/135-*.sql`

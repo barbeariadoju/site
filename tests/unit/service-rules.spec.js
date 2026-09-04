@@ -94,3 +94,41 @@ describe('splitServiceNames', () => {
     expect(splitServiceNames('Corte de cabelo + Sobrancelha Masculina', known)).toEqual(['Corte de cabelo', 'Sobrancelha Masculina']);
   });
 });
+
+// v29.135.0 — caso Guizo (04/09/2026): a resposta "Barboterapia e corte + lavagem" a uma
+// oferta numerada faz o findServicesLoose devolver TRÊS serviços, porque o token "corte"
+// casa com "Corte de cabelo" além do "Corte + Lavagem" que o cliente quis. A rede que
+// impede isso de virar cobrança errada é a regra das famílias, não o parser.
+describe('caso Guizo: serviço citado fora da oferta numerada', () => {
+  it('mantém o corte mais completo e preserva a barba pedida por extenso', () => {
+    const { items, removed } = normalizeServiceSet([
+      { name: 'Corte + Lavagem', price: 50 },
+      { name: 'Barboterapia com vaporizador de ozônio', price: 50 },
+      { name: 'Corte de cabelo', price: 40 },
+    ])
+    const nomes = items.map((i) => i.name)
+    expect(nomes).toContain('Corte + Lavagem')
+    expect(nomes).toContain('Barboterapia com vaporizador de ozônio')
+    expect(nomes).not.toContain('Corte de cabelo')
+    expect(nomes).toHaveLength(2)
+    expect(removed.map((r) => r.name)).toContain('Corte de cabelo')
+  })
+
+  it('o total e a duração passam a bater com o que o cliente pediu', () => {
+    const { items } = normalizeServiceSet([
+      { name: 'Corte + Lavagem', price: 50 },
+      { name: 'Barboterapia com vaporizador de ozônio', price: 50 },
+      { name: 'Corte de cabelo', price: 40 },
+    ])
+    // era isso que a JuIA deveria ter dito: R$ 100,00, e nao R$ 50,00
+    expect(items.reduce((a, s) => a + s.price, 0)).toBe(100)
+  })
+
+  it('corte e barba continuam podendo somar — a regra proíbe dois da MESMA família', () => {
+    const { items } = normalizeServiceSet([
+      { name: 'Corte de cabelo', price: 40 },
+      { name: 'Barboterapia com vaporizador de ozônio', price: 50 },
+    ])
+    expect(items).toHaveLength(2)
+  })
+})

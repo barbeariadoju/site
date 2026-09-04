@@ -2022,6 +2022,34 @@ Deno.serve(async req=>{
      next.services=next.services.filter((n:string)=>n!=='Corte de cabelo')
      if(!next.services.includes('Corte + Lavagem'))next.services.push('Corte + Lavagem')
     }else if(!next.services.includes(addName))next.services.push(addName)
+    // v29.135.0 — caso Guizo (04/09/2026, 09h35): a resposta à oferta numerada pode citar
+    // um serviço que NÃO está na lista. Ele respondeu "Barboterapia e corte + lavagem" a
+    // uma oferta que só tinha Corte + Lavagem, Sobrancelha e Barba Express; o código
+    // olhava apenas as opções da oferta, então a Barboterapia sumiu sem ninguém perceber.
+    // A JuIA confirmou "Corte + Lavagem — R$ 50,00 (40 min)", o cliente disse "Pode", e o
+    // Juliano teve que refazer o agendamento na mão (R$ 100,00, 80 min): o cliente aceitou
+    // um orçamento e encontrou outro na cadeira — o caso Wellington de novo.
+    // O parser é generoso de propósito ("corte" casa com Corte de cabelo além do
+    // Corte + Lavagem que ele quis), então quem segura a barra é a regra das famílias,
+    // aplicada AQUI porque o normalize do início do turno já rodou e não veria isto.
+    // E barba ambígua não entra calada: "barboterapia" sem dizer se é com ozônio vale
+    // R$ 40 ou R$ 50, e escolher a mais cara em silêncio é o que a v29.104.0 proibiu.
+    let perguntaBarbaAmbigua=false
+    if(!/(^|\s)(nao|sem)(\s|$)/.test(normalizedQuestion)){
+     const barboterapiaAmbigua=/\bbarboterapia\b/i.test(message)&&!/ozon/i.test(message)
+     for(const extra of findServicesLoose(message)){
+      if(barboterapiaAmbigua&&extra.category==='barba'){perguntaBarbaAmbigua=true;continue}
+      if(!next.services.includes(extra.name))next.services.push(extra.name)
+     }
+     const famOferta=normalizeServiceFamilies(next.services.map((n:string)=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
+     next.services=famOferta.items.map((x:any)=>x.name)
+     if(next.services.some((n:string)=>findService(n)?.category==='barba'))perguntaBarbaAmbigua=false
+    }
+    if(perguntaBarbaAmbigua){
+     const barbaOpts=services.filter((s:any)=>s.category==='barba'&&barbaResumo(s.name)!=='só na máquina')
+     reply=`Qual barboterapia você prefere?\n${barbaOpts.map((s:any)=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, ${s.duration} min`).join('\n')}`
+     actions=barbaOpts.map((s:any)=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
+    }else{
     const newChosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
     const total=newChosen.reduce((a:number,s:any)=>a+s.price,0),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
     // v29.79.0 (caso Rodrigo, 26/08 19h33): a oferta prometia o MESMO horário com a
@@ -2055,6 +2083,7 @@ Deno.serve(async req=>{
       :`Posso incluir sim! Só que com ${addName} o atendimento fica com ${dur} min, e às ${alvoT} não fecha — e não sobrou outro horário nesse dia 😕 Quer que eu mantenha só ${baseNames} às ${alvoT}, ou vejo outro dia pro combo?`
      actions=[...alternativas.map((t:string)=>({label:t,message:t})),{label:`Manter só ${baseNames} às ${alvoT}`,message:`Manter só o ${baseNames} às ${alvoT}`}]
      respostaConferidaNaAgenda=true
+    }
     }
     intent='other';handoff=false;offerTurn=true
    }
