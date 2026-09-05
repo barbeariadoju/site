@@ -1,3 +1,62 @@
+## 29.137.0 — "Sou eu juliano": a trava existia, o que faltava era o nome
+
+`database/migrations/136-v29.137.0-booking-usa-nome-do-cadastro.sql`
+
+O primeiro atendimento de 05/09 apareceu na agenda como **"Sou eu juliano"**. É o Joao victor, (11) 91935-8712, que agendou pelo site na véspera às 19h59 e digitou isso no campo nome. O Juliano pediu para unificar os cadastros e criar "uma trava baseada no telefone".
+
+**Não havia o que unificar.** A trava já existia e tinha funcionado:
+
+| Verificação | Resultado |
+|---|---|
+| Perfis com aquele telefone | 1 |
+| `phone_key` duplicados na base | 0 (de 165 perfis) |
+| Perfis sem `phone_key` | 0 |
+
+A `v27_customer_for_booking` casa agendamento e cadastro por `phone_match_key` e **ignora o nome** — por isso o cadastro nunca duplicou, nem ali nem em lugar nenhum da base.
+
+O buraco era outro: o nome digitado no site vai direto para a agenda **sem passar pelo cadastro**. Nenhum dado se perdeu, mas na tela pareceu cliente novo — e é isso que custa tempo no balcão.
+
+### A correção
+
+Quando o telefone já tem cadastro ativo com nome, o agendamento nasce com o nome do cadastro.
+
+Ficou num **trigger da tabela**, não numa das funções de criação, para valer nos três caminhos de uma vez: site, JuIA e balcão. Uma trava que só cobre um caminho é a que falha justamente pelo caminho que ninguém lembrou.
+
+`BEFORE INSERT` de propósito — **editar o nome na agenda continua livre**, e foi assim que o agendamento das 08:00 de hoje foi corrigido na mão.
+
+A ordem de escolha do cadastro é a mesma da `v27_customer_for_booking` (quem tem fidelidade primeiro, depois o mais antigo). Se divergisse, o nome exibido poderia não ser o do cadastro ao qual o agendamento fica vinculado — o mesmo bug com outra cara.
+
+### Testado com insert real, desfeito por `raise exception`
+
+```
+telefone conhecido   "Sou eu juliano de novo"  ->  "Joao victor"
+telefone novo        "Cliente Novo Qualquer"   ->  preservado
+```
+
+Depois: zero resíduo na agenda. A segunda linha importa tanto quanto a primeira — cliente novo de verdade não pode ter o nome trocado por engano.
+
+**Decidido junto com o Juliano:** o nome do cadastro vence sempre. O efeito colateral aceito é que quem agenda para outra pessoa usando o próprio telefone aparece com o nome do titular — raro, e visível na hora.
+
+**NO AR** (05/09): migração aplicada.
+
+## 29.136.0 — O Google exige Basic Auth, e uma linha para aprender o formato
+
+Continuação da conexão da fonte HTTPS no Google Ads. Duas paredes, as duas resolvidas.
+
+**1. Basic Auth.** A tela "Conectar com HTTPS" pede **URL, nome de usuário e senha**, os três obrigatórios — token na querystring não serve. A function passou a aceitar as duas formas: `Authorization: Basic` (usuário `ADS_CSV_USER`, senha `ADS_CSV_TOKEN`) e o token direto por header ou `?token=`, que continua útil para conferir com `curl`. As duas comparam em tempo constante, e o 401 agora manda `WWW-Authenticate`.
+
+Testado no ar: sem credencial 401 · usuário e senha errados 401 · **usuário certo com senha errada 401** · credenciais corretas 200. A terceira linha é a que importa: senha errada com usuário certo tem que falhar igual.
+
+**2. A URL precisa terminar em `.csv`.** O Google recusou com *"Selecione um arquivo CSV ou TSV com a extensão '.csv'"* mesmo o conteúdo já sendo CSV e o `Content-Type` sendo `text/csv`. Ele valida pela extensão da URL, não pelo conteúdo. Resolvido com `/conversoes.csv` no fim — o Supabase roteia o sub-caminho para a mesma function.
+
+**3. Uma linha para aprender o formato.** Com o arquivo só de cabeçalho, a etapa "Selecionar dados" falhava: *"Falha ao determinar o tipo de dados ou o esquema... pelo menos uma linha de dados válidos"*. Enquanto não houver conversão real, a function serve **uma linha de exemplo** com código de clique sintético e valor R$ 0 — o Google descarta linha cujo gclid ele não reconhece, então não vira conversão nem mexe no aprendizado da campanha.
+
+Ela não depende de ninguém lembrar de removê-la: sai por `linhas.length ? linhas : [EXEMPLO]`, então **some sozinha no primeiro agendamento de verdade**.
+
+**Onde parou:** falta mapear o Google Click ID na seção "Detalhes da atribuição" e nomear a ação como `Agendamento confirmado (WhatsApp)`. As credenciais e a URL final estão em `~/.claude/site barbearia/`, fora deste repositório, que é público.
+
+**NO AR** (04-05/09): `google-ads-conversions-csv` via CLI; secret `ADS_CSV_USER` criado.
+
 ## 29.135.0 — O serviço que o cliente pediu fora da lista numerada
 
 Caso Guizo, 04/09/2026, 09h35. A JuIA fez a oferta numerada de sempre:
