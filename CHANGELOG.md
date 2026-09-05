@@ -1,3 +1,27 @@
+## 29.141.0 — A resposta vai para a última pergunta: registro único na JuIA
+
+Pedido do Juliano (05/09/2026): "capacitar a JuIA a separar qual resposta é de qual pergunta". O caso Marcelo, de manhã: "responda sim que eu verifico" (remarcação) e, no estado, o "é só me pedir a chave" do Pix — o "sim" foi pra chave Pix.
+
+### Como era
+
+Cada pergunta da JuIA deixa um flag `pending_*` no estado e o bloco dono do flag consome a resposta. Funciona com UMA pergunta aberta. Com duas, quem ganhava era o bloco que aparecesse primeiro no código — não a pergunta mais recente. Cada correção (v29.17.0 Robson, v29.90.0 Walter, v29.138.0 Marcelo) foi um remendo local.
+
+### Como ficou
+
+Um registro só, `state.last_question = {kind, at, reply}`, escrito no **fim** de cada turno com a pergunta mais recente que ficou aberta (a que nasceu no turno vence; o Pix é a de menor prioridade, porque é oferta passiva). No **começo** do turno, três coisas, todas centralizadas:
+
+1. **Resposta curta** ("sim", "não", "1", "2", "pode", "isso"…) com mais de uma pergunta aberta: as perguntas velhas são apagadas do estado antes de qualquer bloco rodar. Só a última sobrevive, e o bloco dela é o único que enxerga a resposta. Os quinze blocos que existiam não mudaram uma linha: cada um continua olhando o próprio flag — só que agora só um flag está lá.
+2. **Resposta + pedido novo** ("sim, e tem 12:15?", "não. quanto custa a barba?"): a mensagem é dividida. A resposta fecha a pergunta aberta; o resto vira um segundo turno — a function chama a si mesma com o estado já atualizado e o histórico com a primeira resposta — e as duas respostas saem juntas, na ordem. Só divide quando o resto parece pedido (pergunta, horário, dia, verbo de agenda); "sim, obrigado" continua uma coisa só. Uma divisão por mensagem, sem recursão.
+3. O **webhook** passa a tratar qualquer pergunta aberta da JuIA (`last_question`, exceto Pix) com a prioridade que antes só cancelar/remarcar tinham frente à pesquisa de satisfação — senão o "1" da oferta pós-reserva caía numa pesquisa de ontem.
+
+A tabela `PERGUNTAS` no topo do `ju-ia-site` é a lista única de perguntas que a JuIA sabe fazer (serviço de sempre, encaixe do combo, oferta, conflito de agendamento, qual cancelar, cancelar, remarcar, trocar serviço, produtos, lista de espera, repetir, política de antecipado, duplicidade, primeira visita, Pix). Pergunta nova = uma linha ali.
+
+**Decidido contra o óbvio:** não reescrevi os blocos para consultarem o registro um a um. Seria tocar em quinze pontos de um arquivo de 3.500 linhas sem teste automatizado, num sábado à noite. Apagar as perguntas velhas na entrada dá o mesmo resultado com um ponto de mudança — e é o que o webhook já fazia com os `pending_*` zumbis desde a v29.90.0.
+
+**O que não muda:** a fila de perguntas numeradas dos robôs de fora (pesquisa, convite de retorno, confirmação de véspera, follow-up de lead) continua no webhook (`juia_pending_numeric_question`); é outro registro, de outro dono.
+
+Functions publicadas: ju-ia-site, whatsapp-webhook. Sem mudança no site.
+
 ## 29.140.0 — Só oferece o que cabe, confirma o "de sempre" antes de reservar, e +5 nos serviços curtos
 
 Três acertos do Juliano sobre a 29.139.0, no mesmo dia (05/09/2026).

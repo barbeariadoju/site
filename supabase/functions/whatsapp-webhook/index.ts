@@ -942,13 +942,22 @@ Deno.serve(async (request: Request) => {
         // a lista de espera e a pesquisa de lead não podem atropelar. Sem isso, o "Sim"
         // do cancelamento caiu na pesquisa pendente e o agendamento errado ficou de pé.
         const aiState = (conversation?.state || {}) as Record<string, unknown>
+        // v29.141.0 — registro único da JuIA (state.last_question, ver PERGUNTAS em ju-ia-site):
+        // qualquer pergunta aberta dela — confirmação do serviço de sempre, oferta 1/2, escolha
+        // de encaixe, lista de espera — tem a mesma prioridade que cancelar/remarcar tinham
+        // aqui. Sem isso o "1" da oferta pós-reserva caía numa pesquisa de ontem. O Pix fica
+        // de fora (é oferta passiva, não pergunta).
+        const perguntaAbertaJuIA = aiState.last_question && typeof aiState.last_question === 'object'
+          ? String((aiState.last_question as Record<string, unknown>).kind || '')
+          : ''
         const juiaAwaitingAnswer = !!(
           aiState.pending_cancel_booking_id ||
           (Array.isArray(aiState.pending_cancel_options) && (aiState.pending_cancel_options as unknown[]).length > 0) || // v29.45.0 lista "qual cancelar?"
           aiState.pending_reschedule_booking_id ||
           aiState.pending_reschedule_new_date ||
           aiState.pending_products_summary ||
-          aiState.pending_change_service_new_name
+          aiState.pending_change_service_new_name ||
+          (perguntaAbertaJuIA && perguntaAbertaJuIA !== 'pix')
         )
 
         // v29.43.4 — caso Adriano (17/08): convite de retorno e recuperacao da pesquisa sairam

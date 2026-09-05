@@ -13,6 +13,56 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
 const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+
+// v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
+//
+// Cada pergunta que a JuIA faz deixa um flag pending_* no estado, e o bloco dono daquele
+// flag consome a resposta. Funcionava enquanto só UMA pergunta estava aberta; com duas
+// (caso Marcelo: "responda sim que eu verifico" + o "é só me pedir a chave" do Pix), o "sim"
+// ia para quem checasse primeiro no código, não para a pergunta mais recente. Este registro
+// resolve isso em um lugar só:
+//   - state.last_question = {kind, at, reply} é gravado no FIM de cada turno com a pergunta
+//     mais recente que ficou aberta (a que nasceu neste turno vence);
+//   - no COMEÇO do turno, resposta curta ("sim", "não", "1", "2"…) com mais de uma pergunta
+//     aberta apaga as perguntas velhas do estado — só a última sobrevive, e o bloco dela é o
+//     único que enxerga a resposta. Os blocos não precisaram mudar: cada um continua olhando
+//     o próprio flag;
+//   - mensagem com resposta E pedido novo ("sim, e tem 12:15?") é dividida: a resposta fecha
+//     a pergunta aberta, o resto vira um segundo turno (a function chama a si mesma com o
+//     estado já atualizado) e as duas respostas saem juntas, na ordem.
+const PERGUNTAS:{kind:string;flags:string[]}[]=[
+ {kind:'usual_confirm',flags:['pending_usual_confirm']},
+ {kind:'fit_choice',flags:['pending_fit_choice']},
+ {kind:'offer',flags:['upsell_offer_options','upsell_post_booking']},
+ {kind:'conflict',flags:['pending_conflict_choice']},
+ {kind:'cancel_pick',flags:['pending_cancel_options']},
+ {kind:'cancel',flags:['pending_cancel_booking_id']},
+ {kind:'reschedule',flags:['pending_reschedule_booking_id','pending_reschedule_new_date','pending_reschedule_new_time']},
+ {kind:'change_service',flags:['pending_change_service_booking_id','pending_change_service_new_name','pending_change_service_composed']},
+ {kind:'products',flags:['pending_products_booking_id','pending_products_new_list','pending_products_summary','pending_products_action']},
+ {kind:'waitlist',flags:['pending_waitlist']},
+ {kind:'repeat',flags:['pending_repeat_service']},
+ {kind:'prepay_policy',flags:['pending_prepay_policy']},
+ {kind:'duplicate',flags:['pending_duplicate_ids']},
+ {kind:'first_visit',flags:['pending_first_visit']},
+ {kind:'pix',flags:['pix_offered']},
+]
+const flagAberta=(s:any,f:string)=>{const v=s?.[f];return Array.isArray(v)?v.length>0:Boolean(v)}
+// "conflict" usa o pending_cancel_booking_id como parte da própria pergunta — não conta como 'cancel'.
+const perguntasAbertas=(s:any)=>{
+ const ks=PERGUNTAS.filter(p=>p.flags.some(f=>flagAberta(s,f))).map(p=>p.kind)
+ return ks.includes('conflict')?ks.filter(k=>k!=='cancel'):ks
+}
+const ehRespostaCurta=(q:string)=>/^(sim|s|nao|n|ok|pode|pode ser|pode sim|isso|isso mesmo|claro|quero|confirmo|confirma|beleza|fechou|fechado|certo|manter|mantem|\d)[\s!.,]*$/.test(q.trim())
+// "sim, e tem 12:15?" → {resposta:'sim', resto:'tem 12:15?'}. Só divide quando o resto parece
+// pedido (pergunta, horário, dia ou verbo de agenda) — "sim, obrigado" não é duas coisas.
+const dividirMensagem=(m:string)=>{
+ const x=m.match(/^\s*(sim|s|n[aã]o|n|ok|pode ser|pode|isso|claro|quero|confirmo|\d)\s*[!.,;]+\s*(?:(?:e|mas|ai|aí|so|só|tamb[eé]m|agora|depois|ah|a)\s+)?(.{4,})$/i)
+ if(!x)return null
+ const resto=x[2].trim(),rn=normalize(resto)
+ if(!/\?|\d{1,2}\s*(:|h)\d{0,2}|\bhoje\b|\bamanha\b|\bmarc|\bagend|\bhorari|\bremarc|\bcancel|\bquanto|\bqual\b|\btem\b|\bteria\b|\bpix\b|\bchave\b|\bcort|\bbarb/.test(rn))return null
+ return {resposta:x[1],resto}
+}
 // v29.102.0 (regra do Juliano, 01/09/2026): a JuIA não manda emoji para cliente — quem
 // aparece como remetente é o Juliano e a piscadinha entre homens constrange. Tom formal e
 // cordial, a simpatia vem da palavra escrita. Único emoji permitido: as duas mãos juntas,
@@ -446,6 +496,28 @@ Deno.serve(async req=>{
   if(!message)message='Olá!'
  }
  const state=body.state&&typeof body.state==='object'?body.state:{}
+ // v29.141.0 — registro único (ver PERGUNTAS no topo): roteia a resposta curta para a ÚLTIMA
+ // pergunta e separa "resposta + pedido novo" em dois turnos.
+ const ultimaPergunta=state?.last_question&&typeof state.last_question==='object'?String(state.last_question.kind||''):''
+ let restoDaMensagem=''
+ {
+  const abertas=perguntasAbertas(state)
+  if(ultimaPergunta&&abertas.includes(ultimaPergunta)&&!body._segunda_parte){
+   const parte=dividirMensagem(message)
+   if(parte){message=parte.resposta;restoDaMensagem=parte.resto;console.log('[ju-ia-site] registro: mensagem dividida',JSON.stringify(parte))}
+   if(ehRespostaCurta(normalize(message))&&abertas.length>1){
+    const velhas:string[]=[]
+    for(const p of PERGUNTAS){
+     if(p.kind===ultimaPergunta)continue
+     if(ultimaPergunta==='conflict'&&p.kind==='cancel')continue
+     if(!abertas.includes(p.kind))continue
+     for(const f of p.flags)if(f in state)delete state[f]
+     velhas.push(p.kind)
+    }
+    console.log('[ju-ia-site] registro: resposta curta →',ultimaPergunta,'| perguntas velhas apagadas:',velhas.join(',')||'nenhuma')
+   }
+  }
+ }
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
  const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
  const key=Deno.env.get('OPENAI_API_KEY')
@@ -3448,6 +3520,40 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  // vez quando a resposta já traz o aviso específico antigo de barba (29.50.0, "não pagar em
  // dobro") ou de pezinho (29.43.6) — testado ao vivo em 22/08: sem isso saíam os dois.
  if(serviceRuleNote&&!/Só pra ajustar|pagar em dobro|já vem incluso/.test(reply))reply=`${serviceRuleNote}\n\n${reply}`
+ // v29.141.0 — registro único: grava qual pergunta ficou aberta AGORA. A que nasceu neste
+ // turno vence; sem pergunta nova, a última continua se ainda estiver aberta; sem nenhuma
+ // aberta, o registro zera. O Pix é a de menor prioridade (é oferta passiva, não pergunta).
+ {
+  const flagsDe=(k:string)=>(PERGUNTAS.find(p=>p.kind===k)?.flags||[])
+  const antes=perguntasAbertas(state),agora=perguntasAbertas(next)
+  const mudou=(k:string)=>JSON.stringify(flagsDe(k).map(f=>next[f]??null))!==JSON.stringify(flagsDe(k).map(f=>state[f]??null))
+  const novas=agora.filter(k=>!antes.includes(k)||mudou(k))
+  const ordem=(k:string)=>PERGUNTAS.findIndex(p=>p.kind===k)
+  const escolhe=(ks:string[])=>ks.filter(k=>k!=='pix').sort((a,b)=>ordem(a)-ordem(b))[0]||ks[0]||''
+  const kind=novas.length?escolhe(novas):(agora.includes(ultimaPergunta)?ultimaPergunta:escolhe(agora))
+  next.last_question=kind?{kind,at:new Date().toISOString(),reply:String(reply||'').slice(0,160)}:null
+ }
+ // v29.141.0 — segunda parte da mensagem ("sim, e tem 12:15?"): com a pergunta aberta já
+ // fechada e o estado atualizado, a function chama a si mesma com o resto e junta as duas
+ // respostas na ordem. Só uma vez (a chamada interna vem com _segunda_parte).
+ if(restoDaMensagem&&!handoff){
+  try{
+   const hist=[...(Array.isArray(body.history)?body.history:[]),{role:'user',content:message},{role:'assistant',content:reply}]
+   const r=await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ju-ia-site`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:`Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`},
+    body:JSON.stringify({...body,message:restoDaMensagem,state:next,history:hist,_segunda_parte:true}),
+   })
+   const d=await r.json().catch(()=>null)
+   if(r.ok&&d&&typeof d.reply==='string'){
+    reply=[reply,d.reply].filter(Boolean).join('\n\n')
+    if(d.state&&typeof d.state==='object'){for(const k of Object.keys(next))delete next[k];Object.assign(next,d.state)}
+    if(Array.isArray(d.actions))actions=d.actions
+    if(d.intent)intent=String(d.intent)
+    handoff=Boolean(handoff||d.handoff)
+   }else console.error('[ju-ia-site] segunda parte falhou',r.status,d&&d.error)
+  }catch(e){console.error('[ju-ia-site] segunda parte',e)}
+ }
  // v29.102.0: ultimo passo antes de responder — tira emoji da resposta e dos botoes.
  reply=semEmoji(reply)
  actions=Array.isArray(actions)?actions.map((a:any)=>({...a,label:semEmoji(a?.label),message:semEmoji(a?.message)})):actions
