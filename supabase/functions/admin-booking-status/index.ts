@@ -120,6 +120,15 @@ Deno.serve(async (request: Request) => {
     const hasCourtesyChange = typeof body?.courtesy === 'boolean'
     const courtesy = hasCourtesyChange ? Boolean(body.courtesy) : false
     const courtesyReason = String(body?.courtesy_reason || '').trim().slice(0, 120)
+    // v29.138.0 — prêmio da fidelidade no Concluir (caso Joao, 05/09/2026). A tela manda
+    // {name, price} do serviço que foi o prêmio. Convenção (migration 137): service_price
+    // fica bruto, loyalty_discount = preço do serviço premiado, loyalty_free_service = qual.
+    // Sem esse objeto, "fidelidade" como forma de pagamento = o serviço inteiro foi o prêmio.
+    const rawFree = body?.loyalty_free_service && typeof body.loyalty_free_service === 'object' ? body.loyalty_free_service : null
+    const loyaltyFreeService = rawFree && String(rawFree.name || '').trim()
+      ? { name: String(rawFree.name).trim().slice(0, 120), price: Math.max(0, Number(rawFree.price || 0)) }
+      : null
+    if (rawFree && !loyaltyFreeService) return fail('validation_loyalty_free_service', 'Serviço do prêmio de fidelidade inválido.', 400, { requestId })
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
@@ -168,7 +177,7 @@ Deno.serve(async (request: Request) => {
     // "ja e cliente" da tela de Atendimento (prior_visits) grava na hora, antes e
     // independente de concluir o atendimento.
     const wantsExtras = Boolean(loyaltyDelta || markRecurring || visitNumber !== null)
-    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate && !wantsExtras) {
+    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate && !wantsExtras && !loyaltyFreeService) {
       return fail('validation_nothing_to_update', 'Informe um status, o serviço, os produtos ou a forma de pagamento a atualizar.', 400, { requestId })
     }
     if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
@@ -255,6 +264,23 @@ Deno.serve(async (request: Request) => {
       updatePayload.service_name = serviceUpdate.name
       updatePayload.service_price = serviceUpdate.price
       updatePayload.duration_minutes = serviceUpdate.duration_minutes
+    }
+    // v29.138.0 — prêmio da fidelidade. Três entradas possíveis, uma saída só:
+    //   (a) a tela mandou o serviço premiado → desconto = preço dele (limitado ao serviço);
+    //   (b) pagamento 'fidelidade' sem objeto → o serviço inteiro foi o prêmio;
+    //   (c) pagamento em dinheiro/cartão/Pix sem objeto → nenhum prêmio (zera resíduo).
+    if (hasPaymentMethodChange || loyaltyFreeService) {
+      const precoServico = Number((serviceUpdate ? serviceUpdate.price : current.service_price) || 0)
+      if (loyaltyFreeService) {
+        updatePayload.loyalty_discount = Math.min(loyaltyFreeService.price, precoServico)
+        updatePayload.loyalty_free_service = loyaltyFreeService.name
+      } else if (paymentMethod === 'fidelidade') {
+        updatePayload.loyalty_discount = precoServico
+        updatePayload.loyalty_free_service = String(serviceUpdate ? serviceUpdate.name : current.service_name || '') || null
+      } else if (hasPaymentMethodChange && !current.loyalty_reward_id) {
+        updatePayload.loyalty_discount = 0
+        updatePayload.loyalty_free_service = null
+      }
     }
 
     const { data: updated, error: updateError } = await admin

@@ -1,3 +1,65 @@
+## 29.138.0 — Revisão de sábado: o cupom cobrou quem não pagou, e a JuIA falou demais
+
+`database/migrations/137-v29.138.0-fidelidade-no-checkout.sql`
+
+Cinco prints do Juliano em 05/09 e a varredura das ~85 conversas da semana. Sete erros de comportamento, um de dinheiro. Tudo corrigido no mesmo dia.
+
+### 1. Cupom: "Total: R$ 40,00 · Pago com prêmio do cartão fidelidade" (caso Joao, 08h00)
+
+O corte foi pago com o prêmio. O Juliano marcou "Bônus de fidelidade" no Concluir, o registro ficou `payment_method='fidelidade'` com `loyalty_discount=0`, e o cupom saiu com **Total R$ 40,00**. O cliente que não pagou recebeu um documento dizendo que pagou.
+
+**Regra que fica** (migration 137, uma só para todo mundo que lê `bookings`): `service_price` é o preço de tabela, bruto; `loyalty_discount` é quanto o prêmio cobriu; `loyalty_free_service` (coluna nova) é **qual** serviço foi o prêmio; `payment_method` é a forma do que foi **pago** — `fidelidade` só quando não sobrou nada a pagar. Receita = `service_price − loyalty_discount + products_price`.
+
+Isso obrigou a alinhar quem lia diferente: o **Financeiro**, o **Dashboard** e os **Relatórios** somavam o corte grátis como R$ 40 recebidos — agora descontam o prêmio. A `reserve_loyalty_reward` (v29.10.0) reduzia `service_price` ao aplicar o prêmio, o que faria o cupom descontar duas vezes; nunca tinha rodado em produção (zero bookings com `loyalty_reward_id`) e passou a seguir a mesma regra. O balcão (`admin_register_walkin_visit`) grava o prêmio quando a forma é fidelidade.
+
+**Check-out ganhou o que o Juliano pediu:** com "Bônus de fidelidade" e **dois ou mais serviços**, a tela pergunta *qual serviço é o prêmio* e *como o restante foi pago*; com um serviço e produto junto, exige a forma de pagamento do produto. O total a cobrar já desconta o prêmio. O cupom sai "Prêmio do cartão fidelidade (Corte de cabelo): −R$ 40,00 / Total: R$ 25,00 / Pago no crédito". Sem produto e sem resto: "Nada a pagar — prêmio do cartão fidelidade". Três testes novos em `tests/unit/comprovante.spec.js`. O registro do Joao foi acertado pela migration.
+
+### 2. João (35 9139-7142): confundido pelo excesso de texto, foi à barbearia achando que tinha horário
+
+A sequência, reconstruída pelo banco: 08h31 escolheu 13:00 → a JuIA respondeu "Sim! 13:00 está disponível" **mais um menu numerado de complementos** → ele não respondeu → às 10h06 outro cliente fechou 13:00 → 10h45 o follow-up de lead disse "a gente acabou não fechando" (ele leu como "fechou") → 11h52 "Eu vou às 13h como combinado" → "3" → "13:00 não fecha" → "Juliano consegue falar comigo?" → **"Consigo te atender na terça sim!"** → "N quero a inteligência artificial" (silêncio) → 12h23 "tô no caminho" → **"Sim, 13:00 está disponível"** (era terça 08/09 no estado, sem o dia na frase) → atendido no balcão às 13:55 → 14h30 respondeu "1" à pesquisa + "Vc é top demais / Parabéns e que Deus te abençoe" → **"Sim, 13:00 está disponível. Quer reservar?"** às 14h31.
+
+O último foi corrida no webhook: o "1" gravou a pesquisa como satisfeito, mas o agradecimento foi **descartado** pela trava "cliente escreveu de novo antes do envio" (v28.69.1); a rajada seguinte, já sem pesquisa pendente, caiu na IA com data+hora no estado. Resposta que confirma ação já gravada agora sai sempre (`force`). E elogio/despedida (`soGentileza`) nunca mais reabre consulta de agenda.
+
+Correções de fluxo: pedido explícito de gente ("falar com o Juliano", "não quero a inteligência artificial", "chama o barbeiro") virou **handoff determinístico** com uma frase curta — não depende do modelo. Toda confirmação de horário leva o **dia na frente** ("Sim, na terça (08/09) às 13:00 está livre…"). O follow-up de lead diz com todas as letras que **nada ficou reservado** e pede a confirmação.
+
+### 3. Textos enxutos (pedido do Juliano)
+
+| Antes | Agora |
+|---|---|
+| "13:15 já está reservado nesse dia. O mais perto que consigo é 12:45 — serve pra você? Se preferir outro, tenho ainda: 12:00, 12:15, 12:30. Ou, se ficar melhor pra você, também tenho horários de manhã" | "Hoje às 13:15 acabou de ser reservado por outro cliente. O mais próximo que tenho é 12:45 ou 13:00. Serve pra você?" |
+| "Não encontrei horário hoje para X. O próximo dia com horário disponível é terça (08/09): consigo te atender entre 08:00 e 17:45 — por exemplo 08:00, 11:15, 14:30, 17:45. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera pra hoje e aviso assim que abrir uma vaga." | "Hoje não tenho mais horário para X. Na terça (08/09) tenho 08:00, 11:15, 14:30. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga hoje." |
+| "Posso incluir sim! Só que com Sobrancelha o atendimento fica com 50 min, e às 13:15 não fecha. Pra X + Y + Z consigo 13:00 ou 12:45. Ou, se preferir, mantenho só X + Y às 13:15 — o que fica melhor?" | "Com Sobrancelha o atendimento passa a 50 min e às 13:15 não cabe. Duas opções: *1* — combo às 13:00 (ou 12:45) *2* — Manter só X + Y às 13:15" |
+
+"Acabou de ser reservado por outro cliente" só sai quando a própria JuIA tinha oferecido aquele horário antes na conversa; senão, "já está ocupado".
+
+### 4. Sharles (15 99727-9993): "Então sem sobrancelha" não tirou a sobrancelha
+
+Depois do "não fecha", "Então sem sobrancelha" e "Manter pezinho e pigmentação" não casavam com nada — e o modelo ainda **acrescentou** "Pigmentação de Barba" pela palavra "pigmentação". Três negativas seguidas, cada uma com um combo maior. A escolha "manter o original" agora entende "1"/"2", "sem <o extra>", "manter/somente/apenas", e parte da lista do turno **anterior**. Junto: **"só X" no início da frase é a lista inteira** (caso Julio, 10h04: "só corte de cabelo de criança" virou "Corte infantil + Barba Express", e foi cobrado assim).
+
+### 5. Marcelo (11 93350-0117): pediu 12:15 e recebeu a chave Pix
+
+"Vamos remarcar… responda sim" → "sim" → **chave Pix**. A confirmação do agendamento liga `pix_offered` ("é só me pedir a chave") e o "sim" curto casou com a oferta do Pix, que reescreve a resposta por cima da remarcação. Um "sim" só é resposta ao Pix quando **não há outra pergunta em aberto** (`pending_*`). E "12:15 não tem?" caía como "não" ("Tudo bem, não mudei nada"): frase com horário ou com "?" nunca é a negativa curta.
+
+### 6. Alan (11 96850-4368): pediu visagismo, a JuIA disse "vamos marcar"
+
+Não fazemos visagismo. O prompt ganhou o parágrafo *O que não fazemos*: dizer na primeira resposta que o Juliano não é visagista, e oferecer o que existe (Old Money, degradê…). Nunca "vamos marcar" nem "vou direcionar ao Juliano" para serviço que não existe aqui.
+
+### 7. Miúdos da varredura
+
+- "~Gabriel": o WhatsApp prefixa com "~" quem não está na agenda — saudação saía "Boa tarde, ~Gabriel!". Prefixo removido.
+- "Beleza vou ver e te aviso" (Carlos, 03/09) recebia a mesma pergunta de novo. Agora: "Combinado, fico no aguardo."
+- Follow-up de lead não sai para quem está na **lista de espera** (Sharles levou "a gente acabou não fechando" 2h depois de entrar na lista).
+- Nota "(Anotei X, o seu de sempre)" não repete quando a resposta já diz "Anotei".
+
+### Ficou de fora, anotado
+
+- **Gabriel (11 98918-4946, 04/09):** depois de cancelar, "Quais horários tem para barba hoje?" caiu em "trocar o serviço do seu agendamento de às, de "undefined"" — o cancelamento não limpa o `pending_change_service_*`. Corrigir na próxima.
+- **Ben-Hur (11 97374-2000, 04/09):** "Barboterapia e corte" listou horário só de corte e depois trocou barboterapia por "Barba na navalha". A normalização de família de barba precisa de revisão própria.
+- **Fernando (11 98636-7032, 04/09):** perguntou horário *antes* das 16:00 que já tinha e a JuIA ofereceu 16:00 com o "serviço de sempre" errado.
+- **Caio (03/09):** "Posso confirmar no nome de Caio?" saiu antes de existir dia e horário.
+
+Rodado: `npm run test:unit` (64) e `npm run test:e2e`. Functions publicadas: admin-booking-status, satisfaction-dispatch, ju-ia-site, whatsapp-webhook, whatsapp-lead-followup. Migration 137 aplicada. Cache: agenda/dashboard/financeiro/relatorios `?v=29.138.0`, `ADMIN_VERSION` 29.138.0.
+
 ## 29.137.0 — "Sou eu juliano": a trava existia, o que faltava era o nome
 
 `database/migrations/136-v29.137.0-booking-usa-nome-do-cadastro.sql`

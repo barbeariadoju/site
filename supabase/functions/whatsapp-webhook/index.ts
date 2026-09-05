@@ -350,7 +350,9 @@ Deno.serve(async (request: Request) => {
     // Nome do contato como salvo no WhatsApp dele — usado pela JuIA pra saudação
     // personalizada (ex.: "Bom dia, Alexandre!") quando o telefone ainda não tem
     // cadastro confirmado no CRM. Pode vir null (ex.: mensagem de anúncio).
-    const pushName = String(data?.pushName || '').trim()
+    // v29.138.0 (caso "~Gabriel", 04/09/2026): o WhatsApp prefixa com "~" o nome de quem não
+    // está na agenda do aparelho, e a saudação saiu "Boa tarde, ~Gabriel!". Tira o prefixo.
+    const pushName = String(data?.pushName || '').trim().replace(/^[~\s]+/, '').trim()
 
     const fromMe = data?.key?.fromMe === true
     const messageId = String(data?.key?.id || '')
@@ -497,11 +499,17 @@ Deno.serve(async (request: Request) => {
       return !!(data && data.length > 0)
     }
 
-    const sendWhatsapp = async (to: string, body: string) => {
+    // v29.138.0 (caso João, 05/09/2026, 14h30): ele respondeu "1" à pesquisa e, segundos
+    // depois, "Vc é top demais" e "Parabéns e q Deus te abençoe". A pesquisa foi registrada
+    // (satisfeito) mas o agradecimento foi DESCARTADO pela trava abaixo, e a rajada seguinte
+    // — já sem pesquisa pendente — caiu na IA, que respondeu agenda a um elogio. Resposta que
+    // confirma uma AÇÃO já gravada (pesquisa respondida, cancelamento feito) nunca nasce
+    // velha: sai sempre (force=true). A trava continua valendo pra resposta de conversa.
+    const sendWhatsapp = async (to: string, body: string, force = false) => {
       // v29.102.0 (regra do Juliano, 01/09/2026): nenhuma mensagem nossa sai com emoji —
       // o semEmoji() no corpo do POST, logo abaixo, vale para TODAS as mensagens deste
       // arquivo, inclusive as escritas à mão. Ver supabase/functions/_shared/sem-emoji.ts.
-      if (await respostaFicouObsoleta()) {
+      if (!force && await respostaFicouObsoleta()) {
         console.warn('[whatsapp-webhook] resposta descartada: cliente escreveu de novo antes do envio', to)
         return true
       }
@@ -1661,7 +1669,7 @@ Deno.serve(async (request: Request) => {
             const { data: submitResult } = await admin.rpc('submit_experience_response', { p_token: pending.token, p_response: 'feedback', p_feedback: text })
             if (submitResult?.ok) {
               const reply = 'Muito obrigado pela sua sinceridade! 🙏 Já anotei aqui e o Juliano vai entrar em contato pra combinar seu retoque sem custo. Qualquer coisa, estou por aqui.'
-              await sendWhatsapp(phone, reply)
+              await sendWhatsapp(phone, reply, true)
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {
                 await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -1714,7 +1722,7 @@ Deno.serve(async (request: Request) => {
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
                   : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
-              await sendWhatsapp(phone, reply)
+              await sendWhatsapp(phone, reply, true)
               // Marca que a etapa 2 saiu — é isso que permite interpretar um "1" seguinte
               // como "já avaliei" em vez de resposta solta.
               if (!alreadyReviewed && !skipGoogleAsk) {
@@ -1731,7 +1739,7 @@ Deno.serve(async (request: Request) => {
               // pending_unsat roteia a resposta (número ou texto livre) mesmo com o
               // human_takeover ligado — os interceptadores rodam antes da JuIA.
               const reply = `Poxa, sinto muito que não tenha sido como esperávamos 😕 Quero resolver isso da melhor forma pra você. Como prefere?\n*1* — Reagendar um novo atendimento, sem nenhum custo, pra fazermos o reparo/ajuste\n*2* — Ressarcimento do valor pago\n*3* — Deixar uma sugestão ou contar o que aconteceu\n\nPode responder com o número ou escrever à vontade — o Juliano também vai ler esta conversa pessoalmente.`
-              await sendWhatsapp(phone, reply)
+              await sendWhatsapp(phone, reply, true)
               const { data: unsatConvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
               const unsatStateNow = (unsatConvRow?.state || {}) as Record<string, unknown>
               await admin.from('whatsapp_conversations').upsert({ phone, state: { ...unsatStateNow, pending_unsat: { token: pending.token, customer_name: pending.customer_name || null, at: new Date().toISOString() } }, human_takeover: true, human_takeover_at: new Date().toISOString(), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })

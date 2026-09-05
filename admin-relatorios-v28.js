@@ -80,7 +80,7 @@
   }
   async function load() {
     const [{ data: b, error: be }, { data: s, error: se }, { data: p, error: pe }] = await Promise.all([
-      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status,channel').order('booking_date', { ascending: true }).limit(5000),
+      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status,channel,loyalty_discount,courtesy').order('booking_date', { ascending: true }).limit(5000),
       sb.from('experience_requests').select('answer,status,created_at').order('created_at', { ascending: false }).limit(5000),
       sb.from('customer_profiles').select('phone,prior_visits').limit(5000)
     ]);
@@ -121,7 +121,9 @@
     const completed = inRange.filter(x => x.status === 'completed');
     const noShows = inRange.filter(x => x.status === 'no_show');
 
-    const revenueServ = completed.reduce((a, x) => a + Number(x.service_price || 0), 0);
+    // v29.138.0: serviço premiado pela fidelidade (loyalty_discount) e cortesia não são receita.
+    const servNet = (x) => x.courtesy ? 0 : Math.max(0, Number(x.service_price || 0) - Number(x.loyalty_discount || 0));
+    const revenueServ = completed.reduce((a, x) => a + servNet(x), 0);
     const revenueProd = completed.reduce((a, x) => a + Number(x.products_price || 0), 0);
     const revenue = revenueServ + revenueProd;
     const avg = completed.length ? revenue / completed.length : 0;
@@ -164,7 +166,7 @@
     completed.forEach(x => {
       const name = x.service_name || 'Serviço';
       const cur = map.get(name) || { count: 0, revenue: 0 };
-      cur.count++; cur.revenue += Number(x.service_price || 0) + Number(x.products_price || 0);
+      cur.count++; cur.revenue += (x.courtesy ? 0 : Math.max(0, Number(x.service_price || 0) - Number(x.loyalty_discount || 0))) + Number(x.products_price || 0);
       map.set(name, cur);
     });
     const rows = [...map.entries()].map(([name, v]) => ({ name, ...v })).sort((a, b) => b.count - a.count).slice(0, 8);

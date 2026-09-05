@@ -88,7 +88,7 @@ Deno.serve(async(req:Request)=>{
 
   let query=admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
   // v29.121.0 — no modo imediato processa SÓ o atendimento recém-concluído. Sem isso, uma
@@ -154,6 +154,8 @@ Deno.serve(async(req:Request)=>{
         servicoValor:Number(booking?.service_price||0),
         produtos:produtosBrutos.map((p:Record<string,unknown>)=>({nome:String(p?.name||'Produto'),valor:Number(p?.price||0)})),
         descontoFidelidade:Number(booking?.loyalty_discount||0),
+        // v29.138.0 — qual serviço foi o prêmio (combo com só um serviço de graça).
+        fidelidadeServico:String(booking?.loyalty_free_service||''),
         caixinha:Number(booking?.tip_amount||0),
         cortesia:booking?.courtesy===true,
         cortesiaMotivo:String(booking?.courtesy_reason||''),

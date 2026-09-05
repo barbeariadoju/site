@@ -69,8 +69,37 @@ describe('montarCupom', () => {
   it('abre subtotal e desconto quando houve prêmio de fidelidade', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 50, descontoFidelidade: 20 }));
     expect(cupom).toContain('Subtotal: R$ 50,00');
-    expect(cupom).toContain('Desconto do cartão fidelidade: -R$ 20,00');
+    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 20,00');
     expect(cupom).toContain('*Total: R$ 30,00*');
+    expect(cupom).toContain('Pago no Pix');
+  });
+
+  // v29.138.0 — caso Joao (05/09/2026): "Bônus de fidelidade" no Concluir saía com Total R$ 40,00
+  // e "Pago com prêmio do cartão fidelidade" — o cliente que não pagou recebeu cobrança.
+  it('fidelidade sem desconto registrado zera o serviço inteiro', () => {
+    const cupom = norm(montarCupom({ ...base, servicoValor: 40, pagamentoServico: 'fidelidade' }));
+    expect(cupom).toContain('Corte de cabelo — R$ 40,00');
+    expect(cupom).toContain('Subtotal: R$ 40,00');
+    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 40,00');
+    expect(cupom).toContain('*Total: R$ 0,00*');
+    expect(cupom).toContain('Nada a pagar — prêmio do cartão fidelidade');
+    expect(cupom).not.toContain('Pago com prêmio');
+  });
+
+  it('fidelidade com produto: só o produto tem forma de pagamento', () => {
+    const cupom = norm(montarCupom({ ...base, servicoValor: 40, pagamentoServico: 'fidelidade', produtos: [{ nome: 'Pomada em pó', valor: 38 }], pagamentoProdutos: 'pix' }));
+    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 40,00');
+    expect(cupom).toContain('*Total: R$ 38,00*');
+    expect(cupom).toContain('Produtos pagos no Pix');
+    expect(cupom).not.toContain('Pago no Pix');
+  });
+
+  it('combo com só um serviço no prêmio: nomeia o serviço e cobra o resto na forma escolhida', () => {
+    const cupom = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Barba Express', servicoValor: 65, descontoFidelidade: 40, fidelidadeServico: 'Corte de cabelo', pagamentoServico: 'credito' }));
+    expect(cupom).toContain('Corte de cabelo + Barba Express — R$ 65,00');
+    expect(cupom).toContain('Prêmio do cartão fidelidade (Corte de cabelo): -R$ 40,00');
+    expect(cupom).toContain('*Total: R$ 25,00*');
+    expect(cupom).toContain('Pago no crédito');
   });
 
   it('mostra as duas formas de pagamento só quando forem diferentes', () => {
@@ -96,11 +125,6 @@ describe('montarCupom', () => {
     const cupom = norm(montarCupom({ ...base, caixinha: 10 }));
     expect(cupom).toContain('*Total: R$ 45,00*');
     expect(cupom).toContain('Caixinha, recebida à parte: R$ 10,00');
-  });
-
-  it('nomeia o pagamento com prêmio de fidelidade', () => {
-    const cupom = norm(montarCupom({ ...base, pagamentoServico: 'fidelidade' }));
-    expect(cupom).toContain('Pago com prêmio do cartão fidelidade');
   });
 
   it('trata pagamento antecipado confirmado como forma de pagamento', () => {

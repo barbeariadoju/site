@@ -33,6 +33,12 @@ export type DadosComprovante = {
   servicoValor: number
   produtos: ItemComprovante[]
   descontoFidelidade: number
+  /**
+   * v29.138.0 — nome do serviço que o prêmio da fidelidade cobriu (caso Joao, 05/09/2026).
+   * Opcional: quando vem, a linha do prêmio diz QUAL serviço foi de graça — importa no combo
+   * ("Corte + Barba Express" com só o corte no prêmio). Vazio = "prêmio do cartão fidelidade".
+   */
+  fidelidadeServico?: string
   caixinha: number
   cortesia: boolean
   cortesiaMotivo: string
@@ -132,8 +138,16 @@ export const ehVendaSoDeProduto = (d: Pick<DadosComprovante, 'servicoValor' | 'p
 export const montarCupom = (d: DadosComprovante) => {
   const produtos = agruparProdutos(Array.isArray(d.produtos) ? d.produtos : [])
   const servicoValor = Number(d.servicoValor || 0)
-  const desconto = Number(d.descontoFidelidade || 0)
   const caixinha = Number(d.caixinha || 0)
+  // v29.138.0 — caso Joao (05/09/2026, 08h00): corte pago com o prêmio da fidelidade, o
+  // Juliano marcou "Bônus de fidelidade" no Concluir e o cupom saiu "Corte de cabelo — R$ 40,00
+  // / Total: R$ 40,00 / Pago com prêmio do cartão fidelidade". O cliente que NÃO pagou recebeu
+  // um documento dizendo que pagou 40. A forma de pagamento "fidelidade" sem desconto
+  // registrado significa que o serviço INTEIRO foi o prêmio: o desconto é o valor do serviço.
+  const pagoComFidelidade = String(d.pagamentoServico || '').toLowerCase() === 'fidelidade'
+  const desconto = Number(d.descontoFidelidade || 0) > 0
+    ? Math.min(Number(d.descontoFidelidade), servicoValor)
+    : (pagoComFidelidade ? servicoValor : 0)
   // Venda só de produto no balcão (serviço "Venda de produtos" R$ 0): sem linha de serviço.
   const soProduto = ehVendaSoDeProduto(d)
 
@@ -154,17 +168,29 @@ export const montarCupom = (d: DadosComprovante) => {
 
   const totais: string[] = []
   if (desconto > 0 || d.cortesia) totais.push(`Subtotal: ${money(bruto)}`)
-  if (desconto > 0 && !d.cortesia) totais.push(`Desconto do cartão fidelidade: -${money(desconto)}`)
+  if (desconto > 0 && !d.cortesia) {
+    // v29.138.0 — a linha diz qual serviço foi o prêmio quando isso importa (combo). "Prêmio"
+    // e não "desconto": o cliente trocou 10 carimbos por aquilo, não ganhou abatimento.
+    const qual = String(d.fidelidadeServico || '').trim()
+    totais.push(`Prêmio do cartão fidelidade${qual ? ` (${qual})` : ''}: -${money(desconto)}`)
+  }
   if (d.cortesia) totais.push(`Cortesia (por conta da casa): -${money(bruto)}`)
   totais.push(`*Total: ${money(total)}*`)
 
-  const pagServico = metodoLabel(d.pagamentoServico) || (d.pagamentoAntecipado ? 'no Pix (pago antecipado)' : '')
+  // Com o serviço no prêmio, "fidelidade" não é forma de pagamento do que sobrou: o que
+  // ainda foi pago (produto, ou o resto do combo) tem a forma dele; o serviço premiado, nenhuma.
+  const pagServico = (pagoComFidelidade ? '' : metodoLabel(d.pagamentoServico)) || (d.pagamentoAntecipado ? 'no Pix (pago antecipado)' : '')
   const pagProdutos = metodoLabel(d.pagamentoProdutos) || pagServico
   if (d.cortesia) {
     // O motivo da cortesia NÃO sai no comprovante de propósito: o campo é anotação interna do
     // Juliano ("João, funcionário", "reclamou do corte passado") e o cliente não é o público
     // dela. O que ele precisa saber é que não há nada a pagar.
     totais.push('Nada a pagar — cortesia da casa')
+  } else if (total <= 0 && desconto > 0) {
+    totais.push('Nada a pagar — prêmio do cartão fidelidade')
+  } else if (pagoComFidelidade && produtos.length > 0) {
+    // Serviço no prêmio, produto pago: só o produto tem forma de pagamento.
+    totais.push(pagProdutos ? `Produtos pagos ${pagProdutos}` : 'Produtos pagos à parte')
   } else if (produtos.length > 0 && pagServico && pagProdutos && pagProdutos !== pagServico) {
     totais.push(`Pago: serviço ${pagServico}, produtos ${pagProdutos}`)
   } else if (pagServico) {

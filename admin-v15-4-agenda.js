@@ -268,14 +268,48 @@
       const paidRow=(booking.payments||[]).find(p=>p&&p.status==='paid');
       const paidLabel=paidRow?({pix:'Pix',credito:'crédito',debito:'débito'}[paidRow.method]||'online'):'Pix';
       const paidValue=paidRow?Number(paidRow.amount_cents||0)/100:(prepaid?Number(booking.service_price||0):0);
+      // v29.138.0 — prêmio da fidelidade no check-out (caso Joao, 05/09/2026). Com "Bônus de
+      // fidelidade" marcado: 1 serviço = ele inteiro é o prêmio; 2 ou mais = o Juliano escolhe
+      // QUAL foi o prêmio e como o restante foi pago (o cupom do cliente sai com o valor certo).
+      // O total a cobrar já desconta o prêmio.
+      let selectedRestPayment='';
+      if(!modal.querySelector('[data-loyalty-pick]'))modal.querySelector('[data-payment-slot]').insertAdjacentHTML('afterend','<div data-loyalty-pick hidden></div>');
+      const loyaltyPick=modal.querySelector('[data-loyalty-pick]');
+      loyaltyPick.hidden=true;loyaltyPick.innerHTML='';loyaltyPick.dataset.key='';
+      const restPickerHtml=()=>`<div class="payment-method-grid">${[['pix','Pix'],['debito','Débito'],['credito','Crédito'],['dinheiro','Dinheiro']].map(([v,l])=>`<button type="button" data-rest-option="${v}" class="${selectedRestPayment===v?'is-selected':''}">${l}</button>`).join('')}</div>`;
+      const loyaltyFreeService=()=>{
+        const services=readChecklistServices(modal);
+        if(selectedPayment!=='fidelidade'||courtesyBox.checked||!services.length)return null;
+        if(services.length===1)return services[0];
+        const picked=loyaltyPick.querySelector('input[name="loyalty-free"]:checked')?.value;
+        return services.find(s=>s.name===picked)||services[0];
+      };
+      const renderLoyaltyPick=()=>{
+        const services=readChecklistServices(modal);
+        const show=selectedPayment==='fidelidade'&&!courtesyBox.checked&&services.length>=2;
+        loyaltyPick.hidden=!show;
+        if(!show)return;
+        const key=services.map(s=>s.name).join('|');
+        if(loyaltyPick.dataset.key===key)return;
+        loyaltyPick.dataset.key=key;
+        loyaltyPick.innerHTML=`<h3 style="margin:12px 0 4px">Qual serviço é o prêmio da fidelidade?</h3><div class="products-modal-grid">${services.map((s,i)=>`<label class="products-modal-option"><input type="radio" name="loyalty-free" value="${esc(s.name)}" ${i===0?'checked':''}><span><strong>${esc(s.name)}</strong><small>${money(s.price)} por conta da fidelidade</small></span></label>`).join('')}</div><h3 style="margin:12px 0 4px">Como foi pago o restante?</h3>${restPickerHtml()}`;
+      };
       const renderTotal=()=>{
+        renderLoyaltyPick();
+        const free=loyaltyFreeService();
         const sv=readChecklistServices(modal).reduce((a,s)=>a+Number(s.price||0),0);
         const pr=readChecklistProducts(modal).reduce((a,p)=>a+Number(p.price||0),0);
         const isCourtesy=courtesyBox.checked;
-        const svShow=isCourtesy?0:sv;
+        const premio=free?Number(free.price||0):0;
+        const svShow=isCourtesy?0:Math.max(0,sv-premio);
         const due=Math.max(0,svShow+pr-paidValue);
-        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
+        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · 🎁 fidelidade −${money(premio)} (${esc(free.name)})`:''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
       };
+      const onRestClick=e=>{const btn=e.target.closest('[data-rest-option]');if(!btn)return;selectedRestPayment=selectedRestPayment===btn.dataset.restOption?'':btn.dataset.restOption;loyaltyPick.querySelectorAll('[data-rest-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.restOption===selectedRestPayment));renderTotal()};
+      loyaltyPick.addEventListener('click',onRestClick);
+      // A forma de pagamento muda o total (fidelidade); o clique dela é tratado mais abaixo,
+      // então o recálculo espera o próximo tick pra ler selectedPayment já atualizado.
+      modal.querySelector('[data-payment-slot]').addEventListener('click',()=>setTimeout(renderTotal,0));
       // v29.86.2 (caso Nelson 109→144): recalcula em QUALQUER mudança no modal, não só nas
       // que a gente previu — o render é barato e idempotente, e um total teimando em ficar
       // velho é pior que um recálculo a mais. Junto: sem rolagem interna nas listas (v29.86.2),
@@ -346,8 +380,25 @@
           paymentSlot.classList.remove('payment-flash');void paymentSlot.offsetWidth;paymentSlot.classList.add('payment-flash');
           return
         }
+        // v29.138.0 — prêmio da fidelidade: no combo, exige QUAL serviço e como o resto foi pago;
+        // com produto junto, exige a forma de pagamento do produto (o serviço não teve).
+        const freeSvc=loyaltyFreeService();
+        if(selectedPayment==='fidelidade'&&!isCourtesy&&freeSvc){
+          if(services.length>=2&&!selectedRestPayment){
+            alert('Marque qual serviço foi o prêmio da fidelidade e como o restante foi pago.');
+            loyaltyPick.scrollIntoView({behavior:'smooth',block:'center'});
+            return
+          }
+          if(services.length===1&&readChecklistProducts(modal).length&&!selectedProductsPayment){
+            alert('Com o serviço no prêmio da fidelidade, escolha como os produtos foram pagos.');
+            splitWrap.hidden=false;splitToggle.textContent='▾ Produtos pagos de outra forma? (raro)';
+            splitWrap.scrollIntoView({behavior:'smooth',block:'center'});
+            return
+          }
+        }
         finish({
-          payment:isCourtesy?(selectedPayment||''):selectedPayment,
+          payment:isCourtesy?(selectedPayment||''):(selectedPayment==='fidelidade'&&freeSvc&&services.length>=2?selectedRestPayment:selectedPayment),
+          loyalty_free_service:(!isCourtesy&&freeSvc)?{name:freeSvc.name,price:Number(freeSvc.price||0)}:null,
           products_payment_method:selectedProductsPayment||null,
           products:readChecklistProducts(modal),
           service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
@@ -458,12 +509,13 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='';
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='',completionLoyaltyFree=null;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
       if(!choice)return;
       paymentMethod=choice.payment;
+      completionLoyaltyFree=choice.loyalty_free_service||null;
       completionProducts=choice.products;
       completionService=choice.service;
       completionProductsPayment=choice.products_payment_method;
@@ -483,6 +535,7 @@
     try{
       const body={booking_id:id,status};
       if(paymentMethod)body.payment_method=paymentMethod;
+      if(completionLoyaltyFree)body.loyalty_free_service=completionLoyaltyFree;
       if(completionProductsPayment)body.products_payment_method=completionProductsPayment;
       if(completionProducts)body.selected_products=completionProducts;
       if(completionService)body.service=completionService;

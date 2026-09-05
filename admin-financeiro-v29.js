@@ -76,7 +76,7 @@
     $('fin-next').disabled = atCurrent;
 
     const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 6); sevenAgo.setHours(0, 0, 0, 0);
-    const bookingCols = 'booking_date,service_price,products_price,payment_method,fee_passed_to_customer,tip_amount,courtesy';
+    const bookingCols = 'booking_date,service_price,products_price,payment_method,fee_passed_to_customer,tip_amount,courtesy,loyalty_discount';
 
     const [entriesRes, bookingsRes, recentRes] = await Promise.all([
       sb.from('finance_entries').select('*').gte('entry_date', start).lte('entry_date', end).order('entry_date', { ascending: false }),
@@ -153,7 +153,9 @@
 
   // ---------- taxa da maquininha ----------
   // v29.20.0: cortesia não tem valor de serviço cobrado (produtos vendidos junto contam)
-  const bookingValue = (b) => (b.courtesy ? 0 : Number(b.service_price || 0)) + Number(b.products_price || 0);
+  // v29.138.0: o prêmio da fidelidade (loyalty_discount) sai da receita — service_price é o
+  // preço de tabela, bruto (migration 137). Antes o corte grátis entrava como R$ 40 recebidos.
+  const bookingValue = (b) => (b.courtesy ? 0 : Math.max(0, Number(b.service_price || 0) - Number(b.loyalty_discount || 0))) + Number(b.products_price || 0);
   const feeOf = (b) => {
     const r = feeRates[b.payment_method];
     if (!r || !r.rate) return 0;

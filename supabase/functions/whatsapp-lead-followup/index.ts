@@ -121,6 +121,20 @@ Deno.serve(async (request: Request) => {
     if (humanReply && humanReply.length > 0) return true
     // A data preenchida também vale, mesmo com a flag desligada.
     if (conv?.human_takeover_at && Date.now() - new Date(conv.human_takeover_at).getTime() < 72 * 3600 * 1000) return true
+    // v29.138.0 (caso Sharles, 05/09/2026): entrou na lista de espera às 11h37 e às 13h45
+    // levou "vi que você estava procurando horário e a gente acabou não fechando". Quem está
+    // na lista foi cuidado — o robô da lista avisa quando abrir vaga; o nudge não entra.
+    const chave = String(phone || '').replace(/\D/g, '').slice(-8)
+    if (chave.length === 8) {
+      const { data: naLista } = await admin
+        .from('waitlist')
+        .select('id')
+        .in('status', ['esperando', 'avisado'])
+        .eq('phone_key', chave)
+        .gte('created_at', new Date(Date.now() - 48 * 3600 * 1000).toISOString())
+        .limit(1)
+      if (naLista && naLista.length > 0) return true
+    }
     return false
   }
 
@@ -279,7 +293,11 @@ Deno.serve(async (request: Request) => {
         // horários podem ter mudado") era vaga, não dizia o que fazer e teve 0 respostas
         // em dezenas de envios. Agora: relembra o que a pessoa queria, dá o próximo passo
         // concreto (dizer o dia) e fecha com o benefício real (hora marcada, sem fila).
-        text = `Oi${name ? `, ${name}` : ''}! 👋 Vi que você estava procurando horário${lead.service_interest ? ` pra ${lead.service_interest}` : ''} e a gente acabou não fechando. Me diz o dia que fica melhor pra você que eu já deixo reservado — atendimento com hora marcada, sem fila 💈`
+        // v29.138.0 (caso João, 05/09/2026): ele escolheu 13:00, não respondeu à pergunta do
+        // complemento, e este toque saiu vago ("a gente acabou não fechando"). Ele leu como
+        // "está fechado", foi às 13:00 e o horário era de outro cliente. O toque agora diz
+        // com todas as letras que NADA ficou reservado e pede a confirmação.
+        text = `Oi${name ? `, ${name}` : ''}! Só pra avisar: seu horário${lead.service_interest ? ` pra ${lead.service_interest}` : ''} ainda NÃO ficou reservado, a conversa parou antes de eu confirmar. Se ainda quiser, me diz o dia e o horário que eu reservo agora.`
       } else {
         text = `Oi${name ? `, ${name}` : ''}! 😊 Só passando pra saber se ainda tem interesse em ${lead.service_interest || 'agendar um horário'} — se quiser, posso já ver um horário pra você.`
       }
