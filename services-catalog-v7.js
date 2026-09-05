@@ -8,11 +8,11 @@ window.BDJ_SERVICES = [
   {category:'Barba',name:'Barboterapia com vaporizador de ozônio',description:'Ritual de cuidado com vaporizador de ozônio, toalha quente, espuma e acabamento com navalha.',price:50,priceFrom:60,duration:50},
   {category:'Barba',name:'Barba na navalha com toalha quente',description:'Ritual de barba completo com toalha quente, espuma, acabamento na navalha e produtos profissionais.',price:40,priceFrom:50,duration:40},
   {category:'Barba',name:'Barba Express',description:'Alinhamento rápido da barba com acabamento realizado na máquina.',price:25,priceFrom:35,duration:30},
-  {category:'Acabamentos e adicionais',name:'Pezinho (acabamento)',description:'Acabamento preciso do contorno do cabelo, nuca e laterais.',price:15,priceFrom:20,duration:20},
-  {category:'Acabamentos e adicionais',name:'Sobrancelha Masculina',description:'Alinhamento e limpeza da sobrancelha masculina de forma discreta e natural.',price:15,priceFrom:20,duration:20},
+  {category:'Acabamentos e adicionais',name:'Pezinho (acabamento)',description:'Acabamento preciso do contorno do cabelo, nuca e laterais.',price:15,priceFrom:20,duration:15},
+  {category:'Acabamentos e adicionais',name:'Sobrancelha Masculina',description:'Alinhamento e limpeza da sobrancelha masculina de forma discreta e natural.',price:15,priceFrom:20,duration:15},
   {category:'Acabamentos e adicionais',name:'Depilação nasal (cera quente)',description:'Remoção dos pelos nasais com cera quente.',price:25,priceFrom:30,duration:30},
   {category:'Acabamentos e adicionais',name:'Depilação orelhas',description:'Remoção dos pelos das orelhas com cera quente.',price:25,priceFrom:30,duration:30},
-  {category:'Acabamentos e adicionais',name:'Freestyle (risquinho)',description:'Desenhos e detalhes personalizados feitos no corte.',price:15,duration:20},
+  {category:'Acabamentos e adicionais',name:'Freestyle (risquinho)',description:'Desenhos e detalhes personalizados feitos no corte.',price:15,duration:15},
   {category:'Química e tratamentos',name:'Nevou / Platinado',description:'Descoloração capilar completa para efeito platinado.',price:150,duration:130},
   {category:'Química e tratamentos',name:'Luzes',description:'Aplicação de luzes para criar pontos de destaque e iluminar o cabelo.',price:120,duration:100},
   {category:'Química e tratamentos',name:'Alisamento / Relaxamento',description:'Redução de volume e alinhamento dos fios através de técnica profissional.',price:70,duration:55},
@@ -20,7 +20,7 @@ window.BDJ_SERVICES = [
   {category:'Química e tratamentos',name:'Hidratação / Reconstrução Capilar',description:'Tratamento capilar focado em hidratação, reconstrução e melhora do aspecto dos fios.',price:40,priceFrom:50,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Barba',description:'Pigmentação da barba para correção de falhas e aparência uniforme.',price:35,priceFrom:40,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,priceFrom:25,duration:30},
-  {category:'Pigmentações',name:'Aplicação de Fibra Capilar',description:'Preenchimento capilar imediato para disfarçar falhas e áreas rarefeitas, aplicado e finalizado no acabamento do corte. Resultado natural, resiste ao vento e sai na próxima lavagem.',price:30,priceFrom:35,duration:25},
+  {category:'Pigmentações',name:'Aplicação de Fibra Capilar',description:'Preenchimento capilar imediato para disfarçar falhas e áreas rarefeitas, aplicado e finalizado no acabamento do corte. Resultado natural, resiste ao vento e sai na próxima lavagem.',price:30,priceFrom:35,duration:20},
   {category:'Estética corporal',name:'Aparação Corporal Masculina',description:'Redução uniforme dos pelos corporais (peito, abdômen, costas, ombros, braços, pernas, axilas e virilha externa) com máquina profissional, sem cera e sem arrancar os fios pela raiz. Atendimento reservado, com horário exclusivo e total discrição. Não inclui região íntima.',price:120,priceFrom:150,duration:70}
 ];
 

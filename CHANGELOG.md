@@ -1,3 +1,29 @@
+## 29.140.0 — Só oferece o que cabe, confirma o "de sempre" antes de reservar, e +5 nos serviços curtos
+
+Três acertos do Juliano sobre a 29.139.0, no mesmo dia (05/09/2026).
+
+### 1. A oferta de complemento só existe se o combo cabe no horário
+
+Na 29.139.0 a JuIA reservava e perguntava "quer incluir Sobrancelha? 1/2" — e só no "1" descobria se cabia. Agora a agenda é consultada de novo, com a duração somada, ANTES de a pergunta sair: se o combo não cabe naquele horário, não há oferta nenhuma. (Corte + Lavagem substitui o corte, então soma só a diferença.)
+
+### 2. Serviço assumido do histórico é confirmado em UMA pergunta
+
+Cliente com cadastro que pede só "tem 13h?" recebia o "serviço de sempre" assumido pelo sistema (v29.18.0) e, com a reserva imediata, sairia com "Corte + Barba Express" reservado querendo só o corte. Agora, quando o serviço veio do histórico e não da mensagem do cliente:
+
+> Hoje às 13:00 está livre. Reservo Corte + Barba Express, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.
+
+"1" reserva na hora. "2" pergunta qual serviço, mantendo o dia e o horário. Se ele já responder com o serviço ("só o corte"), entra o que ele disse e o fluxo segue. Quem nomeia o serviço na conversa nunca vê essa pergunta — a flag `usual_assumed` morre no instante em que o cliente cita um serviço.
+
+### 3. Durações: +10 a partir de 20 min, +5 nos curtos
+
+A regra "+10 em tudo" (29.139.0) levava sobrancelha, pezinho e risquinho de 10 para 20 minutos — bloqueio grande demais para um acabamento. Ajuste do Juliano: serviços de até 15 min sobem 5; de 20 min para cima, 10. Ficou: Pezinho, Sobrancelha e Freestyle 15 min; Fibra Capilar 20 min; o resto como na 29.139.0 (corte 40, Barba Express 30, barba na navalha 40, combos 60/70…). Banco, catálogo, página de preços, lista de serviços, agenda e páginas dos três serviços.
+
+### Anotado para uma próxima etapa: uma pergunta por vez, e a resposta vai pra ela
+
+O Juliano pediu que a JuIA saiba separar "qual resposta é de qual pergunta" (caso Marcelo: "sim" da remarcação virou chave Pix). O mecanismo dos `pending_*` já faz isso para cancelar, remarcar, trocar serviço, produtos, lista de espera, oferta e (desde hoje) serviço assumido — o furo do Pix foi fechado na 29.138.0 com a regra "um sim só é do Pix se não há outra pergunta em aberto". O que falta, e é trabalho de uma versão própria: um registro único da ÚLTIMA pergunta feita (tipo + hora) que toda resposta curta consulte, em vez de cada bloco checar seu próprio flag; e, quando a mensagem traz duas coisas ("sim, e tem 12:15?"), responder as duas em ordem.
+
+Rodado: `npm run test:unit` (64) e `npm run test:e2e` (46). Function publicada: ju-ia-site. Cache `?v=29.140.0` (catálogo, agenda), `ADMIN_VERSION` 29.140.0.
+
 ## 29.139.0 — Horário escolhido é horário reservado, e +10 min em todo serviço
 
 Duas decisões do Juliano em 05/09/2026, na sequência da revisão de sábado (29.138.0).

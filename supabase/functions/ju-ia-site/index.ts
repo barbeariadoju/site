@@ -553,6 +553,9 @@ Deno.serve(async req=>{
  // deterministicas (abaixo) definem esse campo agora.
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
+ // v29.140.0: cliente nomeou um serviço nesta mensagem — o que estava assumido do histórico
+ // deixa de ser suposição (ver usual_assumed / pending_usual_confirm).
+ if(Array.isArray(ai.updates?.services)&&ai.updates.services.length&&findServicesLoose(message).length)next.usual_assumed=false
  // v29.61.0 — caso Marcelo (21/08/2026, 15h49, áudio): "tem horário pra hoje ou amanhã
  // cedo?" e o modelo escolheu amanhã — com a agenda de HOJE aberta. Duas datas com "ou":
  // a mais próxima vence, deterministicamente (o prompt também aprendeu, mas trava de
@@ -690,6 +693,7 @@ Deno.serve(async req=>{
    const fam=normalizeServiceFamilies(soEstes.map((s:any)=>({name:s.name,price:s.price})))
    next.services=fam.items.map((x:any)=>x.name)
    chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+   next.usual_assumed=false
   }
  }
  // v29.69.0: a última fala da JuIA nesta conversa, usada pelas travas de repetição abaixo
@@ -848,6 +852,11 @@ Deno.serve(async req=>{
   chosen.push(...usualServices)
   next.upsell_services_done=true
   assumedUsualService=usualServices.map((s:any)=>s.name).join(' + ')
+  // v29.140.0 (pedido do Juliano, 05/09/2026): serviço assumido do histórico NÃO vira reserva
+  // sem o cliente confirmar — "ela marca cabelo e barba e o cara só quer cabelo". A flag
+  // fica no estado até o cliente nomear um serviço ou responder à pergunta de confirmação
+  // (ver pending_usual_confirm).
+  next.usual_assumed=true
  }
 
  if(hasCustomer && repeatRequest){
@@ -1978,6 +1987,33 @@ Deno.serve(async req=>{
  // VOLTAR pro horário que o cliente pediu — antes o modelo regerava a mesma negativa, o
  // anti-papagaio do webhook trocava tudo por "me embolei" + handoff e o Juliano tinha que
  // converter na mão, na cadeira. pending_fit_choice é one-shot: consumido aqui, sempre.
+ // v29.140.0 — resposta a "Reservo X, como da última vez? 1 sim / 2 outro serviço".
+ // "1" reserva o que estava assumido; "2" (ou "não") limpa o serviço e pergunta qual;
+ // serviço nomeado na própria resposta ("só o corte") entra no lugar e segue o fluxo normal
+ // com o mesmo dia/horário guardados.
+ const puc=state?.pending_usual_confirm
+ if(puc&&puc.time&&verifiedPhone){
+  next.pending_usual_confirm=null
+  const bareUc=normalizedQuestion.trim().replace(/[\s!.,]+$/,'')
+  const nomeouServico=findServicesLoose(message).length>0
+  if(!nomeouServico&&(bareUc==='1'||(simpleYes&&!simpleNo))){
+   next.usual_assumed=false
+   next.date=puc.date;next.time=puc.time
+   chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+   intent='book';handoff=false
+  }else if(!nomeouServico&&(bareUc==='2'||simpleNo)){
+   next.usual_assumed=false
+   next.services=[];chosen=[]
+   next.date=puc.date;next.time=puc.time
+   reply=`Sem problema. Qual serviço você quer ${emDia(puc.date)} às ${puc.time}? Por exemplo: corte, barba, corte + barba.`
+   actions=[]
+   intent='other';handoff=false;offerTurn=true
+  }else{
+   // Nomeou o serviço (ou mudou de assunto): a suposição morre e o pedido novo segue.
+   next.usual_assumed=false
+   if(nomeouServico){next.date=next.date||puc.date;next.time=next.time||puc.time}
+  }
+ }
  const pfc=state?.pending_fit_choice
  if(pfc&&pfc.time){
   next.pending_fit_choice=null
@@ -2658,11 +2694,37 @@ Deno.serve(async req=>{
     const horarioNaMensagem=Boolean(extractRequestedTime(message))||simpleYes
     if(verifiedPhone&&horarioNaMensagem&&(next.name||contextFullName)){
      if(!next.name)next.name=contextFullName
-     if(offerOpts.length)next.upsell_after_booking=offerOpts[0]
+     // v29.140.0 (pedido do Juliano, 05/09/2026): a oferta de complemento só existe se o combo
+     // CABE nesse horário — a agenda é consultada de novo com a duração somada; se não couber,
+     // nem oferece. Corte + Lavagem substitui o corte (soma só a diferença).
+     delete next.upsell_after_booking
+     if(offerOpts.length){
+      const sAdd=findService(offerOpts[0])
+      const sCorte=findService('Corte de cabelo')
+      const extra=sAdd?(offerOpts[0]==='Corte + Lavagem'&&sCorte?Math.max(0,Number(sAdd.duration)-Number(sCorte.duration)):Number(sAdd.duration||0)):0
+      if(sAdd&&extra>0){
+       try{
+        const {data:fitRows}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration+extra})
+        const cabe=(fitRows||[]).map((x:any)=>String(x.slot_time).slice(0,5)).includes(effectiveTime)
+        if(cabe)next.upsell_after_booking=offerOpts[0]
+       }catch(fitErr){console.error('[ju-ia-site] upsell fit',fitErr)}
+      }
+     }
      next.upsell_offer_done=true
      next.upsell_services_done=true
      next.upsell_products_done=true
-     intent='book';handoff=false
+     if(next.usual_assumed){
+      // v29.140.0: serviço veio do histórico, não da boca do cliente — confirma em UMA pergunta
+      // antes de reservar. O horário fica guardado; o "1" reserva (ver pending_usual_confirm).
+      next.pending_usual_confirm={date:next.date,time:effectiveTime}
+      const abre=`${emDia(next.date)} às ${effectiveTime} está livre.`
+      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} Reservo ${serviceNames}, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.`
+      actions=[{label:'1 — Sim',message:'1'},{label:'2 — Outro serviço',message:'2'}]
+      respostaConferidaNaAgenda=true
+      intent='other';handoff=false
+     }else{
+      intent='book';handoff=false
+     }
     }else if(offerOpts.length){
      const optionLabel=(n:string)=>{
       const s=findService(n)
