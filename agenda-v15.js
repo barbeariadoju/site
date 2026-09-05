@@ -49,7 +49,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     $('service-upsell-v15').hidden=false;
     const nextButton=document.querySelector('[data-next-step="2"]');
     if(nextButton){nextButton.disabled=false;nextButton.setAttribute('aria-disabled','false');}
-    box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
+    box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>aprox. ${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
     const names=services.map(s=>s.name).join(' ');
     const suggestions=[];
     // v29.62.0: só sugere o que a regra das famílias deixaria entrar — antes, qualquer

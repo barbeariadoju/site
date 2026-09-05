@@ -1,3 +1,32 @@
+## 29.139.0 — Horário escolhido é horário reservado, e +10 min em todo serviço
+
+Duas decisões do Juliano em 05/09/2026, na sequência da revisão de sábado (29.138.0).
+
+### 1. A JuIA reserva primeiro e oferece depois
+
+O menu numerado de complementos vinha ANTES da reserva: "Sim! 13:00 está disponível. Quer incluir mais alguma coisa? 1 — … 4 — Não, pode fechar". Quem não respondia (caso João) ficava sem nada reservado e o horário ia embora para outro cliente.
+
+Agora, no WhatsApp (telefone verificado) e com nome conhecido, o horário que o cliente escolhe é agendado na hora — **só se cabe inteiro na agenda**: a JuIA continua consultando a agenda com a duração completa do serviço e só reserva um horário que a agenda devolve para essa duração. A confirmação sai curta, em linguagem humana, e termina com UMA pergunta de sim/não:
+
+> Reservado! João, hoje às 13:00: Corte + Barba Express (R$ 65,00). Te espero na Barbearia do Ju.
+> Quer aproveitar e incluir Sobrancelha Masculina (+ R$ 15,00)? Digite *1* para sim ou *2* para não.
+
+"1" troca o serviço do agendamento pelo combo (a mesma RPC da troca de serviço confere se ainda cabe; se não couber, o original fica como estava e a JuIA diz isso). "2" encerra. Outro assunto derruba a oferta e a conversa segue.
+
+**Decisões contra a recomendação óbvia, com o motivo:**
+- Só dispara quando a mensagem ATUAL traz o horário (ou um "sim" a um horário oferecido). Horário que ficou no estado de uma pergunta antiga nunca vira reserva sozinho — é o que fez o "Sim, 13:00 está disponível" de ontem.
+- Com cadastro no telefone, a reserva sai no nome do cadastro sem a pergunta "posso confirmar no nome de X?" (número compartilhado é raro, e a confirmação mostra o nome — o cliente corrige se for para outra pessoa). Uma pergunta a menos na hora de fechar; foi o que travou o João.
+- A oferta pós-reserva tem prioridade sobre a pergunta de primeira visita (v29.68.0); as duas juntas seriam duas perguntas numeradas na mesma mensagem. A de primeira visita fica para a próxima confirmação daquele telefone.
+- O site (chat sem telefone verificado) continua com o fluxo antigo: lá existem botões.
+
+### 2. Todas as durações +10 minutos, e sempre "aprox."
+
+Motivo do Juliano: em 04 e 05/09 o atraso acumulou entre um cliente e outro ("me embolei completamente, gerei atraso para quase todos"). Os 23 serviços subiram 10 minutos no banco (`services.duration_minutes`), no `services-catalog-v7.js` e em todas as páginas: corte 30→40, barba na navalha 30→40, Barba Express 20→30, Corte + Barba Express 50→60, combo com navalha 60→70 (1h10), Barboterapia 40→50, platinado 2h→2h10, e assim por diante. Onde o site mostra a duração, agora é "aprox. 40 min" (lista de serviços, página de preços, resumo do agendamento) ou "cerca de 40 minutos" (páginas de serviço e FAQ, que já usavam essa forma). A JuIA passa o catálogo ao modelo com "aprox." na duração.
+
+Agendamentos já marcados mantêm a duração com que foram criados; só os novos entram com o tempo maior. A tolerância de 10 minutos (FAQ e home) não é duração de serviço e ficou como estava.
+
+Rodado: `npm run test:unit` (64) e `npm run test:e2e` (46). Function publicada: ju-ia-site. Cache: `services-catalog-v7.js` e `agenda-v15.js` `?v=29.139.0`, `ADMIN_VERSION` 29.139.0.
+
 ## 29.138.0 — Revisão de sábado: o cupom cobrou quem não pagou, e a JuIA falou demais
 
 `database/migrations/137-v29.138.0-fidelidade-no-checkout.sql`

@@ -525,7 +525,9 @@ Deno.serve(async req=>{
  // v28.70.0: cada serviço leva junto seu argumento de venda (services.sales_pitch). Antes,
  // "como é a lavagem profissional?" era respondido com preço e duração — informação, zero
  // motivo pra querer (caso Walter, 07/08/2026: perguntou, ouviu R$50/40min e não fechou).
- const catalog=services.map(s=>`${s.name} — ${money(s.price)} — ${s.duration} min${s.pitch?`\n   ↳ argumento de venda: ${s.pitch}`:''}`).join('\n')
+ // v29.139.0 (pedido do Juliano, 05/09/2026): todas as durações subiram 10 min no banco e são
+ // ESTIMATIVAS — o cliente lê "aprox. 40 min", nunca uma promessa de relógio.
+ const catalog=services.map(s=>`${s.name} — ${money(s.price)} — aprox. ${s.duration} min${s.pitch?`\n   ↳ argumento de venda: ${s.pitch}`:''}`).join('\n')
  const productCatalog=products.map(p=>`${p.name} — ${money(p.price)}`).join('\n')
  const phoneTrustNote=verifiedPhone
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
@@ -2019,7 +2021,47 @@ Deno.serve(async req=>{
  // v29.54.0 (caso Aletéia): pergunta de preço no meio da oferta numerada não é resposta à
  // oferta nem "mudou de assunto" (que matava a venda) — é uma pergunta legítima que PRECISA
  // ser respondida com o valor. A oferta continua viva; o horário segue reservado.
- if(pendingOffer&&notSpecialFlow&&askedPrice&&!explicitConfirm&&chosen.length){
+ // v29.139.0 — resposta à oferta feita DEPOIS da reserva ("quer incluir X? 1 sim / 2 não").
+ // O agendamento já existe: "1" troca o serviço dele pelo combo (a RPC confere se cabe no
+ // horário; se não couber, o original fica como estava), "2" encerra. Outro assunto derruba
+ // a oferta e segue o fluxo normal, como sempre.
+ const postBooking=next.upsell_post_booking&&typeof next.upsell_post_booking==='object'?next.upsell_post_booking:null
+ if(pendingOffer&&postBooking&&notSpecialFlow&&verifiedPhone){
+  const bareResp=normalizedQuestion.trim().replace(/[\s!.,]+$/,'')
+  const addName=String(pendingOffer[0]||'')
+  const addKey=normalize(addName).split(' ')[0]
+  const negou=/(^|\s)(nao|n)(\s|$)/.test(normalizedQuestion)
+  const disse1=bareResp==='1'||(!negou&&(simpleYes||(addKey&&normalizedQuestion.includes(addKey))))
+  const disse2=bareResp==='2'||simpleNo||negou
+  const baseNames=(Array.isArray(postBooking.services)?postBooking.services:[]) as string[]
+  const quando=`${emDia(String(postBooking.date||''))} às ${String(postBooking.time||'')}`
+  next.upsell_offer_options=null
+  next.upsell_post_booking=null
+  if(disse1&&findService(addName)){
+   let names=baseNames.slice()
+   if(addName==='Corte + Lavagem')names=names.filter(n=>n!=='Corte de cabelo')
+   if(!names.includes(addName))names.push(addName)
+   const fam=normalizeServiceFamilies(names.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
+   names=fam.items.map((x:any)=>x.name)
+   const newChosen=names.map(n=>findService(n)).filter(Boolean)
+   const total=newChosen.reduce((a:number,s:any)=>a+s.price,0),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
+   const {data:chRows,error:chErr}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:postBooking.id,p_service_name:names.join(' + '),p_service_price:total,p_duration_minutes:dur})
+   const ch=Array.isArray(chRows)?chRows[0]:chRows
+   if(chErr||!ch){
+    reply=`Com ${addName} o atendimento passa a ${dur} min e não cabe ${quando}. Mantive ${baseNames.join(' + ')}, como estava.`
+   }else{
+    reply=`Incluído. Fica ${names.join(' + ')} — ${money(total)} (${dur} min), ${quando}.`
+    next.services=names
+    chosen=newChosen
+   }
+  }else if(disse2){
+   reply=`Perfeito, fica ${baseNames.join(' + ')} ${quando}. Até lá!`
+  }else{
+   // Mudou de assunto: a oferta morre aqui e a mensagem segue o fluxo normal.
+   next.upsell_post_booking=null
+  }
+  if(disse1||disse2){intent='other';handoff=false;offerTurn=true;actions=[]}
+ }else if(pendingOffer&&notSpecialFlow&&askedPrice&&!explicitConfirm&&chosen.length){
   const totalNow=chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0)
   const durNow=chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)
   const linhas=chosen.map((s:any)=>`${s.name} — ${money(s.price)}`).join('\n')
@@ -2606,7 +2648,22 @@ Deno.serve(async req=>{
      if(chosen.some((s:any)=>s.name==='Corte de cabelo')&&!chosen.some((s:any)=>['Corte + Lavagem','Corte + Barba na navalha com toalha quente','Corte + Barba Express'].includes(s.name))&&!next.haircut_wash_asked)offerOpts.push('Corte + Lavagem')
      for(const s of serviceSuggestions(chosen)){if(offerOpts.length<3&&!offerOpts.includes(s.name))offerOpts.push(s.name)}
     }
-    if(offerOpts.length){
+    // v29.139.0 (decisão do Juliano, 05/09/2026, caso João): no WhatsApp, horário escolhido é
+    // horário RESERVADO. O menu de complementos antes da reserva deixava o slot solto — o João
+    // não respondeu, outro cliente fechou 13:00 às 10h06 e ele apareceu às 13:00. Agora, com
+    // telefone verificado e nome conhecido, a JuIA agenda na hora e faz UMA pergunta depois,
+    // "quer incluir X? 1 sim / 2 não" (tratada no bloco upsell_post_booking). Só quando a
+    // mensagem atual traz o horário (ou um "sim" a um horário oferecido) — nunca reserva por
+    // um horário que ficou no estado de uma pergunta antiga.
+    const horarioNaMensagem=Boolean(extractRequestedTime(message))||simpleYes
+    if(verifiedPhone&&horarioNaMensagem&&(next.name||contextFullName)){
+     if(!next.name)next.name=contextFullName
+     if(offerOpts.length)next.upsell_after_booking=offerOpts[0]
+     next.upsell_offer_done=true
+     next.upsell_services_done=true
+     next.upsell_products_done=true
+     intent='book';handoff=false
+    }else if(offerOpts.length){
      const optionLabel=(n:string)=>{
       const s=findService(n)
       if(!s)return n
@@ -3019,8 +3076,23 @@ Deno.serve(async req=>{
       // como "novo" e derrubava a retenção dos Relatórios. Uma pergunta única, só na
       // primeira confirmação (telefone verificado, zero visitas no sistema, sem declaração
       // anterior no cadastro); a resposta é tratada pelo interceptador de pending_first_visit.
+      // v29.139.0 — a oferta única agora vem DEPOIS da reserva, como uma pergunta 1/2. Tem
+      // prioridade sobre a pergunta de primeira visita (duas perguntas numeradas na mesma
+      // mensagem confundem); a de primeira visita fica pra próxima confirmação.
+      let upsellAsk=''
+      const upsellAfter=String(next.upsell_after_booking||'')
+      delete next.upsell_after_booking
+      if(upsellAfter&&findService(upsellAfter)&&bookingId){
+       const sAdd=findService(upsellAfter)
+       const rotulo=upsellAfter==='Corte + Lavagem'
+        ?`a lavagem profissional (Corte + Lavagem, vira ${money(sAdd.price)})`
+        :`${upsellAfter} (+ ${money(sAdd.price)})`
+       upsellAsk=`\n\nQuer aproveitar e incluir ${rotulo}? Digite *1* para sim ou *2* para não.`
+       next.upsell_offer_options=[upsellAfter,'__none__']
+       next.upsell_post_booking={id:String(bookingId),date:next.date,time:next.time,services:chosen.map((s:any)=>s.name)}
+      }
       let firstVisitAsk=''
-      if(verifiedPhone&&visits===0&&!state?.first_visit_asked){
+      if(verifiedPhone&&visits===0&&!state?.first_visit_asked&&!upsellAsk){
        try{
         const fvDigits=String(verifiedPhone).replace(/\D/g,'')
         const fvSem=(fvDigits.length>=12&&fvDigits.startsWith('55'))?fvDigits.slice(2):fvDigits
@@ -3039,7 +3111,9 @@ Deno.serve(async req=>{
         }
        }catch(fvAskErr){console.error('[ju-ia-site] first-visit pergunta',fvAskErr)}
       }
-      reply=`✅ Agendamento confirmado! ${next.name}, seu horário para ${chosen.map((s:any)=>s.name).join(' + ')} está confirmado para ${next.date.split('-').reverse().join('/')} às ${next.time}.${prodText} Aguardamos você na Barbearia do Ju! 😊${loyaltyNote}${prepayNote}${firstVisitAsk}`
+      // v29.139.0: data em linguagem humana ("hoje", "na terça (08/09)") e texto curto — a regra
+      // do prompt (nunca DD/MM/AAAA) valia pro modelo mas não pra esta frase fixa.
+      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${money(price)}).${prodText} Te espero na Barbearia do Ju.${loyaltyNote}${prepayNote}${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
