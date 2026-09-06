@@ -4,7 +4,7 @@
 
 Pedido do Juliano (05/09/2026, à noite): "bateria complexa, profunda e completa". O script `tests/manual/juia-bateria.cjs` conversa com a JuIA de verdade (canal site com a chave anon; canal WhatsApp com a chave do backend e um telefone de teste), passa estado e histórico de turno em turno como o webhook faz, confere a resposta por regex e o banco por PostgREST, e apaga tudo no fim. Não entra no `npm test` de propósito: cria e cancela reservas reais, manda push pro Juliano e gasta modelo. O transcript da última rodada fica em `tests/manual/juia-bateria.ultimo.md`.
 
-Seis rodadas na mesma noite: 18/32 → 26/36 → 29/36 → 27/36 (regressão de expectativa, não de código) → 31/36 → 34/36 → 28/34 (o modelo cortado de novo, e desta vez com log) → 33/36 → **36/36**. O que cada rodada achou e o que mudou:
+Nove rodadas na mesma noite: 18/32 → 26/36 → 29/36 → 27/36 (regressão de expectativa, não de código) → 31/36 → 34/36 → 28/34 (o modelo cortado de novo, e desta vez com log) → 33/36 → **36/36**. O que cada rodada achou e o que mudou:
 
 ### Achados de segurança e robustez
 
@@ -23,6 +23,7 @@ Seis rodadas na mesma noite: 18/32 → 26/36 → 29/36 → 27/36 (regressão de 
 - Cliente novo (sem cadastro) caía no menu antigo em vez da reserva imediata; agora entra no mesmo caminho e só o nome é pedido antes.
 - "só corte de cabelo de criança" virava "Corte de cabelo": o parser solto vencia o modelo. Modelo primeiro; criança/infantil força o corte infantil.
 - "só o corte" em resposta a "reservo X, como da última vez?" respondia "quer que eu reserve?" — reserva na hora, o horário já estava combinado.
+- O "serviço de sempre" fatiava o combo "Corte + Barba Express" (item do catálogo, 60 min) em "Corte de cabelo" + "Barba Express" (70 min): a agenda recusava horários que cabiam. Nome inteiro primeiro; só fatia o que não existe como item.
 
 ### O que a bateria confirmou que já estava certo
 
