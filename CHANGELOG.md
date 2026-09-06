@@ -141,13 +141,39 @@ Isso fecha a dúvida do 481: a divergência é do guiadebraganca, não nossa. E 
 erro do próprio OSM — ele atribui CEP 12916-420 a esse trecho da rua, quando o correto é
 12900-350. Se a ficha for criada lá, vale corrigir o CEP do trecho junto.
 
-**A verificação de conversões do Google Ads segue sem checar — terceira vez, terceiro motivo
-diferente.** Desta vez cheguei muito mais longe: o domínio não está mais bloqueado e havia só um
-Chrome conectado (o problema da rodada anterior sumiu). Consegui entrar na conta certa, mas no
-meio do caminho a extensão caiu, reconectou, e ao voltar as permissões de leitura para
-`ads.google.com` tinham sido revogadas — e prompt de permissão ninguém aprova numa tarefa
-agendada, que roda sem o Juliano. Números de "linhas importadas" e "linhas com erros": ainda
-desconhecidos.
+### A importação automática de conversões RODOU — verificada em 06/09/2026
+
+Pendência de três rodadas, resolvida com o Juliano na tela para aprovar os prompts do Chrome.
+
+**Primeiro achado: o caminho da interface mudou.** Não está mais em Metas > Conversões > ação >
+Configurações > Evento, como diz a instrução antiga. O Google migrou a importação programada para
+**Ferramentas > Central de dados > Produtos conectados**, e as duas abas velhas ("Uploads" e
+"Horários") estão vazias, com um convite para a Central de Dados. Quem procurar no lugar antigo vai
+achar que não existe nada configurado.
+
+Estado da conexão **HTTPS · Importação programada**:
+
+- Conexão: `conversoes.csv`
+- Programação: todos os dias entre 01:00 e 02:00 (GMT-03:00)
+- Campos mapeados: **6 campos** — bate com a v29.139.0, que separou gclid, wbraid e gbraid
+- Utilização: Agendamento confirmado (WhatsApp)
+- **Última execução: 6 de set. de 2026, 01:56:01 — Concluído ✅**
+- Próxima: 7 de set. de 2026, 01:56 (programada)
+
+Ou seja: **o cron disparou no horário exato previsto e o Google leu o arquivo.** O circuito de
+atribuição está fechado de ponta a ponta — agendamento confirmado no WhatsApp que veio de anúncio
+sobe sozinho de madrugada e vira conversão para a PMax otimizar.
+
+Na tabela de execuções, as colunas mostraram **0 linhas importadas e 1 linha com erro** — que é
+exatamente o esperado para hoje. A linha com erro é a de exemplo, com código de clique sintético:
+o Google rejeita porque o clique não existe de verdade, e é *isso* que prova que ele está lendo o
+formato certo. Formato errado daria falha de parsing ou execução não concluída, não "Concluído".
+
+**Ressalva de confiança, para não virar fato inflado depois:** o status e o carimbo de 01:56:01
+foram lidos na árvore de acessibilidade da página (sólido). Já o "0 e 1" foi lido de captura de
+tela, porque o painel de detalhes abre em iframe de outra origem, que não se lê por texto — e no
+meio do caminho a captura da extensão passou a devolver só uma faixa de 107px (redimensionar a
+janela não resolveu). Confiança boa, mas menor que a do status.
 
 ### Em aberto para a próxima sessão, com o Juliano na tela
 
@@ -159,11 +185,9 @@ desconhecidos.
 4. Solutudo — conferir se dá para cadastrar sem criar conta nova; se não der, ele cria a conta.
 5. guiadebraganca.com.br — tentar `wp-login.php` primeiro; se não houver credencial, ligar ou
    mandar e-mail pedindo a correção do 481 → 482.
-6. Verificação pendente do Google Ads (linhas importadas da conversão "Agendamento confirmado")
-   segue sem checar — 3 tentativas, 3 bloqueios diferentes. Da próxima vez entrar direto por
-   `ads.google.com/aw/overview?ocid=8086744029` (a conta certa, 659-268-6815) **com o Juliano na
-   tela para aprovar o prompt de permissão do Chrome**, que é o que travou desta vez. Sem ele, essa
-   checagem não sai — o mais prático é ele mesmo abrir e ler os dois números.
+6. ~~Verificação da importação de conversões do Google Ads~~ — **FEITA em 06/09/2026**, seção
+   acima. Rodou às 01:56:01, status Concluído. Próxima conferência só faz sentido depois que
+   houver agendamento real com código de clique válido, para ver "linhas importadas" sair do zero.
 7. encontrabragancapaulista.com — cadastro gratuito, ele cria a conta e eu preencho (alvo novo).
 8. diariocidade.com — conferir o fluxo de cadastro no navegador (alvo novo, bloqueia leitura
    automática).
