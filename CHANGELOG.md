@@ -1,181 +1,49 @@
-## 29.142.0 — Bateria de testes da JuIA: 19 cenários contra a function publicada, e o que ela achou
+## 29.138.0 — O circuito fechou: o agendamento volta para o Google
 
-`database/migrations/138-v29.142.0-slots-excluindo-proprio-agendamento.sql` · `tests/manual/juia-bateria.cjs`
-
-Pedido do Juliano (05/09/2026, à noite): "bateria complexa, profunda e completa". O script `tests/manual/juia-bateria.cjs` conversa com a JuIA de verdade (canal site com a chave anon; canal WhatsApp com a chave do backend e um telefone de teste), passa estado e histórico de turno em turno como o webhook faz, confere a resposta por regex e o banco por PostgREST, e apaga tudo no fim. Não entra no `npm test` de propósito: cria e cancela reservas reais, manda push pro Juliano e gasta modelo. O transcript da última rodada fica em `tests/manual/juia-bateria.ultimo.md`.
-
-Nove rodadas na mesma noite: 18/32 → 26/36 → 29/36 → 27/36 (regressão de expectativa, não de código) → 31/36 → 34/36 → 28/34 (o modelo cortado de novo, e desta vez com log) → 33/36 → **36/36**. O que cada rodada achou e o que mudou:
-
-### Achados de segurança e robustez
-
-- **`verified_phone` era aceito de qualquer chamador.** A function aceita a chave anon do site (é como o chat do site chama) e honrava `verified_phone` do corpo: um POST com a anon pública + o telefone de outra pessoa cancelaria, remarcaria ou reservaria em nome dela. Agora `verified_phone` só vale quando o chamador é o backend (mesma chave do env, ou JWT com role `service_role`). O chat do site não muda nada.
-- **Modelo falhando em silêncio — e a causa raiz.** Em 2 de 15 cenários da 1ª rodada a resposta foi o texto genérico "Posso ajudar com serviços, preços…" a quem pediu "corte quinta às 14h", sem nenhum log. Com log (2ª rodada em diante) apareceu o motivo: **status 200 e o JSON cortado no meio**. Na API de Responses os tokens de raciocínio contam no `max_output_tokens`, e 550 não sobrava pra resposta inteira — a primeira mensagem de uma conversa (a mais longa) era a que mais caía. É a origem silenciosa de uma parte dos "me embolei" e dos textos genéricos que o Juliano via desde julho. Agora: 1.400 tokens na primeira tentativa, 2.500 na segunda, e cada falha registrada com o pedaço da saída.
-- **Teto diário de mensagens no WhatsApp.** 80 linhas por sessão (40 mensagens do cliente) valiam também para o WhatsApp, e a resposta era "Fale com o Juliano pelo WhatsApp" — dentro do WhatsApp. No canal do backend o teto subiu para 400 e, se bater, vira handoff.
-
-### Achados de fluxo (todos corrigidos)
-
-- A oferta pós-reserva ("quer incluir X? 1/2") nunca rodava: `next.completed=true` desligava o bloco. O "1" ia pro modelo, que só prometia.
-- Remarcação pedia dois "sim": "responda sim que eu verifico" → "confirmando…? sim ou não". A agenda passou a ser consultada na primeira pergunta; sai uma só.
-- Com a confirmação aberta, "15:30 não tem?" e "muda pra 14:30" repetiam "só confirmando 15:00?". Horário novo na mensagem troca o alvo.
-- A checagem de horário livre da remarcação contava o PRÓPRIO agendamento: mover 15:00→14:30 dava "não disponível". Nova `get_available_slots_excluding` (migration 138), só na remarcação; a original ficou intocada.
-- Pedido de gente ("quero falar com o Juliano") com remarcação pendente: o bloco da remarcação reescrevia o handoff. Agora o pedido de gente encerra qualquer pergunta aberta e vence no fim.
-- Serviço de sempre escapava da confirmação quando o modelo classificava direto como reserva (`book`), e não era assumido quando o modelo devolvia uma pergunta ("É corte de cabelo?"). Trava também no ramo de reserva; pergunta de agenda com horário/dia conta como availability.
-- Cliente novo (sem cadastro) caía no menu antigo em vez da reserva imediata; agora entra no mesmo caminho e só o nome é pedido antes.
-- "só corte de cabelo de criança" virava "Corte de cabelo": o parser solto vencia o modelo. Modelo primeiro; criança/infantil força o corte infantil.
-- "só o corte" em resposta a "reservo X, como da última vez?" respondia "quer que eu reserve?" — reserva na hora, o horário já estava combinado.
-- O "serviço de sempre" fatiava o combo "Corte + Barba Express" (item do catálogo, 60 min) em "Corte de cabelo" + "Barba Express" (70 min): a agenda recusava horários que cabiam. Nome inteiro primeiro; só fatia o que não existe como item.
-
-### O que a bateria confirmou que já estava certo
-
-Saudação, preço, site não reserva sozinho, elogio depois da reserva não reabre agenda, "sim" da remarcação não vira Pix, "15:30 não tem?" não é "não", duas coisas na mesma mensagem respondidas em ordem, Pix com valor, cancelamento sem "undefined", horário ocupado com alternativas curtas, "vou ver e te aviso", visagismo, prospecção comercial.
-
-### Pendências que ficaram do próprio teste (não da JuIA)
-
-- W10 e W15 dependem do estado da agenda e das reservas do próprio telefone de teste (pergunta legítima de conflito quando já há reserva; horário tomado por cliente real). Rodar a bateria com a agenda de um dia vazio.
-- A limpeza não consegue apagar `whatsapp_conversations`/`site_chat_messages` com a chave do backend por RLS — fica pra SQL direto.
-
-Functions publicadas: ju-ia-site (8 vezes na noite). Migration 138 aplicada.
-
-## 29.141.0 — A resposta vai para a última pergunta: registro único na JuIA
-
-Pedido do Juliano (05/09/2026): "capacitar a JuIA a separar qual resposta é de qual pergunta". O caso Marcelo, de manhã: "responda sim que eu verifico" (remarcação) e, no estado, o "é só me pedir a chave" do Pix — o "sim" foi pra chave Pix.
-
-### Como era
-
-Cada pergunta da JuIA deixa um flag `pending_*` no estado e o bloco dono do flag consome a resposta. Funciona com UMA pergunta aberta. Com duas, quem ganhava era o bloco que aparecesse primeiro no código — não a pergunta mais recente. Cada correção (v29.17.0 Robson, v29.90.0 Walter, v29.138.0 Marcelo) foi um remendo local.
+Última seta ligada em 05/09/2026. A ação de conversão **`Agendamento confirmado (WhatsApp)`** (código 7749762387) existe na conta e está conectada à fonte HTTPS.
 
 ### Como ficou
 
-Um registro só, `state.last_question = {kind, at, reply}`, escrito no **fim** de cada turno com a pergunta mais recente que ficou aberta (a que nasceu no turno vence; o Pix é a de menor prioridade, porque é oferta passiva). No **começo** do turno, três coisas, todas centralizadas:
-
-1. **Resposta curta** ("sim", "não", "1", "2", "pode", "isso"…) com mais de uma pergunta aberta: as perguntas velhas são apagadas do estado antes de qualquer bloco rodar. Só a última sobrevive, e o bloco dela é o único que enxerga a resposta. Os quinze blocos que existiam não mudaram uma linha: cada um continua olhando o próprio flag — só que agora só um flag está lá.
-2. **Resposta + pedido novo** ("sim, e tem 12:15?", "não. quanto custa a barba?"): a mensagem é dividida. A resposta fecha a pergunta aberta; o resto vira um segundo turno — a function chama a si mesma com o estado já atualizado e o histórico com a primeira resposta — e as duas respostas saem juntas, na ordem. Só divide quando o resto parece pedido (pergunta, horário, dia, verbo de agenda); "sim, obrigado" continua uma coisa só. Uma divisão por mensagem, sem recursão.
-3. O **webhook** passa a tratar qualquer pergunta aberta da JuIA (`last_question`, exceto Pix) com a prioridade que antes só cancelar/remarcar tinham frente à pesquisa de satisfação — senão o "1" da oferta pós-reserva caía numa pesquisa de ontem.
-
-A tabela `PERGUNTAS` no topo do `ju-ia-site` é a lista única de perguntas que a JuIA sabe fazer (serviço de sempre, encaixe do combo, oferta, conflito de agendamento, qual cancelar, cancelar, remarcar, trocar serviço, produtos, lista de espera, repetir, política de antecipado, duplicidade, primeira visita, Pix). Pergunta nova = uma linha ali.
-
-**Decidido contra o óbvio:** não reescrevi os blocos para consultarem o registro um a um. Seria tocar em quinze pontos de um arquivo de 3.500 linhas sem teste automatizado, num sábado à noite. Apagar as perguntas velhas na entrada dá o mesmo resultado com um ponto de mudança — e é o que o webhook já fazia com os `pending_*` zumbis desde a v29.90.0.
-
-**O que não muda:** a fila de perguntas numeradas dos robôs de fora (pesquisa, convite de retorno, confirmação de véspera, follow-up de lead) continua no webhook (`juia_pending_numeric_question`); é outro registro, de outro dono.
-
-Functions publicadas: ju-ia-site, whatsapp-webhook. Sem mudança no site.
-
-## 29.140.0 — Só oferece o que cabe, confirma o "de sempre" antes de reservar, e +5 nos serviços curtos
-
-Três acertos do Juliano sobre a 29.139.0, no mesmo dia (05/09/2026).
-
-### 1. A oferta de complemento só existe se o combo cabe no horário
-
-Na 29.139.0 a JuIA reservava e perguntava "quer incluir Sobrancelha? 1/2" — e só no "1" descobria se cabia. Agora a agenda é consultada de novo, com a duração somada, ANTES de a pergunta sair: se o combo não cabe naquele horário, não há oferta nenhuma. (Corte + Lavagem substitui o corte, então soma só a diferença.)
-
-### 2. Serviço assumido do histórico é confirmado em UMA pergunta
-
-Cliente com cadastro que pede só "tem 13h?" recebia o "serviço de sempre" assumido pelo sistema (v29.18.0) e, com a reserva imediata, sairia com "Corte + Barba Express" reservado querendo só o corte. Agora, quando o serviço veio do histórico e não da mensagem do cliente:
-
-> Hoje às 13:00 está livre. Reservo Corte + Barba Express, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.
-
-"1" reserva na hora. "2" pergunta qual serviço, mantendo o dia e o horário. Se ele já responder com o serviço ("só o corte"), entra o que ele disse e o fluxo segue. Quem nomeia o serviço na conversa nunca vê essa pergunta — a flag `usual_assumed` morre no instante em que o cliente cita um serviço.
-
-### 3. Durações: +10 a partir de 20 min, +5 nos curtos
-
-A regra "+10 em tudo" (29.139.0) levava sobrancelha, pezinho e risquinho de 10 para 20 minutos — bloqueio grande demais para um acabamento. Ajuste do Juliano: serviços de até 15 min sobem 5; de 20 min para cima, 10. Ficou: Pezinho, Sobrancelha e Freestyle 15 min; Fibra Capilar 20 min; o resto como na 29.139.0 (corte 40, Barba Express 30, barba na navalha 40, combos 60/70…). Banco, catálogo, página de preços, lista de serviços, agenda e páginas dos três serviços.
-
-### Anotado para uma próxima etapa: uma pergunta por vez, e a resposta vai pra ela
-
-O Juliano pediu que a JuIA saiba separar "qual resposta é de qual pergunta" (caso Marcelo: "sim" da remarcação virou chave Pix). O mecanismo dos `pending_*` já faz isso para cancelar, remarcar, trocar serviço, produtos, lista de espera, oferta e (desde hoje) serviço assumido — o furo do Pix foi fechado na 29.138.0 com a regra "um sim só é do Pix se não há outra pergunta em aberto". O que falta, e é trabalho de uma versão própria: um registro único da ÚLTIMA pergunta feita (tipo + hora) que toda resposta curta consulte, em vez de cada bloco checar seu próprio flag; e, quando a mensagem traz duas coisas ("sim, e tem 12:15?"), responder as duas em ordem.
-
-Rodado: `npm run test:unit` (64) e `npm run test:e2e` (46). Function publicada: ju-ia-site. Cache `?v=29.140.0` (catálogo, agenda), `ADMIN_VERSION` 29.140.0.
-
-## 29.139.0 — Horário escolhido é horário reservado, e +10 min em todo serviço
-
-Duas decisões do Juliano em 05/09/2026, na sequência da revisão de sábado (29.138.0).
-
-### 1. A JuIA reserva primeiro e oferece depois
-
-O menu numerado de complementos vinha ANTES da reserva: "Sim! 13:00 está disponível. Quer incluir mais alguma coisa? 1 — … 4 — Não, pode fechar". Quem não respondia (caso João) ficava sem nada reservado e o horário ia embora para outro cliente.
-
-Agora, no WhatsApp (telefone verificado) e com nome conhecido, o horário que o cliente escolhe é agendado na hora — **só se cabe inteiro na agenda**: a JuIA continua consultando a agenda com a duração completa do serviço e só reserva um horário que a agenda devolve para essa duração. A confirmação sai curta, em linguagem humana, e termina com UMA pergunta de sim/não:
-
-> Reservado! João, hoje às 13:00: Corte + Barba Express (R$ 65,00). Te espero na Barbearia do Ju.
-> Quer aproveitar e incluir Sobrancelha Masculina (+ R$ 15,00)? Digite *1* para sim ou *2* para não.
-
-"1" troca o serviço do agendamento pelo combo (a mesma RPC da troca de serviço confere se ainda cabe; se não couber, o original fica como estava e a JuIA diz isso). "2" encerra. Outro assunto derruba a oferta e a conversa segue.
-
-**Decisões contra a recomendação óbvia, com o motivo:**
-- Só dispara quando a mensagem ATUAL traz o horário (ou um "sim" a um horário oferecido). Horário que ficou no estado de uma pergunta antiga nunca vira reserva sozinho — é o que fez o "Sim, 13:00 está disponível" de ontem.
-- Com cadastro no telefone, a reserva sai no nome do cadastro sem a pergunta "posso confirmar no nome de X?" (número compartilhado é raro, e a confirmação mostra o nome — o cliente corrige se for para outra pessoa). Uma pergunta a menos na hora de fechar; foi o que travou o João.
-- A oferta pós-reserva tem prioridade sobre a pergunta de primeira visita (v29.68.0); as duas juntas seriam duas perguntas numeradas na mesma mensagem. A de primeira visita fica para a próxima confirmação daquele telefone.
-- O site (chat sem telefone verificado) continua com o fluxo antigo: lá existem botões.
-
-### 2. Todas as durações +10 minutos, e sempre "aprox."
-
-Motivo do Juliano: em 04 e 05/09 o atraso acumulou entre um cliente e outro ("me embolei completamente, gerei atraso para quase todos"). Os 23 serviços subiram 10 minutos no banco (`services.duration_minutes`), no `services-catalog-v7.js` e em todas as páginas: corte 30→40, barba na navalha 30→40, Barba Express 20→30, Corte + Barba Express 50→60, combo com navalha 60→70 (1h10), Barboterapia 40→50, platinado 2h→2h10, e assim por diante. Onde o site mostra a duração, agora é "aprox. 40 min" (lista de serviços, página de preços, resumo do agendamento) ou "cerca de 40 minutos" (páginas de serviço e FAQ, que já usavam essa forma). A JuIA passa o catálogo ao modelo com "aprox." na duração.
-
-Agendamentos já marcados mantêm a duração com que foram criados; só os novos entram com o tempo maior. A tolerância de 10 minutos (FAQ e home) não é duração de serviço e ficou como estava.
-
-Rodado: `npm run test:unit` (64) e `npm run test:e2e` (46). Function publicada: ju-ia-site. Cache: `services-catalog-v7.js` e `agenda-v15.js` `?v=29.139.0`, `ADMIN_VERSION` 29.139.0.
-
-## 29.138.0 — Revisão de sábado: o cupom cobrou quem não pagou, e a JuIA falou demais
-
-`database/migrations/137-v29.138.0-fidelidade-no-checkout.sql`
-
-Cinco prints do Juliano em 05/09 e a varredura das ~85 conversas da semana. Sete erros de comportamento, um de dinheiro. Tudo corrigido no mesmo dia.
-
-### 1. Cupom: "Total: R$ 40,00 · Pago com prêmio do cartão fidelidade" (caso Joao, 08h00)
-
-O corte foi pago com o prêmio. O Juliano marcou "Bônus de fidelidade" no Concluir, o registro ficou `payment_method='fidelidade'` com `loyalty_discount=0`, e o cupom saiu com **Total R$ 40,00**. O cliente que não pagou recebeu um documento dizendo que pagou.
-
-**Regra que fica** (migration 137, uma só para todo mundo que lê `bookings`): `service_price` é o preço de tabela, bruto; `loyalty_discount` é quanto o prêmio cobriu; `loyalty_free_service` (coluna nova) é **qual** serviço foi o prêmio; `payment_method` é a forma do que foi **pago** — `fidelidade` só quando não sobrou nada a pagar. Receita = `service_price − loyalty_discount + products_price`.
-
-Isso obrigou a alinhar quem lia diferente: o **Financeiro**, o **Dashboard** e os **Relatórios** somavam o corte grátis como R$ 40 recebidos — agora descontam o prêmio. A `reserve_loyalty_reward` (v29.10.0) reduzia `service_price` ao aplicar o prêmio, o que faria o cupom descontar duas vezes; nunca tinha rodado em produção (zero bookings com `loyalty_reward_id`) e passou a seguir a mesma regra. O balcão (`admin_register_walkin_visit`) grava o prêmio quando a forma é fidelidade.
-
-**Check-out ganhou o que o Juliano pediu:** com "Bônus de fidelidade" e **dois ou mais serviços**, a tela pergunta *qual serviço é o prêmio* e *como o restante foi pago*; com um serviço e produto junto, exige a forma de pagamento do produto. O total a cobrar já desconta o prêmio. O cupom sai "Prêmio do cartão fidelidade (Corte de cabelo): −R$ 40,00 / Total: R$ 25,00 / Pago no crédito". Sem produto e sem resto: "Nada a pagar — prêmio do cartão fidelidade". Três testes novos em `tests/unit/comprovante.spec.js`. O registro do Joao foi acertado pela migration.
-
-### 2. João (35 9139-7142): confundido pelo excesso de texto, foi à barbearia achando que tinha horário
-
-A sequência, reconstruída pelo banco: 08h31 escolheu 13:00 → a JuIA respondeu "Sim! 13:00 está disponível" **mais um menu numerado de complementos** → ele não respondeu → às 10h06 outro cliente fechou 13:00 → 10h45 o follow-up de lead disse "a gente acabou não fechando" (ele leu como "fechou") → 11h52 "Eu vou às 13h como combinado" → "3" → "13:00 não fecha" → "Juliano consegue falar comigo?" → **"Consigo te atender na terça sim!"** → "N quero a inteligência artificial" (silêncio) → 12h23 "tô no caminho" → **"Sim, 13:00 está disponível"** (era terça 08/09 no estado, sem o dia na frase) → atendido no balcão às 13:55 → 14h30 respondeu "1" à pesquisa + "Vc é top demais / Parabéns e que Deus te abençoe" → **"Sim, 13:00 está disponível. Quer reservar?"** às 14h31.
-
-O último foi corrida no webhook: o "1" gravou a pesquisa como satisfeito, mas o agradecimento foi **descartado** pela trava "cliente escreveu de novo antes do envio" (v28.69.1); a rajada seguinte, já sem pesquisa pendente, caiu na IA com data+hora no estado. Resposta que confirma ação já gravada agora sai sempre (`force`). E elogio/despedida (`soGentileza`) nunca mais reabre consulta de agenda.
-
-Correções de fluxo: pedido explícito de gente ("falar com o Juliano", "não quero a inteligência artificial", "chama o barbeiro") virou **handoff determinístico** com uma frase curta — não depende do modelo. Toda confirmação de horário leva o **dia na frente** ("Sim, na terça (08/09) às 13:00 está livre…"). O follow-up de lead diz com todas as letras que **nada ficou reservado** e pede a confirmação.
-
-### 3. Textos enxutos (pedido do Juliano)
-
-| Antes | Agora |
+| Item | Valor |
 |---|---|
-| "13:15 já está reservado nesse dia. O mais perto que consigo é 12:45 — serve pra você? Se preferir outro, tenho ainda: 12:00, 12:15, 12:30. Ou, se ficar melhor pra você, também tenho horários de manhã" | "Hoje às 13:15 acabou de ser reservado por outro cliente. O mais próximo que tenho é 12:45 ou 13:00. Serve pra você?" |
-| "Não encontrei horário hoje para X. O próximo dia com horário disponível é terça (08/09): consigo te atender entre 08:00 e 17:45 — por exemplo 08:00, 11:15, 14:30, 17:45. Quer marcar nesse dia? Se preferir, também posso te colocar na lista de espera pra hoje e aviso assim que abrir uma vaga." | "Hoje não tenho mais horário para X. Na terça (08/09) tenho 08:00, 11:15, 14:30. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga hoje." |
-| "Posso incluir sim! Só que com Sobrancelha o atendimento fica com 50 min, e às 13:15 não fecha. Pra X + Y + Z consigo 13:00 ou 12:45. Ou, se preferir, mantenho só X + Y às 13:15 — o que fica melhor?" | "Com Sobrancelha o atendimento passa a 50 min e às 13:15 não cabe. Duas opções: *1* — combo às 13:00 (ou 12:45) *2* — Manter só X + Y às 13:15" |
+| Meta | Reservar horários — **Ação principal** |
+| Origem | Importar de cliques |
+| Busca do arquivo | **Todo dia, entre 01:00 e 02:00** (GMT-03:00) |
+| Janela de conversão de clique | 90 dias |
+| Campos mapeados | 4 |
 
-"Acabou de ser reservado por outro cliente" só sai quando a própria JuIA tinha oferecido aquele horário antes na conversa; senão, "já está ocupado".
+**Campos:**
 
-### 4. Sharles (15 99727-9993): "Então sem sobrancelha" não tirou a sobrancelha
+```
+Conversion_Time      -> Data/hora da conversão
+Google_Click_ID      -> GCLID
+Conversion_Value     -> Valor da conversão
+Conversion_Currency  -> Código da moeda
+```
 
-Depois do "não fecha", "Então sem sobrancelha" e "Manter pezinho e pigmentação" não casavam com nada — e o modelo ainda **acrescentou** "Pigmentação de Barba" pela palavra "pigmentação". Três negativas seguidas, cada uma com um combo maior. A escolha "manter o original" agora entende "1"/"2", "sem <o extra>", "manter/somente/apenas", e parte da lista do turno **anterior**. Junto: **"só X" no início da frase é a lista inteira** (caso Julio, 10h04: "só corte de cabelo de criança" virou "Corte infantil + Barba Express", e foi cobrado assim).
+O `Conversion_Value` importa mais do que parece: com ele o algoritmo aprende que um agendamento de R$ 100 vale mais que um de R$ 40, e passa a procurar ticket maior — não só volume.
 
-### 5. Marcelo (11 93350-0117): pediu 12:15 e recebeu a chave Pix
+E a janela de 90 dias bate exatamente com o TTL do `localStorage` no `whatsapp-attrib-v29.js`. Os dois lados do circuito esquecem o clique no mesmo dia.
 
-"Vamos remarcar… responda sim" → "sim" → **chave Pix**. A confirmação do agendamento liga `pix_offered` ("é só me pedir a chave") e o "sim" curto casou com a oferta do Pix, que reescreve a resposta por cima da remarcação. Um "sim" só é resposta ao Pix quando **não há outra pergunta em aberto** (`pending_*`). E "12:15 não tem?" caía como "não" ("Tudo bem, não mudei nada"): frase com horário ou com "?" nunca é a negativa curta.
+Na tela final o Google confirmou: *"1 das suas 1 campanhas estão otimizadas para alcançar essa meta"*.
 
-### 6. Alan (11 96850-4368): pediu visagismo, a JuIA disse "vamos marcar"
+### Uma preocupação minha que não se aplicava
 
-Não fazemos visagismo. O prompt ganhou o parágrafo *O que não fazemos*: dizer na primeira resposta que o Juliano não é visagista, e oferecer o que existe (Old Money, degradê…). Nunca "vamos marcar" nem "vou direcionar ao Juliano" para serviço que não existe aqui.
+Repeti várias vezes que o nome da ação tinha que bater **exatamente** com o `Conversion Name` do CSV, sob pena de o Google descartar as linhas em silêncio. Isso vale para upload de planilha solta, onde o casamento é pelo nome.
 
-### 7. Miúdos da varredura
+Neste caminho, não: a conexão está vinculada à ação, e a coluna `Conversion Name` **nem foi mapeada** — os quatro campos acima são os únicos que o Google lê. A ação nasceu com o nome automático `conversoes.csv - Todos os registros de conversoes.csv` e nada teria quebrado por causa disso. Renomeada mesmo assim, para o relatório ser legível daqui a seis meses.
 
-- "~Gabriel": o WhatsApp prefixa com "~" quem não está na agenda — saudação saía "Boa tarde, ~Gabriel!". Prefixo removido.
-- "Beleza vou ver e te aviso" (Carlos, 03/09) recebia a mesma pergunta de novo. Agora: "Combinado, fico no aguardo."
-- Follow-up de lead não sai para quem está na **lista de espera** (Sharles levou "a gente acabou não fechando" 2h depois de entrar na lista).
-- Nota "(Anotei X, o seu de sempre)" não repete quando a resposta já diz "Anotei".
+### O que fica pendente, e é pequeno
 
-### Ficou de fora, anotado
+O `whatsapp-attrib-v29.js` guarda `gclid`, `wbraid` e `gbraid` na mesma coluna `gclid`. Um clique de iOS que traga `wbraid` iria para o campo de GCLID e a linha seria descartada. Caso raro, mas dá para separar em colunas próprias — o mapeamento do Google já tem campos `GBRAID` e `WBRAID` esperando, deixados vazios agora.
 
-- **Gabriel (11 98918-4946, 04/09):** depois de cancelar, "Quais horários tem para barba hoje?" caiu em "trocar o serviço do seu agendamento de às, de "undefined"" — o cancelamento não limpa o `pending_change_service_*`. Corrigir na próxima.
-- **Ben-Hur (11 97374-2000, 04/09):** "Barboterapia e corte" listou horário só de corte e depois trocou barboterapia por "Barba na navalha". A normalização de família de barba precisa de revisão própria.
-- **Fernando (11 98636-7032, 04/09):** perguntou horário *antes* das 16:00 que já tinha e a JuIA ofereceu 16:00 com o "serviço de sempre" errado.
-- **Caio (03/09):** "Posso confirmar no nome de Caio?" saiu antes de existir dia e horário.
+### Estado do circuito
 
-Rodado: `npm run test:unit` (64) e `npm run test:e2e`. Functions publicadas: admin-booking-status, satisfaction-dispatch, ju-ia-site, whatsapp-webhook, whatsapp-lead-followup. Migration 137 aplicada. Cache: agenda/dashboard/financeiro/relatorios `?v=29.138.0`, `ADMIN_VERSION` 29.138.0.
+```
+Google -> gclid -> site (57 páginas) -> WhatsApp -> JuIA -> agendamento -> Supabase -> CSV -> Google
+```
+
+Fechado de ponta a ponta pela primeira vez. Falta só a água: a captura passou a valer em 03/09, e o único agendamento pago anterior tinha sido cancelado. Enquanto não houver conversão real, a function serve uma linha de exemplo com gclid sintético — que o Google descarta e que **some sozinha** no primeiro agendamento de verdade.
 
 ## 29.137.0 — "Sou eu juliano": a trava existia, o que faltava era o nome
 
