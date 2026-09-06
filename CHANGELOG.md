@@ -1,3 +1,19 @@
+## 29.145.0 — Reagendamento: domingo e segunda dizem "fechado", não "sem vagas"
+
+Pergunta do Juliano (06/09/2026): "e quando o cliente pedir atendimento no dia em que não
+funcionamos?". Conferidas as três portas:
+
+- JuIA (WhatsApp e chat do site): resolvido na 29.143.0.
+- Página de agendamento (`agenda-v15.js`): já tratava — "Fechado nessa data. Próximo dia
+  disponível: …" e o calendário pula sozinho.
+- Página de reagendamento (`reagendar-v26-5.js`): mostrava "Sem vagas nessa data. Escolha outro
+  dia" em domingo e segunda — a mesma leitura errada do print do Cleiton (agenda cheia, não
+  fechada). Agora: "Fechado nessa data — Domingo e segunda a barbearia não abre. Escolha um dia
+  de terça a sábado", sem nem consultar a agenda. Dia fechado excepcionalmente (bloqueio do
+  admin) continua caindo em "sem vagas", como na página de agendamento.
+
+Rodado: `npm test` (67 unit + 46 e2e). Cache `?v=29.145.0` em `reagendar.html`. `VERSAO.md` 29.145.0.
+
 ## 29.144.0 — O "1" tardio vira resposta ao convite; agendamento do Sabrino corrigido; tom "premium" sai dos prompts de conteúdo
 
 Fecho das três pontas deixadas na 29.143.0, decididas pelo Juliano no mesmo domingo (06/09/2026).
