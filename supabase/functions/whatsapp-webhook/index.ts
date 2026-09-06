@@ -1437,7 +1437,30 @@ Deno.serve(async (request: Request) => {
           .gte('sent_at', new Date(Date.now() - 48 * 3600 * 1000).toISOString())
           .order('sent_at', { ascending: false })
           .limit(1)
-        const returnInvite = returnInviteRows && returnInviteRows.length ? returnInviteRows[0] : null
+        let returnInvite = returnInviteRows && returnInviteRows.length ? returnInviteRows[0] : null
+        // v29.144.0 — caso Sabrino (06/09/2026, 14h36): respondeu "1" ao convite de retorno de
+        // 28/08, nove dias depois. O convite já estava 'expired' (o cron expira em 72h) e a janela
+        // acima é de 48h, então o "1" caiu no fluxo normal e virou "Como posso ajudar?". Um número
+        // solto só faz sentido como resposta à última pergunta numerada — e se a ÚLTIMA mensagem
+        // que mandamos a esse telefone foi o próprio convite, é dele que o "1" fala, faça 2 dias
+        // ou 30. Regra "nunca insistir" continua: quem responde é o cliente; a JuIA só não finge
+        // que não entendeu. Texto livre fora das 48h segue como antes.
+        if (!returnInvite && !juiaAwaitingAnswer && !quotedTarget && /^([12])\1*[\s!.,]*$/.test(normalize(text).trim())) {
+          const { data: lastOutRows } = await admin.from('whatsapp_messages').select('body').eq('phone', phone).eq('direction', 'out').order('created_at', { ascending: false }).limit(1)
+          const lastOut = normalize(String(lastOutRows?.[0]?.body || ''))
+          if (/proximo horario reservado|quero sim/.test(lastOut)) {
+            const { data: lateRows } = await admin
+              .from('return_invites')
+              .select('*')
+              .eq('phone', phone)
+              .in('status', ['sent', 'expired'])
+              .gte('sent_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())
+              .order('sent_at', { ascending: false })
+              .limit(1)
+            returnInvite = lateRows && lateRows.length ? lateRows[0] : null
+            if (returnInvite) console.log('[whatsapp-webhook] convite tardio', phone, returnInvite.id, returnInvite.status)
+          }
+        }
         // v29.43.4 — caso Adriano: numero solto (1/2/3) com convite E pesquisa pendentes ao mesmo
         // tempo e ambiguo. Em vez de chutar (antes ganhava o convite, por ser "mais recente"), a
         // JuIA pergunta a qual dos dois o numero se refere e guarda o numero pra proxima mensagem.

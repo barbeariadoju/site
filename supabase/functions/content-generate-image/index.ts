@@ -80,9 +80,9 @@ async function applyWatermark(pngBytes: Uint8Array): Promise<Uint8Array> {
 // "MARAVILHOSA") — muito melhor que o still life genérico da v29.6.0. Continua valendo a
 // mesma regra de sempre: nada de pessoa, nada de ambiente inteiro reconhecível, nada de
 // texto/logo desenhado pela IA — só os ingredientes reais, em still life.
-const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia masculina pequena, sofisticada e premium em Bragança Paulista/SP.
+const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia masculina pequena e bem cuidada em Bragança Paulista/SP.
 
-ESTILO: fotografia de produto / still life editorial, estética "Old Money" com toque de luxo contemporâneo. Iluminação quente e aconchegante, aproximadamente 2700–3000K, tons âmbar/dourados — NUNCA usar luz azul, roxa ou branca fria. Sombras profundas e definidas, reflexos naturais em metal e vidro, profundidade e contraste como fotografia cinematográfica. Sofisticação e exclusividade, sem exagero.
+ESTILO: fotografia de produto / still life editorial, estética "Old Money" clássica e atemporal. Iluminação quente e aconchegante, aproximadamente 2700–3000K, tons âmbar/dourados — NUNCA usar luz azul, roxa ou branca fria. Sombras profundas e definidas, reflexos naturais em metal e vidro, profundidade e contraste como fotografia cinematográfica. Capricho no detalhe, sem exagero.
 
 PALETA E MATERIAIS REAIS desta barbearia (use como ingredientes de uma composição still life, não como uma sala inteira): parede de tijolo aparente terracota como textura de fundo desfocada; couro preto capitonê; latão e metal preto escovado com pequenos detalhes dourados/bronze; madeira escura de bancada e viga de madeira clara aparente; vidro e cristal (potes de boticário com tampa, frascos âmbar de produto); folhagem verde-escura de samambaia; toalhas dobradas em tom creme; halo de luz âmbar/dourada ao redor de um espelho, sugerido apenas como brilho de fundo, não como espelho inteiro.
 

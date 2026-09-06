@@ -322,7 +322,7 @@ Deno.serve(async (request: Request) => {
         return json({ ok: true, image_url: rpu.publicUrl })
       }
 
-      const brand = 'Fotografia realista e sofisticada para a Barbearia do Ju, barbearia premium de bairro em Bragança Paulista/SP. Paleta dourada (#c89b55) e preta, iluminação quente, estética masculina clássica. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem.'
+      const brand = 'Fotografia realista e caprichada para a Barbearia do Ju, barbearia de bairro bem cuidada em Bragança Paulista/SP. Paleta dourada (#c89b55) e preta, iluminação quente, estética masculina clássica. Sem nenhum texto, letra, número ou logotipo sobreposto na imagem.'
       const refInstruction = 'As duas fotos anexadas são reais. A primeira é o ambiente real da Barbearia do Ju — EDITE exatamente essa foto: NÃO adicione, remova, duplique ou reposicione nenhum móvel, cadeira, poltrona, espelho, sofá ou objeto. IMPORTANTE: esta loja tem APENAS 1 (UMA) cadeira de barbeiro — nunca gere uma segunda estação de atendimento nem uma segunda pessoa sendo atendida ao mesmo tempo. A segunda foto mostra o rosto e a aparência real do Juliano, o barbeiro da loja — se a cena incluir o barbeiro, ele precisa ter a mesma aparência (mesmo rosto, cabelo e barba). Clientes são sempre fictícios e genéricos, com corpo inteiro visível, nunca partes cortadas ou flutuando.'
       const formatHint = isStory
         ? 'Formato vertical de Story, proporção 9:16 (retrato), composição ocupando a tela cheia de um celular, com espaço livre na parte superior e inferior para textos e figurinhas.'

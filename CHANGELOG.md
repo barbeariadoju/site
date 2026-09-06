@@ -1,3 +1,33 @@
+## 29.144.0 — O "1" tardio vira resposta ao convite; agendamento do Sabrino corrigido; tom "premium" sai dos prompts de conteúdo
+
+Fecho das três pontas deixadas na 29.143.0, decididas pelo Juliano no mesmo domingo (06/09/2026).
+
+- **Agendamento do Sabrino corrigido no banco**, por pedido dele: 12/09 às 13:15 agora é
+  "Corte + Barba Express" (R$ 65, 60 min, 13:15–14:15), o combo do catálogo, no lugar de
+  "Corte de cabelo + Corte + Barba Express" (R$ 105, 80 min). `end_time` é coluna gerada e
+  se ajustou sozinha. O cliente **não** foi avisado da correção — a mensagem dele continua com
+  o texto errado; se quiser, é uma linha pelo WhatsApp.
+- **"1" solto depois da janela do convite** (`whatsapp-webhook`). O cron expira o convite de
+  retorno em 72h e o webhook só olhava 48h, então o "1" do Sabrino, nove dias depois, virou
+  "Como posso ajudar?". Agora um "1"/"2" solto, sem pergunta pendente da JuIA, com a **última
+  mensagem enviada a esse telefone sendo o próprio convite**, recupera o convite (mesmo já
+  'expired', até 30 dias) e segue o fluxo normal de aceite/recusa. Só número solto; texto
+  livre fora das 48h continua como antes ("nunca insistir" segue valendo — quem fala é o
+  cliente). Não foi exercitado ponta a ponta: exigiria mandar WhatsApp de verdade a um número
+  de teste; o deploy empacotou sem erro e a lógica reaproveita o bloco de aceite existente.
+- **Link de reagendamento pós-cancelamento: nada a mudar.** O cancelamento pelo painel já grava
+  prazo de 30 dias (`admin-booking-status`); o link do Sabrino era de antes dessa regra e foi o
+  último sem prazo — hoje há zero links sem `rebooking_expires_at`. A observação da 29.143.0
+  estava desatualizada.
+- **Prompts de conteúdo sem "premium/sofisticada/luxo"** (`content-generate-daily`, `-image`,
+  `-video`): alterações que estavam pendentes de outra sessão, sem commit. O vocabulário mudou
+  para "bem cuidada", "caprichada", "clássica e atemporal", "capricho no detalhe"; o resto dos
+  prompts é idêntico. Coerente com a régua do CLAUDE.md ("barbearia de bairro com conhecimento
+  técnico", não butique de luxo). Publicadas as três.
+
+Rodado: `npm run test:unit` (67). Sem mudança em arquivo do site, sem bump de cache. Functions
+publicadas: whatsapp-webhook, content-generate-daily, content-generate-image, content-generate-video.
+
 ## 29.143.0 — "Hoje a barbearia não abre": o dia fechado explicado antes da oferta, e o reagendamento pelo link sem dois cortes
 
 Dois prints do Juliano na tarde de domingo, 06/09/2026.
