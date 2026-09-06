@@ -1,3 +1,120 @@
+## Citações locais — auditoria de 06/09/2026 (sem mudança de código, versão continua 29.139.0)
+
+Tarefa agendada pedida pelo Juliano em 05/09/2026: atacar a "maior alavanca parada" do SEO local
+(seção 6 deste arquivo… ver `CLAUDE.md`) — zero citações externas criadas apesar de nota 5,0 e
+81 avaliações. Rodou sozinha, sem o Juliano presente, com acesso ao Chrome autorizado.
+
+### O que a auditoria encontrou, plataforma por plataforma
+
+**Apple Maps / Apple Business Connect — AUSENTE, é o buraco maior.** Busquei "Barbearia do Ju
+Bragança Paulista" direto no `maps.apple.com`: nenhum resultado. O único nome parecido que aparece
+é "Barbearia do Júlio Preto", em São Paulo capital — empresa diferente. Não existe nem o registro
+básico gratuito que o Apple Maps costuma puxar sozinho de outras fontes. Criar a ficha exige login
+com Apple ID em `business.apple.com/businessconnect` — não há sessão nesse Chrome, e login não é
+ação que a IA possa fazer sozinha.
+
+**Bing — os dados já estão corretos, mas ninguém reivindicou.** O Bing Maps já mostra "Barbearia do
+Ju" com endereço certo (Rua Doutor Antônio da Cruz, 482, Bragança Paulista, SP, 12900-350), telefone
+certo, site certo e categoria "Barbeiro" — puxado automaticamente de alguma fonte na web, não de um
+cadastro no Bing Places. Reivindicar em `bingplaces.com` (login Microsoft, sem sessão ativa) dá
+controle direto sobre horário e fotos, mas o dado que já está no ar não está errado.
+
+**Facebook — não existe página comercial.** Busquei no Bing por "Barbearia do Ju Bragança Paulista
+facebook": nenhuma página relevante nos resultados. Precisa ser criada do zero como Página comercial
+(não perfil pessoal, não vinculada automaticamente ao Instagram @barbeariadoju_) — exige login no
+Facebook, sem sessão ativa nesse Chrome.
+
+**Solutudo — não cadastrada.** Busca por "Barbearia do Ju" em Bragança Paulista no solutudo.com.br
+não achou correspondência exata: voltaram 47 barbearias da cidade, nenhuma delas a nossa. Cadastro
+é pelo botão "Cadastrar empresa" — fluxo provavelmente exige criar conta, o que fica para o Juliano.
+
+**guiadebraganca.com.br — JÁ CADASTRADA, mas com o número da rua ERRADO.** A busca no próprio site
+retornou "Barbearia do Ju · rua Antonio da Cruz n° **481** - Centro · 11 96707 3038 · Barbearias".
+O número certo é **482**. Isso é uma inconsistência de NAP ativa — pior que citação ausente, porque
+já está publicada e errada. Não tem página de detalhe própria (é um diretório antigo, no ar desde
+1987, WordPress por baixo — `wp-login.php` existe em "Acessar meu Cadastro"). Não sei se o Juliano
+tem essas credenciais; a correção pode precisar de contato direto — telefone (11) 4033-2000 ou
+e-mail contato@guiadebraganca.com.br.
+
+### Por que nada foi de fato criado ou corrigido hoje
+
+Todas as cinco pendências esbarram no mesmo limite: **login de conta real (Apple ID, Microsoft,
+Facebook, e possivelmente Solutudo/guiadebraganca) só o Juliano pode fazer**, e criar conta do zero
+é ação que a IA nunca deve tomar sozinha — regra permanente, não só deste projeto. Isso já estava
+previsto na própria tarefa agendada ("peça ao Juliano para fazer login"), mas a tarefa rodou sem ele
+presente. Resultado: pesquisa completa, zero ação irreversível tomada, nada publicado.
+
+Bloqueio extra encontrado: o Chrome conectado nesta sessão recusou navegação para
+`ads.google.com` e para `guiadebraganca.com.br` ("Navigation to this domain is not allowed") — o
+guiadebraganca foi contornado pelo browser sandboxed; a verificação de importação de conversões do
+Google Ads (pedida como item secundário "se sobrar tempo") **não foi possível de checar** por esse
+mesmo bloqueio, mesmo com o Chrome do Juliano conectado.
+
+### Segunda rodada do mesmo dia: varredura de NAP na web aberta
+
+A tarefa agendada disparou uma segunda vez em 06/09. Em vez de repetir a auditoria das cinco
+plataformas — que já estava feita e está acima —, a rodada foi usada para uma pergunta que ninguém
+tinha feito ainda: **onde mais o endereço da barbearia já está publicado sem a gente saber?**
+Citação errada solta na web é pior que citação ausente, e só se acha procurando.
+
+Varredura por nome + telefone + endereço nos agregadores que costumam alimentar o Google:
+
+- **Apontador, Telelistas, GuiaMais, Cylex, Foursquare — nada.** Nenhuma ficha, nem certa nem
+  errada. Terreno limpo: quando for cadastrar, não vai ter duplicata para brigar.
+- **guiadebraganca — o erro do 481 confirmado por fonte independente.** Fui direto na página
+  `/pagcliente/barbearias/` (85 barbearias listadas) e o registro está lá, textual: "Barbearia do Ju
+  · rua Antonio da Cruz n° 481 - Centro · 11 96707 3038". Fora o número, o nome da rua também sai
+  sem o "Doutor". Continua sendo a correção mais barata e de maior retorno da lista.
+- **Fresha — existe uma ficha morta, e ela ainda ranqueia.** O buscador devolve uma página da Fresha
+  com o NAP *correto* ("Rua Doutor Antônio da Cruz, 482 - 1"), mas a URL responde **HTTP 410 Gone**:
+  a ficha foi removida da plataforma e o Google ainda não tirou do índice. Vale o Juliano lembrar se
+  em algum momento abriu conta na Fresha — se a conta existir, ou se reativa com o NAP certo (é
+  citação de graça), ou se apaga de vez. Ficha morta ranqueando não ajuda nem atrapalha muito, mas
+  conta pendente em plataforma de agendamento concorrente é coisa que a gente quer saber.
+
+**Dois alvos novos apareceram, os dois locais e gratuitos** — não estavam na lista original das
+cinco e valem mais que a Solutudo justamente por serem de Bragança:
+
+- **encontrabragancapaulista.com** — tem cadastro gratuito ("Cadastrar empresa",
+  `/?pag=registro`, anunciado como "menos de 1 minuto"). Exige criar conta.
+- **diariocidade.com** — guia local com página por empresa (vi a ficha de uma concorrente,
+  Barbearia Bragantina). O site bloqueou leitura automática (HTTP 403); o fluxo de cadastro precisa
+  ser conferido na mão, com navegador de verdade.
+
+**Texto pronto para o e-mail do guiadebraganca** (`contato@guiadebraganca.com.br`), para o Juliano
+só copiar e enviar — não foi enviado por mim, mandar mensagem em nome dele exige o "sim" dele:
+
+> Assunto: Correção de cadastro — Barbearia do Ju (categoria Barbearias)
+>
+> Boa tarde. Sou o responsável pela Barbearia do Ju, listada no guia na categoria Barbearias.
+> O número do endereço está publicado como 481 e o correto é 482. Seguem os dados corretos:
+> Barbearia do Ju — Rua Dr. Antônio da Cruz, 482, Centro, Bragança Paulista, SP —
+> (11) 96707-3038 — https://www.barbeariadoju.com.br
+> Agradeço a correção. 🙏
+
+**O Chrome ficou indisponível nesta rodada, e por um motivo novo:** havia **dois navegadores
+conectados** ("Browser 1" e "Browser 2"). Nessa situação os comandos alternam entre os dois e nada
+funciona de forma confiável — a própria tarefa agendada avisa disso e manda pedir para fechar um.
+Sem o Juliano para escolher, não dá para seguir. Então a verificação da importação de conversões do
+Google Ads segue **sem checar** por um segundo motivo, somado ao bloqueio de domínio da rodada
+anterior.
+
+### Em aberto para a próxima sessão, com o Juliano na tela
+
+1. Apple Business Connect — ele loga com o Apple ID, eu preencho os campos com os dados oficiais.
+2. Bing Places — ele loga com a conta Microsoft, eu reivindico a ficha que já existe.
+3. Facebook — ele loga, eu crio a Página comercial (não perfil, não grupo).
+4. Solutudo — conferir se dá para cadastrar sem criar conta nova; se não der, ele cria a conta.
+5. guiadebraganca.com.br — tentar `wp-login.php` primeiro; se não houver credencial, ligar ou
+   mandar e-mail pedindo a correção do 481 → 482.
+6. Verificação pendente do Google Ads (linhas importadas da conversão "Agendamento confirmado")
+   segue sem checar — tentar de novo com acesso liberado a `ads.google.com` **e com um só Chrome
+   conectado**. Antes de qualquer sessão com navegador: fechar um dos dois.
+7. encontrabragancapaulista.com — cadastro gratuito, ele cria a conta e eu preencho (alvo novo).
+8. diariocidade.com — conferir o fluxo de cadastro no navegador (alvo novo, bloqueia leitura
+   automática).
+9. Fresha — descobrir se existe conta antiga do Juliano por trás da ficha que responde 410.
+
 ## 29.139.0 — iPhone: os três identificadores de clique não são intercambiáveis
 
 Pedido do Juliano em 05/09/2026, na hora: *"trate já, temos muitos usuários de iphone"*.
