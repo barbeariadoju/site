@@ -34,11 +34,13 @@ Google Click ID, WBRAID, GBRAID, Conversion Name, Conversion Time, Conversion Va
 
 Três testes novos garantem o que o CSV não pode errar: `wbraid` sai na coluna WBRAID com a de gclid vazia, `gbraid` idem, e **nunca mais de um identificador na mesma linha**. 67 unit + 46 e2e.
 
-### Falta um clique no painel
+### Mapeado no painel, no mesmo dia
 
-A conexão do Google ainda mapeia **4 campos** — ela não conhece as colunas `WBRAID` e `GBRAID`, criadas agora. Enquanto não forem mapeadas, o Google simplesmente ignora essas duas colunas: **nada quebra, e as conversões com `gclid` seguem funcionando**; só as de iPhone continuam sem entrar.
+A conexão passou de **4 para 6 campos mapeados**: `GBRAID -> GBRAID` e `WBRAID -> WBRAID`, com *Endereço IP* deixado vazio de propósito (não coletamos). O Google confirmou com "O mapeamento dos campos de conexão foi atualizado".
 
-O caminho é `Metas > Conversões > Agendamento confirmado (WhatsApp) > Configurações > Evento > Editar evento > Editar mapeamento`, e ali apontar `WBRAID -> WBRAID` e `GBRAID -> GBRAID`. Os cliques nesse painel não passam pela automação (tela de alta densidade), então ficou para a mão do Juliano.
+Os cliques desse painel não passam pela automação — tela de alta densidade — então foi na mão do Juliano, com conferência a cada passo para os dois nomes não saírem trocados. Trocar `GBRAID` com `WBRAID` seria pior que deixar vazio: o Google descartaria as linhas achando o código inválido, de novo em silêncio.
+
+**O circuito está completo para Android e iPhone.**
 
 ## 29.138.0 — O circuito fechou: o agendamento volta para o Google
 
