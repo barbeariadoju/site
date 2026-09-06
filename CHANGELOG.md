@@ -1,3 +1,40 @@
+## 29.142.0 — Bateria de testes da JuIA: 19 cenários contra a function publicada, e o que ela achou
+
+`database/migrations/138-v29.142.0-slots-excluindo-proprio-agendamento.sql` · `tests/manual/juia-bateria.cjs`
+
+Pedido do Juliano (05/09/2026, à noite): "bateria complexa, profunda e completa". O script `tests/manual/juia-bateria.cjs` conversa com a JuIA de verdade (canal site com a chave anon; canal WhatsApp com a chave do backend e um telefone de teste), passa estado e histórico de turno em turno como o webhook faz, confere a resposta por regex e o banco por PostgREST, e apaga tudo no fim. Não entra no `npm test` de propósito: cria e cancela reservas reais, manda push pro Juliano e gasta modelo. O transcript da última rodada fica em `tests/manual/juia-bateria.ultimo.md`.
+
+Seis rodadas na mesma noite: 18/32 → 26/36 → 29/36 → 27/36 (regressão de expectativa, não de código) → 31/36 → 34/36 → 28/34 (o modelo cortado de novo, e desta vez com log) → 33/36 → **36/36**. O que cada rodada achou e o que mudou:
+
+### Achados de segurança e robustez
+
+- **`verified_phone` era aceito de qualquer chamador.** A function aceita a chave anon do site (é como o chat do site chama) e honrava `verified_phone` do corpo: um POST com a anon pública + o telefone de outra pessoa cancelaria, remarcaria ou reservaria em nome dela. Agora `verified_phone` só vale quando o chamador é o backend (mesma chave do env, ou JWT com role `service_role`). O chat do site não muda nada.
+- **Modelo falhando em silêncio — e a causa raiz.** Em 2 de 15 cenários da 1ª rodada a resposta foi o texto genérico "Posso ajudar com serviços, preços…" a quem pediu "corte quinta às 14h", sem nenhum log. Com log (2ª rodada em diante) apareceu o motivo: **status 200 e o JSON cortado no meio**. Na API de Responses os tokens de raciocínio contam no `max_output_tokens`, e 550 não sobrava pra resposta inteira — a primeira mensagem de uma conversa (a mais longa) era a que mais caía. É a origem silenciosa de uma parte dos "me embolei" e dos textos genéricos que o Juliano via desde julho. Agora: 1.400 tokens na primeira tentativa, 2.500 na segunda, e cada falha registrada com o pedaço da saída.
+- **Teto diário de mensagens no WhatsApp.** 80 linhas por sessão (40 mensagens do cliente) valiam também para o WhatsApp, e a resposta era "Fale com o Juliano pelo WhatsApp" — dentro do WhatsApp. No canal do backend o teto subiu para 400 e, se bater, vira handoff.
+
+### Achados de fluxo (todos corrigidos)
+
+- A oferta pós-reserva ("quer incluir X? 1/2") nunca rodava: `next.completed=true` desligava o bloco. O "1" ia pro modelo, que só prometia.
+- Remarcação pedia dois "sim": "responda sim que eu verifico" → "confirmando…? sim ou não". A agenda passou a ser consultada na primeira pergunta; sai uma só.
+- Com a confirmação aberta, "15:30 não tem?" e "muda pra 14:30" repetiam "só confirmando 15:00?". Horário novo na mensagem troca o alvo.
+- A checagem de horário livre da remarcação contava o PRÓPRIO agendamento: mover 15:00→14:30 dava "não disponível". Nova `get_available_slots_excluding` (migration 138), só na remarcação; a original ficou intocada.
+- Pedido de gente ("quero falar com o Juliano") com remarcação pendente: o bloco da remarcação reescrevia o handoff. Agora o pedido de gente encerra qualquer pergunta aberta e vence no fim.
+- Serviço de sempre escapava da confirmação quando o modelo classificava direto como reserva (`book`), e não era assumido quando o modelo devolvia uma pergunta ("É corte de cabelo?"). Trava também no ramo de reserva; pergunta de agenda com horário/dia conta como availability.
+- Cliente novo (sem cadastro) caía no menu antigo em vez da reserva imediata; agora entra no mesmo caminho e só o nome é pedido antes.
+- "só corte de cabelo de criança" virava "Corte de cabelo": o parser solto vencia o modelo. Modelo primeiro; criança/infantil força o corte infantil.
+- "só o corte" em resposta a "reservo X, como da última vez?" respondia "quer que eu reserve?" — reserva na hora, o horário já estava combinado.
+
+### O que a bateria confirmou que já estava certo
+
+Saudação, preço, site não reserva sozinho, elogio depois da reserva não reabre agenda, "sim" da remarcação não vira Pix, "15:30 não tem?" não é "não", duas coisas na mesma mensagem respondidas em ordem, Pix com valor, cancelamento sem "undefined", horário ocupado com alternativas curtas, "vou ver e te aviso", visagismo, prospecção comercial.
+
+### Pendências que ficaram do próprio teste (não da JuIA)
+
+- W10 e W15 dependem do estado da agenda e das reservas do próprio telefone de teste (pergunta legítima de conflito quando já há reserva; horário tomado por cliente real). Rodar a bateria com a agenda de um dia vazio.
+- A limpeza não consegue apagar `whatsapp_conversations`/`site_chat_messages` com a chave do backend por RLS — fica pra SQL direto.
+
+Functions publicadas: ju-ia-site (8 vezes na noite). Migration 138 aplicada.
+
 ## 29.141.0 — A resposta vai para a última pergunta: registro único na JuIA
 
 Pedido do Juliano (05/09/2026): "capacitar a JuIA a separar qual resposta é de qual pergunta". O caso Marcelo, de manhã: "responda sim que eu verifico" (remarcação) e, no estado, o "é só me pedir a chave" do Pix — o "sim" foi pra chave Pix.
