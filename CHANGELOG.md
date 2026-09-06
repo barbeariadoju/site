@@ -99,8 +99,60 @@ Sem o Juliano para escolher, não dá para seguir. Então a verificação da imp
 Google Ads segue **sem checar** por um segundo motivo, somado ao bloqueio de domínio da rodada
 anterior.
 
+### Terceira rodada do mesmo dia: o OpenStreetMap, e um susto que não era
+
+A tarefa disparou uma terceira vez em 06/09. Como a auditoria das cinco e a varredura de NAP já
+estavam feitas, a rodada foi para duas perguntas ainda sem resposta.
+
+**1) O OpenStreetMap — o caminho de trás para o Apple Maps.** Ninguém tinha olhado o OSM, e ele
+importa por um motivo específico: o Apple Maps não inventa os pontos dele do zero, bebe de bases
+abertas, e o OSM também alimenta Facebook, marcações de local e uma penca de apps de terceiros.
+Consultei o Nominatim: **"Barbearia do Ju" não existe no OSM.** Consultei o Overpass num
+retângulo cobrindo Bragança Paulista inteira e o resultado foi mais interessante que o esperado —
+**a cidade só tem 2 pontos de cabeleireiro/beleza mapeados no OSM**, um deles sem nome. Nem o
+Fígaro está lá.
+
+Ou seja: é a única frente da lista onde **não há concorrência nenhuma** e onde não existe
+duplicata para brigar depois. Conta no OSM é gratuita, não exige comprovar posse do negócio nem
+esperar cartão de verificação pelo correio — é incomparavelmente mais barato que o Apple Business
+Connect, e ataca o mesmo buraco por outro lado. Passa a ser o alvo nº 2 da lista, atrás só do
+Apple. (Continua exigindo o Juliano criar a conta: criar conta é ação que eu não tomo sozinho.)
+
+**2) O susto da conta cancelada — falso alarme, mas vira armadilha documentada.** Ao abrir
+`ads.google.com` sem parâmetro de conta, o Chrome caiu numa conta com faixa vermelha: *"Sua conta
+não está ativa — Seus anúncios não estão sendo exibidos porque sua conta foi cancelada."* Parecia
+que a PMax tinha morrido. **Não é a conta da barbearia.** O seletor de contas do
+julianoblpadilha@gmail.com lista só duas — **Barbearia do Ju = 659-268-6815** e Drogaria Pastrana
+= 318-197-9162 — e a cancelada é uma terceira, **170-738-8913**, de outro login ativo no
+navegador. Entrei na conta certa e a visão geral dela **não tem aviso de cancelamento nenhum**.
+
+Fica o registro porque isso engana de novo: **`ads.google.com` sem `ocid` na URL não abre a conta
+da barbearia**, abre a cancelada. Auditoria futura tem que entrar por
+`ads.google.com/aw/overview?ocid=8086744029` ou pelo seletor.
+
+**3) O NAP do próprio site, conferido contra fonte autoritativa.** Toda citação vai copiar o que
+está no site, então um erro aqui se multiplica por cinco diretórios. O schema está consistente nos
+4 arquivos que o declaram (`Rua Dr. Antônio da Cruz, 482` · `12900-350` · `+55 11 96707-3038`), e
+o CEP foi validado no ViaCEP: `12900-350` corresponde a "Rua Doutor Antônio da Cruz, Centro,
+**de 317/318 ao fim**" — o 482 cai dentro. **Está certo, nada a corrigir.** As coordenadas do
+schema (-22.9540382, -46.5420126) também caem dentro do trecho certo da rua no OSM.
+
+Isso fecha a dúvida do 481: a divergência é do guiadebraganca, não nossa. E de quebra mostra um
+erro do próprio OSM — ele atribui CEP 12916-420 a esse trecho da rua, quando o correto é
+12900-350. Se a ficha for criada lá, vale corrigir o CEP do trecho junto.
+
+**A verificação de conversões do Google Ads segue sem checar — terceira vez, terceiro motivo
+diferente.** Desta vez cheguei muito mais longe: o domínio não está mais bloqueado e havia só um
+Chrome conectado (o problema da rodada anterior sumiu). Consegui entrar na conta certa, mas no
+meio do caminho a extensão caiu, reconectou, e ao voltar as permissões de leitura para
+`ads.google.com` tinham sido revogadas — e prompt de permissão ninguém aprova numa tarefa
+agendada, que roda sem o Juliano. Números de "linhas importadas" e "linhas com erros": ainda
+desconhecidos.
+
 ### Em aberto para a próxima sessão, com o Juliano na tela
 
+0. **OpenStreetMap** — ele cria a conta em osm.org (grátis, sem verificação de posse) e eu cadastro
+   o ponto com o NAP oficial. Terreno virgem: a cidade inteira tem 2 pontos da categoria.
 1. Apple Business Connect — ele loga com o Apple ID, eu preencho os campos com os dados oficiais.
 2. Bing Places — ele loga com a conta Microsoft, eu reivindico a ficha que já existe.
 3. Facebook — ele loga, eu crio a Página comercial (não perfil, não grupo).
@@ -108,8 +160,10 @@ anterior.
 5. guiadebraganca.com.br — tentar `wp-login.php` primeiro; se não houver credencial, ligar ou
    mandar e-mail pedindo a correção do 481 → 482.
 6. Verificação pendente do Google Ads (linhas importadas da conversão "Agendamento confirmado")
-   segue sem checar — tentar de novo com acesso liberado a `ads.google.com` **e com um só Chrome
-   conectado**. Antes de qualquer sessão com navegador: fechar um dos dois.
+   segue sem checar — 3 tentativas, 3 bloqueios diferentes. Da próxima vez entrar direto por
+   `ads.google.com/aw/overview?ocid=8086744029` (a conta certa, 659-268-6815) **com o Juliano na
+   tela para aprovar o prompt de permissão do Chrome**, que é o que travou desta vez. Sem ele, essa
+   checagem não sai — o mais prático é ele mesmo abrir e ler os dois números.
 7. encontrabragancapaulista.com — cadastro gratuito, ele cria a conta e eu preencho (alvo novo).
 8. diariocidade.com — conferir o fluxo de cadastro no navegador (alvo novo, bloqueia leitura
    automática).
