@@ -1,4 +1,4 @@
-/* Atribuição de WhatsApp — v29.2.0
+/* Atribuição de WhatsApp — v29.139.0
  *
  * Quando alguém sai do site pro WhatsApp, o vínculo com a visita se perde: a
  * conversa começa do zero e o agendamento que nasce dela fica órfão de origem.
@@ -8,6 +8,14 @@
  * Aqui a gente gruda um código curto no texto da mensagem e guarda, no servidor,
  * de qual visita ele veio. A JuIA lê esse código na primeira mensagem.
  *
+ * v29.139.0 — iPhone: o Google manda TRÊS identificadores de clique diferentes, e
+ * eles NÃO são intercambiáveis. `gclid` é o normal; `wbraid` e `gbraid` aparecem em
+ * tráfego de iOS quando o usuário não deu consentimento de rastreamento (ATT), que
+ * na base de clientes daqui é gente demais pra ignorar. Até a v29.138.0 os três
+ * caíam na mesma variável e iam para a coluna de gclid na importação — e o Google
+ * DESCARTA em silêncio uma linha cujo gclid ele não reconhece. Agora cada um viaja
+ * no seu próprio campo.
+ *
  * Regra de ouro deste arquivo: NADA aqui pode impedir o cliente de abrir o
  * WhatsApp. Toda falha é engolida e o clique segue normal.
  */
@@ -16,29 +24,38 @@
 
   var CFG = window.BDJ_AGENDA_CONFIG || {};
   var ENDPOINT = CFG.supabaseUrl ? CFG.supabaseUrl + '/functions/v1/whatsapp-attribution' : null;
-  var GCLID_KEY = 'bdj_gclid_v1';
-  var GCLID_TTL = 90 * 24 * 60 * 60 * 1000; // 90 dias, mesma janela do Ads
+  var CLICKID_KEY = 'bdj_gclid_v1';
+  var CLICKID_TTL = 90 * 24 * 60 * 60 * 1000; // 90 dias, mesma janela do Ads
+  var TIPOS = ['gclid', 'wbraid', 'gbraid'];
 
   function param(name) {
     try { return new URLSearchParams(location.search).get(name); } catch (e) { return null; }
   }
 
-  // Guarda o gclid assim que a pessoa chega pelo anúncio — ela pode navegar
-  // várias páginas antes de clicar no WhatsApp.
-  function rememberGclid() {
+  // Guarda o identificador do clique assim que a pessoa chega pelo anúncio — ela
+  // pode navegar várias páginas antes de clicar no WhatsApp. Guarda também QUAL dos
+  // três é: mandar um wbraid no campo de gclid faz a conversão ser descartada.
+  function rememberClickId() {
     try {
-      var g = param('gclid') || param('wbraid') || param('gbraid');
-      if (g) localStorage.setItem(GCLID_KEY, JSON.stringify({ v: g, t: Date.now() }));
+      for (var i = 0; i < TIPOS.length; i++) {
+        var v = param(TIPOS[i]);
+        if (v) {
+          localStorage.setItem(CLICKID_KEY, JSON.stringify({ v: v, t: Date.now(), k: TIPOS[i] }));
+          return;
+        }
+      }
     } catch (e) { /* modo privado, tudo bem */ }
   }
 
-  function readGclid() {
+  function readClickId() {
     try {
-      var raw = localStorage.getItem(GCLID_KEY);
+      var raw = localStorage.getItem(CLICKID_KEY);
       if (!raw) return null;
       var o = JSON.parse(raw);
-      if (!o || !o.v || (Date.now() - o.t) > GCLID_TTL) return null;
-      return o.v;
+      if (!o || !o.v || (Date.now() - o.t) > CLICKID_TTL) return null;
+      // registros gravados antes da v29.139.0 não têm `k`; eram sempre tratados
+      // como gclid, então seguem assim.
+      return { v: o.v, k: TIPOS.indexOf(o.k) >= 0 ? o.k : 'gclid' };
     } catch (e) { return null; }
   }
 
@@ -65,16 +82,21 @@
 
   function record(token) {
     if (!ENDPOINT) return;
-    var payload = JSON.stringify({
+    var click = readClickId();
+    var corpo = {
       token: token,
       ga_client_id: gaClientId(),
-      gclid: readGclid(),
+      gclid: null,
+      wbraid: null,
+      gbraid: null,
       landing_page: location.pathname + location.search,
       referrer: document.referrer || null,
       utm_source: param('utm_source'),
       utm_medium: param('utm_medium'),
       utm_campaign: param('utm_campaign')
-    });
+    };
+    if (click) corpo[click.k] = click.v;
+    var payload = JSON.stringify(corpo);
     try {
       // sendBeacon sobrevive à navegação pro WhatsApp; fetch nem sempre.
       //
@@ -114,6 +136,6 @@
     } catch (e) { /* nunca bloquear o clique */ }
   }
 
-  rememberGclid();
+  rememberClickId();
   document.addEventListener('click', onClick, true);
 })();

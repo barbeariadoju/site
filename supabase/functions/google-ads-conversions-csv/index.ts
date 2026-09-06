@@ -99,6 +99,8 @@ Deno.serve(async (req) => {
     // view devolve dados e o exemplo some sozinho.
     const EXEMPLO_ENQUANTO_VAZIO = {
       'Google Click ID': 'CjwKCAiA0000EXEMPLO0000SEM0000CLIQUE0000REAL',
+      'WBRAID': '',
+      'GBRAID': '',
       'Conversion Name': 'Agendamento confirmado (WhatsApp)',
       'Conversion Time': new Date(Date.now() - 864e5).toISOString().slice(0, 19).replace('T', ' ') + '-03:00',
       'Conversion Value': '0.00',

@@ -1,3 +1,45 @@
+## 29.139.0 — iPhone: os três identificadores de clique não são intercambiáveis
+
+Pedido do Juliano em 05/09/2026, na hora: *"trate já, temos muitos usuários de iphone"*.
+
+O Google não manda sempre `gclid`. Em tráfego de iOS sem consentimento de rastreamento (o ATT, aquela caixa "permitir que o app rastreie"), ele manda **`wbraid`** ou **`gbraid`** no lugar. E eles não são intercambiáveis: um `wbraid` enviado na coluna *Google Click ID* faz o Google **descartar a linha em silêncio** — sem erro, sem log, sem aviso.
+
+Até a v29.138.0 o `whatsapp-attrib-v29.js` fazia exatamente isso:
+
+```js
+var g = param('gclid') || param('wbraid') || param('gbraid');
+```
+
+Os três caíam na mesma variável, iam para a mesma coluna do banco e saíam no mesmo campo do CSV. Todo cliente de iPhone que viesse por anúncio sem ATT seria perdido na importação — e ninguém saberia, porque a falha é muda.
+
+### O que mudou, ponta a ponta
+
+**No site** — o script agora guarda *qual* dos três recebeu (`{v, t, k}`) e manda cada um no seu campo. Registros gravados antes da v29.139.0 não têm o `k` e seguem tratados como `gclid`, que é o que eram.
+
+**No banco** — colunas `wbraid` e `gbraid` em `whatsapp_attribution`.
+
+**Na view** — três colunas, com apenas uma preenchida por linha (`coalesce`/`nullif`).
+
+**No CSV** — de 5 para 7 colunas:
+
+```
+Google Click ID, WBRAID, GBRAID, Conversion Name, Conversion Time, Conversion Value, Conversion Currency
+```
+
+**Cache.** O `?v=` do script foi de `29.2.1` para `29.139.0` nas **57 páginas**, conferido por contagem depois (0 na versão velha). Publicar JS novo atrás de cache velho já custou um evento inteiro neste projeto.
+
+### Testado
+
+`wbraid` enviado à function de captura foi para a coluna `wbraid`, com `gclid` nulo. Registro de teste removido em seguida.
+
+Três testes novos garantem o que o CSV não pode errar: `wbraid` sai na coluna WBRAID com a de gclid vazia, `gbraid` idem, e **nunca mais de um identificador na mesma linha**. 67 unit + 46 e2e.
+
+### Falta um clique no painel
+
+A conexão do Google ainda mapeia **4 campos** — ela não conhece as colunas `WBRAID` e `GBRAID`, criadas agora. Enquanto não forem mapeadas, o Google simplesmente ignora essas duas colunas: **nada quebra, e as conversões com `gclid` seguem funcionando**; só as de iPhone continuam sem entrar.
+
+O caminho é `Metas > Conversões > Agendamento confirmado (WhatsApp) > Configurações > Evento > Editar evento > Editar mapeamento`, e ali apontar `WBRAID -> WBRAID` e `GBRAID -> GBRAID`. Os cliques nesse painel não passam pela automação (tela de alta densidade), então ficou para a mão do Juliano.
+
 ## 29.138.0 — O circuito fechou: o agendamento volta para o Google
 
 Última seta ligada em 05/09/2026. A ação de conversão **`Agendamento confirmado (WhatsApp)`** (código 7749762387) existe na conta e está conectada à fonte HTTPS.

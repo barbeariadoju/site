@@ -1,5 +1,9 @@
 // Guarda de qual visita veio um código que está viajando numa mensagem de WhatsApp.
 // Chamada pelo site, sem sessão — por isso verify_jwt=false e validação rígida da entrada.
+//
+// v29.139.0 — recebe os TRÊS identificadores de clique do Google em campos separados.
+// gclid é o normal; wbraid e gbraid vêm de tráfego iOS sem consentimento de rastreamento.
+// Misturá-los faz o Google descartar a conversão em silêncio na importação.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -33,6 +37,8 @@ Deno.serve(async (req) => {
       token,
       ga_client_id: clip(body.ga_client_id, 64),
       gclid: clip(body.gclid, 200),
+      wbraid: clip(body.wbraid, 200),
+      gbraid: clip(body.gbraid, 200),
       landing_page: clip(body.landing_page, 300),
       referrer: clip(body.referrer, 300),
       utm_source: clip(body.utm_source, 80),
