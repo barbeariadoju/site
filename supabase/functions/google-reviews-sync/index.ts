@@ -176,9 +176,16 @@ async function listarPeloWindsor(apiKey: string): Promise<Review[]> {
   url.searchParams.set('date_from', inicio.toISOString().slice(0, 10))
   url.searchParams.set('date_to', hoje.toISOString().slice(0, 10))
   url.searchParams.set('_max_rows', '2000')
+  // A chave vai no header E na query (a documentação aceita os dois; na 1ª rodada, 06/09,
+  // só o header devolveu 400 "Not authorized"). O log mostra só tamanho e 3 primeiros
+  // caracteres, o bastante pra detectar secret errado (ex.: placeholder) sem expor a chave.
+  url.searchParams.set('api_key', apiKey)
   const resp = await fetchWithTimeout(url, { headers: { 'X-Api-Key': apiKey, Accept: 'application/json' } }, 45000)
   const data = await resp.json().catch(() => ({}))
-  if (!resp.ok) throw new Error(`Windsor (${resp.status}): ${JSON.stringify(data).slice(0, 500)}`)
+  if (!resp.ok) {
+    console.error(`[google-reviews-sync] windsor recusou; chave com ${apiKey.length} caracteres, começa com "${apiKey.slice(0, 3)}"`)
+    throw new Error(`Windsor (${resp.status}): ${JSON.stringify(data).slice(0, 500)}`)
+  }
   const rows: any[] = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
   const vistos = new Set<string>()
   const reviews: Review[] = []
