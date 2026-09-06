@@ -1,12 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { normalizeServiceSet } from '../_shared/service-rules.ts'
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json; charset=utf-8'}
 const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers})
 const hash=async(v:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)))).map(b=>b.toString(16).padStart(2,'0')).join('')
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b=>b.toString(16).padStart(2,'0')).join('')
 const code=()=>`BJ-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,7).toUpperCase()}`
-const SERVICES=[
-['Corte + Lavagem',50,40],['Corte de cabelo',40,30],['Corte + Barboterapia',80,60],['Corte + Barba Express',65,50],['Barboterapia com vaporizador de ozônio',50,40],['Barboterapia',40,30],['Barba Express',25,20],['Pezinho (acabamento)',15,10],['Sobrancelha Masculina',15,10],['Depilação nasal (cera quente)',25,20],['Depilação orelhas',25,20],['Freestyle (risquinho)',15,10],['Nevou / Platinado',150,120],['Luzes',120,90],['Alisamento / Relaxamento',70,45],['Pigmentação Capilar (Tintura)',50,30],['Hidratação / Reconstrução Capilar',40,20],['Pigmentação de Barba',35,20],['Pigmentação de Sobrancelha',20,20]
-] as const
+// v29.143.0 — o catálogo era uma lista fixa aqui dentro, parada desde a v26.5: preço e
+// duração de julho (Corte de cabelo 30 min quando o banco já dizia 40 desde a v29.139.0) e
+// sem os serviços criados depois (Raspar a cabeça, Corte infantil, Barba na navalha...).
+// Caso real (Sabrino, 06/09/2026): reagendou pelo link e nasceu "Corte de cabelo + Corte +
+// Barba Express", 80 min — dois cortes no mesmo horário, com a duração velha. Agora a fonte
+// é public.services (a mesma do site e da JuIA) e a regra das famílias vale aqui também,
+// como já valia no create-public-booking desde a v29.62.0.
+const REGRA_MSG=(kept:string,removed:string)=>`«${kept}» e «${removed}» não entram no mesmo horário: a Barboterapia já inclui a barba e todo corte já inclui o acabamento. Vale 1 serviço de corte e 1 de barba por atendimento (exceção: corte adulto + corte infantil). Ajuste a lista e tente de novo.`
 Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers})
  if(req.method!=='POST')return json({error:'Método não permitido.'},405)
@@ -20,15 +26,21 @@ Deno.serve(async(req)=>{
   // importa o products-catalog-v1.js do front-end).
   const {data:productsRows}=await admin.from('products').select('name,price').eq('active',true)
   const PRODUCTS=new Map((productsRows||[]).map((p:any)=>[String(p.name),Number(p.price)]))
+  const {data:servicesRows,error:servicesError}=await admin.from('services').select('name,price,duration_minutes').eq('active',true)
+  if(servicesError||!(servicesRows||[]).length)return json({error:'Não foi possível carregar os serviços. Tente de novo em instantes.'},500)
+  const SERVICES=(servicesRows||[]).map((s:any)=>({name:String(s.name),price:Number(s.price||0),duration:Number(s.duration_minutes||0)}))
   const {data:source,error:sourceError}=await admin.from('bookings').select('*').eq('booking_code',codeValue).maybeSingle()
   if(sourceError||!source)return json({error:'Agendamento original não encontrado.'},404)
   if(!source.rebooking_token_hash||await hash(rebookToken)!==source.rebooking_token_hash)return json({error:'Link inválido ou expirado.'},403)
   if(source.rebooking_expires_at&&new Date(source.rebooking_expires_at)<new Date())return json({error:'Este link expirou.'},410)
   if(source.status!=='cancelled'||source.rebooked_to_booking_id)return json({error:'Este reagendamento não está mais disponível.'},409)
   const requested=Array.isArray(b.services)?b.services.map(String):[]
-  const selected=SERVICES.filter(s=>requested.includes(s[0]))
+  const selected=SERVICES.filter(s=>requested.includes(s.name))
   if(!selected.length)return json({error:'Escolha pelo menos um serviço.'},400)
-  const serviceName=selected.map(s=>s[0]).join(' + '),servicePrice=selected.reduce((a,s)=>a+s[1],0),duration=selected.reduce((a,s)=>a+s[2],0)
+  const check=normalizeServiceSet(selected.map(s=>s.name))
+  const conflito=check.removed.find((x:any)=>x.name!==x.keptBy)
+  if(conflito)return json({error:REGRA_MSG(conflito.keptBy,conflito.name)},400)
+  const serviceName=selected.map(s=>s.name).join(' + '),servicePrice=selected.reduce((a,s)=>a+s.price,0),duration=selected.reduce((a,s)=>a+s.duration,0)
   const products=(Array.isArray(b.selected_products)?b.selected_products:[]).map((x:any)=>({name:String(x?.name||''),price:Number(PRODUCTS.get(String(x?.name||''))||0)})).filter((x:any)=>x.price>0)
   const date=String(b.booking_date||''),start=String(b.start_time||'')
   if(!date||!start)return json({error:'Escolha a nova data e o novo horário.'},400)
@@ -39,6 +51,8 @@ Deno.serve(async(req)=>{
   if(!record)return json({error:'Novo horário criado, mas houve falha ao gerar o link de gerenciamento.'},500)
   await admin.from('bookings').update({rebooked_from_booking_id:source.id}).eq('id',id)
   await admin.from('bookings').update({rebooked_to_booking_id:id,rebooking_token_hash:null,rebooking_expires_at:null}).eq('id',source.id)
+  // v29.143.0: este valor nunca tinha entrado no CHECK de booking_customer_actions (o insert
+  // falhava em silêncio desde a v26.5 — só um console.error). Migration 139 libera o valor.
   const { error: actionError } = await admin.from('booking_customer_actions').insert({booking_id:id,action:'rebooked_after_admin_cancellation'})
   if (actionError) console.error('[create-rebooking] action log', actionError)
   if(emailSecret)await fetch(`${url}/functions/v1/booking-email`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':emailSecret},body:JSON.stringify({booking_id:id,event_type:'booking_confirmed',management_token:managementToken})}).catch(()=>{})

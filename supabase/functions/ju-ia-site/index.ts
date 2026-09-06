@@ -142,6 +142,37 @@ const weekdayDatesMentioned=(text:string,fromISO:string)=>{
  return out.sort()
 }
 
+// v29.143.0 — caso Cleiton (domingo, 06/09/2026, 09h02): "corte de cabelo para hoje" recebeu
+// "para qual dia?"; ele respondeu "06/09/2026" e ouviu "Consigo te atender na terça (08/09)
+// sim!". O modelo pulou o domingo fechado pra terça (o prompt manda oferecer o dia possível
+// mais próximo) e a frase determinística de disponibilidade saiu com o "sim!" de quem
+// confirma o dia que o cliente pediu — só que ele pediu HOJE. Lido de fora, parece que a
+// barbearia está aberta e não quer atender. O dia que o cliente pediu de verdade agora é
+// lido do texto (não do que o modelo devolveu), e se for dia fechado a resposta diz isso
+// antes de qualquer oferta. Regra do Juliano: "hoje a barbearia não abre, voltamos terça e
+// aí consigo te atender entre tal e tal hora".
+const addDaysISO=(iso:string,n:number)=>{const d=new Date(iso+'T12:00:00-03:00');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+const diaPedidoNaMensagem=(text:string):string|null=>{
+ const q=normalize(text)
+ if(/\bhoje\b/.test(q))return today()
+ if(/\bamanha\b/.test(q))return addDaysISO(today(),1)
+ const m=q.match(/(?:^|[^\d:])(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?(?![\d:])/)
+ if(m){
+  const dd=Number(m[1]),mm=Number(m[2]);let yy=m[3]?Number(m[3]):NaN
+  if(!isNaN(yy)&&yy<100)yy+=2000
+  const t=today()
+  if(dd>=1&&dd<=31&&mm>=1&&mm<=12){
+   const pad=(n:number)=>String(n).padStart(2,'0')
+   let iso=`${isNaN(yy)?t.slice(0,4):yy}-${pad(mm)}-${pad(dd)}`
+   if(isNaN(yy)&&iso<t)iso=`${Number(t.slice(0,4))+1}-${pad(mm)}-${pad(dd)}`
+   const chk=new Date(iso+'T12:00:00-03:00')
+   if(!isNaN(chk.getTime())&&chk.toISOString().slice(0,10)===iso)return iso
+  }
+ }
+ const wds=weekdayDatesMentioned(q,today())
+ return wds.length===1?wds[0]:null
+}
+
 const fetchWithTimeout=async(url:string,init:RequestInit,timeoutMs=8000)=>{
  const controller=new AbortController()
  const timeout=setTimeout(()=>controller.abort(),timeoutMs)
@@ -2654,6 +2685,27 @@ Deno.serve(async req=>{
    cabeloAssumidoNota='(Anotei Corte de cabelo — se quiser outro serviço ou incluir a barba, é só me dizer 😉)'
   }
  }
+ // v29.143.0 (caso Cleiton, ver diaPedidoNaMensagem): o dia que o cliente pediu é lido do
+ // texto. Se for dia fechado (domingo/segunda ou "Fechar o dia inteiro" no admin), a
+ // agenda vai pro próximo dia aberto E a resposta lá embaixo explica o motivo primeiro —
+ // sem isso, "Consigo te atender na terça sim!" lê como recusa de atender hoje. Se o dia
+ // pedido é aberto e o modelo não preencheu updates.date, a data é a que ele escreveu.
+ let diaFechadoPedido:{date:string,reason:string|null,excepcional:boolean}|null=null
+ if(intent==='availability'&&chosen.length&&notSpecialFlow&&weekdayDatesMentioned(normalizedQuestion,today()).length<=1){
+  const pedido=diaPedidoNaMensagem(message)
+  if(pedido&&pedido>=today()){
+   const wdPedido=new Date(pedido+'T12:00:00-03:00').getUTCDay()
+   const excepcional=closures.find((c:any)=>String(c?.date||'')===formatDateBR(pedido))
+   if(wdPedido===0||wdPedido===1||excepcional){
+    const durP=chosen.reduce((a:number,s:any)=>a+s.duration,0)
+    const nextAvail=await findNextAvailableDate(supabase,pedido,durP)
+    if(nextAvail){
+     diaFechadoPedido={date:pedido,reason:excepcional?(excepcional.reason||null):null,excepcional:Boolean(excepcional)}
+     next.date=nextAvail.date
+    }
+   }else if(!next.date)next.date=pedido
+  }
+ }
  if(intent==='availability'&&!chosen.length){
   // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
   // responde na hora se aquele dia tem agenda aberta (sondando com duração mínima de
@@ -3086,6 +3138,39 @@ Deno.serve(async req=>{
   }else{
    reply=`Para ${serviceNames} ${emDia(next.date)}, estes são os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
    actions=allSlots.map((t:string)=>({label:t,message:t}))
+  }
+  // v29.143.0 (caso Cleiton): o dia pedido não abre — o motivo vem ANTES da oferta. Na
+  // resposta genérica ("Consigo te atender ... sim!") a frase inteira é trocada pela do
+  // Juliano: não abre hoje, voltamos em tal dia, e aí atendo entre X e Y. Nas outras
+  // (hora ou período já pedidos) só entra a explicação na frente do que já foi montado.
+  if(diaFechadoPedido&&allSlots.length){
+   const cap=(s:string)=>s.charAt(0).toUpperCase()+s.slice(1)
+   const quando=cap(diaHumano(diaFechadoPedido.date))
+   const motivo=diaFechadoPedido.excepcional
+    ?(diaFechadoPedido.reason?` (${diaFechadoPedido.reason})`:' (fechada excepcionalmente nesse dia)')
+    :' (domingo e segunda a gente não abre)'
+   const generica=!effectiveTime&&!effectivePeriod&&/^(Consigo te atender|Perfeito! Para|Para )/.test(reply)
+   if(generica){
+    const faixa=allSlots.length>1?`entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}`:`às ${allSlots[0]}`
+    if(allSlots.length>6){
+     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender ${faixa} para ${serviceNames} (aprox. ${duration} min). Você prefere manhã, tarde ou final do dia?`
+     actions=[{label:'Manhã',message:'Prefiro manhã'},{label:'Tarde',message:'Prefiro tarde'},{label:'Final do dia',message:'Prefiro final do dia'}]
+    }else{
+     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender para ${serviceNames} (aprox. ${duration} min) nestes horários: ${allSlots.join(', ')}. Qual fica melhor pra você?`
+     actions=allSlots.map((t:string)=>({label:t,message:t}))
+    }
+   }else{
+    // "Sim! na terça às 15:00 está livre" logo depois de "hoje não abre" contradiz: o "sim"
+    // era pra pergunta "tem hoje?", e a resposta a essa é não. Sai o "Sim!".
+    let resto=reply.replace(/^Sim[!,]?\s*(✅\s*)?/i,'')
+    // A data aqui ainda pode estar em ISO (a troca por "na terça (08/09)" é no fim da
+    // function e sai em minúscula): trocada já, pra começar a frase com maiúscula.
+    if(resto.startsWith(next.date))resto=emDiaCap(next.date)+resto.slice(next.date.length)
+    resto=cap(resto)
+    reply=resto.startsWith(emDiaCap(next.date))
+     ?`${quando} a barbearia não abre${motivo}. ${resto}`
+     :`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)}. ${resto}`
+   }
   }
   }
  }
