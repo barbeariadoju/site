@@ -130,12 +130,21 @@ const CLICHE_INSTITUCIONAL = /\b(visual|estilo|corte|cabelo|barba|voc[êe])\s+(m
 // percepção de autoridade sem acrescentar nada à emoção. A memória ("lembro do silêncio
 // daquela cadeira") emociona igual e não revela idade.
 const REVELA_IDADE = /\b(em|desde|no in[íi]cio de|come[çc]o de)\s+(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b|\bh[áa]\s+\d+\s+(meses|anos|semanas)\b|\bdesde\s+20\d\d\b|\b20\d\d\b|\bnossos?\s+primeiros?\s+(meses|anos)\b|\brec[ée]m[- ]inaugurad/i
+// v29.146.0 — TRAVA DA "GARANTIA DE AJUSTE" (ordem do Juliano, 06/09/2026): "quem ler vai
+// achar que sou inseguro ou que corto mal". A frase "se não ficou como queria, volta que a
+// gente ajusta sem cobrar" saiu em post, em resposta de avaliação e na ficha da campanha
+// como "gancho" — repetida, ela vira aviso de defeito, não prova de confiança. A política
+// continua existindo (site e JuIA respondem se o cliente PERGUNTAR), mas conteúdo de
+// marketing e resposta pública nunca a oferecem por conta própria. Filtro em código, não
+// só no prompt, pelo mesmo motivo dos outros: proibição textual depende do modelo.
+const GARANTIA_INSEGURA = /garantia\s+de\s+ajuste|ajust(e|a|amos)\s+(sem\s+(cobrar|custo)|de\s+gra[çc]a|gr[áa]tis)|sem\s+cobrar\s+nada|(volta|voltar|retorna)r?\s+(que|e|pra)\s+(a\s+gente\s+)?(ajust|acert|corrig)|a\s+gente\s+(ajusta|acerta|corrige)|se\s+(n[ãa]o\s+)?(ficou|ficar)\s+(como|do\s+jeito)\s+(que\s+)?(voc[êe]\s+)?queria|[ée]\s+s[óo]\s+voltar|qualquer\s+ajuste|refazemos|refa[çc]o\s+sem/i
 const textoRaso = (t: string) => {
   const txt = String(t || '').trim()
   if (!txt) return true
   if (CLICHE_VAZIO.test(txt)) return true
   if (CLICHE_INSTITUCIONAL.test(txt)) return true
   if (REVELA_IDADE.test(txt)) return true
+  if (GARANTIA_INSEGURA.test(txt)) return true
   // "domingo" repetido 3+ vezes = texto girando em torno de si mesmo, sem conteúdo.
   if ((txt.toLowerCase().match(/domingo/g) || []).length >= 3) return true
   return false
@@ -357,7 +366,7 @@ async function captionComQualidade(openaiKey: string | undefined, prompt: string
     console.warn('[content-generate-daily] 1a versao reprovada:', repetiu.length ? `tema repetido (${repetiu.join(', ')})` : 'texto raso')
     const motivo = repetiu.length
       ? `REPROVADA por REPETIR o assunto de um post dos últimos dias ou de um post que já vai sair hoje (as palavras que entregaram a repetição: ${repetiu.join(', ')}). Escolha um assunto COMPLETAMENTE diferente e não use nenhuma dessas palavras.`
-      : 'REPROVADA por soar vazia ou institucional: clichê de cartão, elogio genérico à própria barbearia ("seu visual merece", "experiência premium", "cuidado e precisão"), repetição da palavra do dia ou lista de objetos. Abra com uma pessoa, uma cena ou um fato concreto desta barbearia, não com um elogio. Nada de frase que caberia em qualquer negócio.'
+      : 'REPROVADA por soar vazia ou institucional: clichê de cartão, elogio genérico à própria barbearia ("seu visual merece", "experiência premium", "cuidado e precisão"), repetição da palavra do dia, lista de objetos, ou promessa de ajuste/refazer ("se não ficou como queria, volta que a gente ajusta sem cobrar") — essa promessa é PROIBIDA em qualquer post. Abra com uma pessoa, uma cena ou um fato concreto desta barbearia, não com um elogio. Nada de frase que caberia em qualquer negócio.'
     const promptDuro = `${prompt}
 
 ATENÇÃO — sua tentativa anterior foi ${motivo} Recomece do zero.`
@@ -556,7 +565,7 @@ O TESTE, antes de entregar: o texto afirma alguma coisa sobre a vida, o cansaço
     // merece o cuidado e a precisão...") provaram que dizer o TEMA não basta — é preciso
     // dizer COMO se escreve. Regra: um fato concreto por post, voz do Juliano, zero elogio
     // genérico à própria casa.
-    const VOZ_CONCRETA = `COMO ESCREVER (é isso que decide se o texto é aprovado ou reprovado na revisão): escolha UM detalhe concreto e construa o texto em volta dele — uma cena ou um fato verificável (o café servido na chegada, o horário que começa na hora que foi marcado, o espelho no final pro cliente conferir o acabamento, um cliente por vez na cadeira). Escreva como o Juliano falaria com um cliente na cadeira: simples, direto, de pessoa pra pessoa. É PROIBIDO elogiar a própria barbearia com adjetivo genérico ("seu visual/estilo merece", "cuidado e precisão", "experiência premium/única", "acabamento impecável", "atendimento de excelência", "momento de cuidado") e é PROIBIDA qualquer frase que serviria igual pra qualquer outra barbearia do Brasil — se não tem um fato concreto DESTA barbearia, reescreva antes de entregar.`
+    const VOZ_CONCRETA = `COMO ESCREVER (é isso que decide se o texto é aprovado ou reprovado na revisão): escolha UM detalhe concreto e construa o texto em volta dele — uma cena ou um fato verificável (o café servido na chegada, o horário que começa na hora que foi marcado, o espelho no final pro cliente conferir o acabamento, um cliente por vez na cadeira). Escreva como o Juliano falaria com um cliente na cadeira: simples, direto, de pessoa pra pessoa. É PROIBIDO elogiar a própria barbearia com adjetivo genérico ("seu visual/estilo merece", "cuidado e precisão", "experiência premium/única", "acabamento impecável", "atendimento de excelência", "momento de cuidado") e é PROIBIDA qualquer frase que serviria igual pra qualquer outra barbearia do Brasil — se não tem um fato concreto DESTA barbearia, reescreva antes de entregar. PROIBIDO TAMBÉM, SEM EXCEÇÃO (decisão do Juliano, 06/09/2026): prometer ajuste, retoque ou refazer o corte ("se não ficou como queria, volta que a gente ajusta", "ajuste sem cobrar", "garantia de ajuste"). Repetido em público, isso soa como barbeiro inseguro ou que erra o corte. Confiança se mostra pelo trabalho, nunca pela promessa de consertar.`
 
     let contextFact: string
     let context: Record<string, unknown>

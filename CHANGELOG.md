@@ -1,3 +1,80 @@
+## 29.147.0 — Tela de avaliações ligada ao conector do Windsor.ai; trava de ajuste também no botão Publicar
+
+Pedido do Juliano (06/09/2026, "pode ligar o conector sim"), depois de eu descobrir que a tela
+`admin-avaliacoes.html` nunca sincronizou nada: a tabela `google_reviews` estava vazia desde
+01/08 porque os secrets `GOOGLE_REVIEWS_*` (API direta do Google) nunca foram cadastrados e,
+por isso, nunca houve cron. O conector `google_my_business` do Windsor.ai, autorizado em
+05/08, é o que respondeu as avaliações de hoje pelo chat — então passa a ser a fonte da tela.
+
+- `google-reviews-sync`: ganha a fonte Windsor (secret `WINDSOR_API_KEY`, Data API
+  `GET connectors.windsor.ai/google_my_business` com os campos da tabela Reviews). A API direta
+  do Google continua como segunda opção, intacta, só saiu de dentro do handler. Novo: reconcilia
+  avaliação que já estava na tabela e ganhou resposta por fora (app do Google, conector pelo
+  chat) — vira `posted` com a resposta real, em vez de ficar pendente pra sempre. Na primeira
+  rodada importa o histórico inteiro (as ~85 já respondidas entram como `posted`).
+- `google-reviews-publish`: com `WINDSOR_API_KEY`, responde pela ação `reply_to_review`
+  (`POST connectors.windsor.ai/google_my_business/actions`). Responder de novo substitui.
+  E a trava da 29.146.0 vale também aqui: texto editado à mão na tela com "volta que a gente
+  acerta"/"sem cobrar nada"/"garantia de ajuste" é recusado com a explicação, não publica.
+- Cron `bdj-google-reviews-sync` a cada 2 horas (minuto 20), migration 140. Já agendado no
+  banco; sem o secret a function responde `skipped` e não faz nada.
+
+O que falta e só o Juliano pode fazer: pegar a API key no painel do Windsor.ai, cadastrar
+`WINDSOR_API_KEY` nos secrets do Supabase e rodar o deploy das duas functions. A primeira
+sincronização acontece no próximo minuto 20 de hora par.
+
+Sem mudança em página do site, sem bump de `?v=`. `VERSAO.md` 29.147.0.
+
+## 29.146.0 — Trava da "garantia de ajuste" no conteúdo; avaliações do Google respondidas pelo Windsor; exclusão de publicação
+
+Domingo, 06/09/2026, à tarde. Três frentes, todas pedidas pelo Juliano na mesma conversa.
+
+**1) "PARAR de falar qualquer ajuste volta."** Ao revisar as respostas de avaliação do Google
+que eu ia publicar, ele viu pela terceira vez a frase "qualquer ajuste é só voltar que a gente
+acerta sem cobrar nada" e cortou: *"quem ler vai achar que sou inseguro ou que corto mal"*. Tem
+razão: a garantia existe como política de atendimento, mas repetida em público como gancho de
+marketing vira aviso de defeito. Onde ela estava e o que mudou:
+
+- `content-generate-daily`: regex `GARANTIA_INSEGURA` entra no `textoRaso` (legenda com a promessa
+  é descartada e outra é pedida, como já acontece com "premium"), o motivo de reprovação da
+  segunda tentativa cita a frase, e `VOZ_CONCRETA` proíbe explicitamente.
+- `google-reviews-sync`: a mesma regex no rascunho de resposta — pede outra versão; se escapar de
+  novo, corta só as frases com a promessa e mantém o resto. O prompt também ganhou a proibição
+  de "premium"/superlativo, que não tinha.
+- `ju-ia-site`: a garantia sai da lista de argumentos de valor (era citada junto com café, Wi-Fi e
+  fidelidade quando o cliente questionava preço). Fica só a regra reativa: se o cliente perguntar
+  ou reclamar do resultado, a JuIA explica os 7 dias como antes.
+- `marketing_memory`: gancho 1 ("GARANTIA DE AJUSTE") removido da ficha da campanha (os outros
+  renumerados), "garantia de ajuste" sai da lista de provas do Posicionamento, e uma memória nova
+  de categoria `restricao` registra a ordem com a citação dele.
+- O site (hero, plaquinha, FAQ) **não** foi tocado: lá a garantia é informação pra quem procura,
+  não promessa empurrada. Se ele quiser tirar de lá também, é outra decisão.
+
+**2) Avaliações do Google.** Três sem resposta (Pedro Vinícius Carvalho 29/08, Danilo Morais 04/09,
+João Vitor 05/09, todas 5 estrelas). Respondidas pelo conector do Google Meu Negócio no Windsor.ai
+(ação `reply_to_review`), com o serviço real de cada um puxado da agenda, "Barbearia do Ju" e
+"Centro de Bragança Paulista" uma vez cada, e sem a frase de ajuste. Descoberta no caminho: a
+tabela `google_reviews` está **vazia** e os secrets `GOOGLE_REVIEWS_*` nunca foram cadastrados —
+a tela `admin-avaliacoes.html` nunca sincronizou nada desde a v28.33.0. O Windsor é hoje o único
+caminho que funciona pra ler e responder avaliações. Fica registrado como pendência: ou cadastra
+os secrets e agenda o `google-reviews-sync`, ou a tela do admin passa a ler do Windsor.
+
+**3) Exclusão de publicação.** A Central de Conteúdo nunca teve "excluir publicação". Pra apagar
+os três posts de domingo (Instagram, Facebook e Status, pedido dele), nasceu
+`supabase/functions/content-unpublish` — `DELETE` na Graph API (funcionou também no Instagram,
+que eu achava que a API não deixava apagar; achava errado) e `deleteMessageForEveryone` na
+Evolution pro Status. Autenticação por token de uso único numa tabela temporária, já apagada:
+a function está no ar e recusa tudo. Pra virar botão do painel, trocar o nonce por
+`verify_jwt=true` + `is_admin()`. Erro meu do dia, registrado: publiquei um post de domingo
+melancólico ("cadeira quieta, porta fechada") sem checar que os quatro domingos anteriores nessa
+linha tinham sido reprovados, e sem olhar o único post de domingo escrito por ele (30/08, "Que seu
+domingo seja tão incrível quanto você"). O formato de domingo passa a ser esse "recado" curto,
+falando com o cliente — prompt a reescrever na próxima versão.
+
+Deploys pendentes (bloqueados pra mim, rodar na máquina do Juliano): `content-generate-daily`,
+`google-reviews-sync`, `ju-ia-site`. Sem mudança em página do site, sem bump de `?v=`.
+`VERSAO.md` 29.146.0.
+
 ## 29.145.0 — Reagendamento: domingo e segunda dizem "fechado", não "sem vagas"
 
 Pergunta do Juliano (06/09/2026): "e quando o cliente pedir atendimento no dia em que não

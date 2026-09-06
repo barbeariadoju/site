@@ -158,3 +158,6 @@ verify_jwt = true
 # é o ADS_CSV_TOKEN, conferido no código em tempo constante.
 [functions.google-ads-conversions-csv]
 verify_jwt = false
+
+[functions.content-unpublish]
+verify_jwt = false

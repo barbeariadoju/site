@@ -21,6 +21,12 @@ const requiredSecret = (name: string) => {
   return value
 }
 
+// Local da Barbearia do Ju no conector google_my_business do Windsor (id do Google Business
+// Profile, não é credencial). Pode ser sobrescrito pelo secret WINDSOR_GMB_ACCOUNT.
+const WINDSOR_GMB_ACCOUNT_PADRAO = 'locations/5325045674120268645'
+// Mesma regex de content-generate-daily e google-reviews-sync (v29.146.0).
+const GARANTIA_INSEGURA = /garantia\s+de\s+ajuste|ajust(e|a|amos)\s+(sem\s+(cobrar|custo)|de\s+gra[çc]a|gr[áa]tis)|sem\s+cobrar\s+nada|(volta|voltar|retorna)r?\s+(que|e|pra)\s+(a\s+gente\s+)?(ajust|acert|corrig)|a\s+gente\s+(ajusta|acerta|corrige)|se\s+(n[ãa]o\s+)?(ficou|ficar)\s+(como|do\s+jeito)\s+(que\s+)?(voc[êe]\s+)?queria|[ée]\s+s[óo]\s+voltar|qualquer\s+ajuste|refazemos|refa[çc]o\s+sem/i
+
 const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs = 15000) => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -61,11 +67,46 @@ Deno.serve(async (request: Request) => {
   const finalReply = String(review.final_reply || '').trim()
   if (!finalReply) return json({ error: 'Resposta final vazia.' }, 400)
 
+  // v29.146.0/29.147.0 — trava da promessa de ajuste também na saída manual: mesmo que o
+  // Juliano edite o texto na tela, a resposta pública não sai com "volta que a gente
+  // acerta" (decisão dele, 06/09/2026: soa como barbeiro inseguro ou que erra o corte).
+  if (GARANTIA_INSEGURA.test(finalReply)) {
+    return json({ error: 'A resposta promete ajuste ou refazer o corte ("volta que a gente acerta", "sem cobrar nada", "garantia de ajuste"). Isso é proibido em resposta pública. Reescreva sem essa frase.' }, 400)
+  }
+
+  // v29.147.0 — caminho preferido: conector google_my_business do Windsor.ai (ação
+  // reply_to_review), o mesmo que respondeu as avaliações de 29/08 a 05/09 pelo chat.
+  // Endpoint: POST connectors.windsor.ai/{connector}/actions {account, action, params}.
+  // Responder de novo substitui a resposta anterior no Google.
+  const windsorKey = Deno.env.get('WINDSOR_API_KEY')?.trim()
+  if (windsorKey) {
+    try {
+      const resp = await fetchWithTimeout('https://connectors.windsor.ai/google_my_business/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Api-Key': windsorKey },
+        body: JSON.stringify({
+          account: Deno.env.get('WINDSOR_GMB_ACCOUNT')?.trim() || WINDSOR_GMB_ACCOUNT_PADRAO,
+          action: 'reply_to_review',
+          params: { review_id: review.google_review_id, comment: finalReply },
+        }),
+      }, 30000)
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || data?.error) throw new Error(`Windsor (${resp.status}): ${JSON.stringify(data).slice(0, 500)}`)
+      await admin.from('google_reviews').update({ status: 'posted', posted_at: new Date().toISOString(), last_error: null }).eq('id', reviewId)
+      return json({ ok: true, via: 'windsor' })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[google-reviews-publish] windsor', message)
+      await admin.from('google_reviews').update({ last_error: message.slice(0, 4000) }).eq('id', reviewId)
+      return json({ error: message }, 500)
+    }
+  }
+
   const clientId = Deno.env.get('GOOGLE_REVIEWS_CLIENT_ID')?.trim()
   const clientSecret = Deno.env.get('GOOGLE_REVIEWS_CLIENT_SECRET')?.trim()
   const refreshToken = Deno.env.get('GOOGLE_REVIEWS_REFRESH_TOKEN')?.trim()
   if (!clientId || !clientSecret || !refreshToken) {
-    return json({ error: 'Integração com o Google ainda não configurada (aguardando aprovação/OAuth).' }, 503)
+    return json({ error: 'Nenhuma integração configurada: falta o secret WINDSOR_API_KEY (conector do Windsor.ai) ou as credenciais OAuth do Google.' }, 503)
   }
 
   try {
