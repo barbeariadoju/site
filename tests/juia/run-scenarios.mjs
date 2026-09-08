@@ -74,6 +74,12 @@ function redFlags(scenario, reply, intent, handoff) {
   for (const proibida of scenario.red_flags || []) {
     if (lower.includes(String(proibida).toLowerCase())) flags.push(`frase_proibida: ${proibida}`)
   }
+  // v29.153.0 (caso do alisamento, 08/09): o simétrico do red_flags — frase que TEM que
+  // aparecer. Nasceu pra pergunta de preço: a resposta certa traz o valor, e "não repetir a
+  // pergunta do dia" sozinho não pega uma resposta que ignora o valor com elegância.
+  for (const exigida of scenario.must_include || []) {
+    if (!lower.includes(String(exigida).toLowerCase())) flags.push(`frase_ausente: ${exigida}`)
+  }
   return flags
 }
 

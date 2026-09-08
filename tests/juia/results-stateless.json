@@ -1,102 +1,52 @@
 [
   {
-    "id": "reajuste-01",
-    "category": "reajuste",
-    "message": "vai aumentar o preço do corte?",
-    "reply": "Sim. Os valores foram reajustados a partir de quinta (01/10).",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "PERGUNTA DIRETA: deve dizer que sim, a partir de 01/10, que o corte passa a R$ 50, e que até 30/09 vale R$ 40. Sem rodeio e sem se desculpar."
-  },
-  {
-    "id": "reajuste-02",
-    "category": "reajuste",
-    "message": "ouvi falar que vcs vao aumentar, e verdade?",
-    "reply": "Sim. Os valores foram reajustados a partir de quinta (01/10). Se quiser, posso consultar um horário para você.",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "BOATO: confirma com naturalidade, dá a data (01/10) e manda a tabela nova (com barra no final: /precos/)."
-  },
-  {
-    "id": "reajuste-03",
-    "category": "reajuste",
-    "message": "quanto vai ficar a barba na navalha depois do aumento?",
-    "reply": "A Barba na navalha com toalha quente (sem ozônio) ficou em R$ 40,00. Os valores foram reajustados a partir de quinta (01/10). Se quiser, posso consultar um horário para você.",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "VALOR ESPECÍFICO: perguntou direto, então pode responder — barba na navalha com toalha quente vai a R$ 50 em 01/10. Citar o valor de hoje junto é correto; o que não pode é inventar valor."
-  },
-  {
-    "id": "reajuste-04",
-    "category": "reajuste",
-    "message": "quero marcar um corte pro dia 5 de outubro de manha",
-    "reply": "Na terça (06/10), no período da manhã, tenho horários entre 08:00 e 11:45 para 30 minutos. Alguns exemplos: 08:00, 09:00, 10:00, 11:00, 11:45. Qual horário fica melhor pra você?",
-    "intent": "availability",
-    "handoff": false,
-    "flags": [],
-    "note": "AGENDAMENTO PARA DEPOIS DA VIRADA: NÃO deve avisar nada sobre reajuste (regra do Juliano, 03/09 — anunciar o tempo todo instiga a sensação de caro). Segue o fluxo normal de agendamento. Deve também dizer que 05/10 é segunda e a barbearia não abre, antes de oferecer outro dia."
-  },
-  {
-    "id": "reajuste-05",
-    "category": "reajuste",
-    "message": "da pra marcar pro dia 29 de setembro?",
-    "reply": "Para terça-feira, 29 de setembro, qual serviço você deseja agendar?",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "ANTES da virada: preço é o de hoje (R$ 40). Não deve assustar o cliente com o valor novo nem tratar como se já tivesse subido."
-  },
-  {
-    "id": "reajuste-06",
-    "category": "reajuste",
-    "message": "nossa aumentou muito hein, ta caro",
-    "reply": "Entendo. O valor inclui horário marcado e respeitado, atendimento sem pressa e acabamento caprichado, além da garantia de ajuste sem custo se precisar. Se quiser, posso ver um horário para você.",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "RECLAMAÇÃO: sem defensiva e sem desculpa. Reconhece com respeito, lembra em UMA frase o que sustenta o valor (hora marcada, sem pressa, garantia de ajuste, fidelidade) e encerra com convite leve. Nunca discutir, nunca oferecer desconto."
-  },
-  {
-    "id": "reajuste-07",
-    "category": "reajuste",
-    "message": "e se eu pagar adiantado agora, mantem o preco velho?",
-    "reply": "Não. O valor considerado é o vigente no dia do atendimento, mesmo com pagamento antecipado. A chave Pix é o e-mail contato@barbeariadoju.com.br; no aplicativo aparecerá Juliano Bruno Lopes Padilha, instituição PicPay.",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "PEDIDO DE EXCEÇÃO: não existe pacote antecipado aprovado. Não pode prometer congelar preço nem inventar condição. Pode dizer que até 30/09 o valor de hoje vale para quem for atendido nesse prazo, e oferecer marcar um horário ainda em setembro."
-  },
-  {
-    "id": "reajuste-08",
-    "category": "reajuste",
-    "message": "pq vcs estao aumentando?",
-    "reply": "Os valores foram reajustados a partir de quinta (01/10). Se quiser, posso consultar um horário para você.",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "POR QUÊ: nunca justificar com custos ou inflação. Fala do que a casa entrega (hora marcada respeitada, atendimento individual sem pressa, garantia de ajuste), sem defensiva."
-  },
-  {
-    "id": "reajuste-09",
-    "category": "reajuste",
-    "message": "e o platinado, tbm vai subir?",
-    "reply": "Sim. Os valores foram reajustados a partir de quinta (01/10).",
-    "intent": "faq",
-    "handoff": false,
-    "flags": [],
-    "note": "SERVIÇO QUE NÃO MUDA: Nevou/Platinado continua R$ 150. A química inteira e o Freestyle não mudam — não pode dizer que sobe."
-  },
-  {
-    "id": "reajuste-10",
-    "category": "reajuste",
-    "message": "bom dia, queria marcar um corte",
-    "reply": "Vamos marcar! Me diz seu nome, seu WhatsApp, a data e o horário que eu já deixo reservado pra você.",
+    "id": "preco-fluxo-01",
+    "category": "preco_no_fluxo",
+    "message": "Olá quero alisar meu cabelo",
+    "reply": "Vamos marcar! Alisamento / Relaxamento sai *R$ 70,00* (55 min). Me diz seu nome, seu WhatsApp, a data e o horário que eu já deixo reservado pra você.",
     "intent": "other",
     "handoff": false,
     "flags": [],
-    "note": "NÃO PUXAR DO NADA: agendamento comum, sem data de outubro e sem pergunta sobre preço. A JuIA NÃO deve levantar o reajuste sozinha — só nos dois casos obrigatórios."
+    "note": "CASO ALISAMENTO (08/09/2026). Serviço de química citado pela primeira vez: o valor vai junto com o \"Vamos marcar\", antes de o cliente precisar perguntar."
+  },
+  {
+    "id": "preco-fluxo-02",
+    "category": "preco_no_fluxo",
+    "message": "Qual valor ?",
+    "reply": "Alisamento / Relaxamento sai *R$ 70,00* (55 min). Para qual dia você quer ver os horários?",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "CASO ALISAMENTO. Pergunta de preço com serviço escolhido e sem dia: responde o valor e só então pergunta o dia. Nunca \"Perfeito! Anotei\" a quem perguntou o preço."
+  },
+  {
+    "id": "preco-fluxo-03",
+    "category": "preco_no_fluxo",
+    "message": "Quero saber o valor",
+    "reply": "Alisamento / Relaxamento sai *R$ 70,00* (55 min).\n\nPara Alisamento / Relaxamento (55 min) tenho vaga nestes dias: amanhã, quinta (10/09) e sexta (11/09). Amanhã consigo te atender entre 08:00 e 18:00 — por exemplo 08:00, 11:15, 14:45, 18:00. Qual dia fica melhor pra você?",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "CASO ALISAMENTO. Segunda pergunta de preço, sem \"quanto\"/\"qual\": \"quero saber o valor\" também é pergunta de preço. O valor vem antes de qualquer lista de dias."
+  },
+  {
+    "id": "preco-fluxo-04",
+    "category": "preco_no_fluxo",
+    "message": "valor?",
+    "reply": "Corte de cabelo sai *R$ 40,00* (40 min).\n\nPara Corte de cabelo (40 min) tenho vaga nestes dias: amanhã, quinta (10/09) e sexta (11/09). Amanhã consigo te atender entre 08:00 e 18:15 — por exemplo 08:00, 11:30, 15:00, 18:15. Qual dia fica melhor pra você?",
+    "intent": "availability",
+    "handoff": false,
+    "flags": [],
+    "note": "Forma mínima da pergunta de preço (\"valor?\") no meio do fluxo: responde R$ 40,00."
+  },
+  {
+    "id": "preco-fluxo-05",
+    "category": "preco_no_fluxo",
+    "message": "quero marcar o alisamento",
+    "reply": "Vamos marcar! Alisamento / Relaxamento sai *R$ 70,00* (55 min). Me diz a data e o horário que eu já deixo reservado pra você.",
+    "intent": "other",
+    "handoff": false,
+    "flags": [],
+    "note": "Pedido de marcar sem dia/hora (\"Vamos marcar! Me diz a data e o horário\"): o valor vai junto na primeira vez que o serviço aparece na conversa."
   }
 ]

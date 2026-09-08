@@ -248,6 +248,30 @@ export const scenarios = [
   // do anti-papagaio (whatsapp-webhook) e obrigaram o Juliano a assumir na mao. Todas tem
   // a mesma raiz: o cliente pergunta/responde sobre DIAS e a JuIA devolve a pergunta dela.
   // `state`/`history` (suportados pelo runner) recriam o ponto exato da conversa real.
+  // ---------- Preço no meio do fluxo de agendamento (caso do alisamento, 08/09/2026, 17h37) ----------
+  // Cliente: "Olá quero alisar meu cabelo" → JuIA: "Vamos marcar! Me diz a data e o horário".
+  // Cliente: "Qual valor ?" → JuIA: "Perfeito! Anotei Alisamento / Relaxamento. Para qual dia...".
+  // Cliente: "Quero saber o valor" → JuIA: lista de dias com vaga. Duas perguntas de preço, zero
+  // respostas. Os três turnos abaixo são a conversa real; o valor (R$ 70,00) TEM que aparecer.
+  { id: 'preco-fluxo-01', category: 'preco_no_fluxo', message: 'Olá quero alisar meu cabelo',
+    must_include: ['R$ 70,00'],
+    note: 'CASO ALISAMENTO (08/09/2026). Serviço de química citado pela primeira vez: o valor vai junto com o "Vamos marcar", antes de o cliente precisar perguntar.' },
+  { id: 'preco-fluxo-02', category: 'preco_no_fluxo', message: 'Qual valor ?', state: { services: ['Alisamento / Relaxamento'] },
+    history: [{ role: 'user', content: 'Olá quero alisar meu cabelo' }, { role: 'assistant', content: 'Vamos marcar! Me diz a data e o horário que eu já deixo reservado pra você.' }],
+    must_include: ['R$ 70,00'], red_flags: ['perfeito! anotei'],
+    note: 'CASO ALISAMENTO. Pergunta de preço com serviço escolhido e sem dia: responde o valor e só então pergunta o dia. Nunca "Perfeito! Anotei" a quem perguntou o preço.' },
+  { id: 'preco-fluxo-03', category: 'preco_no_fluxo', message: 'Quero saber o valor', state: { services: ['Alisamento / Relaxamento'] },
+    history: [{ role: 'user', content: 'Olá quero alisar meu cabelo' }, { role: 'assistant', content: 'Vamos marcar! Me diz a data e o horário que eu já deixo reservado pra você.' }, { role: 'user', content: 'Qual valor ?' }, { role: 'assistant', content: 'Perfeito! Anotei Alisamento / Relaxamento. Para qual dia você quer ver os horários?' }],
+    must_include: ['R$ 70,00'],
+    note: 'CASO ALISAMENTO. Segunda pergunta de preço, sem "quanto"/"qual": "quero saber o valor" também é pergunta de preço. O valor vem antes de qualquer lista de dias.' },
+  { id: 'preco-fluxo-04', category: 'preco_no_fluxo', message: 'valor?', state: { services: ['Corte de cabelo'] },
+    history: [{ role: 'user', content: 'quero cortar o cabelo' }, { role: 'assistant', content: 'Perfeito! Anotei Corte de cabelo. Para qual dia você quer ver os horários?' }],
+    must_include: ['R$ 40,00'], red_flags: ['perfeito! anotei'],
+    note: 'Forma mínima da pergunta de preço ("valor?") no meio do fluxo: responde R$ 40,00.' },
+  { id: 'preco-fluxo-05', category: 'preco_no_fluxo', message: 'quero marcar o alisamento', state: { services: ['Alisamento / Relaxamento'], name: 'Teste Claude', phone: '5599900011234' },
+    must_include: ['R$ 70,00'],
+    note: 'Pedido de marcar sem dia/hora ("Vamos marcar! Me diz a data e o horário"): o valor vai junto na primeira vez que o serviço aparece na conversa.' },
+
   { id: 'dias-01', category: 'pergunta_de_dias', message: 'Para que dia você tem vaga pra cortar essa semana?', state: { services: ['Corte de cabelo'] },
     red_flags: ['para qual dia', 'pra qual dia'],
     note: 'CASO TIAGO (24/08/2026). Deve responder com DIAS que tem vaga, nunca com "para qual dia voce quer ver os horarios?".' },

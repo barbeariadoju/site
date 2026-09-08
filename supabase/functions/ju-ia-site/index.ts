@@ -930,8 +930,30 @@ Deno.serve(async req=>{
  // travas nascem aqui: (1) pergunta de preço tem resposta determinística com o valor do que
  // já está escolhido (blocos abaixo); (2) PERGUNTA NUNCA VIRA AGENDAMENTO — só confirmação
  // explícita ou "sim" curto fecham. Vale pra qualquer pergunta, não só a de preço.
- const askedPrice=/(quanto (custa|e|fica|sai|da|seria))|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)/.test(normalizedQuestion)
+ // v29.153.0 (caso do alisamento, 08/09/2026, 17h38): "Quero saber o valor" não casava em
+ // nenhuma das formas acima — nem "quanto", nem "qual". Entram: "saber/passar/mandar/dizer o
+ // valor", "valor?" sozinho (com ou sem "o"/"e o"/"qual" na frente) e "quanto?" solto.
+ const askedPrice=/(quanto (custa|e|fica|sai|da|seria))|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$/.test(normalizedQuestion)
  const isQuestion=/\?\s*$/.test(String(message||'').trim())||askedPrice
+ // v29.153.0 — o valor do que já está escolhido, numa linha, pra sair (a) quando o cliente
+ // pergunta o preço no meio do fluxo (rede de segurança no fim, e resposta própria no bloco
+ // "para qual dia") e (b) UMA vez, sem ele pedir, na primeira vez que o serviço entra na
+ // conversa. Caso do alisamento: "quero alisar" → "Vamos marcar!"; "Qual valor ?" → "Perfeito!
+ // Anotei"; "Quero saber o valor" → lista de dias. Duas perguntas de preço, zero respostas —
+ // a mesma família da Aletéia (v29.54.0) e da Michele (v29.74.0), agora sem depender de qual
+ // ramo monta a resposta. O "uma vez sem pedir": três casos em três semanas em que a primeira
+ // pergunta depois de citar o serviço foi o preço. Quem cita serviço de química então, pergunta
+ // sempre. É o que o Juliano diria na hora: "Alisamento sai 70, quer marcar pra quando?".
+ const precoJaDito=[...(Array.isArray(body.history)?body.history:[])].some((h:any)=>h&&h.role==='assistant'&&/R\$\s?\d/.test(String(h.content||'')))
+ const linhaPreco=(lista:any[])=>{
+  if(!lista.length)return ''
+  const total=lista.reduce((a:number,x:any)=>a+Number(x.price||0),0)
+  const dur=lista.reduce((a:number,x:any)=>a+Number(x.duration||0),0)
+  const nomes=lista.map((x:any)=>x.name).join(' + ')
+  return lista.length>1
+   ?`${lista.map((x:any)=>`${x.name} — ${money(x.price)}`).join('\n')}\n*Total: ${money(total)}* (${dur} min).`
+   :`${nomes} sai *${money(total)}* (${dur} min).`
+ }
  const explicitConfirm=includesAny(normalizedQuestion,['pode confirmar','confirma pra mim','pode fechar','pode marcar','pode agendar','confirmo','isso mesmo'])
  if(intent==='book'&&isQuestion&&!explicitConfirm&&!simpleYes)intent='faq'
 
@@ -2831,7 +2853,12 @@ Deno.serve(async req=>{
   }else{
    // Sem dia e sem pista nenhuma: a pergunta continua sendo a certa — mas só na primeira
    // vez, e carregando o horário que ele já tiver dito, pra ele não precisar repetir.
-   reply=`Perfeito! Anotei ${serviceNames}${requestedTime?` para as ${horaFalada(requestedTime)}`:''}. Para qual dia você quer ver os horários?`
+   // v29.153.0 (caso do alisamento): "Qual valor ?" caía aqui e levava "Perfeito! Anotei…" —
+   // a pergunta feita é a do preço, então o preço vem primeiro e a do dia depois. E na primeira
+   // vez que o serviço entra na conversa, o valor vai junto sem ele pedir (uma vez só).
+   reply=askedPrice
+    ?`${linhaPreco(chosen)} Para qual dia você quer ver os horários?`
+    :`Perfeito! Anotei ${serviceNames}${requestedTime?` para as ${horaFalada(requestedTime)}`:''}${precoJaDito?'':` — ${money(chosen.reduce((a:number,x:any)=>a+Number(x.price||0),0))}`}. Para qual dia você quer ver os horários?`
    handoff=false
   }
  }else if(intent==='availability'&&next.date&&chosen.length){
@@ -3250,7 +3277,7 @@ Deno.serve(async req=>{
    const lista=missing.length===1?missing[0]:missing.slice(0,-1).join(', ')+' e '+missing[missing.length-1]
    reply=frustrado
     ?`Calma que eu resolvo com você agora mesmo 🙏 Só me diz ${lista} que eu já deixo reservado.`
-    :`Vamos marcar! 😊 Me diz ${lista} que eu já deixo reservado pra você.`
+    :`Vamos marcar! 😊 ${chosen.length&&!precoJaDito?`${linhaPreco(chosen)} `:''}Me diz ${lista} que eu já deixo reservado pra você.`
    intent='other'
   }
   else{
@@ -3637,6 +3664,13 @@ Deno.serve(async req=>{
  }
  if(cabeloAssumidoNota&&!handoff&&!/Anotei Corte de cabelo/i.test(reply)){
   reply+=`\n\n${cabeloAssumidoNota}`
+ }
+ // v29.153.0 (caso do alisamento): PERGUNTA DE PREÇO SEMPRE LEVA O PREÇO. Qualquer ramo que
+ // tenha montado a resposta sem um "R$" — a lista de dias, a oferta de horário, a resposta do
+ // modelo — ganha o valor do que está escolhido na frente. Foi assim que "Quero saber o valor"
+ // virou "tenho vaga nestes dias" sem uma palavra sobre o valor.
+ if(askedPrice&&chosen.length&&!handoff&&!/R\$\s?\d/.test(reply)){
+  reply=`${linhaPreco(chosen)}\n\n${reply}`.trim()
  }
 
  // v29.43.2: "voces atendem hoje?" — o aviso de aberto/fechado entra por ultimo, porque os blocos

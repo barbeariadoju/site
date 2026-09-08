@@ -1,3 +1,70 @@
+## 29.153.0 — Caso do alisamento: duas perguntas de preço, zero respostas
+
+`supabase/functions/ju-ia-site/` · `tests/juia/scenarios.mjs` · `tests/juia/run-scenarios.mjs`
+
+Print do Juliano, terça 08/09/2026, 17h37, com o pedido *"ensina JuIA, analisa esta conversa"*:
+
+> Cliente: **Olá quero alisar meu cabelo**
+> JuIA: Vamos marcar! Me diz a data e o horário que eu já deixo reservado pra você.
+> Cliente: **Qual valor ?**
+> JuIA: Perfeito! Anotei Alisamento / Relaxamento. Para qual dia você quer ver os horários?
+> Cliente: **Quero saber o valor**
+> JuIA: Para Alisamento / Relaxamento (55 min) tenho vaga nestes dias: hoje, amanhã e quinta…
+
+**A análise.** O cliente perguntou o preço duas vezes, de dois jeitos, e a JuIA respondeu duas
+vezes com agenda. Não é o modelo: é o fluxo de agendamento, que a partir do momento em que tem
+um serviço escolhido e não tem dia, só sabe fazer uma pergunta — a do dia. A trava da Aletéia
+(v29.54.0) e a da Michele (v29.74.0) resolveram exatamente isso, mas só no ramo em que já
+existe um DIA (oferta de horário). Sem dia, a pergunta de preço caía no ramo "Perfeito! Anotei…"
+e morria ali. Três defeitos, em ordem:
+
+1. **"Qual valor ?"** casava em `askedPrice`, mas o ramo "para qual dia" nunca consultava
+   `askedPrice`. Respondeu "Perfeito! Anotei" — a pior resposta possível a quem perguntou o
+   preço, porque parece que entendeu.
+2. **"Quero saber o valor"** não casava em regex nenhuma: não tem "quanto", não tem "qual". E
+   como a última fala da JuIA tinha "Para qual dia", a trava do Tiago (v29.69.0, "não repetir a
+   pergunta do dia") varreu a agenda e devolveu dias. Correto pela regra, errado pra pessoa.
+3. **"Quero alisar meu cabelo"** levou "Vamos marcar!" seco. Serviço de química: quem cita,
+   pergunta o preço em seguida, sempre. Três casos em três semanas (Aletéia, Michele, este) em
+   que a primeira pergunta depois de citar o serviço foi o valor.
+
+**O que a JuIA aprendeu:**
+
+- `askedPrice` cobre "saber/passar/mandar/dizer o valor", "valor?" sozinho (com "o", "e o",
+  "qual" na frente ou não), "quanto?" solto, e o plural. Antes: só "quanto custa/fica", "qual o
+  valor/preço", "valor do/da".
+- **Pergunta de preço sempre leva o preço** — rede de segurança no fim da montagem da resposta:
+  se perguntou preço, tem serviço escolhido e a resposta saiu sem "R$", o valor do que está
+  escolhido entra na frente, seja qual for o ramo que montou o resto (lista de dias, oferta,
+  resposta do modelo). "Quero saber o valor" → *"Alisamento / Relaxamento sai R$ 70,00 (55 min)."*
+  + a lista de dias.
+- No ramo "para qual dia", pergunta de preço tem resposta própria: o valor primeiro, a pergunta
+  do dia depois. Nunca mais "Perfeito! Anotei" a quem perguntou o preço.
+- **Uma vez, sem pedir:** na primeira vez que o serviço entra na conversa (nenhuma fala anterior
+  da JuIA com "R$"), o valor vai junto — tanto no "Perfeito! Anotei Alisamento / Relaxamento —
+  R$ 70,00" quanto no "Vamos marcar! Alisamento / Relaxamento sai R$ 70,00 (55 min). Me diz a
+  data…". É o que o Juliano diria na cadeira: "alisamento sai 70, quer pra quando?". Cliente de
+  casa que já ouviu o preço nessa conversa não ouve de novo.
+
+**Decidido contra a recomendação óbvia.** Não coloquei `\bvalor\b` em `isPriceOrInfoQuestion`,
+que é o interruptor que tira a mensagem do fluxo de agendamento inteiro. "Quero marcar, qual o
+valor?" tem que continuar marcando E respondendo o valor — a rede de segurança faz as duas
+coisas; o interruptor faria só uma.
+
+**Banco de cenários:** categoria nova `preco_no_fluxo` com os três turnos da conversa real mais
+"valor?" e "quero marcar o alisamento". O runner ganhou `must_include` (frase que TEM que
+aparecer), simétrico do `red_flags` — sem isso não dava pra afirmar que o valor apareceu.
+Baseline contra a produção ANTES do deploy: 4 de 4 com alerta (as respostas do print,
+reproduzidas). Depois: 5 de 5 limpos, e zero alertas em `pergunta_de_dias` (6),
+`primeiro_atendimento` (15) e `pedido` (16). 76 unit passando. Sem bump de `?v=`.
+
+**NO AR** (08/09, ~18h05 BRT): `ju-ia-site` via CLI (`npx supabase functions deploy ju-ia-site`).
+
+Fica anotado, fora do escopo: "faz platinado?" ainda cai como escolha de serviço ("Perfeito!
+Anotei Nevou / Platinado — R$ 150,00…") em vez de "sim, fazemos, R$ 150" — a
+`isServiceExistenceQuestion` da v28.56.1 não lista "platinado" nem "alisamento"/"progressiva"
+depois de "faz". Agora pelo menos o preço aparece.
+
 ## 29.152.0 — Caso Helder: o mesmo cliente aparecia duas vezes, e não era cadastro duplicado
 
 `admin-v15-4-core.js` · `admin-v15-4-dashboard.js` · `admin-relatorios-v28.js` · `admin-assistente-v16.js` ·
