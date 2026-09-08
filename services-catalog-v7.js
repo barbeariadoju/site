@@ -43,6 +43,10 @@ window.BDJ_SERVICES = [
 // no banco — site e sistema não podem divergir porque bebem da mesma fonte.
 (function () {
   var VIGENCIA = '2026-10-01'; // 00:00 em America/Sao_Paulo
+  // v29.154.0 — a data de vigência fica visível pro agendamento (agenda-v15.js): quem marca HOJE
+  // pra uma data a partir da vigência vê e paga a tabela nova, como diz a placa do reajuste
+  // ("inclusive para horários marcados antes"). Antes o resumo mostrava R$ 40 e a cadeira cobrava 50.
+  window.BDJ_PRICE_VIGENCIA = VIGENCIA;
   var hojeSP;
   try {
     hojeSP = new Intl.DateTimeFormat('en-CA', {

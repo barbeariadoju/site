@@ -1,3 +1,83 @@
+## 29.154.0 — Convite de retorno no tempo do cliente; preço vigente na data do atendimento
+
+`supabase/functions/_shared/convite-retorno.ts` (novo) · `supabase/functions/return-invite-dispatch/` ·
+`supabase/functions/whatsapp-webhook/` · `database/migrations/144-*.sql` · `services-catalog-v7.js` ·
+`agenda-v15.js` · `tests/unit/convite-retorno.spec.js` (novo) · páginas que carregam o catálogo e a agenda (bump)
+
+Pergunta do Juliano, terça 08/09/2026, à noite: *"como estamos de clientes novos e recorrentes? e a
+fidelização? rever o convite de retorno — 112 enviados, 2 aceitos — sem dar tiro no pé com o reajuste
+de 01/10"*. Análise feita no banco antes de tocar em código.
+
+**O que os números disseram.** De 09/08 a 08/09: 157 atendimentos, 123 clientes, 47% novos e 53%
+recorrentes por cliente (41% × 59% por atendimento). Novos que voltam em 30 dias: 34% a 39%. Só 13
+clientes com 3+ visitas. Média de 7,5/dia nas últimas 4 semanas, 8,0 na última. O convite de retorno
+(v29.16.0 → v29.149.0) tinha 112 envios, 76 ignorados, 13 recusas, 6 contrapropostas, 2 aceites, 1
+agendamento. E o motivo não era a mensagem nem o canal (a pesquisa de satisfação tem 62% de resposta):
+
+- **Saía cedo demais.** 1 a 3 dias depois do corte, junto com a pesquisa e o pedido de avaliação
+  (mediana de 3 mensagens nossas em 72h), pedindo pra reservar "o próximo horário" a quem acabou de
+  sair da cadeira. Quem volta, volta em ~12 dias; a data que o convite calculava era 26 em média.
+  Dos 76 expirados, 19 voltaram por conta própria — 15 ANTES da data sugerida pelo convite.
+- **Intervalo real entre visitas** (80 retornos): com corte p25 = 10, mediana 17, p75 = 27; só barba
+  p25 = 5, mediana 7, p75 = 12.
+
+**A régua nova.** O convite sai alguns dias antes do retorno típico: **dia 12 pra corte, dia 5 pra
+barba**, ou **cadência do cliente − 4** quando ele tem 3+ visitas (a RPC `customer_visit_cadence_days`
+já existia). Janela de 3 dias pra pesquisa pendente, conversa com o Juliano, domingo e feriado; passou
+da janela, não manda (`janela_perdida`) — atrasado é insistência. Por telefone, só o ÚLTIMO atendimento
+conta: se a pessoa já voltou, o anterior não precisa de convite. Texto: *"Oi, Rinaldo. Já faz quase duas
+semanas do seu corte aqui na barbearia. Quer deixar o próximo horário reservado? 1 / 2"* — sem emoji,
+sem preço, sem reajuste, sem "agenda livre"; mantém as âncoras que o webhook usa pro "1" tardio (caso
+Sabrino). A etapa 2 passou a contar **a partir de hoje** (nos próximos dias / semana que vem / 15 dias)
+em vez de "1 semana / 15 / 30 dias depois do último corte", que só fazia sentido no dia seguinte.
+Regras que ficaram: nunca pra quem já tem agendamento futuro, uma mensagem por atendimento, 72h e
+expira, 2 recusas = 60 dias de pausa, venda só de produto não recebe. `return_invites` ganhou
+`target_days` e `days_since` pra medir a régua nova contra a velha.
+
+**O tiro no pé de verdade não era o timing, era o preço.** A placa do reajuste diz "vale inclusive para
+horários marcados antes", mas TODO caminho gravava em `bookings.service_price` o preço do dia da
+marcação: o site (o catálogo vira pela data de hoje, não pela data escolhida), a JuIA, e o próprio
+convite, que copiava o valor pago da última vez. Um cliente que aceitasse o convite em 25/09 pra 03/10
+ficava com R$ 40 gravado e ouvia R$ 50 na cadeira — o pior jeito de descobrir um reajuste. Corrigido em
+três camadas, de propósito:
+
+- **Banco (migration 144):** `service_price_on(nome, data)` — preço de um serviço ou combo numa data,
+  considerando reajustes agendados em `service_price_changes` ainda não aplicados (casamento guloso de
+  "Corte + Barba Express + Sobrancelha Masculina": tenta o pedaço mais longo do catálogo primeiro).
+  Trigger `trg_bookings_preco_vigente` BEFORE INSERT: se o valor recebido é exatamente a tabela de
+  hoje e a tabela da data é outra, grava a da data. **Só nesse caso** — desconto, cortesia, vale,
+  fidelidade e preço digitado no balcão passam intocados. `reprice_future_bookings()` faz o mesmo pros
+  agendamentos que já existiam, chamada pelo `apply_scheduled_price_changes()` na madrugada de 01/10,
+  registrando cada mudança na `customer_timeline`. Testado com 4 inserts reais desfeitos por `raise
+  exception`: 40→50 (corte em 06/10), 35→35 (desconto, intocado), 65→80 (combo), 40→40 (22/09).
+- **Convite (webhook):** antes de listar os horários do dia escolhido, consulta o preço da data e, se
+  mudou, avisa no mesmo texto: *"Lembrando que a partir de 01/10/2026 vale a tabela nova: Corte de
+  cabelo passa a R$ 50,00."* O cliente escolhe o horário sabendo; o agendamento nasce com esse valor e a
+  confirmação repete o valor entre parênteses só quando mudou.
+- **Site (`agenda-v15.js`):** preço pela DATA ESCOLHIDA (`priceFrom` do catálogo quando a data ≥
+  `BDJ_PRICE_VIGENCIA`, exposto pelo `services-catalog-v7.js`), no resumo, no total e no valor enviado
+  ao `create-public-booking`, com a linha "Valores da tabela que vale a partir de 01 de outubro".
+
+**Decidido contra a recomendação óbvia.**
+- **Não usar o reajuste como gancho** ("garanta o valor atual até 30/09"). Era a sugestão fácil e o
+  medo do Juliano estava certo: vira pressão, contradiz o posicionamento de 20/08 e adianta setembro
+  esvaziando outubro. O convite continua sem falar de preço; quem fala é a etapa do horário, e só
+  quando o valor muda de verdade.
+- **Não mandar o convite novo a quem recebeu o velho e ignorou.** Os ~40 atendimentos dos últimos
+  12 dias já têm linha em `return_invites`; a régua nova só alcança atendimentos a partir de 08/09.
+  Uma mensagem por atendimento é regra, e a transição custa 12 dias de silêncio, não uma segunda
+  mensagem.
+- **Não reescrever a JuIA (`ju-ia-site`) pra cotar preço por data.** Ela cota a tabela de hoje; o
+  trigger grava a da data. Fica anotado como pendência: cliente que marca pela JuIA em setembro pra
+  outubro ouve R$ 40 no chat e vê R$ 50 na agenda até a JuIA aprender a olhar a data.
+
+**Fica anotado, fora do escopo.** (a) O CRM mostra 174 clientes: 169 telefones com qualquer
+agendamento (inclusive cancelados e faltas) + 5 fichas manuais; 161 concluíram pelo menos um serviço.
+(b) `whatsapp_attribution` tem 7 linhas no período inteiro (1 com gclid): o rastreio de anúncio não
+está capturando, e os R$ 700 de Ads de agosto não têm retorno mensurável no banco. (c) Só 1 dos 170
+agendamentos do período nasceu por reagendamento — ninguém sai da cadeira com a próxima visita
+marcada.
+
 ## 29.153.0 — Caso do alisamento: duas perguntas de preço, zero respostas
 
 `supabase/functions/ju-ia-site/` · `tests/juia/scenarios.mjs` · `tests/juia/run-scenarios.mjs`

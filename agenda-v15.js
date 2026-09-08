@@ -19,7 +19,15 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   // (sugestão contextual durante o agendamento); o catálogo completo (bebidas etc.) fica só
   // pro balcão/admin, que registra qualquer venda.
   const productCatalog=(window.BDJ_PRODUCTS||[]).filter(p=>Array.isArray(p.for)&&p.for.length);
-  const total=()=>({duration:services.reduce((a,b)=>a+Number(b.duration||0),0),servicePrice:services.reduce((a,b)=>a+Number(b.price||0),0),productPrice:products.reduce((a,b)=>a+Number(b.price||0),0)});
+  // v29.154.0 — preço pela DATA DO ATENDIMENTO, não pela data de hoje. O catálogo vira sozinho
+  // na vigência (services-catalog-v7.js), mas quem marca em setembro pra outubro tem que ver o
+  // valor de outubro: a placa do reajuste diz "inclusive para horários marcados antes", e o
+  // banco (trigger trg_bookings_preco_vigente, migration 144) grava a tabela da data. Resumo,
+  // total e o valor enviado ao create-public-booking saem daqui.
+  const vigencia=String(window.BDJ_PRICE_VIGENCIA||'');
+  const chosenDate=()=>String($('agenda-date')?.value||'');
+  const priceOn=(s,date)=>{const c=allServices.find(x=>x.name===s.name);return (vigencia&&date&&date>=vigencia&&c&&typeof c.priceFrom==='number')?c.priceFrom:Number(s.price||0)};
+  const total=()=>{const d=chosenDate();return {duration:services.reduce((a,b)=>a+Number(b.duration||0),0),servicePrice:services.reduce((a,b)=>a+priceOn(b,d),0),productPrice:products.reduce((a,b)=>a+Number(b.price||0),0),newTable:Boolean(vigencia&&d&&d>=vigencia&&services.some(s=>priceOn(s,d)!==Number(s.price||0)))}};
   const spNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).reduce((a,p)=>(a[p.type]=p.value,a),{});
   function firstEligibleDate(){
     const now=spNow(),today=`${now.year}-${now.month}-${now.day}`;
@@ -68,9 +76,10 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     $('product-suggestions-v15').innerHTML=list.map(p=>{const active=products.some(x=>x.name===p.name);return `<button type="button" class="booking-suggestion-card ${active?'is-selected':''}" data-product="${p.name}"><span>${active?'✓':'＋'}</span><strong>${p.name}</strong><small>${money(p.price)}</small></button>`}).join('');
   }
   function updateSummary(){
-    const t=total(); let html=services.length?`<ul class="agenda-summary-services">${services.map(s=>`<li><span>${s.name}</span><b>${money(s.price)}</b></li>`).join('')}</ul>`:'<p>Escolha seus serviços.</p>';
+    const t=total(),dSel=chosenDate(); let html=services.length?`<ul class="agenda-summary-services">${services.map(s=>`<li><span>${s.name}</span><b>${money(priceOn(s,dSel))}</b></li>`).join('')}</ul>`:'<p>Escolha seus serviços.</p>';
     if(products.length)html+=`<p class="eyebrow summary-subtitle">Produtos separados</p><ul class="agenda-summary-services">${products.map(p=>`<li><span>${p.name}</span><b>${money(p.price)}</b></li>`).join('')}</ul>`;
     html+=`<div class="booking-summary-total"><span>Total estimado</span><strong>${money(t.servicePrice+t.productPrice)}</strong></div><p class="booking-summary-duration">Atendimento: <strong>${fmtDuration(t.duration)}</strong></p>`;
+    if(t.newTable)html+=`<p class="booking-summary-duration">Valores da tabela que vale a partir de ${new Date(vigencia+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})}.</p>`;
     const d=$('agenda-date').value;if(d)html+=`<div class="booking-summary-date"><span>Data</span><strong>${new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</strong></div>`;
     if(selectedTime)html+=`<div class="booking-summary-time"><span>Horário</span><strong>${selectedTime} às ${addMinutes(selectedTime,t.duration)}</strong></div>`;
     $('agenda-summary').innerHTML=html;$('review-summary').innerHTML=html;

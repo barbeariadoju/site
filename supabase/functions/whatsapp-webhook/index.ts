@@ -3,6 +3,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
+import { mensagemPrazo, diasDaOpcao, avisoPrecoVigente, somarDiasIso } from '../_shared/convite-retorno.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -1370,24 +1371,40 @@ Deno.serve(async (request: Request) => {
               }
             } else if (pendInvite.stage === 'interval') {
               // v29.149.0 — além de 1/2/3, aceita o prazo escrito ("daqui 2 semanas", "20 dias").
-              const dias = soNumero === 1 ? 7 : soNumero === 2 ? 15 : soNumero === 3 ? 30 : (diasPedidos(raw) || 0)
+              // v29.154.0 — as opções contam A PARTIR DE HOJE (nos próximos dias / semana que vem /
+              // 15 dias): o convite agora chega perto do retorno, não no dia seguinte ao corte.
+              const dias = diasDaOpcao(soNumero) || diasPedidos(raw) || 0
               if (!dias) {
                 // Qualquer outra coisa ("dia 5", "só em setembro", uma pergunta): o convite sai
                 // do caminho e a JuIA assume a conversa normalmente. Nunca insistir.
                 await dropInvite(String(pendInvite.invite_id), 'counter')
               } else {
-                const base = new Date(new Date(`${pendInvite.base_date}T12:00:00Z`).getTime() + dias * 24 * 3600 * 1000).toISOString().slice(0, 10)
+                const hojeSPInv = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+                const base = somarDiasIso(hojeSPInv, dias)
                 const achado = await buscarDia(base)
                 if (!achado) {
                   await dropInvite(String(pendInvite.invite_id), 'counter')
-                  await sendWhatsapp(phone, 'Nessa semana eu não consigo encaixar 😕 Me diz outro dia que fica bom pra você que eu confiro por aqui.')
+                  await sendWhatsapp(phone, 'Nessa semana eu não consigo encaixar. Me diz outro dia que fica bom pra você que eu confiro por aqui.')
                   return
                 }
                 const opcoes = amostra(achado.lista)
                 const linhas = opcoes.map((t, i) => `*${i + 1}* — ${t}`).join('\n')
                 const diaSemana = new Date(achado.iso + 'T12:00:00-03:00').toLocaleDateString('pt-BR', { weekday: 'long' })
-                await saveInviteState({ ...pendInvite, stage: 'slot', date: achado.iso, options: opcoes, at: new Date().toISOString() })
-                await sendWhatsapp(phone, `Fechado! Olhando ${diaSemana}, ${formatDateBR(achado.iso)} — qual horário fica melhor?\n${linhas}\n\nSe preferir outro dia ou horário, é só me dizer 😊`)
+                // v29.154.0 — preço VIGENTE NA DATA (reajuste de 01/10/2026 e os próximos). O cliente
+                // escolhe o horário já sabendo o valor; o agendamento nasce com esse preço, e não com
+                // o que ele pagou da última vez. service_price_on: migration 144.
+                let precoNaData: number | null = null
+                let avisoPreco = ''
+                try {
+                  const { data: precoRows } = await admin.rpc('service_price_on', { p_service_name: String(pendInvite.service_name || ''), p_date: achado.iso })
+                  const precoRow = Array.isArray(precoRows) ? precoRows[0] : precoRows
+                  if (precoRow && Number(precoRow.price) > 0) {
+                    precoNaData = Number(precoRow.price)
+                    if (precoRow.effective_from) avisoPreco = avisoPrecoVigente(String(pendInvite.service_name || ''), Number(pendInvite.service_price || 0), precoNaData, formatDateBR(precoRow.effective_from))
+                  }
+                } catch (precoError) { console.error('[whatsapp-webhook] service_price_on', precoError) }
+                await saveInviteState({ ...pendInvite, stage: 'slot', date: achado.iso, options: opcoes, price_on_date: precoNaData, at: new Date().toISOString() })
+                await sendWhatsapp(phone, `Olhando ${diaSemana}, ${formatDateBR(achado.iso)}, qual horário fica melhor?\n${linhas}\n\nSe preferir outro dia ou horário, é só me dizer.${avisoPreco ? `\n\n${avisoPreco}` : ''}`)
                 return
               }
             } else if (pendInvite.stage === 'slot') {
@@ -1401,12 +1418,16 @@ Deno.serve(async (request: Request) => {
               if (!escolhido) {
                 await dropInvite(String(pendInvite.invite_id), 'counter')
               } else {
+                // v29.154.0 — preço da data escolhida (price_on_date, calculado na etapa anterior);
+                // sem ele, o valor pago da última vez, e o trigger trg_bookings_preco_vigente corrige.
+                const precoReserva = Number(pendInvite.price_on_date) > 0 ? Number(pendInvite.price_on_date) : Number(pendInvite.service_price || 0)
+                const precoMudou = Math.abs(precoReserva - Number(pendInvite.service_price || 0)) >= 0.005
                 const { data: novoId, error: erroBook } = await admin.rpc('create_public_booking_v15', {
                   p_customer_name: pendInvite.customer_name || 'Cliente',
                   p_customer_phone: phone,
                   p_customer_email: null,
                   p_service_name: pendInvite.service_name,
-                  p_service_price: pendInvite.service_price,
+                  p_service_price: precoReserva,
                   p_duration_minutes: duracao,
                   p_booking_date: pendInvite.date,
                   p_start_time: escolhido,
@@ -1422,7 +1443,8 @@ Deno.serve(async (request: Request) => {
                 await admin.from('bookings').update({ channel: 'juia_whatsapp' }).eq('id', novoId)
                 await saveInviteState(null)
                 await admin.from('return_invites').update({ status: 'accepted', result_booking_id: novoId, suggested_date: pendInvite.date, suggested_time: escolhido, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pendInvite.invite_id)
-                await sendWhatsapp(phone, `Prontinho! ✅ Seu retorno está reservado: ${pendInvite.service_name} em ${formatDateBR(pendInvite.date)} às ${escolhido}. Te espero! 💈 Qualquer imprevisto, é só me chamar por aqui.`)
+                const valorTxt = precoMudou ? ` (${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(precoReserva)})` : ''
+                await sendWhatsapp(phone, `Prontinho. Seu retorno está reservado: ${pendInvite.service_name} em ${formatDateBR(pendInvite.date)} às ${escolhido}${valorTxt}. Te espero. Qualquer imprevisto, é só me chamar por aqui.`)
                 const pushSecretRet = Deno.env.get('PUSH_WEBHOOK_SECRET')
                 if (pushSecretRet) {
                   await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -1562,11 +1584,12 @@ Deno.serve(async (request: Request) => {
               return
             }
             // v29.56.0 — ETAPA 2: em vez de reservar uma data que NÓS escolhemos, perguntamos
-            // pra quando ele quer. O intervalo é do cliente, não do robô. A conta é feita a
-            // partir da data do último atendimento (é o que ele sente como "1 semana depois").
+            // pra quando ele quer. O intervalo é do cliente, não do robô.
+            // v29.154.0 — o convite agora chega perto do retorno (dia 12 pra corte, 5 pra barba, ou a
+            // cadência do cliente), então as opções contam a partir de HOJE: nos próximos dias /
+            // semana que vem / 15 dias. Texto e prazos em _shared/convite-retorno.ts.
             const { data: convInvRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
             const stInv = (convInvRow?.state || {}) as Record<string, unknown>
-            const { data: baseBooking } = await admin.from('bookings').select('booking_date').eq('id', returnInvite.booking_id).maybeSingle()
             await admin.from('whatsapp_conversations').update({
               state: {
                 ...stInv,
@@ -1577,13 +1600,13 @@ Deno.serve(async (request: Request) => {
                   service_name: returnInvite.service_name,
                   service_price: returnInvite.service_price,
                   duration_minutes: returnInvite.duration_minutes || 30,
-                  base_date: baseBooking?.booking_date || new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
+                  base_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
                   at: new Date().toISOString(),
                 },
               },
               updated_at: new Date().toISOString(),
             }).eq('phone', phone)
-            await sendWhatsapp(phone, `Boa! 😄 Pra quando você quer deixar reservado?\n*1* — Daqui a 1 semana\n*2* — Daqui a 15 dias\n*3* — Daqui a 30 dias\n\nSe preferir outra data, é só me dizer qual 😊`)
+            await sendWhatsapp(phone, mensagemPrazo())
             return
           } else if (inviteOtherDay) {
             await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
