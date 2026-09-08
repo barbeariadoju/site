@@ -1,3 +1,60 @@
+## 29.150.0 — O mesmo nono dígito, mais duas vítimas; e três frases da JuIA que saíram erradas
+
+`supabase/functions/ju-ia-site/` · `database/migrations/142-*.sql`
+
+Terça 08/09/2026, mesma manhã da v29.149.0. Dois prints do Juliano, três defeitos.
+
+### Caso João (10h03): "2" + "Obrigado" virou "Vamos marcar!"
+
+Respondeu **2** (agora não) ao convite de retorno e ainda agradeceu. A JuIA devolveu *"Vamos
+marcar! Me diz a data e o horário que eu já deixo reservado pra você"* — e, duas horas depois,
+o follow-up de lead ainda mandou *"Só passando pra saber se ainda tem interesse em Corte + Barba
+Express"*. Três mensagens automáticas num dia pra quem foi atendido na sexta e disse não.
+
+Causa raiz: **a mesma da v29.149.0** — o telefone dele chega sem o nono dígito, o convite
+estava gravado com ele, o interceptador não achou o convite e o "2\nObrigado" foi pra IA com o
+serviço da visita anterior ainda na memória. O modelo leu como pedido, saiu "Vamos marcar", e
+a própria resposta recriou o lead que gerou o follow-up das 12h15. Já estava corrigido na
+borda desde as 10h56; aqui ficam as duas redes de segurança que faltavam:
+
+- `ju-ia-site`: **número solto não é pedido.** "2", "1!", "2 obrigado" só respondem a pergunta
+  NOSSA. Sem pergunta aberta no estado (`last_question` vazio e nenhum `pending_*`), o intent
+  `book` do modelo é descartado e a resposta é um agradecimento curto. O convite de retorno é
+  tratado antes, no webhook — isto é só pra quando algo passar por ele de novo.
+- Dados: o convite do João marcado como recusado (era o que o "2" dizia) e o lead recriado pela
+  resposta errada apagado — sem isso ele levaria a pesquisa de motivo amanhã.
+
+### Caso Gilberto (11h00): "8;00" virou meia-noite, e "Na sábado"
+
+*"Sábado tamo junto mesmo horário 8;00"* e *"Horas"* (duas mensagens; o buffer junta). A JuIA:
+*"Na sábado (12/09) a gente começa a atender 08:00 — às 00:00 ainda estamos fechados… (Anotei
+Raspar a cabeça, o seu de sempre Se quiser outro serviço…)"*. O Juliano confirmou na mão, e o
+horário das 08:00 de sábado está na agenda.
+
+- `extractRequestedTime`: o `;` no lugar de `:` não casava em regex nenhum, e o fallback de
+  hora sem minutos pegou o "00" antes de "Horas". Agora `;` e `,` valem como separador
+  (erro de digitação de dois pontos), e o fallback exige hora 1-23 — "00 horas" não é pedido de
+  ninguém.
+- `emDia`: "no sábado", "no domingo". Os outros dias continuam "na".
+- Nota do serviço de sempre: o emoji que separava as frases sai no `semEmoji()` e sobrava
+  "o seu de sempre Se quiser". Ponto final no lugar.
+
+### Migração 142 — o histórico dos 12 dígitos passa pros 13
+
+Com a canonização da v29.149.0, quem chegava com 12 dígitos passou a existir só com 13 — e o
+que já estava gravado com 12 ficaria órfão: estado da conversa, leads em follow-up, e o
+histórico que o painel agrupa por telefone (a mesma pessoa em duas conversas). A migração
+move tudo: `whatsapp_conversations` (22 linhas; 13 tinham gêmea de 13 dígitos criada pelos
+upserts do convite, e a de 13 herdou state, takeover e última mensagem da de 12),
+`conversation_leads` (5) e `whatsapp_messages` (269). Regra em `public.canon_wa_phone()`, a
+mesma da function TS. Zero linhas de 12 dígitos restantes nas três tabelas, conferido depois.
+
+**Testado em produção** depois do deploy, telefone de teste, sessões `deploy-check-v29150-*`
+apagadas de `site_chat_messages`: "Sábado tamo junto mesmo horário 8;00 / Horas" → `time=08:00`,
+*"No sábado (12/09) às 08:00 já está ocupado…"* (ocupado pelo próprio Gilberto — a agenda bate);
+"2 / Obrigado" com serviço na memória e sem pergunta aberta → `intent=other`, *"Obrigado!"*;
+"sábado às 8h" → 08:00, sem regressão. 76 unit passando. Sem bump de `?v=`.
+
 ## 29.149.0 — "Me chama daqui 14 dias" agora é um compromisso, não uma desculpa
 
 `supabase/functions/whatsapp-webhook/` · `supabase/functions/return-invite-dispatch/` ·

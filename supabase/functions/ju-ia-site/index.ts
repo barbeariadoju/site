@@ -112,7 +112,8 @@ const diaHumano=(iso:string)=>{
  return `${wd} (${iso.slice(8,10)}/${iso.slice(5,7)})`
 }
 // "hoje"/"amanhã" não pedem preposição; dia da semana pede ("na terça (25/08)").
-const emDia=(iso:string)=>{const h=diaHumano(iso);return (!h||h==='hoje'||h==='amanhã')?h:`na ${h}`}
+// v29.150.0 (caso Gilberto, 08/09): "Na sábado (12/09)" — sábado e domingo são masculinos.
+const emDia=(iso:string)=>{const h=diaHumano(iso);return (!h||h==='hoje'||h==='amanhã')?h:`${/^(sábado|domingo)/.test(h)?'no':'na'} ${h}`}
 const emDiaCap=(iso:string)=>{const d=emDia(iso);return d?d.charAt(0).toUpperCase()+d.slice(1):''}
 // "19:00" no meio de uma frase falada soa a sistema; gente diz "19h" e "14h30".
 const horaFalada=(hhmm:string)=>{const [h,m]=String(hhmm||'').split(':');return m==='00'?`${Number(h)}h`:`${Number(h)}h${m}`}
@@ -310,9 +311,14 @@ const extractRequestedTime=(text='')=>{
  // minutos, que casava o "00" antes de "horas" e devolvia 00:00 ("meia-noite já está
  // reservado"). Hora com PONTO só vale quando é claramente horário: precedida de
  // "às/as" ou seguida de h/hs/horas — "dia 21.08" (data) continua fora.
- const dotted=String(text).match(/(?:(?:^|\s)[aà]s\s*([01]?\d|2[0-3])[.]([0-5]\d)(?!\d))|(?:(?:^|\D)([01]?\d|2[0-3])[.]([0-5]\d)\s*(?:h\b|hs\b|hrs?\b|horas?\b))/i)
+ // v29.150.0 (caso Gilberto, 08/09/2026, 11h00): "mesmo horário 8;00" + "Horas" (duas
+ // mensagens, o buffer junta) — o ";" no lugar de ":" não casava em regex nenhum, e o
+ // fallback de hora sem minutos pegou o "00" antes de "Horas": 00:00, "ainda estamos
+ // fechados". Ponto-e-vírgula e vírgula são erro de digitação de dois pontos — valem como
+ // separador. E hora "00" sem minutos nunca é pedido de ninguém: o fallback exige 1-23.
+ const dotted=String(text).match(/(?:(?:^|\s)[aà]s\s*([01]?\d|2[0-3])[.,]([0-5]\d)(?!\d))|(?:(?:^|\D)([01]?\d|2[0-3])[.,]([0-5]\d)\s*(?:h\b|hs\b|hrs?\b|horas?\b))/i)
  if(dotted){const h=dotted[1]??dotted[3];const m=dotted[2]??dotted[4];return `${String(Number(h)).padStart(2,'0')}:${m}`}
- const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH])([0-5]\d)(?:\D|$)/)
+ const match=String(text).match(/(?:^|\D)([01]?\d|2[0-3])(?:[:hH;])([0-5]\d)(?:\D|$)/)
  if(match)return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`
  // v28.31.5: "às 9h"/"19h" (hora sem minutos, jeito mais comum de falar horário no
  // Brasil) não casava — o regex acima exige os minutos depois do h. Fallback: hora
@@ -320,7 +326,7 @@ const extractRequestedTime=(text='')=>{
  // (ex.: "8horas" ainda casa, "amanhã" não tem dígito antes). Achado testando de
  // propósito — o modelo geralmente extrai sozinho, mas o extrator determinístico é
  // usado direto no fluxo de reagendamento e não pode depender disso.
- const bare=String(text).match(/(?:^|\D)([01]?\d|2[0-3])\s*[hH](?![0-9])/)
+ const bare=String(text).match(/(?:^|\D)(0?[1-9]|1\d|2[0-3])\s*[hH](?![0-9])/)
  if(bare)return `${String(Number(bare[1])).padStart(2,'0')}:00`
  return ''
 }
@@ -3220,6 +3226,20 @@ Deno.serve(async req=>{
     handoff=false
    }
   }
+  // v29.150.0 (caso João, 08/09/2026, 10h03): "2" + "Obrigado" — resposta ao convite de retorno
+  // que o webhook não reconheceu (telefone sem o nono dígito, corrigido na v29.149.0) — chegou
+  // aqui com o serviço da visita anterior ainda na memória, o modelo leu como pedido e saiu
+  // "Vamos marcar! Me diz a data e o horário". Número solto (com ou sem um "obrigado" junto)
+  // só responde a pergunta NOSSA; sem pergunta aberta no estado, ele não é pedido de nada.
+  {
+   const qSolto=normalizedQuestion.trim()
+   const numeroSolto=/^\d[\s!.,]*$/.test(qSolto)||/^\d[\s!.,]*(obrigad\w*|valeu|brigad\w*|ok|blz|beleza|joia)[!. ]*$/.test(qSolto)
+   const semPerguntaAberta=!state?.last_question&&!Object.keys(state||{}).some((k:string)=>k.startsWith('pending_')&&(state as any)[k])
+   if(intent==='book'&&numeroSolto&&semPerguntaAberta){
+    intent='other';handoff=false;actions=[]
+    reply=`Obrigado! Se precisar de horário ou tiver alguma dúvida, é só me dizer por aqui.`
+   }
+  }
   if(intent==='book'){
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
   if(missing.length){
@@ -3609,7 +3629,8 @@ Deno.serve(async req=>{
  // v29.138.0 (caso Moises, 05/09): saía "Perfeito! Anotei Corte de cabelo..." E a nota
  // "(Anotei Corte de cabelo, o seu de sempre...)" na mesma mensagem — duas vezes a mesma coisa.
  if(assumedUsualService&&!handoff&&(intent==='availability'||intent==='book')&&!/de sempre/i.test(reply)&&!/\banotei\b/i.test(reply)){
-  reply+=`\n\n(Anotei ${assumedUsualService}, o seu de sempre 😉 Se quiser outro serviço ou incluir algo, é só dizer.)`
+  // v29.150.0: o emoji que separava as frases sai no semEmoji() e ficava "de sempre Se quiser".
+  reply+=`\n\n(Anotei ${assumedUsualService}, o seu de sempre. Se quiser outro serviço ou incluir algo, é só dizer.)`
  }
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`
