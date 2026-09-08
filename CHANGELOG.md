@@ -1,3 +1,34 @@
+## 29.155.0 — JuIA cota o preço da data do atendimento; e o aviso comparativo da v29.154.0 sai
+
+`supabase/functions/ju-ia-site/` · `supabase/functions/whatsapp-webhook/` · `supabase/functions/_shared/convite-retorno.ts` ·
+`tests/unit/convite-retorno.spec.js`
+
+Pedido do Juliano, terça 08/09/2026, à noite: *"resolve os dois"* — a pendência da JuIA anotada na
+v29.154.0 e o Google Ads (análise à parte, sem código).
+
+**JuIA.** Ela cotava a tabela de hoje pra qualquer data: cliente que marcasse em setembro pra 03/10
+ouvia R$ 40 no chat e o banco gravava R$ 50 (trigger da migration 144). Agora cada serviço carrega o
+reajuste agendado (`service_price_changes` com `applied_at` nulo) como `priceFrom`/`effectiveFrom`, e
+`svcPriceOn(serviço, data)` devolve o valor da data. Entra onde a data já é conhecida: pergunta de
+preço junto com a oferta de horário (os dois ramos da Aletéia/Michele), "Posso confirmar?", o valor
+gravado no agendamento e o "Reservado!". Sem data, tabela de hoje, como antes. O catálogo que o
+modelo lê ganhou "(para atendimentos a partir de 01/10/2026: R$ 50,00)" em cada serviço reajustado, e
+a regra de reajuste do prompt passou a dizer que o preço informado é o da data do atendimento quando
+o cliente já a disse. Bateria `preco_no_fluxo` (5) e `reajuste` (10) contra a produção: 0 alertas.
+
+**O erro da v29.154.0, corrigido aqui.** Eu tinha posto no convite de retorno (webhook) a frase
+*"Lembrando que a partir de 01/10/2026 vale a tabela nova: Corte de cabelo passa a R$ 50,00"*, e na
+JuIA uma nota "(valor da tabela que vale a partir de…)". Ao abrir o prompt da JuIA pra fazer a
+cotação por data, encontrei a regra do Juliano de 03/09/2026: **nunca anunciar reajuste por conta
+própria, nunca comparar valor velho com novo, nunca citar a data da virada — nem quando o cliente
+agenda pra uma data futura**, porque lembrar de aumento instiga a sensação de caro. As duas frases
+contrariavam a regra. Saíram. O que fica é o valor certo da data dito de forma neutra: no convite, a
+oferta de horários termina com "Corte de cabelo: R$ 50,00." e a confirmação traz o valor entre
+parênteses, sempre (não só quando mudou). `avisoPrecoVigente` virou `linhaValor` no módulo
+compartilhado, com teste de que a linha não contém "reajuste", "tabela", "a partir" nem "passa a".
+A linha do resumo do site ("Valores da tabela que vale a partir de 01 de outubro") ficou: o site já
+publica as duas tabelas em /precos/, ali não é anúncio, é o que a página diz.
+
 ## 29.154.0 — Convite de retorno no tempo do cliente; preço vigente na data do atendimento
 
 `supabase/functions/_shared/convite-retorno.ts` (novo) · `supabase/functions/return-invite-dispatch/` ·

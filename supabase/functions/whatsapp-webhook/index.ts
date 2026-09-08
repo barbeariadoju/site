@@ -3,7 +3,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
-import { mensagemPrazo, diasDaOpcao, avisoPrecoVigente, somarDiasIso } from '../_shared/convite-retorno.ts'
+import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso } from '../_shared/convite-retorno.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -1393,18 +1393,18 @@ Deno.serve(async (request: Request) => {
                 // v29.154.0 — preço VIGENTE NA DATA (reajuste de 01/10/2026 e os próximos). O cliente
                 // escolhe o horário já sabendo o valor; o agendamento nasce com esse preço, e não com
                 // o que ele pagou da última vez. service_price_on: migration 144.
+                // v29.155.0 — o valor vai dito de forma NEUTRA (serviço: R$ X), sem "a partir de…"
+                // nem comparação com o que ele pagou: regra do Juliano de 03/09 (nunca anunciar
+                // reajuste por conta própria). Sem preço da data, cai no valor pago da última vez.
                 let precoNaData: number | null = null
-                let avisoPreco = ''
                 try {
                   const { data: precoRows } = await admin.rpc('service_price_on', { p_service_name: String(pendInvite.service_name || ''), p_date: achado.iso })
                   const precoRow = Array.isArray(precoRows) ? precoRows[0] : precoRows
-                  if (precoRow && Number(precoRow.price) > 0) {
-                    precoNaData = Number(precoRow.price)
-                    if (precoRow.effective_from) avisoPreco = avisoPrecoVigente(String(pendInvite.service_name || ''), Number(pendInvite.service_price || 0), precoNaData, formatDateBR(precoRow.effective_from))
-                  }
+                  if (precoRow && Number(precoRow.price) > 0) precoNaData = Number(precoRow.price)
                 } catch (precoError) { console.error('[whatsapp-webhook] service_price_on', precoError) }
+                const valorLinha = linhaValor(String(pendInvite.service_name || ''), precoNaData ?? Number(pendInvite.service_price || 0))
                 await saveInviteState({ ...pendInvite, stage: 'slot', date: achado.iso, options: opcoes, price_on_date: precoNaData, at: new Date().toISOString() })
-                await sendWhatsapp(phone, `Olhando ${diaSemana}, ${formatDateBR(achado.iso)}, qual horário fica melhor?\n${linhas}\n\nSe preferir outro dia ou horário, é só me dizer.${avisoPreco ? `\n\n${avisoPreco}` : ''}`)
+                await sendWhatsapp(phone, `Olhando ${diaSemana}, ${formatDateBR(achado.iso)}, qual horário fica melhor?\n${linhas}\n\n${valorLinha ? `${valorLinha} ` : ''}Se preferir outro dia ou horário, é só me dizer.`)
                 return
               }
             } else if (pendInvite.stage === 'slot') {
@@ -1421,7 +1421,6 @@ Deno.serve(async (request: Request) => {
                 // v29.154.0 — preço da data escolhida (price_on_date, calculado na etapa anterior);
                 // sem ele, o valor pago da última vez, e o trigger trg_bookings_preco_vigente corrige.
                 const precoReserva = Number(pendInvite.price_on_date) > 0 ? Number(pendInvite.price_on_date) : Number(pendInvite.service_price || 0)
-                const precoMudou = Math.abs(precoReserva - Number(pendInvite.service_price || 0)) >= 0.005
                 const { data: novoId, error: erroBook } = await admin.rpc('create_public_booking_v15', {
                   p_customer_name: pendInvite.customer_name || 'Cliente',
                   p_customer_phone: phone,
@@ -1443,7 +1442,8 @@ Deno.serve(async (request: Request) => {
                 await admin.from('bookings').update({ channel: 'juia_whatsapp' }).eq('id', novoId)
                 await saveInviteState(null)
                 await admin.from('return_invites').update({ status: 'accepted', result_booking_id: novoId, suggested_date: pendInvite.date, suggested_time: escolhido, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pendInvite.invite_id)
-                const valorTxt = precoMudou ? ` (${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(precoReserva)})` : ''
+                // v29.155.0 — o valor sai sempre, neutro, como em qualquer confirmação da JuIA.
+                const valorTxt = precoReserva > 0 ? ` (${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(precoReserva)})` : ''
                 await sendWhatsapp(phone, `Prontinho. Seu retorno está reservado: ${pendInvite.service_name} em ${formatDateBR(pendInvite.date)} às ${escolhido}${valorTxt}. Te espero. Qualquer imprevisto, é só me chamar por aqui.`)
                 const pushSecretRet = Deno.env.get('PUSH_WEBHOOK_SECRET')
                 if (pushSecretRet) {

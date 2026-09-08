@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   familiaDoServico, alvoDias, retornoTipicoDias, decisaoEnvio, diasEntre, somarDiasIso,
-  tempoDesde, mensagemConvite, mensagemPrazo, diasDaOpcao, avisoPrecoVigente, JANELA_DIAS,
+  tempoDesde, mensagemConvite, mensagemPrazo, diasDaOpcao, linhaValor, JANELA_DIAS,
 } from '../../supabase/functions/_shared/convite-retorno.ts';
 
 // v29.154.0 — o convite de retorno passou a sair no tempo do cliente (dia 12 pra corte, dia 5
@@ -95,12 +95,15 @@ describe('tempoDesde e mensagem', () => {
   });
 });
 
-describe('avisoPrecoVigente', () => {
-  it('avisa só quando o valor muda', () => {
-    expect(norm(avisoPrecoVigente('Corte de cabelo', 40, 50, '01/10/2026')))
-      .toBe('Lembrando que a partir de 01/10/2026 vale a tabela nova: Corte de cabelo passa a R$ 50,00.');
-    expect(avisoPrecoVigente('Corte de cabelo', 40, 40, '01/10/2026')).toBe('');
-    expect(avisoPrecoVigente('Corte de cabelo', 40, null, '01/10/2026')).toBe('');
-    expect(avisoPrecoVigente('Corte de cabelo', 40, 0, '01/10/2026')).toBe('');
+describe('linhaValor', () => {
+  it('diz serviço e valor da data, sem comparar nem citar reajuste (regra de 03/09)', () => {
+    const l = linhaValor('Corte de cabelo', 50);
+    expect(norm(l)).toBe('Corte de cabelo: R$ 50,00.');
+    expect(l).not.toMatch(/reajust|tabela|a partir|antes|passa a/i);
+  });
+  it('some sem preço válido ou sem serviço', () => {
+    expect(linhaValor('Corte de cabelo', null)).toBe('');
+    expect(linhaValor('Corte de cabelo', 0)).toBe('');
+    expect(linhaValor('', 50)).toBe('');
   });
 });

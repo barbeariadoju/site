@@ -113,12 +113,14 @@ export const diasDaOpcao = (numero: number): number =>
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
-// Aviso de preço quando a data escolhida já cai na tabela nova (reajuste de 01/10/2026 e os
-// próximos). Sai ANTES de o cliente escolher o horário, no mesmo texto da lista — ele decide
-// sabendo. Só aparece quando o valor muda de verdade em relação ao que ele pagou da última vez.
-export const avisoPrecoVigente = (servico: string, precoPago: number, precoNaData: number | null | undefined, vigenteDesdeBR: string): string => {
-  const novo = Number(precoNaData)
-  if (!Number.isFinite(novo) || novo <= 0) return ''
-  if (Math.abs(novo - Number(precoPago || 0)) < 0.005) return ''
-  return `Lembrando que a partir de ${vigenteDesdeBR} vale a tabela nova: ${servico} passa a ${moeda.format(novo)}.`
+// Linha de valor na oferta de horários: serviço e preço VIGENTE NA DATA escolhida, ditos de
+// forma neutra. Regra do Juliano (03/09/2026, prompt da JuIA): nunca anunciar reajuste por conta
+// própria, nunca comparar valor velho com novo, nunca citar a data da virada — o valor se
+// sustenta pelo que a casa entrega. Então o cliente vê o preço certo pra data e escolhe o
+// horário sabendo, sem "lembrando que a partir de…". (A v29.154.0 tinha um aviso comparativo
+// aqui; saiu na v29.155.0 por contrariar essa regra.)
+export const linhaValor = (servico: string, preco: number | null | undefined): string => {
+  const v = Number(preco)
+  if (!Number.isFinite(v) || v <= 0 || !String(servico || '').trim()) return ''
+  return `${servico}: ${moeda.format(v)}.`
 }
