@@ -1,3 +1,45 @@
+## 29.148.0 — Legenda corrompida não chega mais ao rascunho
+
+Crivo de conteúdo de terça, 08/09/2026, 8h05. O rascunho do Instagram nasceu com a legenda
+`�` e mais nada: um único caractere de substituição, sem uma palavra sequer. O Facebook e o
+Status saíram com texto normal, então não foi o modelo que falhou de vez — foi uma resposta
+truncada no meio de um caractere multi-byte (o post do dia abria com "☕").
+
+O que deixou passar: `safeCaption` só tinha uma barreira de conteúdo vazio, `if (!candidate)`.
+String não-vazia era aceita, mesmo sem texto nenhum dentro. O fallback escrito à mão existia,
+estava correto, e não foi usado — porque nunca chegou a ser consultado.
+
+- `content-generate-daily`: `safeCaption` agora também exige TEXTO DE VERDADE — descarta
+  legenda com caractere de substituição (`CAPTION_CORROMPIDA`) e legenda com menos de 20
+  caracteres ou menos de 4 palavras (`semTextoReal`), caindo no fallback. O log passa a
+  registrar a legenda com `JSON.stringify`, senão um caractere invisível não aparece no log.
+  Os limites são folgados de propósito: a legenda mais curta que o gerador produz na prática
+  (Status do WhatsApp) tem 2 a 4 linhas, muito acima do piso.
+
+Também no crivo de hoje, direto no banco, sem mudança de código:
+
+- As três legendas foram reescritas. Além da do Instagram, que não existia, o gancho do dia
+  era o café — praticamente a mesma frase do post já publicado em 04/09. Trocado para
+  ACABAMENTO (contorno da nuca, linha da barba, degradê sem degrau), que ainda não tinha
+  saído nesta semana e casa com a navalha da arte.
+- `marketing_memory`, ficha da campanha: o título ainda era "Campanha ativa — agosto/2026
+  (a partir de 11/08)". Ele não vai para o cliente, mas alimenta o prompt da imagem
+  (`themeTextFor`) e o `context` do post, carregando uma data vencida. Agora é
+  "Campanha ativa — sem data, sem promoção (revisar em 30/09/2026)".
+
+**Arte reprovada, e não dá para consertar daqui.** A imagem de hoje (navalha sobre bancada de
+mármore, parede de tijolo, luz quente lateral) é a terceira seguida com a mesma fórmula — 04/09
+e 07/09 são a mesma composição com o objeto trocado. É exatamente a reprovação do Juliano em
+30/08 ("a arte genérica que parece sempre a mesma"), e a constante `ENQUADRAMENTOS` da 29.100.0
+não está segurando. O selo está íntegro e legível, não há texto inventado nem pessoa gerada por
+IA — o defeito é só o enquadramento. `content-generate-image` exige sessão de admin logada, então
+regerar depende do Juliano clicar na Central. Marcado em `context.arte_reprovada` nos três
+rascunhos. Se repetir amanhã, a correção é no prompt, não no crivo diário.
+
+Nada mudou em página do site, sem bump de `?v=`. `content-generate-daily` publicada (versão 64,
+`verify_jwt: false`, inalterado). 67 testes unitários passando; a falha do e2e de `routes.spec.js`
+na primeira rodada foi flake de browser e passou no retry. `VERSAO.md` 29.148.0.
+
 ## 29.147.0 — Tela de avaliações ligada ao conector do Windsor.ai; trava de ajuste também no botão Publicar
 
 Pedido do Juliano (06/09/2026, "pode ligar o conector sim"), depois de eu descobrir que a tela

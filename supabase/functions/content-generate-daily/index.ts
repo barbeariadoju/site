@@ -66,9 +66,23 @@ const withBookingLink = (caption: string, utmSource: string, semLink = false) =>
 // encaixe" TODO DIA também expõem cadeira vazia (viraram o post padrão de toda manhã).
 // Agora qualquer menção a janela/encaixe/vaga aberta também derruba a legenda pro fallback.
 const SCARCITY_VIOLATION = /hor[áa]ri?os?\s+(livres?|dispon[íi]ve|em aberto|vagos?|sobrando)|agenda[^.!?\n]{0,20}\b(livre|vazia|aberta|tranquila|folgada|sem movimento)|v[áa]rios?\s+hor[áa]rios|muitos?\s+hor[áa]rios|alguns?\s+hor[áa]rios|hor[áa]rios\s+sobrando|sobrando\s+hor[áa]rios|\bvagas?\s+(livres?|abertas?|dispon[íi]ve)|sem\s+fila|pouca\s+procura|movimento[^.!?\n]{0,15}\b(fraco|parado|devagar|baixo)|\bjanela\b|\bencaixe\b|vaga\s+aberta|oportunidade\s+(especial|de\s+hor[áa]rio)|quem\s+agenda\s+primeiro/i
+// v29.148.0 (08/09/2026) — CRIVO DA MANHÃ: o rascunho do Instagram nasceu com a legenda
+// "�" e mais nada — um único caractere corrompido, sem uma palavra sequer. O texto
+// chegou até o banco porque a única barreira aqui era `if (!candidate)`: string não-vazia
+// passava, mesmo sem conteúdo nenhum. O fallback escrito à mão existia e não foi usado.
+// Agora a legenda também precisa TER TEXTO DE VERDADE: nada de caractere de substituição
+// (sinal de resposta truncada no meio de um emoji/acento) e pelo menos 20 caracteres com
+// 4 palavras — abaixo disso é sobra de geração falha, não legenda.
+const CAPTION_CORROMPIDA = /[�￾￿]/
+const semTextoReal = (texto: string): boolean =>
+  texto.replace(/\s+/g, ' ').length < 20 || texto.split(/\s+/).filter((p) => /[a-zà-ú]{2,}/i.test(p)).length < 4
 const safeCaption = (generated: string, fallback: string, platform: string): string => {
   const candidate = String(generated || '').trim()
   if (!candidate) return fallback
+  if (CAPTION_CORROMPIDA.test(candidate) || semTextoReal(candidate)) {
+    console.error('[content-generate-daily] legenda descartada por vir corrompida/vazia de texto', platform, JSON.stringify(candidate))
+    return fallback
+  }
   if (SCARCITY_VIOLATION.test(candidate)) {
     console.error('[content-generate-daily] legenda descartada por expor vacância', platform, candidate)
     return fallback
