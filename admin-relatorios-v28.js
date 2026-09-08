@@ -5,6 +5,11 @@
   const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const phoneDigits = (s = '') => String(s).replace(/\D/g, '');
+  // v29.152.0 — cliente único é por DDD + 8 últimos dígitos (regra de phone_match_key do banco),
+  // não pelos dígitos exatos: o mesmo telefone gravado com e sem o 55 contava como dois clientes
+  // (caso Helder). Mesma phoneKey de admin-v15-4-core.js, repetida aqui porque esta tela não
+  // carrega o core.
+  const phoneKey = (s = '') => { const d = phoneDigits(s).replace(/^55/, ''); return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : d; };
   const pct = (n) => `${Math.round(n)}%`;
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -99,13 +104,13 @@
     const map = new Map();
     bookings.forEach(x => {
       if (x.status !== 'completed') return;
-      const ph = phoneDigits(x.customer_phone); if (!ph) return;
+      const ph = phoneKey(x.customer_phone); if (!ph) return;
       const d = x.booking_date || '';
       if (!map.has(ph) || d < map.get(ph)) map.set(ph, d);
     });
     profiles.forEach(p => {
       if (!(Number(p.prior_visits) > 0)) return;
-      const ph = phoneDigits(p.phone); if (!ph) return;
+      const ph = phoneKey(p.phone); if (!ph) return;
       if (!map.has(ph) || '0001-01-01' < map.get(ph)) map.set(ph, '0001-01-01');
     });
     return map;
@@ -127,7 +132,7 @@
     const revenueProd = completed.reduce((a, x) => a + Number(x.products_price || 0), 0);
     const revenue = revenueServ + revenueProd;
     const avg = completed.length ? revenue / completed.length : 0;
-    const phones = new Set(completed.map(x => phoneDigits(x.customer_phone)).filter(Boolean));
+    const phones = new Set(completed.map(x => phoneKey(x.customer_phone)).filter(Boolean));
     const avgPerCustomer = phones.size ? revenue / phones.size : 0;
     // Pedido do Juliano: mesma lógica do card do Dashboard (split de combo por "+"), aqui pro
     // período selecionado em vez de só "hoje".
@@ -178,7 +183,7 @@
     const box = $('rel-audience');
     if (!completed.length) { box.innerHTML = '<div class="admin-empty">Nenhum cliente atendido neste período.</div>'; return; }
     const firstMap = firstCompletedByPhone();
-    const phones = new Set(completed.map(x => phoneDigits(x.customer_phone)).filter(Boolean));
+    const phones = new Set(completed.map(x => phoneKey(x.customer_phone)).filter(Boolean));
     let novos = 0, recorrentes = 0;
     phones.forEach(ph => {
       const first = firstMap.get(ph) || '';

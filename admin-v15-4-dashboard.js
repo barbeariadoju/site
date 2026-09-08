@@ -6,7 +6,7 @@
     // normalizado pra distinct clients), só que aqui local, direto dos dados já carregados.
     const completedRevenue=completed.reduce((a,x)=>a+Number(x.service_price||0)+Number(x.products_price||0),0);
     const completedServiceCount=completed.reduce((a,x)=>a+String(x.service_name||'').split('+').map(s=>s.trim()).filter(Boolean).length,0);
-    const completedDistinctClients=new Set(completed.map(x=>phoneDigits(x.customer_phone))).size;
+    const completedDistinctClients=new Set(completed.map(x=>phoneKey(x.customer_phone)).filter(Boolean)).size;
     setText('metric-ticket-medio',completed.length?money(completedRevenue/completed.length):money(0));
     setText('metric-servicos-cliente',completedDistinctClients?(completedServiceCount/completedDistinctClients).toFixed(1):'0');
     // v29.43.8 (pedido do Juliano, 18/08): quantos SERVIÇOS foram feitos hoje (corte + barba conta 2), além do número de atendimentos.

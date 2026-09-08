@@ -9,7 +9,10 @@
 
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
-  const phone = (v='') => String(v).replace(/\D/g,'');
+  // v29.152.0 — só serve pra CASAR telefones (inativos, faltas reincidentes), nunca pra exibir:
+  // devolve DDD + 8 últimos dígitos, ignorando o 55 e o nono dígito, como phone_match_key do
+  // banco. Antes comparava os dígitos exatos e o mesmo cliente gravado com e sem 55 virava dois.
+  const phone = (v='') => { const d = String(v).replace(/\D/g,'').replace(/^55/,''); return d.length >= 10 ? d.slice(0,2) + d.slice(-8) : d; };
   const esc = (s='') => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const daysBetween = (a,b) => Math.floor((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 86400000);
 

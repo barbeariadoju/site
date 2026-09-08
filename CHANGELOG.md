@@ -1,3 +1,53 @@
+## 29.152.0 — Caso Helder: o mesmo cliente aparecia duas vezes, e não era cadastro duplicado
+
+`admin-v15-4-core.js` · `admin-v15-4-dashboard.js` · `admin-relatorios-v28.js` · `admin-assistente-v16.js` ·
+`database/migrations/143-*.sql` · `tests/e2e/admin/_fixtures.js` · `tests/e2e/admin/admin-clientes-telefone.spec.js` ·
+`admin*.html` (bump) · `admin-version.json` + `ADMIN_VERSION`
+
+Print do Juliano, terça 08/09/2026: na busca do Novo agendamento, "Helder" duas vezes — uma com
+"(11) 97484-5870", outra com "5511974845870" cru. Pedido: *"cliente duplicado na nossa base de dados,
+cria um mecanismo pra filtrar pelo telefone pra que isto não ocorra mais"*.
+
+**O que era de verdade.** Não havia cadastro duplicado: `customer_profiles` tinha UMA ficha do Helder
+(11974845870), e o índice único `uq_customer_profiles_phone_key` já impede a segunda desde a v29.94.0.
+O que estava em dois formatos era `bookings.customer_phone`: três agendamentos vindos do site com 11
+dígitos, dois vindos da JuIA com o JID do WhatsApp (13 dígitos, 55 na frente). O painel montava a
+lista de clientes agrupando pelos **dígitos exatos**, então via duas pessoas — a segunda sem ficha
+(`id` nulo), o que ainda faria a mesclagem do CRM não enxergá-la. Conferido no banco: 17 telefones
+com agendamento em mais de um formato, 22 agendamentos num formato diferente do da ficha.
+
+Corrigido em duas frentes, de propósito — só o painel deixaria o dado torto; só o banco deixaria o
+painel dependente de o dado estar sempre limpo:
+
+- **Painel agrupa por chave de telefone**, não por dígitos exatos: `aggregateCustomers` (busca do
+  Novo agendamento, CRM, mesclagem), clientes únicos do Dashboard e dos Relatórios (ticket por
+  cliente, novos × recorrentes) e o casamento de inativos/faltas reincidentes do Assistente. A chave
+  é DDD + 8 últimos dígitos, a mesma regra de `phone_match_key` do banco e do `phoneKey` que a Agenda
+  já usava pro nº da visita (caso John Maicon, v29.12.0 — o mesmo defeito, corrigido só ali na época).
+  O campo `phone` de cada cliente continua sendo os dígitos gravados da ficha, único por cliente.
+- **`formatPhone` tira o 55** (13 e 12 dígitos) e formata fixo: o número deixa de sair cru na tela.
+- **Trigger no banco:** `trg_bookings_dados_do_cadastro` substitui `trg_bookings_nome_do_cadastro`
+  (v29.137.0). Agendamento de telefone já cadastrado nasce com o nome E com o telefone da ficha,
+  nos mesmos dígitos — site, JuIA e balcão, de uma vez, sem cada function ter que lembrar de
+  canonizar. BEFORE INSERT só, como antes: editar na agenda continua livre. Testado com insert real
+  desfeito por `raise exception`: "helder de novo" + 5511974845870 → "Helder" + 11974845870;
+  telefone novo → preservado.
+- **Dados:** os 22 agendamentos divergentes passaram pro telefone da ficha (`phone_key` é coluna
+  gerada e acompanhou). Depois: 0 divergentes, 0 telefones com mais de um formato.
+
+**Decidido contra a recomendação óbvia.** Não escolhi um formato "oficial" (11 ou 13 dígitos) pra
+reescrever fichas e agendamentos inteiros: o formato da ficha é o que o CRM edita, o que
+`admin_save_customer_v23` usa pra reapontar agendamentos e o que várias telas comparam. Reescrever
+48 fichas e 70 agendamentos é risco sem ganho — o que importa é ficha e agendamentos baterem entre
+si, e é isso que o trigger garante daqui pra frente.
+
+Teste e2e novo reproduz o caso com a Carla das fixtures (ficha com 13 dígitos, um agendamento com
+11): tem que ser UMA Carla na busca, com o telefone formatado, e UMA ficha no CRM.
+
+Cache: `admin-v15-4-core.js?v=` e `admin-v15-4-dashboard.js?v=` nas 7 páginas do painel,
+`admin-relatorios-v28.js?v=` e `admin-assistente-v16.js?v=` nas suas. `ADMIN_VERSION` e
+`admin-version.json` → 29.152.0 (o painel aberto na barbearia recarrega sozinho).
+
 ## 29.151.0 — Quantidade de produto no Balcão e no fechamento da Agenda
 
 `admin-balcao-v29.js` · `admin-v15-4-agenda.js` · `css/04-agenda-admin-core.css` · `admin*.html` (bump)
