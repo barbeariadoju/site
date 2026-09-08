@@ -138,13 +138,41 @@
   // do fechamento) quanto no modal "✎ Editar atendimento" (corrigir serviço/produtos/
   // pagamento de um atendimento já existente, site ou balcão, em qualquer status — pedido
   // do Juliano pra não precisar reconstruir isso em cada tela separada).
+  // v29.151.0 (pedido do Juliano, 08/09/2026: "2 Budweiser"): contador − 1 + por produto. A
+  // quantidade vira o item repetido na lista — formato que admin-booking-status soma e que o
+  // cupom agrupa ("2 x R$ 8,00"). Produto já repetido no registro entra com a contagem certa.
   function productChecklistHtml(existingProducts=[]){
-    const selectedNames=new Set(existingProducts.map(p=>p.name));
-    return `<div class="products-modal-grid">${productCatalog.map(p=>`<label class="products-modal-option"><input type="checkbox" data-product-name="${esc(p.name)}" data-product-price="${p.price}" ${selectedNames.has(p.name)?'checked':''}><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small></span></label>`).join('')}</div>`
+    const qtyByName=new Map();
+    existingProducts.forEach(p=>qtyByName.set(p.name,(qtyByName.get(p.name)||0)+1));
+    return `<div class="products-modal-grid">${productCatalog.map(p=>`<label class="products-modal-option"><input type="checkbox" data-product-name="${esc(p.name)}" data-product-price="${p.price}" data-qty="${qtyByName.get(p.name)||1}" ${qtyByName.has(p.name)?'checked':''}><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small></span><b class="qty-step"><button type="button" data-qty-dec aria-label="Menos um">−</button><span data-qty-view>${qtyByName.get(p.name)||1}</span><button type="button" data-qty-inc aria-label="Mais um">+</button></b></label>`).join('')}</div>`
   }
   function readChecklistProducts(modal){
-    return [...modal.querySelectorAll('[data-product-name]:checked')].map(i=>({name:i.dataset.productName,price:Number(i.dataset.productPrice)}))
+    return [...modal.querySelectorAll('[data-product-name]:checked')].flatMap(i=>{
+      const qty=Math.max(1,Math.floor(Number(i.dataset.qty)||1));
+      return Array.from({length:qty},()=>({name:i.dataset.productName,price:Number(i.dataset.productPrice)}))
+    })
   }
+  // Os botões do contador ficam dentro do <label>: clique em botão não marca o checkbox
+  // (conteúdo interativo), então a marcação é feita aqui. Dispara 'change' no input pra
+  // o total do modal (onAnyItemChange) recalcular — um listener só, delegado no documento.
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('.products-modal-option [data-qty-inc],.products-modal-option [data-qty-dec]');
+    if(!btn)return;
+    e.preventDefault();
+    const input=btn.closest('label')?.querySelector('[data-product-name]');
+    if(!input)return;
+    const qty=Math.max(1,Math.floor(Number(input.dataset.qty)||1));
+    const set=(q)=>{input.dataset.qty=String(Math.max(1,Math.min(99,q)));const v=btn.closest('label').querySelector('[data-qty-view]');if(v)v.textContent=input.dataset.qty};
+    if(btn.hasAttribute('data-qty-inc')){if(!input.checked){input.checked=true;set(1)}else set(qty+1)}
+    else if(qty<=1){input.checked=false;set(1)}
+    else set(qty-1);
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  document.addEventListener('change',e=>{
+    const input=e.target;
+    if(!(input instanceof HTMLInputElement)||!input.matches('.products-modal-option [data-product-name]')||input.checked)return;
+    input.dataset.qty='1';const v=input.closest('label')?.querySelector('[data-qty-view]');if(v)v.textContent='1';
+  });
   // Serviço realmente executado pode divergir do que foi agendado (ex.: cliente pediu outro
   // serviço na hora) — grade igual à de produtos, mas pra serviços, pré-marcada com o que já
   // está no registro. Tenta bater o nome inteiro primeiro (cobre combos do próprio catálogo,

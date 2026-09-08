@@ -257,3 +257,11 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 .admin-firsttime-opts button.is-on{background:var(--gold2,#f0c987);border-color:var(--gold2,#f0c987);color:#17130f}
 .admin-firsttime-opts button[disabled]{opacity:.55;cursor:progress}
 .admin-firsttime>em{display:block;margin-top:7px;color:var(--gold2,#f0c987);font-size:.75rem;font-style:normal;font-weight:700;line-height:1.35}
+/* v29.151.0 — contador de quantidade nos produtos (Balcão e modal Concluir/Editar da Agenda). Só aparece com o item marcado. */
+.qty-step{display:none;align-items:center;gap:0;margin-top:8px;border:1px solid rgba(240,201,135,.35);border-radius:999px;overflow:hidden;background:#0d0d0d;font-weight:800;color:var(--gold2);width:max-content}
+.booking-service-option .qty-step{grid-column:1/-1}
+.products-modal-option .qty-step{margin:0 0 0 auto;flex:none}
+.qty-step button{border:none;background:transparent;color:var(--gold2);font:inherit;font-size:1.05rem;font-weight:800;width:34px;height:30px;cursor:pointer;line-height:1}
+.qty-step button:hover{background:rgba(240,201,135,.14)}
+.qty-step [data-qty-view]{min-width:26px;text-align:center;font-size:.92rem}
+.booking-service-option input:checked+span .qty-step,.products-modal-option input:checked~.qty-step{display:inline-flex}

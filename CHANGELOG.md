@@ -1,3 +1,26 @@
+## 29.151.0 — Quantidade de produto no Balcão e no fechamento da Agenda
+
+`admin-balcao-v29.js` · `admin-v15-4-agenda.js` · `css/04-agenda-admin-core.css` · `admin*.html` (bump)
+
+Pedido do Juliano, terça 08/09/2026, na cadeira: *"preciso lançar 2 Budweiser, não consigo
+colocar quantidade"*. O produto era uma lista de caixinhas, uma por item — dava pra vender uma
+Budweiser, não duas. Nem no Balcão, nem no modal "Concluir / Editar atendimento" da Agenda.
+
+- Cada produto ganha um contador **− 1 +** que aparece ao marcar. O "+" num item desmarcado
+  marca com 1; o "−" no 1 desmarca. Limite de 99.
+- **Banco e comprovante não mudaram.** A quantidade vira o mesmo item repetido na lista
+  enviada — é o formato que `admin_register_walkin_visit` e `admin-booking-status` já somam
+  (preço por linha) e que o cupom já agrupa desde a v29.121.0 ("Budweiser (2 x R$ 8,00)"). Um
+  registro que já tinha produto repetido abre o modal de edição com a contagem certa.
+- No log "hoje" do Balcão, o repetido sai agrupado ("2× Cerveja…"), não "Cerveja, Cerveja".
+- Os botões ficam dentro do `<label>` do checkbox: clique em botão não marca o checkbox
+  (conteúdo interativo), então a marcação é feita à mão e o `change` é disparado pra o total
+  recalcular. No modal da Agenda é um listener só, delegado no documento — o modal é
+  reconstruído a cada abertura.
+
+Cache: `style.css?v=` e `admin-v15-4-agenda.js?v=` bumpados em todas as páginas do painel,
+`admin-balcao-v29.js?v=` no Balcão, `css/04` no `style.css`.
+
 ## 29.150.0 — O mesmo nono dígito, mais duas vítimas; e três frases da JuIA que saíram erradas
 
 `supabase/functions/ju-ia-site/` · `database/migrations/142-*.sql`

@@ -53,9 +53,9 @@
     // ninguém escutava). Sem re-render a lista mostrava o preço antigo do fallback
     // estático — caso real 27/08: Leave-in R$44,99 na tela, preço verdadeiro R$33,00.
     document.addEventListener('bdj:products-updated', () => {
-      const marcados = selectedProducts().map(p => p.name);
+      const marcados = [...document.querySelectorAll('input[name="balcao-product"]:checked')].map(i => [i.value, productQty(i)]);
       $('balcao-products').innerHTML = renderProductPicker();
-      marcados.forEach(n => { const el = document.querySelector(`input[name="balcao-product"][value="${CSS.escape(n)}"]`); if (el) el.checked = true; });
+      marcados.forEach(([n, q]) => { const el = document.querySelector(`input[name="balcao-product"][value="${CSS.escape(n)}"]`); if (el) { el.checked = true; setProductQty(el, q); } });
       updateTotal();
     });
     bindCustomerSearch();
@@ -77,11 +77,43 @@
   function renderProductPicker() {
     const groups = {};
     productCatalog.forEach(p => (groups[p.category || 'Produtos'] ??= []).push(p));
-    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('');
+    // v29.151.0 (pedido do Juliano, 08/09/2026: "preciso lançar 2 Budweiser, não consigo
+    // colocar quantidade"). Cada produto ganha um contador − 1 + que aparece ao marcar. A
+    // quantidade vira o mesmo item repetido na lista enviada — é o formato que a RPC soma
+    // e que o cupom já agrupa ("2 x R$ 8,00"), então banco e comprovante não mudam.
+    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}" data-qty="1"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i><b class="qty-step"><button type="button" data-qty-dec aria-label="Menos um">−</button><span data-qty-view>1</span><button type="button" data-qty-inc aria-label="Mais um">+</button></b></span></label>`).join('')}</div></section>`).join('');
   }
-  function selectedProducts() { return [...document.querySelectorAll('input[name="balcao-product"]:checked')].map(i => productCatalog.find(p => p.name === i.value)).filter(Boolean); }
+  function productQty(input) { return Math.max(1, Math.floor(Number(input.dataset.qty) || 1)); }
+  function selectedProducts() {
+    return [...document.querySelectorAll('input[name="balcao-product"]:checked')].flatMap(i => {
+      const p = productCatalog.find(x => x.name === i.value);
+      return p ? Array.from({ length: productQty(i) }, () => p) : [];
+    });
+  }
+  function setProductQty(input, qty) {
+    input.dataset.qty = String(Math.max(1, Math.min(99, qty)));
+    const view = input.parentElement?.querySelector('[data-qty-view]');
+    if (view) view.textContent = input.dataset.qty;
+  }
   function bindProductPicker() {
-    $('balcao-products').addEventListener('change', e => { if (e.target?.name === 'balcao-product') updateTotal(); });
+    const box = $('balcao-products');
+    box.addEventListener('change', e => {
+      if (e.target?.name !== 'balcao-product') return;
+      if (!e.target.checked) setProductQty(e.target, 1);
+      updateTotal();
+    });
+    box.addEventListener('click', e => {
+      const btn = e.target.closest('[data-qty-inc],[data-qty-dec]');
+      if (!btn) return;
+      e.preventDefault();
+      const input = btn.closest('label')?.querySelector('input[name="balcao-product"]');
+      if (!input) return;
+      if (btn.hasAttribute('data-qty-inc')) {
+        if (!input.checked) { input.checked = true; setProductQty(input, 1); } else setProductQty(input, productQty(input) + 1);
+      } else if (productQty(input) <= 1) { input.checked = false; setProductQty(input, 1); }
+      else setProductQty(input, productQty(input) - 1);
+      updateTotal();
+    });
   }
 
   function updateTotal() {
@@ -147,7 +179,10 @@
     if (!data || !data.length) { box.innerHTML = '<div class="admin-empty">Nenhum atendimento de balcão registrado hoje ainda.</div>'; return; }
     box.innerHTML = data.map(x => {
       const products = Array.isArray(x.selected_products) ? x.selected_products : [];
-      const productsNote = products.length ? ` + ${products.map(p => p.name).join(', ')}` : '';
+      // v29.151.0: produto repetido aparece agrupado ("2× Budweiser"), não "Budweiser, Budweiser".
+      const contagem = new Map();
+      products.forEach(p => contagem.set(p.name, (contagem.get(p.name) || 0) + 1));
+      const productsNote = contagem.size ? ` + ${[...contagem].map(([n, q]) => (q > 1 ? `${q}× ${n}` : n)).join(', ')}` : '';
       const hasSplit = x.products_payment_method && x.products_payment_method !== x.payment_method;
       const paymentTag = hasSplit
         ? `${PAYMENT_LABELS[x.payment_method] || x.payment_method} + ${PAYMENT_LABELS[x.products_payment_method] || x.products_payment_method}`
@@ -234,7 +269,7 @@
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
       $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = '';
-      document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; });
+      document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); });
       linkedCustomerId = null;
       renderCustomerTag(null);
       updateTotal();
