@@ -1,3 +1,79 @@
+## 29.149.0 — "Me chama daqui 14 dias" agora é um compromisso, não uma desculpa
+
+`supabase/functions/whatsapp-webhook/` · `supabase/functions/return-invite-dispatch/` ·
+`supabase/functions/_shared/telefone-whatsapp.ts` · `supabase/functions/_shared/adiar-convite.ts` ·
+`tests/unit/adiar-convite.spec.js` · `database/migrations/141-*.sql`
+
+Caso Pedro, terça 08/09/2026, 10h21. Ele respondeu ao convite de retorno com *"Decidir depois,
+me chama daqui 14 dias"* e a JuIA devolveu: *"Não consigo iniciar uma mensagem daqui a 14 dias,
+mas você pode nos chamar quando decidir."* Falso, e do pior jeito: o cliente acabou de dizer
+QUANDO quer voltar e a resposta foi jogar a tarefa de volta pra ele.
+
+Dois defeitos independentes, um escondendo o outro.
+
+### 1. O telefone dele chega sem o nono dígito, e o webhook comparava o número literal
+
+O WhatsApp identifica quem criou a conta antes do nono dígito pelo número antigo. O JID que a
+Evolution entrega ao webhook veio `554688887777` (12 dígitos); o convite tinha sido gravado e
+enviado para `5546988887777` (13). O webhook buscava `return_invites` por `phone = ` literal —
+não achou, e a mensagem passou reto pelos interceptadores até a IA livre. Nos logs:
+`marco:interceptadores-ok` → `marco:chamando-ia`.
+
+Não é só o Pedro. Em 60 dias, **27 telefones chegaram com 12 dígitos — 1 em cada 8 clientes**,
+11 deles com cadastro no outro formato. Pra esses, TODAS as 43 buscas por telefone literal do
+webhook (convite, última mensagem enviada, estado da conversa, histórico) enxergavam um cliente
+diferente do que o resto do sistema enxerga. O banco já resolvia isso nas RPCs com
+`phone_match_key()`; a borda, não.
+
+- `_shared/telefone-whatsapp.ts`: JID de 12 dígitos começando em 55 e celular (8 dígitos
+  iniciando em 6-9) ganha o 9 e vira o formato de 13 que tudo o mais usa. Fixo (2-5) fica como
+  está. Aplicado UMA vez, na leitura do JID — as 43 buscas passam a bater sem mexer em nenhuma.
+  Enviar para o número de 13 dígitos funciona: é o que o `return-invite-dispatch` sempre fez, e o
+  convite do próprio Pedro chegou assim.
+
+### 2. Nenhuma regra do convite cobria "me chama daqui X dias"
+
+O convite oferece 1 (quero) e 2 (agora não) e diz "se preferir decidir depois, é só me chamar".
+O Pedro fez a terceira coisa, a mais natural: pediu pra SER chamado, com prazo. Sem regra, isso
+caía em "outro assunto" e ia pra IA, que não tem como agendar nada — e disse isso.
+
+- `_shared/adiar-convite.ts` (com 9 testes): lê o prazo em algarismo ou por extenso, em dias,
+  semanas ou meses ("daqui 14 dias", "em uma semana", "só daqui um mês", "semana que vem",
+  "quinze dias"), e reconhece o pedido de ser procurado ("me chama", "me lembra", "me avisa",
+  "decido depois", "depois eu vejo").
+- Webhook, interceptador do convite: prazo + pedido = convite **adiado** (`status = deferred`,
+  `remind_at` = hoje + prazo, domingo cai pra segunda, piso de 2 e teto de 120 dias). Resposta:
+  *"Combinado, Pedro. Em 22/09/2026 eu te chamo por aqui pra deixarmos seu próximo horário
+  reservado. Se quiser marcar antes, é só me chamar."* Checado ANTES da recusa, porque a frase
+  costuma trazer as duas coisas ("agora não, me chama daqui 2 semanas"). Prazo SEM aceite ("só
+  daqui 15 dias") também adia; prazo COM aceite ("quero sim, daqui 2 semanas") é data de reserva
+  e segue pro fluxo de aceite — e a etapa "pra quando?" agora entende prazo escrito, além de 1/2/3.
+- Pedido sem prazo ("me chama depois"): UMA pergunta, "daqui a quantos dias você quer que eu te
+  chame?", tratada na etapa `defer` do `pending_invite`. Resposta que não é prazo tira o convite
+  do caminho e a JuIA segue — a regra "nunca insistir" continua.
+- `return-invite-dispatch` (o cron das 10h, já respeitando a janela de contato): convite
+  `deferred` com `remind_at` vencido recebe UMA mensagem — *"Passando como você pediu, pra ver se
+  já quer deixar seu próximo horário reservado. 1 / 2"* — e volta a `sent`, com `sent_at` novo e
+  `reminded_at` marcado. Daí em diante é o fluxo de sempre. Quem marcou por conta própria antes do
+  dia não recebe nada (`expired`, `skip_reason = marcou_antes_do_lembrete`); conversa com o
+  Juliano em andamento ou outra pergunta numerada pendente empurram pro cron de amanhã.
+  "Próximo horário reservado" e "quero sim" ficam no texto de propósito: são as âncoras que o
+  webhook usa pra reconhecer um "1" tardio como resposta ao convite (v29.144.0).
+- Migração 141: `remind_at`, `reminded_at`, status `deferred` no check, índice parcial.
+
+**O Pedro já está na fila.** O convite dele foi marcado à mão como `deferred` com
+`remind_at = 22/09/2026` (14 dias, uma terça). Nenhuma mensagem de correção foi enviada a ele:
+um robô se corrigindo cinco minutos depois é pior que o silêncio, e o lembrete de 22/09 chega
+como "passando como você pediu". Se o Juliano preferir avisar antes, é uma linha do celular dele.
+
+**Fora do escopo, anotado:** a IA livre (`ju-ia-site`) continua sem ter como agendar um lembrete
+quando o pedido vem fora do convite ("me lembra em 2 semanas" numa conversa qualquer). Hoje ela
+responde que não consegue — verdadeiro, mas vale um `remind_at` genérico numa próxima versão.
+
+**Testes.** `npm run test:unit`: 76 (9 novos). Deploy das duas functions via CLI, que valida o
+TypeScript; as duas respondem 401 sem o segredo (estão de pé). Sem bump de `?v=`: só edge
+function e banco.
+
 ## 29.148.0 — Legenda corrompida não chega mais ao rascunho
 
 Crivo de conteúdo de terça, 08/09/2026, 8h05. O rascunho do Instagram nasceu com a legenda

@@ -91,6 +91,48 @@ Deno.serve(async(req:Request)=>{
     .select('customer_phone').gte('booking_date',today).in('status',['pending','confirmed'])
   const futurePhones=new Set((futureRows||[]).map((b:any)=>canonicalPhone(b.customer_phone)).filter(Boolean))
 
+  // v29.149.0 — lembrete combinado (caso Pedro, 08/09/2026: "me chama daqui 14 dias"). O
+  // webhook deixou o convite em 'deferred' com remind_at; chegou o dia, mandamos UMA mensagem
+  // e o convite volta a 'sent' — daí o webhook trata 1/2 como sempre. Quem marcou por conta
+  // própria nesse meio-tempo não recebe nada (expired). Conversa com o Juliano ou outra
+  // pergunta numerada pendente: fica pro cron de amanhã (remind_at continua no passado).
+  let sent=0,skipped=0,failed=0,reminded=0
+  {
+    const {data:deferredRows}=await admin.from('return_invites').select('*').eq('status','deferred').lte('remind_at',today).order('remind_at',{ascending:true}).limit(50)
+    for(const r of deferredRows||[]){
+      const phone=canonicalPhone(String(r.phone||''))
+      if(phone.length<12||phone===TEST_PHONE)continue
+      if(futurePhones.has(phone)){
+        await admin.from('return_invites').update({status:'expired',skip_reason:'marcou_antes_do_lembrete',updated_at:nowIso}).eq('id',r.id)
+        continue
+      }
+      const {data:conv}=await admin.from('whatsapp_conversations').select('human_takeover,human_takeover_at').eq('phone',phone).maybeSingle()
+      if(conv?.human_takeover&&conv.human_takeover_at&&Date.now()-new Date(conv.human_takeover_at).getTime()<3*3600*1000){skipped++;continue}
+      const {data:pendente}=await admin.rpc('juia_pending_numeric_question',{p_phone:phone})
+      if(pendente){console.log('[return-invite] lembrete adiado pela fila unica',pendente,phone);skipped++;continue}
+      const first=String(r.customer_name||'').trim().split(/\s+/)[0]||''
+      // "próximo horário reservado" e "quero sim" ficam de propósito: são as âncoras que o
+      // webhook usa pra reconhecer um "1" tardio como resposta ao convite.
+      const waText=`Oi${first?`, ${first}`:''}! Passando como você pediu, pra ver se já quer deixar seu próximo horário reservado.\n*1* — Quero sim\n*2* — Agora não, obrigado\n\nSe preferir outro momento, é só me dizer.`
+      try{
+        const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json',apikey:evolutionApiKey},
+          body:JSON.stringify({number:phone,text:semEmoji(waText)}),
+        })
+        if(!sendResponse.ok)throw new Error(`Evolution ${sendResponse.status}`)
+        const sendData=await sendResponse.json().catch(()=>({}))
+        await admin.from('whatsapp_messages').insert({phone,direction:'out',body:waText,sent_by:'bot',evolution_message_id:String(sendData?.key?.id||'')||null})
+        await admin.from('whatsapp_conversations').upsert({phone,human_takeover:false,last_message_at:nowIso,updated_at:nowIso},{onConflict:'phone'})
+        await admin.from('return_invites').update({status:'sent',sent_at:nowIso,reminded_at:nowIso,responded_at:null,updated_at:nowIso}).eq('id',r.id)
+        reminded++
+      }catch(sendError){
+        failed++
+        console.error('[return-invite-dispatch] lembrete',phone,sendError)
+      }
+    }
+  }
+
   // 1 convite por telefone por rodada — se a pessoa teve 2 atendimentos na janela (ex.: pai
   // e filho no mesmo número), fica o mais RECENTE (dia + horário, já que agora a janela de
   // candidatos cobre 3 dias).
@@ -102,7 +144,6 @@ Deno.serve(async(req:Request)=>{
     if(!prev||`${b.booking_date} ${b.start_time}`>`${prev.booking_date} ${prev.start_time}`)byPhone.set(phone,b)
   }
 
-  let sent=0,skipped=0,failed=0
   for(const [phone,b] of byPhone){
     const {data:existing}=await admin.from('return_invites').select('id').eq('booking_id',b.id).maybeSingle()
     if(existing){skipped++;continue} // idempotente: re-rodar o cron não duplica
@@ -194,5 +235,5 @@ Deno.serve(async(req:Request)=>{
       console.error('[return-invite-dispatch]',phone,sendError)
     }
   }
-  return json({ok:true,processed:byPhone.size,sent,skipped,failed})
+  return json({ok:true,processed:byPhone.size,sent,reminded,skipped,failed})
 })

@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
+import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
+import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -344,7 +346,12 @@ Deno.serve(async (request: Request) => {
       return json({ ok: true, skipped: 'not_direct_chat' })
     }
 
-    const phone = remoteJid.split('@')[0].replace(/\D/g, '')
+    // v29.149.0 (caso Pedro, 08/09/2026): o JID de quem criou a conta antes do nono dígito
+    // chega com 12 dígitos (554688887777), e TUDO que gravamos e enviamos usa 13
+    // (5546988887777). As 40+ buscas por telefone literal abaixo (convite de retorno, última
+    // mensagem enviada, estado da conversa) não achavam nada pra 1 em cada 8 clientes.
+    // Canonizado uma vez aqui; ver _shared/telefone-whatsapp.ts.
+    const phone = telefoneCanonicoWhatsapp(remoteJid.split('@')[0])
     if (phone.length < 10) return json({ ok: true, skipped: 'invalid_phone' })
 
     // Nome do contato como salvo no WhatsApp dele — usado pela JuIA pra saudação
@@ -1347,8 +1354,23 @@ Deno.serve(async (request: Request) => {
               }
               return null
             }
-            if (pendInvite.stage === 'interval') {
-              const dias = soNumero === 1 ? 7 : soNumero === 2 ? 15 : soNumero === 3 ? 30 : 0
+            if (pendInvite.stage === 'defer') {
+              // v29.149.0 — resposta a "daqui a quantos dias você quer que eu te chame?".
+              const dias = diasPedidos(raw) || (/^\d{1,3}[\s!.,]*$/.test(raw) ? Number(raw.replace(/\D/g, '')) : 0)
+              if (!dias) {
+                await dropInvite(String(pendInvite.invite_id), 'counter')
+              } else {
+                const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+                const remindAt = dataDoLembrete(hojeSP, dias)
+                await saveInviteState(null)
+                await admin.from('return_invites').update({ status: 'deferred', remind_at: remindAt, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pendInvite.invite_id)
+                console.log('[whatsapp-webhook] convite adiado (etapa defer)', phone, pendInvite.invite_id, remindAt)
+                await sendWhatsapp(phone, `Combinado. Em ${formatDateBR(remindAt)} eu te chamo por aqui pra deixarmos seu próximo horário reservado. Se quiser marcar antes, é só me chamar.`)
+                return
+              }
+            } else if (pendInvite.stage === 'interval') {
+              // v29.149.0 — além de 1/2/3, aceita o prazo escrito ("daqui 2 semanas", "20 dias").
+              const dias = soNumero === 1 ? 7 : soNumero === 2 ? 15 : soNumero === 3 ? 30 : (diasPedidos(raw) || 0)
               if (!dias) {
                 // Qualquer outra coisa ("dia 5", "só em setembro", uma pergunta): o convite sai
                 // do caminho e a JuIA assume a conversa normalmente. Nunca insistir.
@@ -1489,11 +1511,45 @@ Deno.serve(async (request: Request) => {
           // Os convites antigos expiram sozinhos em 48h e esta trava sai junto.
           const inviteV2 = Date.parse(String(returnInvite.sent_at || '')) >= Date.parse('2026-08-21T13:30:00Z')
           const inviteOtherDay = (!inviteV2 && /^2+[\s!.,]*$/.test(inviteTrimmed)) || /outro dia|outro horari|prefiro outr|remarc|mudar o dia|mudar o horari/.test(inviteReply)
-          const inviteDecline = !inviteOtherDay && ((inviteV2 ? /^2+[\s!.,]*$/.test(inviteTrimmed) : /^3+[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
-          const inviteAccept = !inviteOtherDay && !inviteDecline && (/^1+[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply))
+          // v29.149.0 (caso Pedro, 08/09/2026): "Decidir depois, me chama daqui 14 dias" é a
+          // terceira resposta possível — nem sim, nem não: "me procura no dia X". Antes caía na
+          // IA livre, que respondeu que não consegue. Checado ANTES da recusa porque a frase
+          // costuma trazer as duas coisas ("agora não, me chama daqui 2 semanas").
+          // Prazo sem aceite ("só daqui 15 dias", "não, só mês que vem") também é adiamento.
+          // Com aceite ("quero sim, daqui 2 semanas") o prazo é a data da reserva, não do
+          // lembrete — segue pro aceite, e a etapa 'interval' entende o prazo escrito.
+          const inviteAcceptWords = /^1+[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply)
+          const inviteDeferDays = !inviteOtherDay && (pediuLembrete(inviteReply) || !inviteAcceptWords) ? diasPedidos(inviteReply) : null
+          const inviteDeferAsk = !inviteDeferDays && !inviteOtherDay && pediuLembrete(inviteReply)
+          const inviteDecline = !inviteOtherDay && !inviteDeferDays && !inviteDeferAsk && ((inviteV2 ? /^2+[\s!.,]*$/.test(inviteTrimmed) : /^3+[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
+          const inviteAccept = !inviteOtherDay && !inviteDecline && !inviteDeferDays && !inviteDeferAsk && inviteAcceptWords
           const canonInvitePhone = (v: unknown) => {
             const d = String(v || '').replace(/\D/g, '')
             return d.length === 10 || d.length === 11 ? `55${d}` : d
+          }
+          const inviteFirstName = String(returnInvite.customer_name || '').trim().split(/\s+/)[0] || ''
+          const adiarConvite = async (dias: number) => {
+            const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+            const remindAt = dataDoLembrete(hojeSP, dias)
+            await admin.from('return_invites').update({ status: 'deferred', remind_at: remindAt, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
+            console.log('[whatsapp-webhook] convite adiado', phone, returnInvite.id, remindAt)
+            await sendWhatsapp(phone, `Combinado${inviteFirstName ? `, ${inviteFirstName}` : ''}. Em ${formatDateBR(remindAt)} eu te chamo por aqui pra deixarmos seu próximo horário reservado. Se quiser marcar antes, é só me chamar.`)
+          }
+          if (inviteDeferDays) {
+            await adiarConvite(inviteDeferDays)
+            return
+          } else if (inviteDeferAsk) {
+            // Pediu pra ser chamado, sem dizer quando: uma pergunta só, e a resposta é tratada
+            // na etapa 'defer' do bloco pending_invite acima. Sem resposta clara, o convite sai
+            // do caminho (nunca insistir).
+            const { data: convDefRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+            const stDef = (convDefRow?.state || {}) as Record<string, unknown>
+            await admin.from('whatsapp_conversations').update({
+              state: { ...stDef, pending_invite: { invite_id: returnInvite.id, stage: 'defer', customer_name: returnInvite.customer_name, at: new Date().toISOString() } },
+              updated_at: new Date().toISOString(),
+            }).eq('phone', phone)
+            await sendWhatsapp(phone, `Claro${inviteFirstName ? `, ${inviteFirstName}` : ''}. Daqui a quantos dias você quer que eu te chame? Pode responder, por exemplo, "10 dias" ou "2 semanas".`)
+            return
           }
           if (inviteAccept) {
             // Segurança: se nesse meio-tempo o cliente já marcou por outro caminho, não duplica.
