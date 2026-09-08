@@ -86,30 +86,19 @@ Deno.serve(async (req) => {
 
     const linhas = (data ?? []) as Array<Record<string, unknown>>
 
-    // O Google recusa conectar uma fonte que só tem cabeçalho: "Falha ao determinar o tipo
-    // de dados ou o esquema da fonte de dados... pelo menos uma linha de dados válidos"
-    // (04/09/2026, na etapa "Selecionar dados"). Enquanto não existir conversão real, sai
-    // uma linha de exemplo só para ele aprender o formato das colunas.
-    //
-    // O código de clique é sintético de propósito: o Google descarta linha cujo gclid ele
-    // não reconhece, então isso NÃO vira conversão nem mexe no aprendizado da campanha —
-    // aparece no relatório de importação como linha ignorada, e só.
-    //
-    // Não precisa de ninguém para remover depois: no primeiro agendamento de verdade a
-    // view devolve dados e o exemplo some sozinho.
-    const EXEMPLO_ENQUANTO_VAZIO = {
-      'Google Click ID': 'CjwKCAiA0000EXEMPLO0000SEM0000CLIQUE0000REAL',
-      'WBRAID': '',
-      'GBRAID': '',
-      'Conversion Name': 'Agendamento confirmado (WhatsApp)',
-      'Conversion Time': new Date(Date.now() - 864e5).toISOString().slice(0, 19).replace('T', ' ') + '-03:00',
-      'Conversion Value': '0.00',
-      'Conversion Currency': 'BRL',
-    }
-    const corpo = linhas.length ? linhas : [EXEMPLO_ENQUANTO_VAZIO]
+    // v29.134.0 servia uma linha de EXEMPLO com gclid sintético enquanto não havia conversão
+    // real, porque o Data Manager exigia "pelo menos uma linha de dados válidos" na etapa
+    // "Selecionar dados" (04/09/2026). Cumpriu o papel: o esquema foi aprendido e a fonte
+    // conectada. Só que o Google busca o arquivo TODA madrugada (logs de 08/09: 04:56 e 05:03
+    // UTC, HTTP 200, 193 bytes = cabeçalho + exemplo) e rejeita a linha falsa em todas — a
+    // ação "Agendamento confirmado (WhatsApp)" ficou "Requer atenção: melhore a qualidade dos
+    // dados importados" por causa DA NOSSA linha de exemplo, não de um erro de formato.
+    // v29.156.0: sem exemplo. Arquivo só de cabeçalho enquanto não houver conversão real —
+    // a fonte já está conectada, então "0 linhas" é um dia sem dados, não um erro.
+    const corpo = linhas
 
     const csv = montarCsvAds(corpo)
-    console.log(`[google-ads-conversions-csv] ${linhas.length} conversao(oes) reais por ${porBasic ? 'basic' : 'token'}${linhas.length ? '' : ' (servindo linha de exemplo)'}`)
+    console.log(`[google-ads-conversions-csv] ${linhas.length} conversao(oes) reais por ${porBasic ? 'basic' : 'token'}${linhas.length ? '' : ' (so cabecalho)'}`)
 
     return new Response(req.method === 'HEAD' ? null : csv, {
       headers: {

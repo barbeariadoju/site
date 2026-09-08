@@ -1,3 +1,44 @@
+## 29.156.0 — A conversão offline "Requer atenção" por causa da nossa própria linha de exemplo; e a PMax de volta às metas de julho
+
+`supabase/functions/google-ads-conversions-csv/`
+
+Pedido do Juliano, terça 08/09/2026, à noite: *"do Ads vc pode abrir a aba do Chrome e checar vc mesmo"*,
+depois *"faz o que achar melhor da campanha campeã"* e *"quer consertar esta conversão off-line?"*.
+Tudo lido e mexido na conta 659-268-6815 pelo Chrome dele. Nada de código no Ads, só configuração;
+o que é código está nesta entrada.
+
+**O que o histórico de alterações mostrou.** A Performance Max "barbearia atração clientes" fez, de
+10/07 a 08/08, 69 conversões por R$ 536,77 (CPA R$ 7,78): 65 "Ver rota" e 4 ligações. Entre 18/08 e
+03/09 ela teve as metas de conversão alteradas três vezes, ficou pausada de 26/08 a 03/09, e nasceu ao
+lado uma campanha de Pesquisa com "maximizar cliques" que gastou R$ 345,72 por 1 agendamento. Em
+08/09, "Ver rota" estava em 0 de 2 campanhas e a PMax otimizava para "Contatos + Reservar horários",
+com o aviso "limitada: problemas com os dados de conversão offline". Resultado dos 30 dias: 15
+conversões, CPA R$ 16,29.
+
+**Mexido na conta (20h, 08/09).** Metas da PMax de "Contatos, Reservar horários" para "Contatos, Leads
+de chamada, Ver rota". Orçamento (R$ 20/dia) e lances (maximizar conversões, sem CPA-alvo) intocados;
+Pesquisa continua pausada. Conferido depois de recarregar e na página de Metas (Ver rota: 1 de 2).
+Regra combinada: não mexer até 22/09; medir contra julho em 30 dias.
+
+**A conversão offline.** O diagnóstico do Google dizia: *"0% (0 de 1) dos eventos foram importados em
+7 de set. — O GCLID não é analisável, 100% dos eventos"*. O evento era a **linha de exemplo** da
+v29.134.0, com gclid sintético, servida para o Data Manager aprender o esquema na conexão. Só que o
+Google busca o CSV toda madrugada (logs: 08/09 04:56 e 05:03 UTC, 401 do desafio Basic e depois 200,
+193 bytes) e rejeita a linha falsa em todas — é isso que virou "Requer atenção: melhore a qualidade
+dos dados". O cano em si está certo: autenticação, formato, view. O que não existe é água: 7 registros
+de atribuição em 30 dias, 1 com clique pago, e esse único agendamento foi cancelado (a view exclui, de
+propósito). Agora o arquivo sai só com cabeçalho enquanto não houver conversão real; a fonte já está
+conectada, então dia sem linha é dia sem dados, não erro. A ação fica fora das metas da PMax até ter
+histórico.
+
+**Decidido contra a recomendação óbvia.** Não "consertei" a escassez inflando a view com agendamentos
+do site: esses já entram pelo GA4 ("Agendamento confirmado", origem Site), e mandá-los de novo pelo
+import de cliques seria contar duas vezes. A ação offline mede só o que o GA4 não vê: agendamento
+fechado no WhatsApp a partir de um clique pago. Vai ser pouco por natureza numa campanha local que
+converte em rota no Maps.
+
+**Testes.** 90 unit (o de arquivo só com cabeçalho já existia em `ads-csv.spec.js`).
+
 ## 29.155.0 — JuIA cota o preço da data do atendimento; e o aviso comparativo da v29.154.0 sai
 
 `supabase/functions/ju-ia-site/` · `supabase/functions/whatsapp-webhook/` · `supabase/functions/_shared/convite-retorno.ts` ·
