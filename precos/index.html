@@ -19,9 +19,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b0b0b; --surface:#141210; --surface2:#1c1917;
-    --text:#f2ede4; --muted:#9c9184; --faint:#6e6559;
-    --gold:#c9a227; --gold-soft:#e2c15f; --rule:#2b2621;
+    /* v29.161.0 — alinhado ao sistema do site. Esta pagina tinha paleta propria:
+       --gold era #c9a227 (mais amarelo) contra o #c89b55 da marca, e --muted/--bg
+       tambem divergiam. Dois dourados na mesma marca era o defeito de harmonia
+       mais visivel do site. Os nomes locais ficam, os VALORES agora sao os da marca. */
+    --bg:#080808; --surface:#111111; --surface2:#171717;
+    --text:#f5eee4; --muted:#bdb2a3; --faint:#8c8375;
+    --gold:#c89b55; --gold-soft:#f0c987; --rule:rgba(240,201,135,.22);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{

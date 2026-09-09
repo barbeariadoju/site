@@ -1,3 +1,43 @@
+## 29.161.0 — Sistema de design do site público: forma e tipografia padronizadas
+
+Pedido do Juliano em 09/09/2026, depois de ver o agendamento da Casa Scalabrini (concorrente
+que abriu em Bragança em 20/08): *"faça uma varredura em todo o nosso site em busca de
+necessidades de padronização... harmonização"*. Ele descreveu as telas deles como
+"harmônicas", e a razão é medível: uma cor de acento só, e formas que se repetem.
+
+**A medição, antes de mexer.** Varri os 5 arquivos de CSS (178 KB):
+
+| | Antes | Depois |
+|---|---|---|
+| Raios de canto distintos (site público) | 21 | 7 tokens |
+| Sombras distintas (site público) | 42 | 6 tokens |
+| Tamanhos de fonte em rem | 34 | 10 tokens |
+| Variáveis de design | 8 | 34 |
+
+**Uma correção de rota, registrada porque eu errei primeiro.** Minha primeira leitura foi de
+que o site tinha "126 cores" — verdade no conjunto, mas enganosa: 138 dos usos estão no CSS
+do admin. O site público já estava razoavelmente tokenizado em cor (185 usos de `var()`); o
+que estava solto lá era **forma e tipografia**. Medir por arquivo mudou o alvo do trabalho.
+
+- `01/02/03-site-*.css`: 80 `border-radius`, 69 `font-size` e 43 `box-shadow` passaram a usar
+  token. As 42 sombras eram variações de **três ideias** (elevação preta, brilho dourado,
+  anel de foco), cada uma escrita à mão — viraram `--sh-1/2/3`, `--glow`, `--ring`, `--hair`.
+  A escala de fonte tinha `.92/.93/.94/.95/.96/.98rem` convivendo; virou uma escala de 10
+  degraus. Nenhum valor solto sobrou (só `box-shadow:none`, que é legítimo).
+- `precos/index.html`: **o defeito de harmonia mais visível do site.** A página tinha uma
+  paleta particular de 9 variáveis, com `--gold:#c9a227` (mais amarelo) contra o `#c89b55` da
+  marca — dois dourados na mesma marca, numa página comercial. Os nomes locais ficaram, os
+  valores agora são os do site.
+
+Os `clamp()` dos títulos ficaram de fora de propósito: são heróis responsivos e cada um está
+calibrado para a sua página.
+
+`?v=` bumpado em `style.css` (3 imports) e nas **80 páginas** que carregam a folha — conferida
+a contagem, como manda o CLAUDE.md. 91 testes unitários e 48 e2e passando. `VERSAO.md` 29.161.0.
+
+O CSS do admin (87 + 51 cores distintas, 106 tamanhos de fonte) é a próxima etapa, autorizada
+por ele na mesma conversa.
+
 ## 29.160.0 — A caixinha aparece no card e ao lado do "Faturado hoje" (sem entrar nele)
 
 Primeiro walk-in com caixinha (Fernando, 09/09 13h40, R$ 32 numa conta de R$ 68) e a pergunta
