@@ -18,6 +18,7 @@ window.BDJ_SERVICES = [
   {category:'Química e tratamentos',name:'Alisamento / Relaxamento',description:'Redução de volume e alinhamento dos fios através de técnica profissional.',price:70,duration:55},
   {category:'Química e tratamentos',name:'Pigmentação Capilar (Tintura)',description:'Coloração capilar para cobertura de fios brancos ou realce do visual.',price:50,duration:40},
   {category:'Química e tratamentos',name:'Hidratação / Reconstrução Capilar',description:'Tratamento capilar focado em hidratação, reconstrução e melhora do aspecto dos fios.',price:40,priceFrom:50,duration:30},
+  {category:'Química e tratamentos',name:'Reconstrução Química Pós-Alisamento',description:'Hidratação e reposição de massa e aminoácidos logo após o alisamento, para devolver resistência e maciez ao fio que passou pela química.',price:50,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Barba',description:'Pigmentação da barba para correção de falhas e aparência uniforme.',price:35,priceFrom:40,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,priceFrom:25,duration:30},
   {category:'Pigmentações',name:'Aplicação de Fibra Capilar',description:'Preenchimento capilar imediato para disfarçar falhas e áreas rarefeitas, aplicado e finalizado no acabamento do corte. Resultado natural, resiste ao vento e sai na próxima lavagem.',price:30,priceFrom:35,duration:20},

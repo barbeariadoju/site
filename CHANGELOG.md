@@ -1,3 +1,49 @@
+## 29.157.0 — Serviço novo: Reconstrução Química Pós-Alisamento (R$ 50)
+
+Pedido do Juliano em 09/09: *"reconstrução química pós alisamento — hidratação e reposição de
+massa e aminoácidos — R$ 50,00"*. É o complemento natural do Alisamento / Relaxamento (R$ 70),
+feito na mesma sentada: a química tira massa do fio, a reconstrução repõe. Ticket do
+alisamento passa de 70 pra 120 quando o cliente aceita — e o cliente que acabou de fazer
+química é o que mais aceita, porque sente o fio seco na hora.
+
+**Onde o serviço passou a existir** (um serviço "vive" em oito lugares neste projeto, e
+esquecer um deles é o tipo de divergência que só aparece na cadeira):
+
+- **Tabela `services`** (migration 145, aplicada em produção às ~11h30 de 09/09): é de lá que
+  a JuIA lê nome, preço, duração e o argumento de venda. Categoria "Química e tratamentos",
+  tag `tratamento` (a mesma da hidratação — a JuIA trata como complemento, não como química).
+- **`services-catalog-v7.js`**: o que a agenda, o balcão, o admin e o vale-presente leem.
+  `?v=` bumpado nas 11 páginas que carregam o arquivo.
+- **`/agendar/`**: card na seção de transformações e tratamentos, logo abaixo da hidratação.
+  O `?servico=reconstrucao-quimica-pos-alisamento` já funciona pelo slug do `data-name`.
+- **Etapa de horário (`agenda-v15.js`)**: carrinho com Alisamento / Relaxamento passa a
+  sugerir a reconstrução em primeiro lugar. Antes, quem marcava alisamento via só sobrancelha,
+  Barba Express e nasal.
+- **Página própria `servico-reconstrucao-pos-alisamento.html`** no hub (agora 25 páginas de
+  serviço), com schema `Service` + `FAQPage`, no sitemap, e com três entradas de link
+  (`servicos.html`, página do alisamento, página da hidratação) — zero órfã.
+- **`servicos.html`** (lista + `ItemList` posição 24), **`/precos/`** (tabela de outubro) e
+  **`/precos/setembro/`** (tabela vigente), **FAQ** ("Quais são todos os preços?", texto e
+  JSON-LD).
+
+**Decisões e assunções:**
+
+- **Duração: 30 min, assumida** (igual à hidratação). O Juliano não informou. Se na prática o
+  tempo de pausa do produto pedir mais, é mudar em `services` + catálogo + `/agendar/` +
+  as duas tabelas de preço + a página do serviço.
+- **Sem `priceFrom`**: o serviço nasce a R$ 50 e o reajuste de 01/10 não o alcança. Se for
+  pra subir junto, entra em `service_price_changes` e ganha `priceFrom` no catálogo.
+- **A JuIA não foi redeployada.** Ela já conhece o serviço pela tabela. O que ficou de fora
+  é a sugestão automática (`serviceSuggestions` puxa a hidratação pra qualquer química; não
+  puxa a reconstrução pro alisamento) e o mapa de palavra-chave de "quero incluir também"
+  (`/hidrata/` casa, "reconstrução" não). Ajuste pequeno, mas exige `npx supabase functions
+  deploy ju-ia-site`, e deploy da JuIA não entra de carona num commit de catálogo.
+- **Não virou "família"** em `service-rules.js`: reconstrução e hidratação podem somar no
+  mesmo atendimento, e a regra das famílias é só corte/barba.
+
+Validado com `npm test`: 90 unit + 48 e2e passando. JSON-LD das três páginas tocadas parseia;
+0 links internos quebrados nas páginas editadas; 52 URLs no sitemap.
+
 ## 29.149.0 — Gerador de imagem aberto para automação; primeiro lote de fundos
 
 Pedido do Juliano em 09/09: *"faz tudo na ia o que puder"*, liberando a conta dele.

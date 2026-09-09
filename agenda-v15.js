@@ -64,6 +64,8 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     // carrinho com "Corte" ganhava Barba Express como sugestão, mesmo já tendo Barboterapia
     // dentro do combo (caso Augusto Monteiro, 22/08/2026).
     const add=n=>{const i=serviceIndex(n);if(i>=0&&!services.some(s=>s.name===n)&&!suggestions.includes(i)&&applyServiceRule(services.map(s=>s.name),n).added)suggestions.push(i)};
+    // v29.157.0: quem marcou alisamento vê a reconstrução pós-alisamento primeiro — é o complemento feito na mesma sentada.
+    if(/Alisamento|Relaxamento/.test(names))add('Reconstrução Química Pós-Alisamento');
     if(/Corte|Lavagem|Luzes|Platinado|Relaxamento/.test(names)){add('Sobrancelha Masculina');add('Barba Express');add('Depilação nasal (cera quente)');add('Hidratação / Reconstrução Capilar')}
     if(/Barba|Barboterapia/.test(names)){add('Pigmentação de Barba');add('Depilação nasal (cera quente)');add('Sobrancelha Masculina')}
     if(!suggestions.length){add('Sobrancelha Masculina');add('Depilação nasal (cera quente)')}
