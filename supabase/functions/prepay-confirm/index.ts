@@ -7,6 +7,7 @@
 // dentro, então usamos o token de quem chamou — não o service role — para essa parte.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { mensagemPixConfirmado } from '../_shared/pix-confirmado.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,6 @@ const CORS = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
-const money = (v: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const toWhatsNumber = (phone: string) => {
   const d = String(phone || '').replace(/\D/g, '')
   if (d.startsWith('55')) return d
@@ -58,9 +58,27 @@ Deno.serve(async (req) => {
       const instance = Deno.env.get('EVOLUTION_INSTANCE_NAME')
       const phone = toWhatsNumber(row.customer_phone || '')
       if (url && apikey && instance && phone) {
-        const nome = String(row.customer_name || '').split(' ')[0] || 'Tudo certo'
-        // v29.47.0 — texto revisado (pedido do Juliano, 19/08: "mensagem bonita e profissional pra tranquilizá-lo").
-        const texto = `✅ Pagamento confirmado!\n\n${nome}, o Juliano conferiu e o seu Pix de ${money(Number(row.valor || 0))} foi recebido. Seu horário está garantido — é só chegar no horário combinado, sem precisar fazer mais nada.\n\nObrigado pela confiança, te esperamos! 💈\nBarbearia do Ju`
+        const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        // v29.163.0 — caso Marcelo (09/09): o Pix confirmado às 18h00 de um horário das 17h00
+        // saiu com "é só chegar no horário combinado". A RPC devolve só nome/telefone/valor;
+        // data, hora e status vêm daqui, e o texto é escolhido pelo momento (_shared/pix-confirmado.ts,
+        // com teste). Se a consulta falhar, o módulo cai no texto original ("antes").
+        const { data: reserva } = await admin
+          .from('bookings')
+          .select('booking_date,start_time,status')
+          .eq('id', bookingId)
+          .maybeSingle()
+        const emSP = (opts: Intl.DateTimeFormatOptions) =>
+          new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hourCycle: 'h23', ...opts }).format(new Date())
+        const agoraSP = `${emSP({ year: 'numeric', month: '2-digit', day: '2-digit' })} ${emSP({ hour: '2-digit', minute: '2-digit' })}`
+        const texto = mensagemPixConfirmado({
+          clienteNome: String(row.customer_name || ''),
+          valor: Number(row.valor || 0),
+          bookingDate: String(reserva?.booking_date || ''),
+          startTime: String(reserva?.start_time || ''),
+          status: String(reserva?.status || ''),
+          agoraSP,
+        })
         const res = await fetch(`${url}/message/sendText/${instance}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey },
@@ -68,7 +86,6 @@ Deno.serve(async (req) => {
         })
         avisou = res.ok
         const sent = await res.json().catch(() => ({}))
-        const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
         await admin.from('whatsapp_messages').insert({
           phone, direction: 'out', body: texto, sent_by: 'bot',
           evolution_message_id: String(sent?.key?.id || '') || null,

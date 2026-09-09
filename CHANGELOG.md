@@ -1,3 +1,35 @@
+## 29.163.0 — Pix confirmado depois do horário: outra mensagem
+
+**Caso real (Marcelo, 09/09/2026):** horário às 17h00, Barba Express. Ele declarou o Pix às
+17h33 — já na cadeira — e o Juliano só conferiu o extrato às 18h00, ao concluir. O cliente
+recebeu o comprovante e, logo abaixo, *"Seu horário está garantido — é só chegar no horário
+combinado"*, pra um horário de que ele já tinha saído. O texto (v29.47.0) foi escrito pra quem
+paga de manhã e nunca soube que horas eram.
+
+**Regra nova, com o corte pedido pelo Juliano: o horário do agendamento.**
+- **Antes do horário:** texto de sempre — Pix recebido, horário garantido, é só chegar.
+- **Do horário em diante** (relógio de São Paulo já passou do `start_time`, **ou** a reserva já
+  está `completed`): *"O atendimento de hoje está quitado, não há mais nada a acertar. Obrigado
+  pela confiança. Até a próxima!"* — nada de "chegar".
+- **Cancelado / ausência:** só registra o recebimento (*"foi recebido e está registrado aqui na
+  barbearia"*) e abre a porta pra ele responder. **Não promete crédito nem devolução** — isso
+  é decisão do Juliano caso a caso, não do robô.
+
+**Como:** regra pura em `supabase/functions/_shared/pix-confirmado.ts` (11 testes em
+`tests/unit/pix-confirmado.spec.js`), usada pela `prepay-confirm`. A RPC `confirm_prepay`
+devolve só nome/telefone/valor, então a function passou a ler `booking_date,start_time,status`
+da reserva antes de montar o texto; se essa leitura falhar, cai no texto original.
+
+**De carona:** a mensagem antiga abria com "✅" e fechava com "💈", que o `semEmoji()` removia
+deixando um espaço órfão no começo — mesmo defeito corrigido no cupom em v29.121.0. As três
+versões já nascem sem emoji (regra de 01/09), e o teste confere.
+
+**NO AR** (09/09, ~18h22 BRT): `prepay-confirm` **v20 verify_jwt=true** via CLI. `npm run test:unit`: 104/104.
+
+**Erro meu no caminho:** o primeiro teste falhou porque o normalizador de espaço duro (U+00A0,
+que o Intl põe entre "R$" e o número) foi escrito com espaço comum. Corrigido no teste; o código
+não mudou.
+
 ## 29.162.0 — Desconto manual no "Concluir atendimento"
 
 **Caso real (09/09/2026, 17h30):** Jessica, 1ª visita, corte de cabelo (R$ 40). O Juliano
