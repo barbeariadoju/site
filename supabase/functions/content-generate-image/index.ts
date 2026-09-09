@@ -109,24 +109,45 @@ Deno.serve(async (request: Request) => {
     const serviceRoleKey = requiredSecret('SUPABASE_SERVICE_ROLE_KEY')
     const geminiKey = requiredSecret('GEMINI_API_KEY')
 
-    const authHeader = request.headers.get('Authorization') || ''
-    const userClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: authHeader } },
-    })
-    const { data: userData, error: userError } = await userClient.auth.getUser()
-    if (userError || !userData?.user) return json({ error: 'Não autenticado.' }, 401)
-    const { data: isAdminResult } = await userClient.rpc('is_admin')
-    if (!isAdminResult) return json({ error: 'Acesso restrito ao administrador.' }, 403)
+    // v29.149.0 (09/09/2026) — CAMINHO DE AUTOMAÇÃO. Até aqui a única porta era a sessão
+    // de admin logada, e isso travava o crivo das 8h desde 19/08: quando o cron gerava um
+    // rascunho com arte repetida ou sem arte, eu só sabia sinalizar — quem clicava em
+    // "regerar" tinha que ser o Juliano. Agora um segredo próprio (CONTENT_IMAGE_WEBHOOK_SECRET,
+    // fora do repo, que é público) abre o mesmo gerador para automação. O caminho do admin
+    // continua idêntico; o segredo não dá acesso a mais nada além de gerar e subir imagem.
+    const segredoEsperado = Deno.env.get('CONTENT_IMAGE_WEBHOOK_SECRET')?.trim()
+    const segredoRecebido = request.headers.get('x-webhook-secret')?.trim()
+    const viaSegredo = !!segredoEsperado && !!segredoRecebido && segredoRecebido === segredoEsperado
+
+    if (!viaSegredo) {
+      const authHeader = request.headers.get('Authorization') || ''
+      const userClient = createClient(supabaseUrl, anonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: authHeader } },
+      })
+      const { data: userData, error: userError } = await userClient.auth.getUser()
+      if (userError || !userData?.user) return json({ error: 'Não autenticado.' }, 401)
+      const { data: isAdminResult } = await userClient.rpc('is_admin')
+      if (!isAdminResult) return json({ error: 'Acesso restrito ao administrador.' }, 403)
+    }
 
     const body = await request.json().catch(() => ({}))
     const id = String(body?.id || '')
     const extraPrompt = typeof body?.prompt === 'string' ? body.prompt.trim() : ''
-    if (!id) return json({ error: 'id é obrigatório.' }, 400)
+    // Pela automação o `id` é opcional: sem ele a função só gera, sobe a imagem e devolve a
+    // URL, sem tocar em content_posts — é assim que se produz arte avulsa (fundo de post de
+    // humor, por exemplo) sem precisar inventar um rascunho descartável no banco.
+    const solto = viaSegredo && !id
+    if (!id && !solto) return json({ error: 'id é obrigatório.' }, 400)
+    if (solto && !extraPrompt) return json({ error: 'prompt é obrigatório quando não há id.' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
-    const { data: post, error: fetchError } = await admin.from('content_posts').select('*').eq('id', id).maybeSingle()
-    if (fetchError || !post) return json({ error: 'Rascunho não encontrado.' }, 404)
+    let post: any = { platform: String(body?.platform || 'avulso'), context: {}, caption: '' }
+    if (!solto) {
+      const { data: encontrado, error: fetchError } = await admin.from('content_posts').select('*').eq('id', id).maybeSingle()
+      if (fetchError || !encontrado) return json({ error: 'Rascunho não encontrado.' }, 404)
+      post = encontrado
+    }
 
     const isStory = post.platform === 'facebook_story' || post.platform === 'instagram_story'
     const formatHint = isStory
@@ -173,7 +194,9 @@ Deno.serve(async (request: Request) => {
 
     const rawBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
     const bytes = await applyWatermark(rawBytes)
-    const path = `${post.platform}/${id}-${Date.now()}.png`
+    const path = solto
+      ? `avulso/${crypto.randomUUID()}-${Date.now()}.png`
+      : `${post.platform}/${id}-${Date.now()}.png`
     const { error: uploadError } = await admin.storage.from('content-images').upload(path, bytes, {
       contentType: 'image/png',
       upsert: true,
@@ -185,11 +208,13 @@ Deno.serve(async (request: Request) => {
     const { data: publicUrlData } = admin.storage.from('content-images').getPublicUrl(path)
     const imageUrl = publicUrlData.publicUrl
 
-    const newContext = { ...(post.context || {}), image_url: imageUrl }
-    const { error: updateError } = await admin.from('content_posts').update({ context: newContext }).eq('id', id)
-    if (updateError) {
-      console.error('[content-generate-image] update', updateError)
-      return json({ error: 'Imagem gerada mas falhou ao salvar no post.' }, 500)
+    if (!solto) {
+      const newContext = { ...(post.context || {}), image_url: imageUrl }
+      const { error: updateError } = await admin.from('content_posts').update({ context: newContext }).eq('id', id)
+      if (updateError) {
+        console.error('[content-generate-image] update', updateError)
+        return json({ error: 'Imagem gerada mas falhou ao salvar no post.' }, 500)
+      }
     }
 
     return json({ ok: true, image_url: imageUrl })

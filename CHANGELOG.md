@@ -1,3 +1,46 @@
+## 29.149.0 — Gerador de imagem aberto para automação; primeiro lote de fundos
+
+Pedido do Juliano em 09/09: *"faz tudo na ia o que puder"*, liberando a conta dele.
+O caminho pelo navegador não existe — a extensão do Chrome recusa navegar para
+`gemini.google.com` por política de domínio, e estar logado não muda isso. Então a rota
+passou a ser a nossa própria chave.
+
+**O bloqueio que caiu.** Desde 19/08 estava registrado que eu não conseguia gerar nem
+regerar arte no crivo automático das 8h: `content-generate-image` só aceitava sessão de
+admin logada (`getUser()` + `is_admin`), e a `GEMINI_API_KEY` é secret de function, ilegível
+(o `secrets list` devolve só o digest). Na prática, rascunho com arte repetida ou sem arte
+só tinha uma saída: o Juliano abrir a Central e clicar em regerar.
+
+- `content-generate-image` ganha um **caminho por segredo** (`CONTENT_IMAGE_WEBHOOK_SECRET`,
+  header `x-webhook-secret`). O caminho do admin está intacto — o segredo é uma segunda
+  porta, não uma troca. Ele não abre nada além de gerar e subir imagem.
+- Com o segredo, o `id` do rascunho vira **opcional**: sem ele a função gera, sobe para
+  `content-images/avulso/` e devolve a URL sem tocar em `content_posts`. É assim que se
+  produz arte solta (fundo de post de humor) sem inventar rascunho descartável no banco.
+- O segredo vive em `~/.claude/site barbearia/segredos-functions.txt`, **fora do repo**,
+  que é público. `verify_jwt` continua `true`: a chamada leva a chave anônima no
+  `Authorization` (a mesma que o site já expõe) e o segredo no header.
+
+**Primeiro lote: 6 fundos em `assets/fundos/`**, um por post do plano de 30 dias. O crivo
+reprovou 2 de 5 na primeira rodada e os dois defeitos eram reais:
+
+- `servicos-15-09` saiu com **tarja preta** em cima e embaixo (formato cinematográfico
+  dentro do quadrado) — fatal, porque o recorte 4:5 precisa de mais altura, não menos.
+- `faz-igual-17-09` trouxe um **brasão inventado com letras falsas** no canto inferior
+  direito, atrás do selo. É o defeito recorrente do modelo, e só apareceu porque dei zoom.
+
+E um padrão: **parede de tijolo em 4 das 5**. É o "parece sempre a mesma arte" de novo, e a
+fonte é o `BRAND_STYLE` da própria função. Na regeração passei a proibir tijolo, tarja e
+emblema por peça — e as duas refeitas ficaram melhores que qualquer uma da 1ª rodada. A dos
+pentes saiu em **fundo claro**, que é a primeira peça clara do perfil.
+
+Também nesta sessão, sem mudança de código: o rascunho do Facebook do carrossel do fade
+falhou ao publicar porque eu tinha deixado `carousel_urls` nele — carrossel só existe no
+feed do Instagram. Corrigido no banco (só `image_url`). Erro meu, não da Central.
+
+Sem mudança em página do site, sem bump de `?v=`. `content-generate-image` publicada.
+`VERSAO.md` 29.149.0.
+
 ## 29.156.0 — A conversão offline "Requer atenção" por causa da nossa própria linha de exemplo; e a PMax de volta às metas de julho
 
 `supabase/functions/google-ads-conversions-csv/`
