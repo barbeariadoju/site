@@ -157,6 +157,14 @@ describe('montarMensagemComprovante', () => {
     expect(msg).toContain('Digite *2* para Insatisfeito');
   });
 
+  it('agradece a caixinha à parte, só quando houve caixinha', () => {
+    const com = norm(montarMensagemComprovante({ ...base, caixinha: 10 }));
+    const sem = norm(montarMensagemComprovante(base));
+    expect(com).toContain('agradecimento especial pela caixinha');
+    expect(com.startsWith('Olá, Wellington. Muito obrigado pela visita à Barbearia do Ju.')).toBe(true);
+    expect(sem).not.toContain('caixinha');
+  });
+
   it('convida o walk-in a agendar, numa linha só', () => {
     const msg = norm(montarMensagemComprovante({ ...base, balcao: true }));
     expect(msg).toContain('já deixo seu horário reservado');

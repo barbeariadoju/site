@@ -230,8 +230,12 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
     ].join('\n')
   }
 
+  // v29.159.0 (pedido do Juliano, 09/09/2026): quem deixou caixinha recebe um agradecimento
+  // à parte, logo na abertura. Sem emoji — regra da casa, e o teste desta mensagem confere.
+  const caixinha = Number(d.caixinha || 0)
   return [
     `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,
+    ...(caixinha > 0 ? [`E um agradecimento especial pela caixinha, ${primeiro}. É um gesto que não passa despercebido e que eu recebo com muita gratidão.`] : []),
     '',
     montarCupom(d),
     ...(d.balcao ? ['', 'Da próxima vez, se quiser, é só me chamar aqui que eu já deixo seu horário reservado.'] : []),

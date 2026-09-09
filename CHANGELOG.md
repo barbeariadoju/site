@@ -1,3 +1,35 @@
+## 29.159.0 — Caixinha no Balcão, e um agradecimento à parte no comprovante de quem deixou
+
+Caso real, 09/09 às 13h23: o Juliano fechando um walk-in no Atendimento Balcão (Heineken ×2,
+R$ 68), o cliente deixou caixinha e não havia onde registrar. O "Concluir" da Agenda tem o
+campo desde a v29.20.0; o Balcão nasce de uma RPC própria e nunca ganhou o parâmetro. Pedido
+dele na sequência: *"um agradecimento especial na mensagem que vai quando a gente conclui o
+serviço, pros casos que o cliente der caixinha"*.
+
+- **Campo "Caixinha" no Balcão**, logo abaixo da forma de pagamento. Vai pro mesmo
+  `bookings.tip_amount` da Agenda: **fora do faturamento** (é do barbeiro), somado à parte no
+  Financeiro, e sai no cupom como "Caixinha, recebida à parte". Aceita vírgula ("5,00").
+- **Migration 146**: `admin_register_walkin_visit` ganha `p_tip_amount` (default 0). A
+  assinatura antiga foi derrubada antes de criar a nova — com as duas convivendo, uma chamada
+  sem o parâmetro casaria com ambas e o PostgREST devolveria "ambiguous function": o Balcão
+  inteiro pararia de registrar. Mesmo cuidado da migration 050. Aplicada em produção às
+  ~14h de 09/09; grants conferidos antes (era EXECUTE pra PUBLIC, guardado pelo `is_admin()`
+  dentro da função — continua assim).
+- **Agradecimento no comprovante** (`_shared/comprovante.ts`, fonte única): quando há
+  caixinha, entra uma linha logo depois da abertura — *"E um agradecimento especial pela
+  caixinha, {nome}. É um gesto que não passa despercebido e que eu recebo com muita
+  gratidão."* Vale pra Agenda e pra Balcão, porque os dois passam pelo mesmo texto.
+  **Sem emoji**, nem o 🙏: a regra permite ele em agradecimento, mas o teste desta mensagem
+  proíbe qualquer emoji no cupom desde a v29.121.0 e o documento tem que continuar parecendo
+  documento. Teste novo cobre os dois lados (com caixinha agradece; sem caixinha a palavra
+  nem aparece).
+- **Deploy**: `satisfaction-dispatch` **v57** via CLI, `verify_jwt=false` conferido (é o que o
+  config pede: o cron chama sem sessão). `admin-version.json` + `ADMIN_VERSION` → 29.159.0
+  (o Balcão aberto na barbearia recarrega sozinho e ganha o campo); `?v=` do
+  `admin-balcao-v29.js` e do `admin-v15-4-core.js` bumpados.
+
+Validado com `npm test`: 91 unit (1 novo) + 48 e2e passando.
+
 ## 29.158.0 — JuIA passa a oferecer a reconstrução pra quem marca alisamento
 
 Complemento da 29.157.0, com o "pode redeployar" do Juliano em 09/09. Duas mudanças na

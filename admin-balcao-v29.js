@@ -225,6 +225,9 @@
         p_payment_method: payment,
         p_notes: $('balcao-notes').value.trim() || null,
         p_selected_products: products.map(p => ({ name: p.name, price: p.price })),
+        // v29.159.0 — caixinha no walk-in (pedido do Juliano, 09/09). Mesmo campo tip_amount
+        // do "Concluir" da Agenda: fora do faturamento, sai no comprovante com agradecimento.
+        p_tip_amount: Math.max(0, Number(String($('balcao-tip').value).replace(',', '.'))) || 0,
       });
       if (error) { msg.textContent = error.message; return; }
 
@@ -268,7 +271,7 @@
       msg.textContent = 'Atendimento registrado.' + note;
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
-      $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = '';
+      $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = ''; $('balcao-tip').value = '';
       document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); });
       linkedCustomerId = null;
       renderCustomerTag(null);
