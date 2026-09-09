@@ -76,6 +76,32 @@ describe('montarCupom', () => {
 
   // v29.138.0 — caso Joao (05/09/2026): "Bônus de fidelidade" no Concluir saía com Total R$ 40,00
   // e "Pago com prêmio do cartão fidelidade" — o cliente que não pagou recebeu cobrança.
+  // v29.162.0 — desconto manual (caso Jessica, 09/09/2026): corte de R$ 40 fechado pela metade.
+  // O chamador manda o preço CHEIO em servicoValor e o abatimento em `desconto`.
+  it('abre subtotal e linha "Desconto" quando houve desconto manual, sem expor o motivo', () => {
+    const cupom = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo', servicoValor: 40, desconto: 20 }));
+    expect(cupom).toContain('Corte de cabelo — R$ 40,00');
+    expect(cupom).toContain('Subtotal: R$ 40,00');
+    expect(cupom).toContain('Desconto: -R$ 20,00');
+    expect(cupom).toContain('*Total: R$ 20,00*');
+    expect(cupom).toContain('Pago no Pix');
+    expect(cupom).not.toContain('fidelidade');
+  });
+
+  it('desconto manual nunca passa do serviço nem some com o prêmio da fidelidade', () => {
+    const cupom = norm(montarCupom({ ...base, servicoValor: 50, descontoFidelidade: 20, desconto: 99, produtos: [{ nome: 'Água mineral', valor: 4 }] }));
+    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 20,00');
+    // sobra R$ 30 de serviço; o desconto é limitado a isso e o produto continua devido
+    expect(cupom).toContain('Desconto: -R$ 30,00');
+    expect(cupom).toContain('*Total: R$ 4,00*');
+  });
+
+  it('desconto integral diz que não há nada a pagar', () => {
+    const cupom = norm(montarCupom({ ...base, servicoValor: 40, desconto: 40, pagamentoServico: '' }));
+    expect(cupom).toContain('*Total: R$ 0,00*');
+    expect(cupom).toContain('Nada a pagar');
+  });
+
   it('fidelidade sem desconto registrado zera o serviço inteiro', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 40, pagamentoServico: 'fidelidade' }));
     expect(cupom).toContain('Corte de cabelo — R$ 40,00');

@@ -99,7 +99,11 @@
     // é dinheiro do barbeiro, não faturamento, e o cupom do cliente diz o mesmo ("à parte").
     const tip=Number(x.tip_amount||0);
     const tipHtml=tip>0?` · 💰 Caixinha ${money(tip)} <i>(à parte)</i>`:'';
-    return `<small class="admin-price-summary">Serviços ${money(s)} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}${tipHtml}</small>`;
+    // v29.162.0 — desconto manual (migration 147): service_price já é o líquido; o card
+    // mostra o preço de tabela ao lado e o motivo, pra ele lembrar o que combinou.
+    const disc=Number(x.discount_amount||0);
+    const discHtml=disc>0?` · 🏷️ Desconto ${money(disc)}${x.discount_reason?` <i>(${esc(x.discount_reason)})</i>`:''}`:'';
+    return `<small class="admin-price-summary">Serviços ${money(s)}${disc>0?` <i>(tabela ${money(s+disc)})</i>`:''} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}${discHtml}${tipHtml}</small>`;
   }
   // v29.12.0 — o admin fica aberto o dia inteiro no celular do Juliano e NUNCA recarrega
   // sozinho. Em 11/08/2026 isso custou caro: três correções foram publicadas de manhã e à
@@ -108,7 +112,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.160.0'
+  const ADMIN_VERSION='29.162.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava

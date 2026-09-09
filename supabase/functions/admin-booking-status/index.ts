@@ -129,6 +129,16 @@ Deno.serve(async (request: Request) => {
       ? { name: String(rawFree.name).trim().slice(0, 120), price: Math.max(0, Number(rawFree.price || 0)) }
       : null
     if (rawFree && !loyaltyFreeService) return fail('validation_loyalty_free_service', 'Serviço do prêmio de fidelidade inválido.', 400, { requestId })
+    // v29.162.0 — desconto manual no Concluir (caso Jessica, 09/09/2026: corte rápido fechado
+    // pela metade, com manutenção semanal combinada). A tela manda {amount, reason} em R$.
+    // Convenção (migration 147): service_price fica LÍQUIDO (o que foi pago), discount_amount
+    // guarda o abatimento e discount_reason o motivo. Preço cheio = soma dos dois. A presença
+    // do objeto é autoritativa: {amount:0} zera um desconto anterior.
+    const rawDiscount = body?.discount && typeof body.discount === 'object' ? body.discount : null
+    const hasDiscountChange = rawDiscount !== null
+    const discountAmountRaw = Number(rawDiscount?.amount)
+    const discountAmount = hasDiscountChange && Number.isFinite(discountAmountRaw) && discountAmountRaw > 0 ? Math.round(discountAmountRaw * 100) / 100 : 0
+    const discountReason = String(rawDiscount?.reason || '').trim().slice(0, 120)
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
     const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
 
@@ -177,7 +187,7 @@ Deno.serve(async (request: Request) => {
     // "ja e cliente" da tela de Atendimento (prior_visits) grava na hora, antes e
     // independente de concluir o atendimento.
     const wantsExtras = Boolean(loyaltyDelta || markRecurring || visitNumber !== null)
-    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate && !wantsExtras && !loyaltyFreeService) {
+    if (!hasStatusChange && !selectedProducts && !hasPaymentMethodChange && !hasProductsPaymentMethodChange && !hasGoogleReviewChange && !serviceUpdate && !wantsExtras && !loyaltyFreeService && !hasDiscountChange) {
       return fail('validation_nothing_to_update', 'Informe um status, o serviço, os produtos ou a forma de pagamento a atualizar.', 400, { requestId })
     }
     if (hasStatusChange && !allowedStatuses.includes(status)) return fail('validation_status', 'Status inválido.', 400, { requestId, status })
@@ -260,17 +270,34 @@ Deno.serve(async (request: Request) => {
       updatePayload.selected_products = selectedProducts
       updatePayload.products_price = selectedProducts.reduce((a, p) => a + p.price, 0)
     }
+    // v29.162.0 — preço do serviço em três tempos: cheio (tabela), desconto manual, líquido.
+    //   cheio    = o que a tela mandou no `service` (soma dos serviços de tabela) ou, sem
+    //              troca de serviço, o gravado reconstruído (líquido + desconto guardado);
+    //   desconto = o do pedido, se veio; senão o que já estava — e é PRESERVADO quando só o
+    //              serviço muda (o "✎ Editar" corrige o serviço e não conhece o desconto;
+    //              sem isso, editar Corte→Corte+Sobrancelha devolvia o preço cheio calado);
+    //   líquido  = cheio − desconto, nunca negativo. É o que vai em service_price.
+    const descontoAtual = Math.max(0, Number(current.discount_amount || 0))
+    const precoCheio = Math.max(0, serviceUpdate ? serviceUpdate.price : Number(current.service_price || 0) + descontoAtual)
+    const descontoFinal = Math.min(precoCheio, hasDiscountChange ? discountAmount : descontoAtual)
+    const precoLiquido = Math.round(Math.max(0, precoCheio - descontoFinal) * 100) / 100
     if (serviceUpdate) {
       updatePayload.service_name = serviceUpdate.name
-      updatePayload.service_price = serviceUpdate.price
+      updatePayload.service_price = precoLiquido
       updatePayload.duration_minutes = serviceUpdate.duration_minutes
+    }
+    if (hasDiscountChange || (serviceUpdate && descontoAtual > 0)) {
+      updatePayload.service_price = precoLiquido
+      updatePayload.discount_amount = descontoFinal
+      updatePayload.discount_reason = descontoFinal > 0 ? ((hasDiscountChange ? discountReason : String(current.discount_reason || '')) || null) : null
     }
     // v29.138.0 — prêmio da fidelidade. Três entradas possíveis, uma saída só:
     //   (a) a tela mandou o serviço premiado → desconto = preço dele (limitado ao serviço);
     //   (b) pagamento 'fidelidade' sem objeto → o serviço inteiro foi o prêmio;
     //   (c) pagamento em dinheiro/cartão/Pix sem objeto → nenhum prêmio (zera resíduo).
+    // v29.162.0: o teto do prêmio é o preço LÍQUIDO — não dá pra premiar mais do que se cobrou.
     if (hasPaymentMethodChange || loyaltyFreeService) {
-      const precoServico = Number((serviceUpdate ? serviceUpdate.price : current.service_price) || 0)
+      const precoServico = precoLiquido
       if (loyaltyFreeService) {
         updatePayload.loyalty_discount = Math.min(loyaltyFreeService.price, precoServico)
         updatePayload.loyalty_free_service = loyaltyFreeService.name
@@ -344,6 +371,8 @@ Deno.serve(async (request: Request) => {
             products: selectedProducts ?? undefined,
             payment_method: hasPaymentMethodChange ? paymentMethod : undefined,
             products_payment_method: hasProductsPaymentMethodChange ? productsPaymentMethod : undefined,
+            // v29.162.0 — desconto manual fica na trilha: quanto abateu, do que, e por quê.
+            discount: hasDiscountChange && descontoFinal > 0 ? { amount: descontoFinal, list_price: precoCheio, reason: discountReason || null } : undefined,
             changed_by: authData.user.id,
             booking_date: current.booking_date,
             start_time: current.start_time,

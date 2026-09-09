@@ -1,3 +1,50 @@
+## 29.162.0 — Desconto manual no "Concluir atendimento"
+
+**Caso real (09/09/2026, 17h30):** Jessica, 1ª visita, corte de cabelo (R$ 40). O Juliano
+fechou com ela por **metade do valor** — o corte foi rápido e ficou combinado que ela volta
+toda semana pra manutenção. Na hora de concluir, não havia onde registrar isso: o modal só
+conhecia o **prêmio da fidelidade** e a **cortesia (R$ 0)**. As saídas eram ruins as duas:
+concluir a R$ 40 (Financeiro com dinheiro que não entrou) ou editar o serviço na mão pra
+R$ 20 (some o rastro de que o preço de tabela era 40 e de por que baixou).
+
+**O que entrou:**
+- **Modal "Concluir"** ganhou a seção **Desconto 🏷️** logo depois da forma de pagamento:
+  atalhos **10% / 20% / 30% / 50%** (calculam sobre os serviços marcados e *acompanham* se
+  ele marcar outro serviço depois), campo em R$ pra valor livre (digitar solta o atalho) e
+  campo de **motivo**. O "Total a cobrar" já desconta ao vivo. Teto: o que sobrou do serviço
+  depois do prêmio da fidelidade; cortesia ignora o desconto.
+- **Banco (migration 147):** `bookings.discount_amount` e `bookings.discount_reason`.
+- **Servidor (`admin-booking-status`):** recebe `discount:{amount,reason}`, grava o
+  serviço **líquido** em `service_price` e o abatimento nas colunas novas. A presença do
+  objeto é autoritativa (`amount:0` zera). Quando o **"✎ Editar"** troca o serviço sem falar
+  de desconto, o desconto que já estava é **preservado** e reaplicado sobre o preço novo —
+  senão editar Corte→Corte+Sobrancelha devolvia o preço cheio calado. O teto do prêmio da
+  fidelidade passou a ser o preço líquido. O desconto vai pra trilha do cliente
+  (`customer_timeline.details.discount`, com o preço de tabela).
+- **Comprovante do cliente** (`_shared/comprovante.ts`): item com o **preço cheio**,
+  `Subtotal`, linha **`Desconto: -R$ 20,00`** e Total — conta aberta, como o Juliano
+  pediu no caso Wellington. O **motivo não sai** (é anotação interna, mesma regra da
+  cortesia). Três testes novos em `tests/unit/comprovante.spec.js` (linha do desconto,
+  teto com prêmio de fidelidade, desconto integral = "Nada a pagar").
+- **Card da agenda:** `Serviços R$ 20,00 (tabela R$ 40,00) · … · 🏷️ Desconto R$ 20,00
+  (50% · corte rápido, manutenção semanal)`.
+
+**Decisão registrada — líquido em `service_price`, ao contrário da fidelidade.** A
+fidelidade (v29.10.0) deixou `service_price` bruto e criou `loyalty_discount`; cada tela
+que soma receita precisou aprender a subtrair — Financeiro, Relatórios, Visão geral, a
+cota-parte em dinheiro (migration 114), a conversão offline do Google Ads (134), o cupom.
+Repetir isso pro desconto manual seria mexer em 6 lugares e torcer pra não esquecer o 7º.
+Com o líquido em `service_price`, **todos esses lugares já ficam certos sem uma linha
+mudada**; o preço cheio se reconstrói somando `discount_amount`, e é só o cupom e o card
+que precisam dele. O custo é a assimetria entre as duas colunas de desconto, documentada na
+migration e no comentário da coluna.
+
+**NO AR** (09/09, ~18h12 BRT): migration 147 aplicada via `apply_migration` (`success`); `admin-booking-status` **v59** e `satisfaction-dispatch` **v58** via CLI (`npx supabase functions deploy …`), `verify_jwt` conferido igual ao anterior (true/false) na listagem depois do deploy. `npm test`: 94 unit + 48 e2e, tudo verde.
+
+**Fora desta versão, de propósito:** o "✎ Editar" ainda não tem campo pra *alterar* um
+desconto já dado (só o preserva); o Balcão (walk-in) não tem desconto; o Financeiro não
+mostra um total de "descontos concedidos no mês". São três pedidos separados se ele quiser.
+
 ## 29.161.1 — Varredura de vocabulário: palavras proibidas vivas no site
 
 Enquanto padronizava as telas de agendamento (as que o cliente vê), renderizei

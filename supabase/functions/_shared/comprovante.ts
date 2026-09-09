@@ -39,6 +39,13 @@ export type DadosComprovante = {
    * ("Corte + Barba Express" com só o corte no prêmio). Vazio = "prêmio do cartão fidelidade".
    */
   fidelidadeServico?: string
+  /**
+   * v29.162.0 — desconto manual dado no Concluir (caso Jessica, 09/09/2026: corte rápido pela
+   * metade, manutenção semanal combinada). Em R$, já limitado ao que sobrou do serviço depois
+   * do prêmio da fidelidade. Aqui `servicoValor` é o preço CHEIO (o chamador reconstrói
+   * service_price + discount_amount), e esta linha mostra o abatimento — conta aberta.
+   */
+  desconto?: number
   caixinha: number
   cortesia: boolean
   cortesiaMotivo: string
@@ -164,16 +171,20 @@ export const montarCupom = (d: DadosComprovante) => {
   // Cortesia zera o total do documento. Antes da v29.121.0 o atendimento por conta da casa
   // saía com o valor cheio e sem nenhuma linha de pagamento — o cliente que NÃO pagou
   // recebia um comprovante com cara de cobrança.
-  const total = d.cortesia ? 0 : Math.max(0, bruto - desconto)
+  // v29.162.0 — desconto manual: só o que couber no serviço depois do prêmio, nunca negativo.
+  const descontoManual = d.cortesia ? 0 : Math.min(Math.max(0, Number(d.desconto || 0)), Math.max(0, servicoValor - desconto))
+  const total = d.cortesia ? 0 : Math.max(0, bruto - desconto - descontoManual)
 
   const totais: string[] = []
-  if (desconto > 0 || d.cortesia) totais.push(`Subtotal: ${money(bruto)}`)
+  if (desconto > 0 || descontoManual > 0 || d.cortesia) totais.push(`Subtotal: ${money(bruto)}`)
   if (desconto > 0 && !d.cortesia) {
     // v29.138.0 — a linha diz qual serviço foi o prêmio quando isso importa (combo). "Prêmio"
     // e não "desconto": o cliente trocou 10 carimbos por aquilo, não ganhou abatimento.
     const qual = String(d.fidelidadeServico || '').trim()
     totais.push(`Prêmio do cartão fidelidade${qual ? ` (${qual})` : ''}: -${money(desconto)}`)
   }
+  // O motivo do desconto NÃO sai: é anotação interna, como o da cortesia.
+  if (descontoManual > 0) totais.push(`Desconto: -${money(descontoManual)}`)
   if (d.cortesia) totais.push(`Cortesia (por conta da casa): -${money(bruto)}`)
   totais.push(`*Total: ${money(total)}*`)
 
@@ -188,6 +199,8 @@ export const montarCupom = (d: DadosComprovante) => {
     totais.push('Nada a pagar — cortesia da casa')
   } else if (total <= 0 && desconto > 0) {
     totais.push('Nada a pagar — prêmio do cartão fidelidade')
+  } else if (total <= 0 && descontoManual > 0) {
+    totais.push('Nada a pagar')
   } else if (pagoComFidelidade && produtos.length > 0) {
     // Serviço no prêmio, produto pago: só o produto tem forma de pagamento.
     totais.push(pagProdutos ? `Produtos pagos ${pagProdutos}` : 'Produtos pagos à parte')

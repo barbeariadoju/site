@@ -242,7 +242,7 @@
         modal.id='payment-method-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o que foi feito de verdade e escolha a forma de pagamento — controle interno pro Financeiro, o cliente não vê esta tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><div data-google-review-block><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-already-reviewed><small>⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)</small></label></div><p class="privacy-note" data-already-reviewed-note hidden style="margin-top:10px">⭐ Este cliente já avaliou no Google — o pedido de avaliação não será enviado.</p><div class="checkout-footer"><div data-checkout-total></div><button type="button" class="btn primary" data-payment-confirm>Concluir ✓</button></div></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-payment-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-payment-cancel>&times;</button><h2>Concluir atendimento</h2><p class="privacy-note">Confira o que foi feito de verdade e escolha a forma de pagamento — controle interno pro Financeiro, o cliente não vê esta tela.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin:16px 0 4px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin:16px 0 4px">Forma de pagamento</h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><h3 style="margin:16px 0 4px">Desconto 🏷️ <small class="field-help" style="font-weight:400">opcional</small></h3><div class="payment-method-grid" data-discount-quick><button type="button" data-discount-pct="10">10%</button><button type="button" data-discount-pct="20">20%</button><button type="button" data-discount-pct="30">30%</button><button type="button" data-discount-pct="50">50%</button></div><input type="number" data-discount-amount min="0" step="0.01" inputmode="decimal" placeholder="Valor do desconto em R$ (ex.: 20,00)" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:8px"><input type="text" data-discount-reason maxlength="120" placeholder="Motivo (ex.: corte rápido, manutenção semanal)" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><small class="field-help" style="display:block;margin:4px 0 10px">Abate do valor do serviço. O Financeiro já recebe o valor com desconto e o comprovante do cliente mostra a linha "Desconto". O motivo é anotação sua, não vai pro cliente.</small><h3 style="margin:16px 0 4px">Caixinha 💰 <small class="field-help" style="font-weight:400">opcional</small></h3><input type="number" data-tip-amount min="0" step="0.01" inputmode="decimal" placeholder="0,00" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit"><small class="field-help" style="display:block;margin:4px 0 10px">Gorjeta que o cliente deu além do valor. Não entra no faturamento — fica registrada no mês (Financeiro) e no atendimento.</small><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-courtesy><small>🎁 Cortesia — por conta da casa (funcionário, gentileza). Sai com R$ 0 no Financeiro, sem forma de pagamento e sem ponto de fidelidade.</small></label><input type="text" data-courtesy-reason maxlength="120" placeholder="Motivo (ex.: João, funcionário)" hidden style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"><h3 style="margin:16px 0 4px">Cliente antigo (opcional)</h3><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:0 0 6px">Pontos de fidelidade extra<input type="number" data-loyalty-delta min="-50" max="50" step="1" placeholder="0" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Carimbos do cartão de papel de antes do sistema, positivo pra somar. Além do ponto normal que esse atendimento já credita sozinho.</small><label style="display:block;color:var(--gold2);font-size:.84rem;font-weight:800;margin:10px 0 6px">Nº desta visita, contando desde antes do sistema<input type="number" data-visit-number min="1" max="500" step="1" style="width:100%;background:#090909;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;margin-top:6px"></label><small class="field-help" style="display:block;margin:-2px 0 10px">Só preencha se o sistema estiver contando errado — ex.: se este é o 6º corte dele contando os de antes do sistema, digite 6. A etiqueta (1ª visita/recorrente) passa a seguir esse número.</small><div data-google-review-block><label class="admin-checkbox-row" style="margin-top:10px"><input type="checkbox" data-request-google-review checked><small>Pedir avaliação no Google se o cliente ficar satisfeito na pesquisa</small></label><label class="admin-checkbox-row" style="margin-top:6px"><input type="checkbox" data-already-reviewed><small>⭐ Este cliente JÁ avaliou no Google — não pedir mais (fica salvo no cadastro dele)</small></label></div><p class="privacy-note" data-already-reviewed-note hidden style="margin-top:10px">⭐ Este cliente já avaliou no Google — o pedido de avaliação não será enviado.</p><div class="checkout-footer"><div data-checkout-total></div><button type="button" class="btn primary" data-payment-confirm>Concluir ✓</button></div></section>';
         document.body.appendChild(modal);
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
@@ -283,6 +283,29 @@
         if(courtesyBox.checked)modal.querySelector('[data-request-google-review]').checked=false;
       };
       courtesyBox.addEventListener('change',onCourtesyToggle);
+      // v29.162.0 — desconto manual (caso Jessica, 09/09/2026: corte rápido fechado pela
+      // metade, com manutenção semanal combinada). Atalhos de % calculam sobre o total dos
+      // serviços marcados e ACOMPANHAM se ele marcar/desmarcar serviço depois; digitar um
+      // valor em R$ solta o atalho. O teto é o que sobrou do serviço depois do prêmio da
+      // fidelidade; cortesia ignora o desconto (já é R$ 0). Zerado a cada abertura.
+      const discountQuick=modal.querySelector('[data-discount-quick]');
+      const discountInput=modal.querySelector('[data-discount-amount]');
+      const discountReasonInput=modal.querySelector('[data-discount-reason]');
+      let selectedDiscountPct=0;
+      discountInput.value='';discountReasonInput.value='';
+      discountQuick.querySelectorAll('[data-discount-pct]').forEach(b=>b.classList.remove('is-selected'));
+      const readDiscount=max=>{const v=Number(String(discountInput.value||'').replace(',','.'));return Math.min(Math.max(0,Number.isFinite(v)?v:0),Math.max(0,max))};
+      const onDiscountQuick=e=>{
+        const btn=e.target.closest('[data-discount-pct]');if(!btn)return;
+        const pct=Number(btn.dataset.discountPct);
+        selectedDiscountPct=selectedDiscountPct===pct?0:pct;
+        discountQuick.querySelectorAll('[data-discount-pct]').forEach(b=>b.classList.toggle('is-selected',Number(b.dataset.discountPct)===selectedDiscountPct));
+        if(!selectedDiscountPct)discountInput.value='';
+        renderTotal();
+      };
+      const onDiscountTyped=()=>{selectedDiscountPct=0;discountQuick.querySelectorAll('[data-discount-pct]').forEach(b=>b.classList.remove('is-selected'));renderTotal()};
+      discountQuick.addEventListener('click',onDiscountQuick);
+      discountInput.addEventListener('input',onDiscountTyped);
       // Placeholder mostra o que o sistema já conta pra esta reserva — o Juliano só digita
       // se discordar (caso Tatiane 12/08: a palavra dele é o dado, o checkbox chutava 6).
       const visitInput=modal.querySelector('[data-visit-number]');
@@ -329,9 +352,13 @@
         const pr=readChecklistProducts(modal).reduce((a,p)=>a+Number(p.price||0),0);
         const isCourtesy=courtesyBox.checked;
         const premio=free?Number(free.price||0):0;
-        const svShow=isCourtesy?0:Math.max(0,sv-premio);
+        const baseDesconto=Math.max(0,sv-premio);
+        // v29.162.0 — atalho de % recalcula sobre o serviço atual; valor digitado é respeitado até o teto
+        if(selectedDiscountPct>0){const calc=Math.round(baseDesconto*selectedDiscountPct)/100;if(Number(discountInput.value)!==calc)discountInput.value=calc?String(calc):''}
+        const desconto=isCourtesy?0:readDiscount(baseDesconto);
+        const svShow=isCourtesy?0:Math.max(0,baseDesconto-desconto);
         const due=Math.max(0,svShow+pr-paidValue);
-        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · 🎁 fidelidade −${money(premio)} (${esc(free.name)})`:''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
+        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · 🎁 fidelidade −${money(premio)} (${esc(free.name)})`:''}${desconto>0?` · 🏷️ desconto −${money(desconto)}${selectedDiscountPct?` (${selectedDiscountPct}%)`:''}`:''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
       };
       const onRestClick=e=>{const btn=e.target.closest('[data-rest-option]');if(!btn)return;selectedRestPayment=selectedRestPayment===btn.dataset.restOption?'':btn.dataset.restOption;loyaltyPick.querySelectorAll('[data-rest-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.restOption===selectedRestPayment));renderTotal()};
       loyaltyPick.addEventListener('click',onRestClick);
@@ -437,11 +464,23 @@
           tip_amount:Math.max(0,Number(modal.querySelector('[data-tip-amount]').value))||0,
           courtesy:isCourtesy,
           courtesy_reason:isCourtesy?courtesyReasonInput.value.trim():'',
+          // v29.162.0 — desconto manual: sempre vai (amount 0 = sem desconto), o servidor
+          // grava service_price líquido + discount_amount/discount_reason (migration 147).
+          // O motivo guarda a % escolhida junto com o texto, pra ficar legível no card.
+          discount:(()=>{
+            const services=readChecklistServices(modal);
+            const sv=services.reduce((a,s)=>a+Number(s.price||0),0);
+            const premio=(!isCourtesy&&freeSvc)?Number(freeSvc.price||0):0;
+            const amount=isCourtesy?0:readDiscount(Math.max(0,sv-premio));
+            const texto=discountReasonInput.value.trim();
+            const reason=amount>0?[selectedDiscountPct?`${selectedDiscountPct}%`:'',texto].filter(Boolean).join(' · '):'';
+            return {amount,reason};
+          })(),
         });
       };
       const cancelEls=modal.querySelectorAll('[data-payment-cancel]');
       const confirmEl=modal.querySelector('[data-payment-confirm]');
-      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle);alreadyBox.removeEventListener('change',onAlreadyToggle);modal.removeEventListener('change',onAnyItemChange);splitToggle.removeEventListener('click',onSplitToggle)}
+      function cleanup(){cancelEls.forEach(el=>el.removeEventListener('click',onCancel));paymentSlot.removeEventListener('click',onPaymentClick);productsPaymentSlot.removeEventListener('click',onProductsPaymentClick);confirmEl.removeEventListener('click',onConfirm);courtesyBox.removeEventListener('change',onCourtesyToggle);alreadyBox.removeEventListener('change',onAlreadyToggle);modal.removeEventListener('change',onAnyItemChange);splitToggle.removeEventListener('click',onSplitToggle);discountQuick.removeEventListener('click',onDiscountQuick);discountInput.removeEventListener('input',onDiscountTyped)}
       cancelEls.forEach(el=>el.addEventListener('click',onCancel));
       paymentSlot.addEventListener('click',onPaymentClick);
       productsPaymentSlot.addEventListener('click',onProductsPaymentClick);
@@ -537,12 +576,13 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='',completionLoyaltyFree=null;
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='',completionLoyaltyFree=null,completionDiscount=null;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
       if(!choice)return;
       paymentMethod=choice.payment;
+      completionDiscount=choice.discount||null;
       completionLoyaltyFree=choice.loyalty_free_service||null;
       completionProducts=choice.products;
       completionService=choice.service;
@@ -584,6 +624,8 @@
       // v29.20.0: caixinha (fora do faturamento) e cortesia (serviço por conta da casa)
       if(completionTipAmount>0)body.tip_amount=completionTipAmount;
       if(completionCourtesy){body.courtesy=true;if(completionCourtesyReason)body.courtesy_reason=completionCourtesyReason}
+      // v29.162.0: desconto manual (vai sempre na conclusão; amount 0 = sem desconto)
+      if(completionDiscount)body.discount=completionDiscount;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
       if(data?.extras?.attempted&&!data.extras.applied){alert(`Atendimento concluído, mas os extras (pontos de fidelidade / nº da visita) NÃO foram salvos: ${data.extras.error||'motivo desconhecido'}`)}
