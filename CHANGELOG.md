@@ -23,10 +23,14 @@ dois "faturados" diferentes.
 v29.159.0 na abertura e a linha "Caixinha, recebida à parte: R$ 32,00"; ele respondeu *1*
 (satisfeito) um minuto depois.
 
-⚠️ **Pego de raspão, fora do escopo, fica registrado:** a resposta automática ao "1" da
-pesquisa ("Que ótimo saber disso! 😊 … 🙏 ⭐ … 😉 … 💬") sai com quatro emojis além do 🙏.
-Viola a regra de 01/09 (sem emoji pra cliente). Ela não passa pelo `sem-emoji.ts` — fica pra
-próxima versão.
+**Alarme falso meu, corrigido pelo Juliano com o print do WhatsApp:** eu registrei aqui que a
+resposta automática ao *1* da pesquisa saía com emoji além do 🙏. Não sai. O que eu li foi
+`whatsapp_messages.body`, que guarda o texto ANTES do filtro — o `whatsapp-webhook` aplica
+`semEmoji()` no POST pra Evolution (linha do envio) e grava o corpo cru no log (linha do
+insert). No celular do cliente chegou limpo: "Que ótimo saber disso! Ficamos muito felizes…",
+só o 🙏 no pedido de avaliação. Lição: **o log não é a mensagem** — pra conferir o que o
+cliente recebeu, conferir o WhatsApp, não a tabela. Fica como melhoria futura gravar no log o
+texto já filtrado, pra tabela e tela baterem; não vale um deploy do webhook sozinha.
 
 `ADMIN_VERSION` + `admin-version.json` → 29.160.0; `?v=` de `admin-v15-4-core.js` e
 `admin-v15-4-dashboard.js` bumpados nas 7 páginas do painel. `npm test`: 91 unit + 48 e2e
