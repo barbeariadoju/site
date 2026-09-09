@@ -1,3 +1,37 @@
+## 29.161.1 — Varredura de vocabulário: palavras proibidas vivas no site
+
+Enquanto padronizava as telas de agendamento (as que o cliente vê), renderizei
+`/agendar/` num celular de verdade e li o card da Barboterapia: ele tinha o selo
+**"Premium"** — palavra que o Juliano proibiu em 14/08/2026 — e a descrição falava em
+**"espuma"**, quando ele usa **gel** (correção dele nesta mesma conversa, 09/09).
+
+Isso motivou uma varredura das 80 páginas atrás de todo o vocabulário vetado.
+
+**Corrigido (texto que o cliente lê):**
+- `agendar/index.html`: selo "Premium" → "A mais completa"; "espuma" → "gel".
+- `guia-barba-masculina.html`: "versão premium" → "a mais completa"; "espuma" → "gel".
+- `perguntas-frequentes.html`: "espuma" → "gel".
+- Tabela `services` (banco): "acabamento premium" e duas ocorrências de "espuma" em
+  `description` — é o texto que a JuIA cita e que alimenta a Central.
+
+**Falsos positivos, deixados como estão** (registro para a próxima varredura não repetir
+o trabalho): `crm-premium-fields` e `mini-grid premium` são nomes de classe CSS, não texto;
+"Nada sofisticado, e nada caro" no blog usa a palavra negando; "sem espuma ou gel adequado"
+é dica genérica de barbear em casa; "Horários disponíveis" em `/agendar/horario/` e
+`reagendar.html` é o rótulo do seletor de horário, não anúncio de agenda vazia.
+
+**Duas coisas que eu NÃO mexi porque a decisão é do Juliano**, e ficam registradas:
+1. A **garantia de ajuste aparece em 5 páginas**, incluindo o hero da home ("Volte em até 7
+   dias e a gente acerta, sem cobrar nada"). A regra de 06/09 proíbe isso em **conteúdo de
+   marketing** e mantém a política como **atendimento** — então no FAQ e na página de serviço
+   é legítimo, mas na primeira dobra da home é vitrine. O CLAUDE.md ainda lista "hero com
+   preço e garantia" como decisão tomada; mudar isso é chamada dele.
+2. A home cita uma avaliação real: *"A melhor barbearia da região!" — Rogerio*. Superlativo
+   **dito pelo cliente** é prova social, e a regra veta o auto-elogio, não a citação. Mantido.
+
+91 unitários e 48 e2e passando (o `routes.spec.js` falhou uma vez por flake de browser e
+passou no retry, como já aconteceu ontem).
+
 ## 29.161.0 — Sistema de design do site público: forma e tipografia padronizadas
 
 Pedido do Juliano em 09/09/2026, depois de ver o agendamento da Casa Scalabrini (concorrente
