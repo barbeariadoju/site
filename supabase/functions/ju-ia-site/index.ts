@@ -510,7 +510,11 @@ function serviceSuggestions(chosen:any[]){
  if(!names.some(n=>n.includes('Sobrancelha')))out.push(findService('Sobrancelha Masculina'))
  if(!chosen.some(s=>s.category==='barba'||s.category==='combo'))out.push(findService('Barba Express'))
  if(!names.some(n=>n.includes('Depilação nasal')))out.push(findService('Depilação nasal (cera quente)'))
- if(chosen.some(s=>s.category==='quimica')&&!names.some(n=>n.includes('Hidratação')))out.unshift(findService('Hidratação / Reconstrução Capilar'))
+ // v29.158.0: alisamento puxa a Reconstrução Química Pós-Alisamento (feita na mesma sentada);
+ // as outras químicas continuam puxando a hidratação. Nunca as duas juntas na mesma oferta.
+ const temAlisamento=names.some(n=>n.includes('Alisamento')&&!n.includes('Reconstrução'))
+ if(temAlisamento&&!names.some(n=>n.includes('Reconstrução Química')))out.unshift(findService('Reconstrução Química Pós-Alisamento'))
+ else if(chosen.some(s=>s.category==='quimica')&&!names.some(n=>n.includes('Hidratação')))out.unshift(findService('Hidratação / Reconstrução Capilar'))
  return out.filter(Boolean).slice(0,3)
 }
 // v29.16.0: productSuggestions foi removida — produto deixou de ser pergunta (virou aviso
@@ -1994,7 +1998,7 @@ Deno.serve(async req=>{
    // v29.104.0: "barboterapia" sozinha (sem "ozônio" na frase) aponta pra variante sem
    // ozônio, renomeada "Barba na navalha com toalha quente" — o lookahead negativo evita
    // dar match duplo quando a frase já diz "barboterapia com ozônio".
-   const kw:[RegExp,string][]=[[/sobrancelha/,'Sobrancelha Masculina'],[/pezinho/,'Pezinho (acabamento)'],[/nasal/,'Depilação nasal (cera quente)'],[/barba express/,'Barba Express'],[/barboterapia.*ozon|ozon.*barboterapia/,'Barboterapia com vaporizador de ozônio'],[/barboterapia(?!.*ozon)/,'Barba na navalha com toalha quente'],[/lavagem/,'Corte + Lavagem'],[/hidrata/,'Hidratação / Reconstrução Capilar']]
+   const kw:[RegExp,string][]=[[/sobrancelha/,'Sobrancelha Masculina'],[/pezinho/,'Pezinho (acabamento)'],[/nasal/,'Depilação nasal (cera quente)'],[/barba express/,'Barba Express'],[/barboterapia.*ozon|ozon.*barboterapia/,'Barboterapia com vaporizador de ozônio'],[/barboterapia(?!.*ozon)/,'Barba na navalha com toalha quente'],[/lavagem/,'Corte + Lavagem'],[/hidrata/,'Hidratação / Reconstrução Capilar'],[/pos.?alisamento|reconstrucao quimica/,'Reconstrução Química Pós-Alisamento']]
    for(const [re,name] of kw){if(re.test(normalizedQuestion)){const svc=findService(name);if(svc&&!chosen.some((c:any)=>c.name===svc.name)){chosen.push(svc);next.services=chosen.map((c:any)=>c.name)}}}
   }
   if(chosen.length)intent='change_service'

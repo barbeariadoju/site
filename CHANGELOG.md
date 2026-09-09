@@ -1,3 +1,22 @@
+## 29.158.0 — JuIA passa a oferecer a reconstrução pra quem marca alisamento
+
+Complemento da 29.157.0, com o "pode redeployar" do Juliano em 09/09. Duas mudanças na
+`ju-ia-site`, as duas pequenas:
+
+- **Sugestão automática**: carrinho com Alisamento / Relaxamento agora puxa a Reconstrução
+  Química Pós-Alisamento como primeira opção da oferta. As outras químicas (luzes, platinado,
+  tintura) continuam puxando a hidratação. **Nunca as duas na mesma oferta**: se o cliente
+  já tem a reconstrução, ela não sugere a hidratação por cima. Era o buraco que ficou na
+  versão anterior — o serviço existia no banco, mas a JuIA não o oferecia sozinha.
+- **Palavra-chave de "quero incluir também"**: "pós-alisamento" e "reconstrução química"
+  passam a casar com o serviço novo. "Reconstrução" sozinha continua caindo na Hidratação /
+  Reconstrução Capilar pelo casamento frouxo (o nome mais curto vence), o que é o
+  comportamento certo: quem não citou alisamento provavelmente quer a manutenção comum.
+
+**Deploy**: `ju-ia-site` **versão 242**, via CLI (`npx supabase functions deploy ju-ia-site`),
+às ~11h45 de 09/09. `verify_jwt` conferido em `true` depois do deploy, como manda o
+`config.toml`. Sem mudança no site, sem bump de `?v=`.
+
 ## 29.157.0 — Serviço novo: Reconstrução Química Pós-Alisamento (R$ 50)
 
 Pedido do Juliano em 09/09: *"reconstrução química pós alisamento — hidratação e reposição de
