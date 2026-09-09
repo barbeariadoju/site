@@ -95,7 +95,11 @@
         ? ` · 💳 Serviço ${serviceLabel} / Produtos ${esc(PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method)}`
         : ` · 💳 ${serviceLabel}`;
     }
-    return `<small class="admin-price-summary">Serviços ${money(s)} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}</small>`;
+    // v29.160.0 (pedido do Juliano, 09/09): a caixinha aparece no card, mas FORA do total —
+    // é dinheiro do barbeiro, não faturamento, e o cupom do cliente diz o mesmo ("à parte").
+    const tip=Number(x.tip_amount||0);
+    const tipHtml=tip>0?` · 💰 Caixinha ${money(tip)} <i>(à parte)</i>`:'';
+    return `<small class="admin-price-summary">Serviços ${money(s)} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}${tipHtml}</small>`;
   }
   // v29.12.0 — o admin fica aberto o dia inteiro no celular do Juliano e NUNCA recarrega
   // sozinho. Em 11/08/2026 isso custou caro: três correções foram publicadas de manhã e à
@@ -104,7 +108,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.159.0'
+  const ADMIN_VERSION='29.160.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava

@@ -1,3 +1,37 @@
+## 29.160.0 — A caixinha aparece no card e ao lado do "Faturado hoje" (sem entrar nele)
+
+Primeiro walk-in com caixinha (Fernando, 09/09 13h40, R$ 32 numa conta de R$ 68) e a pergunta
+do Juliano na sequência: *"por que não aparece a caixinha aí e ela não entra no faturamento
+do dia?"*. Estava gravada certinha em `bookings.tip_amount`; o que faltava era mostrar.
+
+- **Card da Agenda / Atendimento**: a linha de valores ganha `· 💰 Caixinha R$ 32,00 (à parte)`
+  quando existe caixinha. O Total continua R$ 68 — é o que o cliente pagou pela conta.
+- **Visão geral**: o "Faturado hoje" ganha, no rodapé, `concluídos · + R$ 32,00 de caixinha,
+  à parte`. O número grande não muda.
+
+**Decidido contra o pedido literal ("não entra no faturamento?"), e o motivo:** caixinha é
+dinheiro do barbeiro, não receita da barbearia. É a regra desde a v29.20.0 e é o que o
+Financeiro já faz (soma as caixinhas numa linha própria, fora do faturamento). Somar no
+"Faturado hoje" faria a Visão geral discordar do Financeiro e do próprio cupom, que diz ao
+cliente "recebida à parte". Com o 2º profissional entrando, isso importa mais ainda: a
+cota-parte dele é calculada sobre a receita, e caixinha de um não pode virar base do outro.
+Então a caixinha fica **visível em todo lugar, somada em lugar nenhum**. Se o Juliano preferir
+ver tudo junto, é um número só pra mudar — mas aí muda no Financeiro também, pra não haver
+dois "faturados" diferentes.
+
+**Conferido em produção**: o comprovante do Fernando saiu às 13h45 já com o agradecimento da
+v29.159.0 na abertura e a linha "Caixinha, recebida à parte: R$ 32,00"; ele respondeu *1*
+(satisfeito) um minuto depois.
+
+⚠️ **Pego de raspão, fora do escopo, fica registrado:** a resposta automática ao "1" da
+pesquisa ("Que ótimo saber disso! 😊 … 🙏 ⭐ … 😉 … 💬") sai com quatro emojis além do 🙏.
+Viola a regra de 01/09 (sem emoji pra cliente). Ela não passa pelo `sem-emoji.ts` — fica pra
+próxima versão.
+
+`ADMIN_VERSION` + `admin-version.json` → 29.160.0; `?v=` de `admin-v15-4-core.js` e
+`admin-v15-4-dashboard.js` bumpados nas 7 páginas do painel. `npm test`: 91 unit + 48 e2e
+(1 falha de ambiente em `routes.spec.js`, "browser has been closed", passou isolada: 4/4).
+
 ## 29.159.0 — Caixinha no Balcão, e um agradecimento à parte no comprovante de quem deixou
 
 Caso real, 09/09 às 13h23: o Juliano fechando um walk-in no Atendimento Balcão (Heineken ×2,

@@ -5,6 +5,10 @@
     // lógica de contagem usada no snapshot da JuIA admin (split de combo por "+", telefone
     // normalizado pra distinct clients), só que aqui local, direto dos dados já carregados.
     const completedRevenue=completed.reduce((a,x)=>a+Number(x.service_price||0)+Number(x.products_price||0),0);
+    // v29.160.0 (pedido do Juliano, 09/09): caixinhas do dia visíveis ao lado do faturado, mas
+    // fora dele — mesma regra do Financeiro (v29.20.0): caixinha é do barbeiro, não da casa.
+    const completedTips=completed.reduce((a,x)=>a+Number(x.tip_amount||0),0);
+    setText('metric-revenue-sub',completedTips>0?`concluídos · + ${money(completedTips)} de caixinha, à parte`:'concluídos');
     const completedServiceCount=completed.reduce((a,x)=>a+String(x.service_name||'').split('+').map(s=>s.trim()).filter(Boolean).length,0);
     const completedDistinctClients=new Set(completed.map(x=>phoneKey(x.customer_phone)).filter(Boolean)).size;
     setText('metric-ticket-medio',completed.length?money(completedRevenue/completed.length):money(0));
