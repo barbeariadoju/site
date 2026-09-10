@@ -2531,7 +2531,20 @@ Deno.serve(async req=>{
  else if(noPeriodPreference(normalizedQuestion))next.period_any=true
  const effectivePeriod=requestedPeriod||next.period
  const anyPeriodOk=Boolean(next.period_any)&&!effectivePeriod
- const requestedTime=extractRequestedTime(message)
+ const requestedTimeRaw=extractRequestedTime(message)
+ // v29.167.0 — caso Paulo Spina (10/09/2026, 12:29): "Teria horário hoje às 16h15 ou 16h30?" →
+ // "16:15 já está ocupado, o mais próximo é 15:00"; ele: "Teria que ser depois" → a JuIA se
+ // despediu ("fica combinado assim"). "Depois" sem hora, logo após um horário pedido que não
+ // coube, é "depois DAQUELE horário". O horário da rodada anterior (guardado em
+ // last_requested_time no bloco de horário tomado) volta como pedido, e aquele bloco — que
+ // já entende "depois" desde a 29.166.0 — lista o que vem após ele, inclusive o horário colado
+ // no fim do último atendimento (migration 148: 18:05 depois do corte que termina 18:05).
+ // Só vale na mesma conversa e no mesmo dia; "depois eu vejo/te aviso" não é horário.
+ const depoisSemHora=!requestedTimeRaw
+  &&/\b(depois|mais tarde|apos|pos)\b/.test(normalizedQuestion)
+  &&!/\bdepois (eu|te|a gente|vejo|aviso|falo|confirmo|retorno|passo)\b/.test(normalizedQuestion)
+  &&Boolean(state?.last_requested_time)&&state?.last_requested_date===state?.date&&!state?.completed
+ const requestedTime=requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):'')
  // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
  // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
@@ -3101,7 +3114,9 @@ Deno.serve(async req=>{
     const fmtX=(m:number)=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`
     const dowX=new Date(next.date+'T12:00:00-03:00').getUTCDay()
     const fechamentoX=dowX===6?15*60:19*60
-    const ultimoInicioTeorico=fmtX(fechamentoX-duration)
+    // v29.167.0 (regra do Juliano, 10/09/2026): início até o fechamento, término até 60 min depois
+    // (migration 149, closing_rule). O último início teórico segue a mesma régua do banco.
+    const ultimoInicioTeorico=fmtX(Math.min(fechamentoX,fechamentoX+60-duration))
     const primeiroLivre=allSlots[0]
     const ultimoLivre=allSlots.length?allSlots[allSlots.length-1]:''
     if(!extendedOffered&&minX(effectiveTime)>minX(ultimoInicioTeorico)){
@@ -3173,6 +3188,10 @@ Deno.serve(async req=>{
       const foiOferecido=ofereceuMesmo(ultimaFalaJuIA)||(Array.isArray(body.history)?body.history:[]).some((h:any)=>h&&h.role==='assistant'&&ofereceuMesmo(String(h.content||'')))
       const motivoBase=(foiOferecido?`${emDia(next.date)} às ${effectiveTime} acabou de ser reservado por outro cliente.`:`${emDia(next.date)} às ${effectiveTime} já está ocupado.`)+semDepoisNota
       const motivo=motivoBase.charAt(0).toUpperCase()+motivoBase.slice(1)
+      // v29.167.0: guarda o horário que não coube — um "teria que ser depois" na próxima
+      // mensagem é "depois deste" (ver depoisSemHora, perto do extractRequestedTime).
+      next.last_requested_time=effectiveTime
+      next.last_requested_date=next.date
       reply=proximos.length===2
        ? `${motivo} O mais próximo que tenho é ${proximos[0]} ou ${proximos[1]}. Serve pra você?${sobra}`
        : `${motivo} O mais próximo que tenho é ${proximos[0]}. Serve pra você?${sobra}`

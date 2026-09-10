@@ -1,3 +1,51 @@
+## 29.167.0 — Horário colado no fim do atendimento anterior, e o site pode terminar até 20h
+
+**Caso real (Paulo Spina, 10/09/2026, 12:29):** *"Teria horário hoje às 16h15 ou 16h30?"* → JuIA:
+*"16:15 já está ocupado. O mais próximo que tenho é 15:00… 14:30, 14:45"*. Ele: *"Teria que ser
+depois"* → JuIA se despediu (*"Fica combinado assim"*). O Juliano assumiu e ofereceu 18h na mão.
+O último corte do dia (Lucas) termina 18:05; a grade de 15 em 15 só conhecia 18:00 (dentro do
+Lucas) e 18:15 (18:15 + 50 = 19:05, passava das 19h). Resultado: "não tenho nada" com 55 minutos
+de cadeira vazia antes de fechar. Palavras dele: *"senão vamos inviabilizar os agendamentos e
+isso seria um tiro no nosso pé"*.
+
+**Regra nova, desenhada com o Juliano (migration 149, `closing_rule` + `get_available_slots*`):**
+1. **O fim de cada atendimento (e de cada bloqueio) do dia é sempre um horário oferecido**, junto
+   com a grade de 15 em 15. Hoje, pra corte: 14:25, 14:30, 14:45, 15:00, **18:05**, 18:15… A 148
+   (aplicada e substituída na mesma hora) só oferecia o fim quando a grade seguinte não cabia; o
+   Juliano preferiu o fim sempre — "imediatamente após o término, e depois de 15 em 15 nos horários
+   com mais vacância".
+2. **Início até o fechamento (19:00 ter-sex, 15:00 sáb) e término até 60 min depois (20:00 / 16:00),
+   para todo mundo — site inclusive.** Até hoje essa tolerância era exceção só do WhatsApp
+   (extended_close_slot_ok, decisão de 06/08: "o site continua estrito"). **Decisão revertida pelo
+   Juliano hoje:** "posso passar um pouco das 19h; até um agendamento às 19h é possível se for só um
+   corte". Sábado segue a mesma régua (+60), como já era na exceção do WhatsApp.
+
+**Onde a régua entrou:** oferta (`get_available_slots`, agora atalho de `get_available_slots_excluding`),
+reserva do site e da JuIA (`create_public_booking_v15`), reagendamento (`phone_reschedule_booking`)
+e a checagem de exceção (`extended_close_slot_ok`, que agora só estica ALÉM da tolerância, teto
++120 no total). Sem isso o site oferecia 18:30 e o banco recusava como "fora do atendimento". As
+RPCs nunca exigiram grade de 15 — só sobreposição — então 18:05 é aceito sem mais mudança. Na JuIA,
+o "último início teórico" (que decide o texto "já é fora do nosso atendimento") segue a mesma
+régua; no site, `agenda-v15.js` deixa marcar hoje enquanto o término cabe até 60 min após o
+fechamento.
+
+**JuIA — "teria que ser depois" sem hora:** a 29.166.0 ensinou "às 16h ou depois" na mesma frase.
+Aqui o "depois" veio sozinho, uma mensagem depois, e o modelo leu como despedida. Agora o horário
+que não coube fica guardado no state (`last_requested_time`/`last_requested_date`, gravados no
+bloco de horário tomado) e um "depois / mais tarde / após" sem hora, na mesma conversa e no mesmo
+dia, vale como "depois daquele horário". "Depois eu vejo / te aviso" não conta. Reproduzido contra
+a function publicada, sessão isolada: T1 *"Teria horário hoje às 16h15 ou 16h30?"* → "16:15 já está
+ocupado, o mais próximo é 15:00…"; T2 *"Teria que ser depois"* → **"O mais próximo que tenho é 18:05
+ou 18:15. Se preferir outro: 18:30, 18:45, 19:00."**
+
+**Não mudou:** o texto público "terça a sexta, 08h–19h" — é o expediente; a hora extra é tolerância
+do Juliano, não horário de porta aberta. E o push "atendimento termina depois do fechamento" segue
+saindo pra ele quando uma reserva vara as 19h.
+
+**NO AR** (10/09, ~13h05 BRT): migrations 148 e 149 via `apply_migration` (`success`); `ju-ia-site`
+**v246** via CLI, `verify_jwt=true` igual ao anterior; `agenda-v15.js?v=29.167.0`. `npm test`: 109
+unit + 48 e2e, tudo verde.
+
 ## 29.166.0 — "Às 16h ou logo após" é depois das 16h; e o site oferecia horário em cima de corte antigo
 
 **Caso real (Vytor, 10/09/2026, 11:10–11:17):** *"teria algum horário hoje ou amanhã às 16h ou

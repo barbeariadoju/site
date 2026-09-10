@@ -33,7 +33,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     const now=spNow(),today=`${now.year}-${now.month}-${now.day}`;
     if(!isOpenDay(today))return nextOpenDay(today,1);
     const current=Number(now.hour)*60+Number(now.minute),needed=current+15+total().duration;
-    return needed<=closingMinutes(today)?today:nextOpenDay(today,1);
+    return needed<=closingMinutes(today)+60?today:nextOpenDay(today,1); // v29.167.0: término pode ir até 60 min após o fechamento (migration 149)
   }
   function saveState(){sessionStorage.setItem('bdj_selected_services_v15',JSON.stringify(services));sessionStorage.setItem('bdj_selected_products_v15',JSON.stringify(products));}
   function fire(event,data={}){window.dataLayer=window.dataLayer||[];window.dataLayer.push({event,...data});}
