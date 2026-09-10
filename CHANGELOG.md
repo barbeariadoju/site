@@ -41,6 +41,8 @@ and status in ('pending','confirmed')`, conferindo antes o `proximo_inicio` de c
 Só a function mudou; nada de cache no site. Testes: sem cobertura unitária desse bloco (Deno);
 `npm run test:unit` 109/109 segue verde.
 
+**Decisão do Juliano (11h50):** manter os mais cedos e mexer o mínimo. Calvin 11/09 16:00 esticado pra 50 (até 16:50) e Vytor movido de 16:30 pra **17:00**; Lucas Red Bull 12/09 10:00 esticado pra 75 (até 11:15) e Sharles movido de 11:00 pra **11:15**. Feito direto no banco, sem mensagem automática — os dois clientes movidos precisam ser avisados no WhatsApp pelo Juliano. Conferido: nenhuma sobreposição em 11 e 12/09.
+
 ## 29.165.0 — "Só com a Express tem mais cedo?" é troca de barba, não soma
 
 **Caso real (10/09/2026, 10:31–10:36, cliente novo, +55 11 94841-7206):** pediu "cabelo e
