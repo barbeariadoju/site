@@ -1,3 +1,46 @@
+## 29.165.0 — "Só com a Express tem mais cedo?" é troca de barba, não soma
+
+**Caso real (10/09/2026, 10:31–10:36, cliente novo, +55 11 94841-7206):** pediu "cabelo e
+barba", escolheu "a de 50 reais" (Barboterapia com vaporizador de ozônio), recebeu 14:15 pra
+hoje e perguntou *"E só com a máquina express e cabelo tem horário mais cedo?"*. A JuIA
+respondeu *"Só pra ajustar: Barboterapia com vaporizador de ozônio já inclui o que Barba
+Express faria, então fica Corte de cabelo + Barboterapia…"* e "não tenho horário no período
+da manhã". Ele desistiu: *"Blz. Então depois eu vejo, obrigado."*
+
+**Dois erros na mesma resposta:**
+1. **Tratou a troca como soma.** "Máquina express" não casa com nenhum nome do catálogo no
+   `findServicesLoose`, então o merge repôs a Barboterapia do turno anterior (regra v29.11.0,
+   "serviço que sumiu sem ser citado volta"), e a regra das famílias (v29.62.0) ficou com a
+   mais completa e descartou a Express — exatamente o contrário do pedido.
+2. **Não recalculou a agenda com o tempo menor.** A resposta certa era: mesmo com a Express
+   (60 min) o primeiro horário de hoje continua 14:15 — a janela das 12:20 às 13:15 tem 55 min.
+   Conferido na hora com `get_available_slots(hoje, 60)`: 14:15, 14:30, 14:45, 15:00, 18:00.
+
+**O que muda:** nova regra pura `swapWithinFamily(lista, citadosAgora)` em
+`assets/js/service-rules.js` e na cópia `supabase/functions/_shared/service-rules.ts` (5 testes
+em `tests/unit/service-rules.spec.js`): serviço citado NESTA mensagem que é da mesma família de
+um já anotado — e o antigo não foi repetido — substitui o antigo. Combo antigo que cobre a
+família do novo é desmontado e a outra parte fica ("Corte + Barba Express" → Barboterapia =
+"Corte de cabelo" + Barboterapia); combo citado agora substitui as partes soltas; pai e filho
+não se tocam. Na JuIA, "citado agora" = menção solta **ou** serviço que o modelo devolveu e não
+estava no state (o modelo entendeu "máquina express", o filtro solto não). Depois da troca,
+"Corte de cabelo" + barba que existe como combo vira o combo (preço e tempo do combo). A
+resposta abre com *"Anotado: Barba Express no lugar de Barboterapia com vaporizador de ozônio.
+Fica Corte + Barba Express."* e segue pro bloco de horários com a duração nova.
+
+**Decisão contra a alternativa óbvia:** não confiei no array inteiro que o modelo devolve como
+"o que o cliente citou" — quando ele repete a lista antiga e acrescenta a nova, a antiga
+pareceria citada e a troca não aconteceria. Só o que é NOVO em relação ao state conta.
+
+**Não resolvido nesta versão:** "mais cedo" virou "período da manhã" na cabeça do modelo. Com
+a troca funcionando, a pergunta cai no bloco de disponibilidade do dia e a lista sai completa,
+o que já responde "tem mais cedo?" pelo próprio conteúdo.
+
+Cache `service-rules.js?v=29.165.0` (agenda, reagendamento, carrinho) e loaders desses três
+`?v=29.165.0`. `npm test`: 109 unit + 48 e2e, tudo verde.
+
+**NO AR** (10/09, ~10h55 BRT): `ju-ia-site` **v244** via CLI (`npx supabase functions deploy ju-ia-site`), `verify_jwt=true` igual ao anterior; site no commit desta entrada (GitHub Pages).
+
 ## 29.164.0 — Corte 50 min, Corte + Lavagem 55 min, e o cliente lê "aproximadamente"
 
 **Pedido do Juliano (10/09/2026):** ajustar de novo o tempo dos cortes — Corte de cabelo passa de

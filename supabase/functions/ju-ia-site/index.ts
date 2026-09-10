@@ -8,7 +8,7 @@ const cors={
 const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}})
 // v29.62.0 — regra das famílias de serviço (1 corte + 1 barba por atendimento), mesma
 // lógica do site (assets/js/service-rules.js). Ver o bloco "serviceRuleNote" abaixo.
-import { normalizeServiceSet as normalizeServiceFamilies } from '../_shared/service-rules.ts'
+import { normalizeServiceSet as normalizeServiceFamilies, swapWithinFamily, familiesOf as familiesOfService } from '../_shared/service-rules.ts'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
@@ -747,6 +747,7 @@ Deno.serve(async req=>{
  // que coincida com o histórico do cliente só entra se a mensagem citar algo parecido
  // (findServicesLoose). Pedido explícito de "repetir o de sempre" continua funcionando
  // (repeatRequest, mais abaixo, seta next.services por conta própria depois desta trava).
+ let familySwapNote=''
  {
   const prevServices=Array.isArray(state?.services)?state.services:[]
   const mentionedLoose=findServicesLoose(message).map((s:any)=>s.name)
@@ -774,6 +775,28 @@ Deno.serve(async req=>{
   const prefList=Array.isArray(prefRaw)?prefRaw:(typeof prefRaw==='string'&&prefRaw?[prefRaw]:[])
   const historyServiceNames=[findService(String(context?.last_services||''))?.name,...prefList.map((x:string)=>findService(String(x))?.name)].filter(Boolean)
   next.services=next.services.filter((n:string)=>prevServices.includes(n)||mentionedLoose.includes(n)||!historyServiceNames.includes(n))
+  // v29.165.0 — TROCA dentro da família (caso 10/09/2026, 10:35 — "e só com a máquina express e
+  // cabelo tem horário mais cedo?"): "máquina express" não casa com nome nenhum no
+  // findServicesLoose, então a Barboterapia do turno anterior era REPOSTA pelo merge acima e
+  // a regra das famílias, logo abaixo, ficava com ela (a mais completa) e descartava a Express —
+  // resposta oposta ao pedido. O que apareceu NESTA mensagem = menção solta + serviço que o
+  // modelo devolveu e não estava no state. Se for da família de um já anotado (e o antigo não
+  // foi repetido), é troca. Regra pura em _shared/service-rules.ts (testes na cópia JS).
+  {
+   const modelNew=(Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(String(x))?.name).filter((n:any)=>n&&!prevServices.includes(n)) as string[]
+   const mentionedNow=[...new Set([...mentionedLoose,...modelNew])]
+   const sw=swapWithinFamily(next.services,mentionedNow)
+   if(sw.swaps.length){
+    next.services=sw.services
+    // "Corte de cabelo" + barba que existe como combo no catálogo vira o combo (preço e tempo do combo).
+    const barba=next.services.find((n:string)=>n!=='Corte de cabelo'&&familiesOfService(n).has('barba')&&!familiesOfService(n).has('corte'))
+    if(barba&&next.services.includes('Corte de cabelo')){
+     const combo=services.find(s=>normalize(s.name)===normalize('Corte + '+barba))
+     if(combo)next.services=[combo.name,...next.services.filter((n:string)=>n!=='Corte de cabelo'&&n!==barba)]
+    }
+    familySwapNote=`Anotado: ${sw.swaps.map(s=>`${s.to} no lugar de ${s.from}`).join(', ')}. Fica ${next.services.join(' + ')}.`
+   }
+  }
  }
  // v29.62.0 — regra das famílias (pedido do Juliano, 22/08/2026, caso Augusto Monteiro —
  // aconteceu pelo site, mas a JuIA aceitava a mesma combinação): num atendimento cabe só
@@ -781,7 +804,7 @@ Deno.serve(async req=>{
  // "Corte + X" já cobre a barba; pezinho já vem no corte. Única exceção: corte adulto +
  // corte infantil (pai e filho). Fica o mais completo, e a JuIA avisa a troca na resposta
  // (prefixo "Só pra ajustar", colado lá no fim, antes do respond).
- let serviceRuleNote=''
+ let serviceRuleNote=familySwapNote
  {
   const fam=normalizeServiceFamilies(next.services.map((n:string)=>{const s=findService(n);return {name:n,price:s?s.price:0}}))
   if(fam.removed.length){

@@ -5,7 +5,7 @@
 // "Corte + Barba Express" e a página aceitou os dois cortes — saiu "Corte de cabelo +
 // Corte + Barba Express", 80 min. O carrinho do site já impedia isso desde a v29.62.0;
 // esta página tinha ficado de fora.
-import { applyServiceRule, normalizeServiceSet, splitServiceNames } from './assets/js/service-rules.js?v=29.62.0';
+import { applyServiceRule, normalizeServiceSet, splitServiceNames } from './assets/js/service-rules.js?v=29.165.0';
 const cfg=window.BDJ_AGENDA_CONFIG||{},sb=(cfg.supabaseUrl&&cfg.supabaseAnonKey)?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null,$=id=>document.getElementById(id),money=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),params=new URLSearchParams(location.search),code=params.get('code')||'',token=params.get('token')||'';
 // Catálogo único em products-catalog-v1.js — só entram aqui os produtos com `for`
 // não-vazio (mesmo recorte de agenda-v15.js), catálogo completo (bebidas etc.) fica

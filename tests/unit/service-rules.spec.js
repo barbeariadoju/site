@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyServiceRule, normalizeServiceSet, familiesOf, splitServiceNames } from '../../assets/js/service-rules.js';
+import { applyServiceRule, normalizeServiceSet, familiesOf, splitServiceNames, swapWithinFamily } from '../../assets/js/service-rules.js';
 
 // v29.62.0 — regra das famílias (caso Augusto Monteiro, 22/08/2026: "Corte + Barba na navalha com toalha quente
 // + Barba Express" agendado pelo site). 1 corte + 1 barba por atendimento; exceção pai e filho.
@@ -132,3 +132,33 @@ describe('caso Guizo: serviço citado fora da oferta numerada', () => {
     expect(items).toHaveLength(2)
   })
 })
+
+
+// v29.165.0 — troca dentro da família (caso 10/09/2026: "e só com a máquina express e cabelo
+// tem horário mais cedo?" com Corte + Barboterapia já anotados virou "Barboterapia já inclui
+// o que Barba Express faria"). Citou outra barba sem repetir a antiga = troca.
+describe('swapWithinFamily', () => {
+  it('barba citada agora troca a barba anotada; o corte fica', () => {
+    const r = swapWithinFamily(['Corte de cabelo', 'Barboterapia com vaporizador de ozônio'], ['Barba Express']);
+    expect(r.services).toEqual(['Corte de cabelo', 'Barba Express']);
+    expect(r.swaps).toEqual([{ from: 'Barboterapia com vaporizador de ozônio', to: 'Barba Express' }]);
+  });
+  it('não troca quando a antiga também foi citada (aí vale a normalização)', () => {
+    const r = swapWithinFamily(['Corte de cabelo', 'Barboterapia com vaporizador de ozônio'], ['Barboterapia com vaporizador de ozônio', 'Barba Express']);
+    expect(r.swaps).toEqual([]);
+  });
+  it('desmonta combo antigo e mantém o corte', () => {
+    const r = swapWithinFamily(['Corte + Barba Express'], ['Barboterapia com vaporizador de ozônio']);
+    expect(r.services).toEqual(['Corte de cabelo', 'Barboterapia com vaporizador de ozônio']);
+  });
+  it('combo citado agora substitui corte e barba soltos, sem mexer no resto', () => {
+    const r = swapWithinFamily(['Corte de cabelo', 'Barba Express', 'Sobrancelha Masculina'], ['Corte + Barba na navalha com toalha quente']);
+    expect(r.services).toEqual(['Sobrancelha Masculina', 'Corte + Barba na navalha com toalha quente']);
+    expect(r.swaps.map(s => s.from).sort()).toEqual(['Barba Express', 'Corte de cabelo']);
+  });
+  it('pai e filho e família diferente não trocam nada', () => {
+    expect(swapWithinFamily(['Corte de cabelo'], ['Corte de cabelo infantil']).swaps).toEqual([]);
+    expect(swapWithinFamily(['Barba Express'], ['Corte de cabelo']).swaps).toEqual([]);
+    expect(swapWithinFamily(['Corte de cabelo'], []).services).toEqual(['Corte de cabelo']);
+  });
+});

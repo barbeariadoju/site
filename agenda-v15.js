@@ -1,5 +1,5 @@
 import { money, fmtDuration, addMinutes, addDaysISO, isOpenDay, closingMinutes, prettyDate, nextOpenDay } from './assets/js/booking-format.js?v=28.16.2';
-import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.62.0';
+import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.165.0';
 
 (() => {
   const cfg=window.BDJ_AGENDA_CONFIG||{};

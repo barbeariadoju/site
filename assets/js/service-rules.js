@@ -146,3 +146,40 @@ export function splitServiceNames(serviceName, known){
   }
   return out;
 }
+
+// v29.165.0 — TROCA dentro da família (caso real, 10/09/2026, 10:35: cliente com "Corte de
+// cabelo + Barboterapia com vaporizador de ozônio" anotados perguntou "e só com a máquina
+// express e cabelo tem horário mais cedo?". A JuIA somou a Barba Express à lista, a
+// normalização ficou com a Barboterapia (a mais completa) e a resposta foi "Barboterapia já
+// inclui o que Barba Express faria" — o contrário do que ele pediu; o cliente desistiu).
+// Regra: serviço citado AGORA que é da mesma família de um já anotado — e o antigo NÃO foi
+// citado de novo — é troca, não soma. Combo antigo que cobre a família do novo é desmontado
+// e a outra parte fica ("Corte + Barba Express" → Barboterapia = "Corte de cabelo" +
+// Barboterapia). Combo citado agora substitui as partes soltas. Pai e filho (corte adulto x
+// infantil) não se tocam. `prevNames` = lista atual; `mentionedNow` = só o que apareceu
+// nesta mensagem. Sem troca, devolve a lista como veio.
+const COMBO_PARTS = { 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] };
+export function swapWithinFamily(prevNames, mentionedNow){
+  const prev = (prevNames || []).filter(Boolean);
+  const mentioned = (mentionedNow || []).filter(Boolean);
+  const drop = [], parts = [], swaps = [];
+  for(const m of mentioned){
+    const famM = familiesOf(m);
+    if(!famM.size || isIncluso(m)) continue;
+    for(const p of prev){
+      if(same(p, m) || isIncluso(p) || mentioned.some(x => same(x, p))) continue;
+      const famP = familiesOf(p);
+      if(!intersects(famP, famM)) continue;
+      if(covers(famP, famM) && famP.size > famM.size){
+        const key = Object.keys(COMBO_PARTS).find(k => same(k, p));
+        (key ? COMBO_PARTS[key] : []).filter(part => !intersects(familiesOf(part), famM)).forEach(part => parts.push(part));
+      }
+      if(!drop.some(d => same(d, p))){ drop.push(p); swaps.push({ from: p, to: m }); }
+    }
+  }
+  if(!swaps.length) return { services: prev, swaps };
+  const services = prev.filter(p => !drop.some(d => same(d, p)));
+  parts.forEach(part => { if(!services.some(s => same(s, part)) && !mentioned.some(x => same(x, part))) services.push(part); });
+  mentioned.forEach(m => { if(familiesOf(m).size && !services.some(s => same(s, m))) services.push(m); });
+  return { services, swaps };
+}
