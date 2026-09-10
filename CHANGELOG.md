@@ -1,3 +1,46 @@
+## 29.166.0 — "Às 16h ou logo após" é depois das 16h; e o site oferecia horário em cima de corte antigo
+
+**Caso real (Vytor, 10/09/2026, 11:10–11:17):** *"teria algum horário hoje ou amanhã às 16h ou
+logo após?"* → JuIA: *"Hoje às 16:00 já está ocupado. O mais próximo que tenho é 15:00… 12:30,
+14:30, 14:45"*. Ele insistiu: *"Tem pós às 16h?"* → *"Hoje às 16:00 acabou de ser reservado por
+outro cliente. O mais próximo que tenho é 15:00…"* — mesma lista. O 18:00 estava livre o tempo
+todo. O Juliano assumiu, ofereceu 18:00 na mão e, quando o cliente pediu amanhã, consultou o
+site no celular: 16:30 aparecia livre. Marcou 16:30 — em cima do corte do Calvin, das 16:00.
+
+**Três erros, três causas:**
+
+1. **"Ou logo após" ignorado.** No bloco de horário tomado, as alternativas ficam presas ao
+   PERÍODO do horário pedido (16:00 = tarde, até 17:59). O 18:00 é "noite" e nunca entrava. Agora,
+   com "depois"/"após"/"pós"/"a partir" na frase, as alternativas são só os horários DEPOIS do
+   pedido, em qualquer período, e os dois mais próximos são os dois primeiros depois. Sem nada
+   depois, avisa ("Depois disso não tenho mais nada hoje") e cai na lista de antes.
+2. **"Acabou de ser reservado por outro cliente" — mentira.** A checagem de "eu já tinha
+   oferecido esse horário" casava o 16:00 em qualquer fala anterior da JuIA, inclusive em "16:00
+   já está ocupado". O 16:00 de hoje era do Levi desde 15/08. Só conta como oferecido a fala que
+   cita o horário sem dizer que estava tomado.
+3. **Site mostrando 16:30 livre com corte às 16:00.** O corte do Calvin (11/09 16:00) foi marcado
+   em 05/09 com **30 minutos** — antes da 29.139.0 (+10) e da 29.164.0 (corte = 50). O
+   `get_available_slots` usa o `end_time` gravado (16:30), então 16:30 era "livre" de verdade
+   pro sistema. A v29.164.0 avisou que reservas antigas mantinham a duração antiga; na prática
+   isso significa que o site oferece horário dentro de um atendimento que vai durar mais.
+
+**Banco:** os 5 agendamentos futuros com tempo antigo que NÃO colidem com o cliente seguinte
+foram esticados pro tempo do catálogo (`bookings.duration_minutes`; `end_time` é coluna gerada):
+Walter 10/09 11:30 (50→55), Levi 10/09 16:00 (40→65: corte 50 + sobrancelha 15), Lucas Bueno
+10/09 17:15 (40→50), Fabrício 11/09 12:00 (40→50), Sharles 12/09 11:00 (40→55).
+**Não mexidos, decisão do Juliano:** Calvin 11/09 16:00 (30 gravado, 50 real) colide com Vytor
+16:30; Lucas Red Bull 12/09 10:00 (60 gravado; combo 60 + sobrancelha 15 = 75) colide com
+Sharles 11:00. Os dois "TESTE PagBank (apagar)" de 06/01/2027 ficaram como estão.
+
+**Lição registrada:** mudar duração no catálogo sem esticar as reservas futuras deixa o site
+oferecer horário em cima de atendimento. Da próxima vez que a duração mudar, esticar junto
+(query desta entrada: `update bookings set duration_minutes=… where booking_date>=current_date
+and status in ('pending','confirmed')`, conferindo antes o `proximo_inicio` de cada um).
+
+**NO AR** (10/09, ~11h40 BRT): `ju-ia-site` **v245** via CLI, `verify_jwt=true` igual ao anterior.
+Só a function mudou; nada de cache no site. Testes: sem cobertura unitária desse bloco (Deno);
+`npm run test:unit` 109/109 segue verde.
+
 ## 29.165.0 — "Só com a Express tem mais cedo?" é troca de barba, não soma
 
 **Caso real (10/09/2026, 10:31–10:36, cliente novo, +55 11 94841-7206):** pediu "cabelo e

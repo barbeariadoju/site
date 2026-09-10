@@ -3117,7 +3117,17 @@ Deno.serve(async req=>{
     if(!extendedOffered){
      const periodoPedido=slotHour(effectiveTime)<12?'morning':slotHour(effectiveTime)<18?'afternoon':'evening'
      const samePeriod=slotsForPeriod(allSlots,periodoPedido)
-     const alternatives=(samePeriod.length?samePeriod:allSlots)
+     // v29.166.0 — caso Vytor (10/09/2026, 11:12): "teria algum horário hoje ou amanhã às 16h
+     // ou logo após?" e depois "Tem pós às 16h?". Quem pede um horário E diz "ou depois" quer o
+     // que vem DEPOIS dele — em qualquer período. A lista ficava presa ao período do horário
+     // pedido (tarde), então o 18:00 (noite) nunca entrava: a JuIA respondeu "o mais próximo é
+     // 15:00" duas vezes, o Juliano assumiu e fechou na mão. Com "depois" na frase, as
+     // alternativas são só os horários após o pedido; se não houver nenhum, avisa e cai na
+     // lista de antes.
+     const querDepois=/\b(logo )?(apos|depois|pos)\b|a partir d/.test(normalizedQuestion)
+     const soDepois=querDepois?allSlots.filter((t:string)=>minX(t)>minX(effectiveTime)):[]
+     const alternatives=soDepois.length?soDepois:(samePeriod.length?samePeriod:allSlots)
+     const semDepoisNota=querDepois&&!soDepois.length?` Depois disso não tenho mais nada ${emDia(next.date)}.`:''
      // v29.75.0 (caso Longanesi 19/08, pedido do Juliano em 26/08): além dos vizinhos do
      // horário pedido, abrir a porta do OUTRO período do dia quando ele tem vaga — "pode
      // ser um desses, ou o senhor prefere à tarde?". Só entra quando as alternativas
@@ -3136,7 +3146,9 @@ Deno.serve(async req=>{
      const alvo=minutos(effectiveTime)
      const antes=alternatives.filter((t:string)=>minutos(t)<alvo).pop()
      const depois=alternatives.find((t:string)=>minutos(t)>alvo)
-     const proximos=[antes,depois].filter(Boolean) as string[]
+     // v29.166.0: com "ou depois", os dois mais próximos são os dois PRIMEIROS depois do pedido.
+     const depois2=soDepois.length?alternatives.filter((t:string)=>minutos(t)>alvo)[1]:undefined
+     const proximos=[antes,depois,depois2].filter(Boolean).slice(0,2) as string[]
      // v29.64.0 (caso Helder, 22/08 09h51): "Chego umas 13:30 então, espero a vez" — cliente
      // flexível, e ainda levou duas rodadas ("serve pra você?" → "quer reservar?"). Quem avisa
      // que chega "por volta de" e "espera a vez" aceita o próximo livre: reserva direto o
@@ -3153,8 +3165,13 @@ Deno.serve(async req=>{
       // JuIA tinha oferecido esse horário antes nesta conversa e ele sumiu, foi outro
       // cliente que fechou — dizer isso evita o "mas você me disse que tinha!" (caso João).
       // E o convite pra outro período sai daqui: a mensagem fica com UMA pergunta.
-      const foiOferecido=new RegExp(`\\b${effectiveTime.replace(':','[:h]')}\\b`).test(ultimaFalaJuIA)||(Array.isArray(body.history)?body.history:[]).some((h:any)=>h&&h.role==='assistant'&&String(h.content||'').includes(effectiveTime))
-      const motivoBase=foiOferecido?`${emDia(next.date)} às ${effectiveTime} acabou de ser reservado por outro cliente.`:`${emDia(next.date)} às ${effectiveTime} já está ocupado.`
+      // v29.166.0 (mesmo caso Vytor): a checagem casava o horário em QUALQUER fala anterior da
+      // JuIA — inclusive "16:00 já está ocupado". Na segunda pergunta ela disse "16:00 acabou de
+      // ser reservado por outro cliente", o que nunca aconteceu (o 16:00 era do Levi desde 15/08).
+      // Só conta como oferecido se a fala citou o horário SEM dizer que estava tomado.
+      const ofereceuMesmo=(txt:string)=>new RegExp(`\\b${effectiveTime.replace(':','[:h]')}\\b`).test(txt)&&!/já está ocupado|acabou de ser reservado|não cabe mais|já estava tomado/.test(txt)
+      const foiOferecido=ofereceuMesmo(ultimaFalaJuIA)||(Array.isArray(body.history)?body.history:[]).some((h:any)=>h&&h.role==='assistant'&&ofereceuMesmo(String(h.content||'')))
+      const motivoBase=(foiOferecido?`${emDia(next.date)} às ${effectiveTime} acabou de ser reservado por outro cliente.`:`${emDia(next.date)} às ${effectiveTime} já está ocupado.`)+semDepoisNota
       const motivo=motivoBase.charAt(0).toUpperCase()+motivoBase.slice(1)
       reply=proximos.length===2
        ? `${motivo} O mais próximo que tenho é ${proximos[0]} ou ${proximos[1]}. Serve pra você?${sobra}`
