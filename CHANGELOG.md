@@ -1,3 +1,24 @@
+## 29.168.0 — Corte 45 min, Corte + Lavagem 50 min (e as reservas futuras encolhem junto)
+
+**Pedido do Juliano (10/09/2026, 13h15):** depois de um dia inteiro com 50/55 (v29.164.0), "45 pra
+corte e 50 pra corte com lavagem é o ideal". Só esses dois serviços mudam.
+
+**Onde:** banco (`services.duration_minutes`), `services-catalog-v7.js`, cards de `/agendar/`
+(texto e `data-time`), `/precos/`, `servicos.html`, home e FAQ (texto e JSON-LD), páginas do corte
+masculino, degradê, social e Corte + Lavagem, artigo "Quanto custa cortar cabelo". Script com
+contagem esperada em cada troca, na ordem certa (primeiro o corte 50→45, depois a lavagem 55→50,
+senão o "50" novo da lavagem virava 45). Barboterapia com ozônio, que também é 50, ficou intacta.
+
+**Lição da manhã aplicada:** as reservas futuras feitas hoje com 50/55 foram encolhidas junto
+(corte 50→45, Corte + Lavagem 55→50, corte + sobrancelha 65→60): Levi 10/09 16:00, Lucas Bueno
+10/09 17:15, Fabrício 11/09 12:00, Calvin 11/09 16:00, Vytor 11/09, Sharles 12/09 11:15, Paulo
+Spina 15/09 16:30. Encolher nunca colide. **Vytor** foi antecipado de 16:50 pra **16:45** (pedido
+do Juliano: "o mais cedo possível" — é o fim do Calvin com 45 min). Os dois "TESTE PagBank" de
+2027 ficaram com 30.
+
+Cache `services-catalog-v7.js?v=29.168.0` em todas as páginas que carregam o catálogo;
+`ADMIN_VERSION` 29.168.0. A JuIA lê o banco, sem deploy. `npm test`: 109 unit + 48 e2e, tudo verde.
+
 ## 29.167.0 — Horário colado no fim do atendimento anterior, e o site pode terminar até 20h
 
 **Caso real (Paulo Spina, 10/09/2026, 12:29):** *"Teria horário hoje às 16h15 ou 16h30?"* → JuIA:
