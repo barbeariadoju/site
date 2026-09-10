@@ -1,3 +1,33 @@
+## 29.169.0 — Plano de 30 dias produzido e agendado; filtro "a conversa da cadeira não é assunto público"
+
+**Pedido do Juliano (10/09/2026, 15h):** "cadê meu gerente de marketing, publicação com vídeo programada só
+pro dia 18/09, estamos perdendo tempo" → Reel da toalha quente antecipado para sexta 11/09 18h30. Depois:
+"pode produzir todas as peças que não dependam de mim e já deixa programado pra sair sozinho", "utilize o
+recurso de design do Claude pra criar as melhores artes", e um filtro: ele corrigiu à mão uma legenda que
+dizia "a conversa que nós tivemos fica entre eu e você" — "não gosto deste tipo de afirmação pública".
+
+**Causa raiz do atraso:** o plano de 30 dias (artifact de 09/09) existia só como documento; a rotina das 8h05
+não o lia, então nenhuma peça planejada era produzida (o humor de 10/09 não saiu; saiu o automático).
+
+**O que entrou:**
+- `assets/plano-30/<peça>/`: 37 artes (13 peças, 08/09–07/10) geradas por código no molde do carrossel do
+  fade (Bebas Neue + Inter, dourado da marca), 4 estruturas visuais (carrossel escuro, humor tipográfico,
+  card de avaliação em papel claro, resposta gigante) + 2 fotos reais da loja. Crivo visual em folha de
+  contato e quadro a quadro; preços conferidos em `services`, citações literais de `google_reviews`, fontes
+  do post do farmacêutico na SBD. Canvas editável (Claude Design): "Artes do Plano de Setembro".
+- `content_posts`: 26 linhas `agendado` (Instagram 12h00 + Facebook 12h15 BRT em cada dia de peça:
+  11, 12, 15, 16, 17, 19, 22, 24, 25, 26, 29/09 e 01, 02/10). Carrossel só no Instagram; Facebook leva o
+  1º quadro. `marketing_calendar` recebeu as 13 peças.
+- `content-generate-daily` (deploy): `NAO_INVASIVO` ganhou o bloco "A CONVERSA DA CADEIRA NÃO É ASSUNTO
+  PÚBLICO" — proibido prometer/afirmar sigilo, confidência ou intimidade sobre o que o cliente fala na
+  cadeira. Mesma regra em `marketing_memory` (restrição, id ea862ea9) e na rotina `crivo-conteudo-8h05`.
+- Rotina `crivo-conteudo-8h05`: passa a ler `marketing_calendar`; em dia de peça planejada, o rascunho
+  automático de Instagram/Facebook é rejeitado (não fica pendente) e só o Status do WhatsApp segue.
+
+**Ficou fora (depende de material do Juliano):** corte da semana (11 e 30/09), antes/depois (23/09), Reel do
+sábado (03/10), duelo de cortes (06/10), dúvidas da caixinha (07/10), Recado de domingo (gola de papel) e
+os Stories de enquete (21 e 28/09), que a API não agenda.
+
 ## 29.168.0 — Corte 45 min, Corte + Lavagem 50 min (e as reservas futuras encolhem junto)
 
 **Pedido do Juliano (10/09/2026, 13h15):** depois de um dia inteiro com 50/55 (v29.164.0), "45 pra
