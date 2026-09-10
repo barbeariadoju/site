@@ -31,6 +31,8 @@ de antes da 29.139.0.
 Cache `?v=29.164.0` no catálogo, agenda, reagendamento e carrinho; `ADMIN_VERSION` 29.164.0 (o painel
 carrega o catálogo). `npm test`: 104 unit + 48 e2e, tudo verde.
 
+**NO AR** (10/09, manhã BRT): commit 560c8c9 publicado no GitHub Pages (conferido com curl em /agendar/, /precos/, home e página do corte); `services.duration_minutes` atualizado direto no banco (Corte de cabelo 50, Corte + Lavagem 55); `ju-ia-site` **v243** via CLI (`npx supabase functions deploy ju-ia-site`), `verify_jwt=true` igual ao anterior.
+
 ## 29.163.0 — Pix confirmado depois do horário: outra mensagem
 
 **Caso real (Marcelo, 09/09/2026):** horário às 17h00, Barba Express. Ele declarou o Pix às
