@@ -1,3 +1,36 @@
+## 29.164.0 — Corte 50 min, Corte + Lavagem 55 min, e o cliente lê "aproximadamente"
+
+**Pedido do Juliano (10/09/2026):** ajustar de novo o tempo dos cortes — Corte de cabelo passa de
+40 para **50 minutos** e Corte + Lavagem de 50 para **55 minutos** — e, onde o site mostra
+duração, o cliente tem que ler a palavra inteira **"aproximadamente"**, não "aprox." nem
+"cerca de". Os outros serviços ficaram com o tempo da 29.140.0.
+
+**Onde mudou o número:** banco (`services.duration_minutes`, que a JuIA e a agenda consultam),
+`services-catalog-v7.js`, cards de `/agendar/` (inclusive o `data-time`, que é o que vira
+duração da reserva), `/precos/`, `servicos.html`, home e FAQ (texto e JSON-LD), páginas do corte
+masculino, degradê, social e Corte + Lavagem (meta, schema, texto e FAQ) e o artigo "Quanto custa
+cortar cabelo". Reservas já marcadas mantêm a duração com que nasceram.
+
+**Onde mudou a palavra:** "aprox." → "aproximadamente" nos cards, tabelas e resumo do agendamento
+(agenda, reagendamento e carrinho); "cerca de N min" e "tem duração média de N minutos" →
+"aproximadamente N minutos" / "leva aproximadamente N minutos" nas páginas de serviço, guia da
+barba, FAQ e home; o seletor "Tempo médio" da home responde "Aproximadamente 50 min.". Na JuIA,
+todos os 28 lugares que citam duração ao cliente ("(50 min)", "para 50 minutos") agora saem
+"(aproximadamente 50 min)".
+
+**De carona — tempos que a 29.139.0 não pegou porque estavam em formato de hora:** em `/agendar/`
+os cards Corte + Barba na navalha (1h → 1h10), Luzes (1h30 → 1h40), Nevou/Platinado (2h → 2h10) e
+Aparação corporal (1h → 1h10) estavam com o tempo antigo **e o `data-time` também**, ou seja, quem
+marcava pelo site reservava 10 minutos a menos que o banco. Em `/precos/` a Fibra capilar dizia
+25 min (catálogo: 20). Páginas do combo com navalha e da aparação diziam "1 hora" (agora 1h10).
+Conferido por script cruzando cada card e cada linha das tabelas com o catálogo — zero diferença.
+
+**Não mexido:** `/precos/setembro/` (tabela antiga, noindex, válida até 30/09) segue com os tempos
+de antes da 29.139.0.
+
+Cache `?v=29.164.0` no catálogo, agenda, reagendamento e carrinho; `ADMIN_VERSION` 29.164.0 (o painel
+carrega o catálogo). `npm test`: 104 unit + 48 e2e, tudo verde.
+
 ## 29.163.0 — Pix confirmado depois do horário: outra mensagem
 
 **Caso real (Marcelo, 09/09/2026):** horário às 17h00, Barba Express. Ele declarou o Pix às

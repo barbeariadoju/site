@@ -83,7 +83,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
       const row = document.createElement('div');
       row.className = 'cart-row';
       // v29.62.0: sem botões de quantidade — serviço é 1 por horário (regra das famílias).
-      row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-service="${key}" aria-label="Remover ${item.name}" title="Remover serviço">×</button><span>${item.name}<small>${item.time || ''}</small></span></div><div></div>`;
+      row.innerHTML = `<div class="cart-row-main"><button type="button" class="cart-remove" data-remove-service="${key}" aria-label="Remover ${item.name}" title="Remover serviço">×</button><span>${item.name}<small>${item.time ? 'aproximadamente ' + item.time : ''}</small></span></div><div></div>`;
       items.appendChild(row);
     });
 

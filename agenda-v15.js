@@ -57,7 +57,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     $('service-upsell-v15').hidden=false;
     const nextButton=document.querySelector('[data-next-step="2"]');
     if(nextButton){nextButton.disabled=false;nextButton.setAttribute('aria-disabled','false');}
-    box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>aprox. ${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
+    box.innerHTML=`<div class="booking-selected-list">${services.map((s,i)=>`<article class="booking-selected-item"><div><strong>${s.name}</strong><small>aproximadamente ${fmtDuration(s.duration)} · ${money(s.price)}</small></div><button type="button" data-remove-service="${i}" aria-label="Remover ${s.name}">×</button></article>`).join('')}</div>`;
     const names=services.map(s=>s.name).join(' ');
     const suggestions=[];
     // v29.62.0: só sugere o que a regra das famílias deixaria entrar — antes, qualquer
@@ -80,7 +80,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   function updateSummary(){
     const t=total(),dSel=chosenDate(); let html=services.length?`<ul class="agenda-summary-services">${services.map(s=>`<li><span>${s.name}</span><b>${money(priceOn(s,dSel))}</b></li>`).join('')}</ul>`:'<p>Escolha seus serviços.</p>';
     if(products.length)html+=`<p class="eyebrow summary-subtitle">Produtos separados</p><ul class="agenda-summary-services">${products.map(p=>`<li><span>${p.name}</span><b>${money(p.price)}</b></li>`).join('')}</ul>`;
-    html+=`<div class="booking-summary-total"><span>Total estimado</span><strong>${money(t.servicePrice+t.productPrice)}</strong></div><p class="booking-summary-duration">Atendimento: <strong>${fmtDuration(t.duration)}</strong></p>`;
+    html+=`<div class="booking-summary-total"><span>Total estimado</span><strong>${money(t.servicePrice+t.productPrice)}</strong></div><p class="booking-summary-duration">Atendimento: <strong>aproximadamente ${fmtDuration(t.duration)}</strong></p>`;
     if(t.newTable)html+=`<p class="booking-summary-duration">Valores da tabela que vale a partir de ${new Date(vigencia+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})}.</p>`;
     const d=$('agenda-date').value;if(d)html+=`<div class="booking-summary-date"><span>Data</span><strong>${new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</strong></div>`;
     if(selectedTime)html+=`<div class="booking-summary-time"><span>Horário</span><strong>${selectedTime} às ${addMinutes(selectedTime,t.duration)}</strong></div>`;

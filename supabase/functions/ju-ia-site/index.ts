@@ -683,11 +683,11 @@ Deno.serve(async req=>{
  // "como é a lavagem profissional?" era respondido com preço e duração — informação, zero
  // motivo pra querer (caso Walter, 07/08/2026: perguntou, ouviu R$50/40min e não fechou).
  // v29.139.0 (pedido do Juliano, 05/09/2026): todas as durações subiram 10 min no banco e são
- // ESTIMATIVAS — o cliente lê "aprox. 40 min", nunca uma promessa de relógio.
+ // ESTIMATIVAS — o cliente lê "aproximadamente 50 min", nunca uma promessa de relógio.
  // v29.155.0: serviço com reajuste agendado leva o valor da data junto, pro modelo informar o
  // valor certo quando o cliente já disse uma data da tabela nova ou perguntar do aumento — sem
  // anunciar, comparar ou citar a data por conta própria (regra de 03/09, abaixo no prompt).
- const catalog=services.map(s=>`${s.name} — ${money(s.price)}${typeof (s as any).priceFrom==='number'?` (para atendimentos a partir de ${formatDateBR((s as any).effectiveFrom)}: ${money((s as any).priceFrom)})`:''} — aprox. ${s.duration} min${s.pitch?`\n   ↳ argumento de venda: ${s.pitch}`:''}`).join('\n')
+ const catalog=services.map(s=>`${s.name} — ${money(s.price)}${typeof (s as any).priceFrom==='number'?` (para atendimentos a partir de ${formatDateBR((s as any).effectiveFrom)}: ${money((s as any).priceFrom)})`:''} — aproximadamente ${s.duration} min${s.pitch?`\n   ↳ argumento de venda: ${s.pitch}`:''}`).join('\n')
  const productCatalog=products.map(p=>`${p.name} — ${money(p.price)}`).join('\n')
  const phoneTrustNote=verifiedPhone
   ?'O telefone do cliente já é confirmado automaticamente pelo canal (WhatsApp) — NUNCA peça o WhatsApp dele, ele já está identificado. Mesmo assim, só fale de pontos de fidelidade, recompensas, status VIP, última visita ou histórico de atendimentos se o cliente perguntar explicitamente sobre isso.'
@@ -975,8 +975,8 @@ Deno.serve(async req=>{
   const dur=lista.reduce((a:number,x:any)=>a+Number(x.duration||0),0)
   const nomes=lista.map((x:any)=>x.name).join(' + ')
   return lista.length>1
-   ?`${lista.map((x:any)=>`${x.name} — ${money(x.price)}`).join('\n')}\n*Total: ${money(total)}* (${dur} min).`
-   :`${nomes} sai *${money(total)}* (${dur} min).`
+   ?`${lista.map((x:any)=>`${x.name} — ${money(x.price)}`).join('\n')}\n*Total: ${money(total)}* (aproximadamente ${dur} min).`
+   :`${nomes} sai *${money(total)}* (aproximadamente ${dur} min).`
  }
  const explicitConfirm=includesAny(normalizedQuestion,['pode confirmar','confirma pra mim','pode fechar','pode marcar','pode agendar','confirmo','isso mesmo'])
  if(intent==='book'&&isQuestion&&!explicitConfirm&&!simpleYes)intent='faq'
@@ -1269,7 +1269,7 @@ Deno.serve(async req=>{
    // que a Barba Express tem "acabamento na navalha" (caso real, José Reis Imóveis,
    // 01/09 10h26). Cada opção agora carrega a diferença real entre elas, em uma
    // expressão curta entre parênteses, e isso vira a única descrição que existe.
-   reply=`Pra barba, qual você prefere?\n${barbaOptions.map(s=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, ${s.duration} min`).join('\n')}${(next.date||next.time)?`\nMe diz qual e já te passo os horários${outros.length?` pra ${outros.join(' + ')} + barba`:''}.`:''}`
+   reply=`Pra barba, qual você prefere?\n${barbaOptions.map(s=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, aproximadamente ${s.duration} min`).join('\n')}${(next.date||next.time)?`\nMe diz qual e já te passo os horários${outros.length?` pra ${outros.join(' + ')} + barba`:''}.`:''}`
    actions=barbaOptions.map(s=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
    intent='other'
    handoff=false
@@ -1277,7 +1277,7 @@ Deno.serve(async req=>{
   if(bareBarboterapiaAsk){
    const barbaOptions=services.filter(s=>s.category==='barba'&&barbaResumo(s.name)!=='só na máquina')
    const outros=chosen.filter((c:any)=>c.category!=='barba').map((c:any)=>c.name)
-   reply=`Com vaporizador de ozônio ou sem?\n${barbaOptions.map(s=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, ${s.duration} min`).join('\n')}${(next.date||next.time)?`\nMe diz qual e já te passo os horários${outros.length?` pra ${outros.join(' + ')} + barba`:''}.`:''}`
+   reply=`Com vaporizador de ozônio ou sem?\n${barbaOptions.map(s=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, aproximadamente ${s.duration} min`).join('\n')}${(next.date||next.time)?`\nMe diz qual e já te passo os horários${outros.length?` pra ${outros.join(' + ')} + barba`:''}.`:''}`
    actions=barbaOptions.map(s=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
    intent='other'
    handoff=false
@@ -2039,7 +2039,7 @@ Deno.serve(async req=>{
     next.pending_change_service_new_name=null;next.pending_change_service_composed=null
     handoff=false
    }else{
-    reply=`Só confirmando: você quer trocar o serviço do seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}, de "${target?.service_name}" para "${desired?.name||next.pending_change_service_new_name}"${desired?` (${money(desired.price)}, ${desired.duration} min)`:''}? Responda sim ou não.`
+    reply=`Só confirmando: você quer trocar o serviço do seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}, de "${target?.service_name}" para "${desired?.name||next.pending_change_service_new_name}"${desired?` (${money(desired.price)}, aproximadamente ${desired.duration} min)`:''}? Responda sim ou não.`
     actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
     handoff=false
    }
@@ -2079,14 +2079,14 @@ Deno.serve(async req=>{
      const composed={name:todos.map((x:any)=>x.name).join(' + '),price:todos.reduce((a:number,x:any)=>a+Number(x.price||0),0),duration:todos.reduce((a:number,x:any)=>a+Number(x.duration||0),0)}
      next.pending_change_service_new_name=composed.name
      next.pending_change_service_composed=composed
-     reply=`Confirmando: incluir ${desiredNew.name} no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}? Fica ${composed.name} (${money(composed.price)}, ${composed.duration} min). Responda sim ou não.`
+     reply=`Confirmando: incluir ${desiredNew.name} no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}? Fica ${composed.name} (${money(composed.price)}, aproximadamente ${composed.duration} min). Responda sim ou não.`
      actions=[{label:'Sim, incluir',message:'Sim, pode incluir'},{label:'Não, manter',message:'Não, manter como está'}]
      handoff=false
      return
     }
     if(swapTailService&&normalize(swapTailService.name)!==normalize(String(b.service_name||''))){
      next.pending_change_service_new_name=swapTailService.name
-     reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, ${swapTailService.duration} min)? Responda sim ou não.`
+     reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, aproximadamente ${swapTailService.duration} min)? Responda sim ou não.`
      actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
     }else{
      reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (atualmente ${b.service_name}). Qual serviço você quer no lugar?`
@@ -2122,7 +2122,7 @@ Deno.serve(async req=>{
     handoff=false
    }else{
     next.pending_change_service_new_name=desiredFresh.name
-    reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}, de "${target.service_name}" para "${desiredFresh.name}" (${money(desiredFresh.price)}, ${desiredFresh.duration} min)? Responda sim ou não.`
+    reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}, de "${target.service_name}" para "${desiredFresh.name}" (${money(desiredFresh.price)}, aproximadamente ${desiredFresh.duration} min)? Responda sim ou não.`
     actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
     handoff=false
    }
@@ -2331,9 +2331,9 @@ Deno.serve(async req=>{
    const {data:chRows,error:chErr}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:postBooking.id,p_service_name:names.join(' + '),p_service_price:total,p_duration_minutes:dur})
    const ch=Array.isArray(chRows)?chRows[0]:chRows
    if(chErr||!ch){
-    reply=`Com ${addName} o atendimento passa a ${dur} min e não cabe ${quando}. Mantive ${baseNames.join(' + ')}, como estava.`
+    reply=`Com ${addName} o atendimento passa a aproximadamente ${dur} min e não cabe ${quando}. Mantive ${baseNames.join(' + ')}, como estava.`
    }else{
-    reply=`Incluído. Fica ${names.join(' + ')} — ${money(total)} (${dur} min), ${quando}.`
+    reply=`Incluído. Fica ${names.join(' + ')} — ${money(total)} (aproximadamente ${dur} min), ${quando}.`
     next.services=names
     chosen=newChosen
    }
@@ -2348,7 +2348,7 @@ Deno.serve(async req=>{
   const totalNow=chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0)
   const durNow=chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)
   const linhas=chosen.map((s:any)=>`${s.name} — ${money(s.price)}`).join('\n')
-  reply=`${linhas}${chosen.length>1?`\n*Total: ${money(totalNow)}*`:''} (${durNow} min).${next.time?` Seu horário das ${next.time} continua reservado.`:''}\n\nQuer que eu confirme assim, ou prefere incluir algum dos itens que te mandei?`
+  reply=`${linhas}${chosen.length>1?`\n*Total: ${money(totalNow)}*`:''} (aproximadamente ${durNow} min).${next.time?` Seu horário das ${next.time} continua reservado.`:''}\n\nQuer que eu confirme assim, ou prefere incluir algum dos itens que te mandei?`
   actions=[{label:'Confirmar assim',message:'Sim, pode confirmar'}]
   intent='other';handoff=false;offerTurn=true
  }else if(pendingOffer&&notSpecialFlow){
@@ -2424,7 +2424,7 @@ Deno.serve(async req=>{
     }
     if(perguntaBarbaAmbigua){
      const barbaOpts=services.filter((s:any)=>s.category==='barba'&&barbaResumo(s.name)!=='só na máquina')
-     reply=`Qual barboterapia você prefere?\n${barbaOpts.map((s:any)=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, ${s.duration} min`).join('\n')}`
+     reply=`Qual barboterapia você prefere?\n${barbaOpts.map((s:any)=>`• ${s.name}${barbaResumo(s.name)?` (${barbaResumo(s.name)})`:''} — ${money(s.price)}, aproximadamente ${s.duration} min`).join('\n')}`
      actions=barbaOpts.map((s:any)=>({label:`${s.name} · ${money(s.price)}`,message:`Quero ${s.name}`}))
     }else{
     const newChosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
@@ -2447,7 +2447,7 @@ Deno.serve(async req=>{
      }
     }
     if(encaixa){
-     reply=`Boa escolha! Então fica ${newChosen.map((s:any)=>s.name).join(' + ')} — ${money(next.date?totalOn(newChosen,next.date):total)} (${dur} min)${next.date&&next.time?`, ${formatDateBR(next.date)} às ${next.time}`:''}. Posso confirmar?`
+     reply=`Boa escolha! Então fica ${newChosen.map((s:any)=>s.name).join(' + ')} — ${money(next.date?totalOn(newChosen,next.date):total)} (aproximadamente ${dur} min)${next.date&&next.time?`, ${formatDateBR(next.date)} às ${next.time}`:''}. Posso confirmar?`
      actions=[{label:'Confirmar',message:'Sim, pode confirmar'}]
     }else{
      const alvoT=String(next.time).slice(0,5)
@@ -2458,8 +2458,8 @@ Deno.serve(async req=>{
      // v29.138.0 (pedido do Juliano, 05/09/2026): resposta de duas linhas, com os números
      // na frente — quem tem dificuldade com tecnologia responde "1" ou "2" e pronto.
      reply=alternativas.length
-      ?`Com ${addName} o atendimento passa a ${dur} min e às ${alvoT} não cabe. Duas opções:\n*1* — ${comboNome} às ${alternativas[0]}${alternativas[1]?` (ou ${alternativas[1]})`:''}\n*2* — Manter só ${baseNames} às ${alvoT}`
-      :`Com ${addName} o atendimento passa a ${dur} min e às ${alvoT} não cabe, e não sobrou outro horário ${emDia(next.date)}. Duas opções:\n*1* — Manter só ${baseNames} às ${alvoT}\n*2* — Ver outro dia com ${addName}`
+      ?`Com ${addName} o atendimento passa a aproximadamente ${dur} min e às ${alvoT} não cabe. Duas opções:\n*1* — ${comboNome} às ${alternativas[0]}${alternativas[1]?` (ou ${alternativas[1]})`:''}\n*2* — Manter só ${baseNames} às ${alvoT}`
+      :`Com ${addName} o atendimento passa a aproximadamente ${dur} min e às ${alvoT} não cabe, e não sobrou outro horário ${emDia(next.date)}. Duas opções:\n*1* — Manter só ${baseNames} às ${alvoT}\n*2* — Ver outro dia com ${addName}`
      next.pending_fit_choice={time:alvoT,added:addName,alt:alternativas[0]||null,semOutroHorario:!alternativas.length}
      actions=[...alternativas.map((t:string)=>({label:t,message:t})),{label:`Manter só ${baseNames} às ${alvoT}`,message:`Manter só o ${baseNames} às ${alvoT}`}]
      respostaConferidaNaAgenda=true
@@ -2819,12 +2819,12 @@ Deno.serve(async req=>{
     // Um dia só: já assume esse dia e passa direto pros horários — não faz sentido
     // perguntar "qual dia?" quando existe um.
     next.date=comVaga[0].date
-    reply=`Para ${serviceNames} (${duration} min) consigo te atender ${emDia(comVaga[0].date)}${minTime?` depois das ${horaFalada(minTime)}`:''}: ${slotsPhrase(comVaga[0].slots)}.${nota} Qual horário fica melhor pra você?`
+    reply=`Para ${serviceNames} (aproximadamente ${duration} min) consigo te atender ${emDia(comVaga[0].date)}${minTime?` depois das ${horaFalada(minTime)}`:''}: ${slotsPhrase(comVaga[0].slots)}.${nota} Qual horário fica melhor pra você?`
     actions=slotsSample(comVaga[0].slots).map((t:string)=>({label:t,message:t}))
    }else if(comVaga.length){
     const lista=comVaga.map((d:any)=>diaHumano(d.date))
     const listaTxt=`${lista.slice(0,-1).join(', ')} e ${lista[lista.length-1]}`
-    reply=`Para ${serviceNames} (${duration} min) tenho vaga ${minTime?`depois das ${horaFalada(minTime)} `:''}nestes dias: ${listaTxt}.${nota} ${emDiaCap(comVaga[0].date)} consigo te atender ${slotsPhrase(comVaga[0].slots)}. Qual dia fica melhor pra você?`
+    reply=`Para ${serviceNames} (aproximadamente ${duration} min) tenho vaga ${minTime?`depois das ${horaFalada(minTime)} `:''}nestes dias: ${listaTxt}.${nota} ${emDiaCap(comVaga[0].date)} consigo te atender ${slotsPhrase(comVaga[0].slots)}. Qual dia fica melhor pra você?`
     actions=comVaga.map((d:any)=>({label:diaHumano(d.date),message:`Quero ${diaHumano(d.date)}`}))
    }else{
     // Nada dentro da restrição. O caso real é o piso alto demais: o Tiago pediu "após as
@@ -3037,7 +3037,7 @@ Deno.serve(async req=>{
      // o state passou a apontar pra terça e a resposta seguinte disse "Sim, 13:00 está
      // disponível" SEM O DIA — ele leu como hoje, foi até a barbearia e o horário era de
      // outro cliente. O dia vai sempre na frente do horário; "hoje" inclusive.
-     reply=`${precoAntesSemOferta}Sim, ${emDia(next.date)} às ${effectiveTime} está livre para ${serviceNames} (${duration} min). Quer que eu reserve?`
+     reply=`${precoAntesSemOferta}Sim, ${emDia(next.date)} às ${effectiveTime} está livre para ${serviceNames} (aproximadamente ${duration} min). Quer que eu reserve?`
      actions=[{label:`Reservar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
     }
    }else{
@@ -3152,10 +3152,10 @@ Deno.serve(async req=>{
     // cliente a escolher; ele pode responder qualquer horário, não só os exemplos.
     const sample=[periodSlots[0],periodSlots[Math.floor(periodSlots.length*0.25)],periodSlots[Math.floor(periodSlots.length/2)],periodSlots[Math.floor(periodSlots.length*0.75)],periodSlots[periodSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
     // v29.69.0: o dia SEMPRE na frente da lista de horários — ver comentário do diaHumano.
-    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, tenho horários entre ${periodSlots[0]} e ${periodSlots[periodSlots.length-1]} para ${duration} minutos. Alguns exemplos: ${sample.join(', ')}. Qual horário fica melhor pra você?`
+    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, tenho horários entre ${periodSlots[0]} e ${periodSlots[periodSlots.length-1]} para aproximadamente ${duration} minutos. Alguns exemplos: ${sample.join(', ')}. Qual horário fica melhor pra você?`
     actions=sample.map((t:string)=>({label:t,message:t}))
    }else if(periodSlots.length){
-    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
+    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para aproximadamente ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
     reply=`${emDiaCap(next.date)} não tenho horário no período da ${periodLabel(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
@@ -3169,7 +3169,7 @@ Deno.serve(async req=>{
    // Cliente já disse que qualquer horário serve: perguntar período de novo é o loop que
    // o Juliano flagrou. Mostra uma amostra espalhada do dia inteiro e deixa ele apontar.
    const spread=[allSlots[0],allSlots[Math.floor(allSlots.length*0.25)],allSlots[Math.floor(allSlots.length/2)],allSlots[Math.floor(allSlots.length*0.75)],allSlots[allSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
-   reply=`Perfeito! Para ${serviceNames} (${duration} min) consigo te atender ${emDia(next.date)}, entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Alguns horários: ${spread.join(', ')}. Qual fica melhor pra você?`
+   reply=`Perfeito! Para ${serviceNames} (aproximadamente ${duration} min) consigo te atender ${emDia(next.date)}, entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Alguns horários: ${spread.join(', ')}. Qual fica melhor pra você?`
    actions=spread.map((t:string)=>({label:t,message:t}))
   }else if(allSlots.length>10){
    // v29.12.0: não dizer mais o NÚMERO de horários livres ("Tenho 42 horários disponíveis")
@@ -3179,7 +3179,7 @@ Deno.serve(async req=>{
    // o recado — "vários" é abundância, e abundância na agenda de barbearia lê como cadeira
    // vazia. "Ainda tenho alguns" diz a mesma verdade operacional (dá pra encaixar) sem
    // anunciar folga, e o "sim!" na frente responde a pergunta que o cliente fez de verdade.
-   reply=`Consigo te atender ${emDia(next.date)} sim! Ainda tenho alguns horários para ${serviceNames} (${duration} min). Você prefere manhã, tarde ou final do dia?`
+   reply=`Consigo te atender ${emDia(next.date)} sim! Ainda tenho alguns horários para ${serviceNames} (aproximadamente ${duration} min). Você prefere manhã, tarde ou final do dia?`
    actions=[
     {label:'Manhã',message:'Prefiro manhã'},
     {label:'Tarde',message:'Prefiro tarde'},
@@ -3190,7 +3190,7 @@ Deno.serve(async req=>{
    // sumiram. Mais de 4 opcoes vira amostra espalhada + faixa; o cliente pode responder
    // qualquer horario, nao so os exemplos.
    const spread=[allSlots[0],allSlots[Math.floor(allSlots.length/3)],allSlots[Math.floor(allSlots.length*2/3)],allSlots[allSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
-   reply=`Para ${serviceNames} (${duration} min) consigo te atender ${emDia(next.date)}, entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Por exemplo: ${spread.join(', ')}. Qual fica melhor pra você?`
+   reply=`Para ${serviceNames} (aproximadamente ${duration} min) consigo te atender ${emDia(next.date)}, entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Por exemplo: ${spread.join(', ')}. Qual fica melhor pra você?`
    actions=spread.map((t:string)=>({label:t,message:t}))
   }else{
    reply=`Para ${serviceNames} ${emDia(next.date)}, estes são os horários disponíveis: ${allSlots.join(', ')}. Qual você prefere?`
@@ -3210,10 +3210,10 @@ Deno.serve(async req=>{
    if(generica){
     const faixa=allSlots.length>1?`entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}`:`às ${allSlots[0]}`
     if(allSlots.length>6){
-     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender ${faixa} para ${serviceNames} (aprox. ${duration} min). Você prefere manhã, tarde ou final do dia?`
+     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender ${faixa} para ${serviceNames} (aproximadamente ${duration} min). Você prefere manhã, tarde ou final do dia?`
      actions=[{label:'Manhã',message:'Prefiro manhã'},{label:'Tarde',message:'Prefiro tarde'},{label:'Final do dia',message:'Prefiro final do dia'}]
     }else{
-     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender para ${serviceNames} (aprox. ${duration} min) nestes horários: ${allSlots.join(', ')}. Qual fica melhor pra você?`
+     reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender para ${serviceNames} (aproximadamente ${duration} min) nestes horários: ${allSlots.join(', ')}. Qual fica melhor pra você?`
      actions=allSlots.map((t:string)=>({label:t,message:t}))
     }
    }else{
@@ -3338,8 +3338,8 @@ Deno.serve(async req=>{
       // v29.138.0: curto e claro — o horário foi tomado (ou o serviço cresceu e não cabe),
       // e o próximo que existe. Uma pergunta só.
       reply=perto.length
-       ?`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (${duration} min). O mais próximo que tenho é ${perto.join(' ou ')}. Serve pra você?`
-       :`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (${duration} min) e não sobrou outro horário nesse dia. Quer que eu veja outro dia?`
+       ?`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (aproximadamente ${duration} min). O mais próximo que tenho é ${perto.join(' ou ')}. Serve pra você?`
+       :`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (aproximadamente ${duration} min) e não sobrou outro horário nesse dia. Quer que eu veja outro dia?`
       actions=perto.map((t:string)=>({label:t,message:t}))
       // v29.79.0 (caso Rodrigo): arma a saída "só o corte então" — se o cliente abrir
       // mão do serviço que não coube, o horário original volta e o agendamento fecha
