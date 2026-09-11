@@ -7,7 +7,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const money = (cents) => (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dateLabel = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const STATUS_LABEL = { pending_payment: 'Aguardando Pix', active: 'Ativo', used: 'Usado', expired: 'Vencido', cancelled: 'Cancelado' };

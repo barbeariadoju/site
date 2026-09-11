@@ -3,7 +3,7 @@
  if(!window.supabase||!cfg.supabaseUrl||!cfg.supabaseAnonKey)return;
  const sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
  let rows=[],emailRows=[],smsRows=[];
- const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+ const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
  const safeUrl=u=>{try{const parsed=new URL(String(u||''),window.location.href);return(parsed.protocol==='http:'||parsed.protocol==='https:')?parsed.href:'';}catch(_){return'';}};
  const digits=s=>String(s||'').replace(/\D/g,'');
  const formatPhone=p=>{p=digits(p);if(p.startsWith('55')&&p.length>=12)p=p.slice(2);return p.length===11?`(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`:p};

@@ -2,7 +2,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const dateLabel = (iso) => iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
   const REASON_LABEL = { sem_horario_desejado: 'Sem horário desejado', preco: 'Preço', so_pesquisando: 'Só pesquisando', outro: 'Outro motivo' };
   const KIND_LABEL = { availability: 'Pediu dia + serviço', price_or_service: 'Perguntou preço/serviço', greeting: 'Só cumprimentou' };

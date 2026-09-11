@@ -2,7 +2,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const phoneDigits = (s = '') => String(s).replace(/\D/g, '');
   // v29.152.0 — cliente único é por DDD + 8 últimos dígitos (regra de phone_match_key do banco),
@@ -196,8 +196,8 @@
           <article><strong>${novos}</strong><small>Novos</small></article>
           <article><strong>${recorrentes}</strong><small>Recorrentes</small></article>
         </div>
-        <div class="rel-dualbar"><i style="width:${Math.round(novos / total * 100)}%;background:var(--gold2)"></i><i style="width:${Math.round(recorrentes / total * 100)}%;background:#5a86c9"></i></div>
-        <div class="rel-legend"><span><i class="rel-dot" style="background:var(--gold2)"></i>Novos</span><span><i class="rel-dot" style="background:#5a86c9"></i>Recorrentes</span></div>
+        <div class="rel-dualbar"><i class="is-gold2" style="width:${Math.round(novos / total * 100)}%"></i><i class="is-blue" style="width:${Math.round(recorrentes / total * 100)}%"></i></div>
+        <div class="rel-legend"><span><i class="rel-dot is-gold2"></i>Novos</span><span><i class="rel-dot is-blue"></i>Recorrentes</span></div>
         <p class="rel-note">Cada cliente conta uma vez (pelo telefone). "Recorrente" = já teve atendimento concluído antes deste período.</p>
       </div>`;
   }
@@ -232,8 +232,8 @@
           <article><strong>${site}</strong><small>💻 Site / WhatsApp</small></article>
           <article><strong>${balcao}</strong><small>🚶 Direto na porta</small></article>
         </div>
-        <div class="rel-dualbar"><i style="width:${Math.round(site / total * 100)}%;background:var(--gold)"></i><i style="width:${Math.round(balcao / total * 100)}%;background:#5a86c9"></i></div>
-        <div class="rel-legend"><span><i class="rel-dot" style="background:var(--gold)"></i>Site / WhatsApp</span><span><i class="rel-dot" style="background:#5a86c9"></i>Direto na porta</span></div>
+        <div class="rel-dualbar"><i class="is-gold" style="width:${Math.round(site / total * 100)}%"></i><i class="is-blue" style="width:${Math.round(balcao / total * 100)}%"></i></div>
+        <div class="rel-legend"><span><i class="rel-dot is-gold"></i>Site / WhatsApp</span><span><i class="rel-dot is-blue"></i>Direto na porta</span></div>
         <p class="rel-note">Conta atendimentos concluídos, não clientes únicos. "Direto na porta" é o que foi registrado em Atendimento Balcão.</p>
       </div>`;
   }
@@ -289,7 +289,7 @@
           <article><strong>${money(revenueServ)}</strong><small>✂ Serviços</small></article>
           <article><strong>${money(revenueProd)}</strong><small>🛍 Produtos</small></article>
         </div>
-        <div class="rel-dualbar"><i style="width:${Math.round(ps)}%;background:var(--gold)"></i><i style="width:${Math.round(pp)}%;background:var(--gold2)"></i></div>
+        <div class="rel-dualbar"><i class="is-gold" style="width:${Math.round(ps)}%"></i><i class="is-gold2" style="width:${Math.round(pp)}%"></i></div>
         <p class="rel-note">Total do período: <b>${money(revenue)}</b>. Só entram atendimentos marcados como <b>concluídos</b>.</p>
       </div>`;
   }

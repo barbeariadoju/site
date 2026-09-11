@@ -13,7 +13,7 @@
   // devolve DDD + 8 últimos dígitos, ignorando o 55 e o nono dígito, como phone_match_key do
   // banco. Antes comparava os dígitos exatos e o mesmo cliente gravado com e sem 55 virava dois.
   const phone = (v='') => { const d = String(v).replace(/\D/g,'').replace(/^55/,''); return d.length >= 10 ? d.slice(0,2) + d.slice(-8) : d; };
-  const esc = (s='') => String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const daysBetween = (a,b) => Math.floor((new Date(b+'T12:00:00') - new Date(a+'T12:00:00')) / 86400000);
 
   function bind() {

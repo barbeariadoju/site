@@ -2,7 +2,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
 
   let rows = [];
   let statusTab = 'rascunho';
@@ -203,7 +203,7 @@
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
         ${carouselUrls.length
-          ? `<div class="conteudo-preview"><p class="meta">Prévia — vai como <strong>carrossel de ${carouselUrls.length} imagens</strong> no Instagram, nesta ordem, com o texto como legenda:</p><div style="display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.4rem">${carouselUrls.map((u, i) => `<figure style="margin:0;flex:0 0 auto;text-align:center"><img src="${esc(u)}" alt="Imagem ${i + 1} do carrossel" loading="lazy" style="max-height:180px;border-radius:.6rem"><figcaption class="meta">${i + 1}ª</figcaption></figure>`).join('')}</div></div>`
+          ? `<div class="conteudo-preview"><p class="meta">Prévia — vai como <strong>carrossel de ${carouselUrls.length} imagens</strong> no Instagram, nesta ordem, com o texto como legenda:</p><div class="conteudo-strip">${carouselUrls.map((u, i) => `<figure class="conteudo-strip-item"><img src="${esc(u)}" alt="Imagem ${i + 1} do carrossel" loading="lazy" class="conteudo-thumb"><figcaption class="meta">${i + 1}ª</figcaption></figure>`).join('')}</div></div>`
           : videoUrl
           ? `<div class="conteudo-preview"><p class="meta">${r.platform === 'instagram' ? 'Prévia — este vídeo vai como <strong>Reel</strong> no Instagram, com o texto abaixo como legenda:' : isStoryPlatform ? 'Prévia — este vídeo vai pro Story (sem legenda):' : 'Prévia — este vídeo é publicado com o texto como legenda:'}</p><video src="${esc(videoUrl)}" controls playsinline preload="metadata"></video></div>`
           : imageUrl ? `<div class="conteudo-preview"><p class="meta">${isStoryPlatform ? 'Prévia — é exatamente essa imagem que vai pro Story (sem legenda, a Meta não permite texto sobreposto por API):' : 'Prévia — a imagem abaixo é publicada junto, com o texto como legenda:'}</p><img src="${esc(imageUrl)}" alt="Arte que será publicada" loading="lazy"></div>` : `<p class="meta">${esc(noImageNote)}</p>`}
@@ -401,8 +401,8 @@
       return `<article class="conteudo-card" data-id="${r.id}">
         <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}${r.status === 'enviado' ? ' · enviado automaticamente' : ''}</span>
         <p class="meta"><strong>${esc(r.sender_name || 'Cliente (a Meta não informou o nome)')}</strong> disse:</p>
-        <p class="meta" style="color:var(--text);white-space:pre-wrap">${r.original_text ? esc(r.original_text) : '<em>(mensagem sem texto — provavelmente figurinha, áudio, foto ou reação; abra o Direct/Messenger pra ver o conteúdo antes de responder)</em>'}</p>
-        ${editable && !semTexto ? `<p class="meta" style="color:var(--gold);border:1px solid var(--line);border-radius:.7rem;padding:.6rem .8rem;background:rgba(240,201,135,.06)">⚠️ A JuIA tentou responder sozinha e não conseguiu enviar — escreva/ajuste a resposta e aprove manualmente abaixo.</p>` : ''}
+        <p class="meta is-text">${r.original_text ? esc(r.original_text) : '<em>(mensagem sem texto — provavelmente figurinha, áudio, foto ou reação; abra o Direct/Messenger pra ver o conteúdo antes de responder)</em>'}</p>
+        ${editable && !semTexto ? `<p class="meta is-warn">⚠️ A JuIA tentou responder sozinha e não conseguiu enviar — escreva/ajuste a resposta e aprove manualmente abaixo.</p>` : ''}
         <textarea data-role="social-reply" ${editable ? '' : 'readonly'}>${esc(r.reply_text || r.ai_draft || '')}</textarea>
         <p class="meta">Recebido em ${esc(created)}</p>
         ${editable ? `<div class="conteudo-card-actions">

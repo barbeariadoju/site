@@ -2,7 +2,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -19,13 +19,35 @@
 
   const kindOf = (name) => (categories.find(c => c.name === name) || {}).kind || 'variavel';
 
+  // v29.177.0 — fase 5 da reforma (pedido do Juliano, 11/09/2026): o Financeiro era só mensal e não
+  // havia como ver "quanto entrou e saiu HOJE" fora da tela Hoje. Três recortes: dia, semana (terça a
+  // sábado, mesma régua dos Relatórios) e mês. As setas andam no passo do recorte.
+  let mode = 'mes';
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
   function getRange() {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    if (mode === 'dia') {
+      const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+      return { start: iso(d), end: iso(d), label: cap(d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })), atCurrent: d >= now };
+    }
+    if (mode === 'semana') {
+      const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+      const dow = d.getDay(); // semana da casa: terça (2) a sábado (6); domingo/segunda contam pra semana seguinte
+      const back = dow >= 2 ? dow - 2 : dow + 5;
+      const start = new Date(d); start.setDate(d.getDate() - back);
+      const end = new Date(start); end.setDate(start.getDate() + 4);
+      const fmt = (x) => x.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '');
+      return { start: iso(start), end: iso(end), label: `Semana de ${fmt(start)} a ${fmt(end)}`, atCurrent: end >= now };
+    }
     const start = new Date(ref.getFullYear(), ref.getMonth(), 1);
     const end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
-    const now = new Date();
     const atCurrent = ref.getFullYear() > now.getFullYear() || (ref.getFullYear() === now.getFullYear() && ref.getMonth() >= now.getMonth());
-    const label = ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    return { start: iso(start), end: iso(end), label: label.charAt(0).toUpperCase() + label.slice(1), atCurrent };
+    return { start: iso(start), end: iso(end), label: cap(ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })), atCurrent };
+  }
+  function stepRef(dir) {
+    if (mode === 'dia') ref = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + dir);
+    else if (mode === 'semana') ref = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + 7 * dir);
+    else ref = new Date(ref.getFullYear(), ref.getMonth() + dir, 1);
   }
 
   // ---------- auth ----------
@@ -169,7 +191,7 @@
     const feeMonth = sumFees(bookings);
 
     if (feeMonth <= 0 && !recentBookings.some(feeOf)) {
-      box.innerHTML = '<h3>Taxa da maquininha</h3><p class="fin-empty" style="padding:0">Nenhum pagamento em cartão neste período.</p>';
+      box.innerHTML = '<h3>Taxa da maquininha</h3><p class="fin-empty is-tight">Nenhum pagamento em cartão neste período.</p>';
       return;
     }
 
@@ -206,7 +228,7 @@
         <div><span>No mês</span><strong>${esc(money(feeMonth))}</strong></div>
       </div>
       <table><thead><tr><th>Modalidade</th><th class="num">Qtd</th><th class="num">Volume</th><th class="num">Taxa</th><th class="num">Descontado</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="fin-note">${absorvido > 0 ? `Deste total, <b style="color:var(--text)">${esc(money(absorvido))}</b> saiu do seu bolso (taxa não repassada) e já entra como despesa no lucro.` : 'Nenhuma taxa marcada como absorvida por você neste mês.'}${indefinido > 0 ? ` Há <b style="color:var(--text)">${esc(money(indefinido))}</b> em atendimentos sem essa informação — a partir de agora o sistema pergunta ao concluir.` : ''}</p>`;
+      <p class="fin-note">${absorvido > 0 ? `Deste total, <b class="fin-strong">${esc(money(absorvido))}</b> saiu do seu bolso (taxa não repassada) e já entra como despesa no lucro.` : 'Nenhuma taxa marcada como absorvida por você neste mês.'}${indefinido > 0 ? ` Há <b class="fin-strong">${esc(money(indefinido))}</b> em atendimentos sem essa informação — a partir de agora o sistema pergunta ao concluir.` : ''}</p>`;
   }
 
   function render() {
@@ -330,8 +352,13 @@
 
   function bindStaticUI() {
     $('fin-date').value = iso(new Date());
-    $('fin-prev').onclick = () => { ref = new Date(ref.getFullYear(), ref.getMonth() - 1, 1); load(); };
-    $('fin-next').onclick = () => { if ($('fin-next').disabled) return; ref = new Date(ref.getFullYear(), ref.getMonth() + 1, 1); load(); };
+    $('fin-prev').onclick = () => { stepRef(-1); load(); };
+    $('fin-next').onclick = () => { if ($('fin-next').disabled) return; stepRef(1); load(); };
+    document.querySelectorAll('[data-fin-mode]').forEach(b => b.onclick = () => {
+      mode = b.dataset.finMode; ref = new Date();
+      document.querySelectorAll('[data-fin-mode]').forEach(x => x.classList.toggle('is-active', x === b));
+      load();
+    });
     $('fin-save').onclick = saveEntry;
     $('fin-repeat').onclick = repeatRecurring;
     $('fin-amount').addEventListener('keydown', e => { if (e.key === 'Enter') saveEntry(); });

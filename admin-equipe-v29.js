@@ -12,7 +12,7 @@
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dayLabel = (iso) => iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
   const KIND_LABEL = {
@@ -91,7 +91,7 @@
         </div>
         <p class="eq-meta">
           Cota-parte: <strong>${Number(p.share_percent)}%</strong>${p.is_owner ? ' — sem rateio' : ''}<br>
-          ${p.cnpj ? `CNPJ ${esc(p.cnpj)}` : p.cnpj_deadline ? `Sem CNPJ — prazo até ${dayLabel(p.cnpj_deadline)}${p.cnpj_pendente ? ' <strong style="color:#e6a0a0">(vencido)</strong>' : ''}` : 'Sem CNPJ'}<br>
+          ${p.cnpj ? `CNPJ ${esc(p.cnpj)}` : p.cnpj_deadline ? `Sem CNPJ — prazo até ${dayLabel(p.cnpj_deadline)}${p.cnpj_pendente ? ' <strong class="eq-neg">(vencido)</strong>' : ''}` : 'Sem CNPJ'}<br>
           ${p.pix_key ? `Pix: ${esc(p.pix_key)}` : 'Chave Pix não cadastrada'}
         </p>
         ${p.is_owner ? '' : `<div class="eq-actions">
@@ -166,13 +166,13 @@
       <tr data-pending="${e.pending_reason ? 1 : 0}">
         <td>${dayLabel(e.entry_date)}</td>
         <td>${esc(KIND_LABEL[e.kind] || e.kind)}</td>
-        <td>${esc(e.description || '')}${e.pending_reason ? `<br><small style="color:#f1c69a">${esc(e.pending_reason)}</small>` : ''}</td>
+        <td>${esc(e.description || '')}${e.pending_reason ? `<br><small class="eq-pend">${esc(e.pending_reason)}</small>` : ''}</td>
         <td class="num">${e.gross_amount != null ? money(e.gross_amount) : '—'}</td>
         <td class="num">${e.fee_amount != null ? money(e.fee_amount) : '—'}</td>
         <td class="num">${e.cost_amount != null ? money(e.cost_amount) : '—'}</td>
         <td class="num">${e.base_amount != null ? money(e.base_amount) : '—'}</td>
         <td class="num">${e.share_percent != null ? `${Number(e.share_percent)}%` : '—'}</td>
-        <td class="num"><strong style="color:${Number(e.amount) < 0 ? '#e6a0a0' : 'inherit'}">${money(e.amount)}</strong></td>
+        <td class="num"><strong class="${Number(e.amount) < 0 ? 'eq-neg' : ''}">${money(e.amount)}</strong></td>
       </tr>`).join('');
 
     const creditos = entries.reduce((a, e) => a + (Number(e.amount) > 0 ? Number(e.amount) : 0), 0);
@@ -275,8 +275,8 @@
     const { data, error } = await sb.from('finance_fee_rates').select('*').order('method');
     if (error) { $('eq-fees').innerHTML = `<p class="eq-hint">${esc(error.message)}</p>`; return; }
     $('eq-fees').innerHTML = (data || []).map(f => `
-      <div><span style="display:block;color:var(--muted);font-size:.78rem;font-weight:600">${esc(f.label)}</span>
-        <strong style="font-size:1.15rem;font-variant-numeric:tabular-nums">${Number(f.rate_percent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%</strong>
+      <div><span class="eq-fee-label">${esc(f.label)}</span>
+        <strong class="eq-fee-rate">${Number(f.rate_percent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%</strong>
       </div>`).join('');
   }
 
@@ -286,7 +286,6 @@
   // certinho — mas o Juliano digitou tudo sem nenhum sinal de que tinha gravado, e salvamento
   // invisível é indistinguível de salvamento que não aconteceu. Agora as alterações ficam
   // pendentes na tela, o botão mostra quantas são, e o resultado aparece linha a linha.
-  const INPUT_STYLE = 'width:92px;padding:.3rem .5rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit;text-align:right';
   let produtos = [];
   const alteracoes = new Map(); // id -> { price?, cost? }
 
@@ -305,8 +304,8 @@
       + produtos.map(p => `
       <tr data-pending="${p.cost_price == null ? 1 : 0}" data-row="${p.id}">
         <td>${esc(p.name)}</td>
-        <td class="num"><input type="number" step="0.01" min="0" style="${INPUT_STYLE}" value="${Number(p.price)}" data-eq-price="${p.id}"></td>
-        <td class="num"><input type="number" step="0.01" min="0" style="${INPUT_STYLE}" value="${p.cost_price != null ? Number(p.cost_price) : ''}" data-eq-cost="${p.id}"></td>
+        <td class="num"><input type="number" inputmode="decimal" step="0.01" min="0" class="eq-input" value="${Number(p.price)}" data-eq-price="${p.id}"></td>
+        <td class="num"><input type="number" inputmode="decimal" step="0.01" min="0" class="eq-input" value="${p.cost_price != null ? Number(p.cost_price) : ''}" data-eq-cost="${p.id}"></td>
         <td class="num" data-profit="${p.id}">${p.cost_price != null ? money(Number(p.price) - Number(p.cost_price)) : '—'}</td>
       </tr>`).join('');
 
@@ -396,7 +395,7 @@
 
     box.hidden = !pendencias.length;
     box.innerHTML = pendencias.length
-      ? `Antes do primeiro repasse:<ul style="margin:8px 0 0;padding-left:18px">${pendencias.map(p => `<li>${p}</li>`).join('')}</ul>`
+      ? `Antes do primeiro repasse:<ul class="eq-list">${pendencias.map(p => `<li>${p}</li>`).join('')}</ul>`
       : '';
   }
 

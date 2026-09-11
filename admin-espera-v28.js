@@ -3,7 +3,7 @@
   const catalog = window.BDJ_SERVICES || [];
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
-  const esc = (s = '') => String(s).replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
   const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const phoneDigits = (s = '') => String(s).replace(/\D/g, '');
   const formatPhone = (p = '') => { p = phoneDigits(p); return p.length === 11 ? `(${p.slice(0, 2)}) ${p.slice(2, 7)}-${p.slice(7)}` : p; };
@@ -216,8 +216,8 @@
     return `<div class="espera-fit-form">
       <div class="espera-fit-grid">
         <label>Serviço<input data-fit-field="service_name" value="${esc(row.service_name || '')}" placeholder="Ex: Corte de cabelo"></label>
-        <label>Valor (R$)<input data-fit-field="service_price" type="number" min="0" step="0.5" value="${row.service_price ?? ''}"></label>
-        <label>Duração (min)<input data-fit-field="duration_minutes" type="number" min="10" max="240" value="${row.duration_minutes ?? 30}"></label>
+        <label>Valor (R$)<input data-fit-field="service_price" type="number" inputmode="decimal" min="0" step="0.5" value="${row.service_price ?? ''}"></label>
+        <label>Duração (min)<input data-fit-field="duration_minutes" type="number" inputmode="numeric" min="10" max="240" value="${row.duration_minutes ?? 30}"></label>
         <label>Data<input data-fit-field="booking_date" type="date" value="${row.preferred_date || ''}"></label>
         <label>Horário<input data-fit-field="start_time" type="time"></label>
       </div>

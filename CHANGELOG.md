@@ -1,3 +1,19 @@
+## 29.177.0 — Reforma do admin, fases 4 (parte 2) e 5: numa mão no celular, Financeiro por dia, telas secundárias na mesma linguagem, CSS e escape únicos
+
+**Pedido do Juliano (11/09/2026, ~13h):** "fez tudo, não ficou nada pendente?" → "pode fazer tudo hoje, estou ansioso pra ver". Fecha a proposta de reforma no mesmo dia em que começou.
+
+**Fase 4, parte 2 — modal de Concluir numa mão** (`admin-v15-4-agenda.js`): serviço realizado e forma de pagamento ficam em cima; produtos, desconto, caixinha, cortesia, fidelidade e avaliação foram pra dentro de "Mais opções" (`<details>`), que abre sozinho no desktop e sempre que o cliente já comprou produto no agendamento. No telefone o botão "Concluir ✓" deixou de ficar três telas abaixo. Os 11 `style="…"` do modal viraram classes (`checkout-input`, `checkout-h3`, `admin-fold`…). Teclado certo em 10 campos numéricos (`inputmode="decimal"` pra valores, `"numeric"` pra quantidades; campos com mínimo negativo ficam como estão, o teclado numérico do iPhone não tem sinal de menos).
+
+**Fase 5 — Financeiro por dia, semana e mês** (`admin-financeiro-v29.js`, `admin-financeiro.html`): abas Dia / Semana / Mês ao lado das setas; semana é terça a sábado, a mesma régua dos Relatórios; as setas andam no passo do recorte. Receita, despesas, caixinha, taxa absorvida e lançamentos respeitam o recorte. "Repetir fixos do mês passado" e o dia de equilíbrio continuam pensando em mês.
+
+**Fase 5 — telas secundárias sem estilo solto:** Equipe (8 `style=` → classes `eq-*`, `INPUT_STYLE` apagado), Relatórios (cores das barras e legendas → `is-gold`/`is-gold2`/`is-blue`; só a largura dinâmica ficou inline, que é dado), Conteúdo (5 → `conteudo-*`, `meta.is-text`, `meta.is-warn`), Financeiro (`fin-strong`, `fin-empty.is-tight`).
+
+**Fase 5 — CSS da reforma em arquivo próprio:** tudo que as fases 1 a 4 tinham anexado ao fim de `css/05` foi para `css/06-admin-reforma.css`, importado por último no `style.css` (mesma ordem de cascata, nenhuma regra mudou de lugar relativo). Regra daqui pra frente: CSS novo do painel vai na 06.
+
+**Fase 5 — uma função de escape só:** `window.BDJ_H.esc` em `admin-ux-v30.js`; as 11 cópias locais (`const esc = …`) viraram `const esc = window.BDJ_H.esc`. A única diferença entre as cópias era Mensagens tratar null como vazio — a versão única faz isso pra todas. `money` NÃO foi unificada de propósito: Vales trabalha em centavos e Fidelidade usa número puro; unificar mudaria valor na tela.
+
+**Cache:** 13 JS + core + `style.css` em `?v=29.177.0`; imports de css/05 e css/06 em 29.177.0; `ADMIN_VERSION` + `admin-version.json` em 29.177.0. `npm test`: 109 unit + 48 e2e verdes. Com isto, as 5 fases da proposta "Barbearia OS, reforma" estão no ar.
+
 ## 29.176.0 — Reforma do admin, fase 4 (parte 1): no celular, "Mais" abre todas as telas
 
 **Pedido do Juliano (11/09/2026):** "pode aplicar todas as suas sugestões no admin". A barra inferior do celular (`admin-pwa.js`) tinha 7 atalhos fixos e deixava de fora Balcão, Financeiro, Equipe, Lista de espera, Vales, Fidelidade, Relatórios, Avaliações e Funil — pelo telefone, essas telas simplesmente não existiam. Agora são 5 atalhos do dia (Hoje, Agenda, Agendar, Clientes, Balcão) + **Mais**, que sobe uma folha com todas as telas nos mesmos 4 grupos do menu — a lista vem da casca (`window.BDJ_SHELL.groups`), uma só pra desktop e celular. Esc e toque fora fecham. CSS em css/05; `style.css`, `admin-pwa.js` e `core` em `?v=29.176.0`; `ADMIN_VERSION` + `admin-version.json` em 29.176.0.

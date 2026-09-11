@@ -10,7 +10,11 @@
 //
 // Carrega em TODAS as páginas do admin, antes dos scripts de cada tela.
 (() => {
-  const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // v29.177.0 — fase 5: UMA função de escape pro painel inteiro (window.BDJ_H.esc). Antes cada tela
+  // tinha a sua cópia (12 arquivos); todas equivalentes, só a de Mensagens tratava null como ''.
+  // Esta trata: null/undefined viram '' (o comportamento mais seguro dos dois).
+  const esc = (s = '') => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  window.BDJ_H = { esc };
   const root = document.createElement('div'); root.className = 'admin-toast-region'; root.setAttribute('aria-live', 'polite'); document.body.appendChild(root);
 
   function toast(message, type = 'info', timeout = 3200) {
