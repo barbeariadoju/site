@@ -10,6 +10,34 @@
   // até 60 min após o fechamento). Clicar num horário preenche o campo. Na remarcação, o próprio
   // agendamento não conta como ocupado (mover 15:00 pra 14:30 é livre). O campo Horário continua
   // livre pra digitar qualquer coisa — a grade é informação, não trava.
+  // v29.173.0 — ENCAIXE (pedido do Juliano, 11/09/2026, 11h47, print do celular): tentou remarcar
+  // pra 17:50 num dia cheio e o painel recusou. "Me permite excepcionalmente incluir algum cliente
+  // entre um e outro, eu sei que faço em menos tempo que o determinado do sistema." A caixa
+  // "Permitir encaixe" manda p_allow_overlap=true (migration 151) e as funções do admin pulam só
+  // a colisão com outros atendimentos. Site e JuIA continuam sem encaixe: é decisão dele, na hora.
+  // Pedido dele na sequência (11h55): "deve me dar uma mensagem pra eu pensar: ambos os serviços
+  // consumiriam tantos minutos e assim você terá somente X minutos, prosseguir? Assim eu reflito
+  // melhor caso a caso." Antes de salvar com encaixe, o painel soma o que já está no período e
+  // mostra a conta; só salva se ele confirmar.
+  function encaixeAviso(date,time,duration,excludeId){
+    const toMin=t=>{const [a,b]=String(t).slice(0,5).split(':').map(Number);return a*60+b}
+    const fmt=x=>`${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`
+    const s=toMin(time),e=s+Number(duration||0)
+    const dia=allBookings.filter(b=>b.booking_date===date&&['pending','confirmed'].includes(b.status)&&b.id!==excludeId)
+    const emCima=dia.filter(b=>toMin(b.start_time)<e&&toMin(b.end_time)>s).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time))
+    if(!emCima.length)return null
+    const inicio=Math.min(s,...emCima.map(b=>toMin(b.start_time))),fim=Math.max(e,...emCima.map(b=>toMin(b.end_time)))
+    const soma=Number(duration||0)+emCima.reduce((a,b)=>a+Number(b.duration_minutes||0),0)
+    const proximo=dia.filter(b=>toMin(b.start_time)>=fim).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time))[0]
+    const lista=emCima.map(b=>`${b.customer_name} às ${String(b.start_time).slice(0,5)} (${b.service_name}, ${b.duration_minutes} min)`).join('; ')
+    return `ENCAIXE
+
+Já tem nesse período: ${lista}.
+
+Este novo (${duration} min) mais o que já está marcado somam ${soma} min, e você terá ${fim-inicio} min (${fmt(inicio)} às ${fmt(fim)}) pra fazer tudo.${proximo?` O próximo cliente depois disso é às ${String(proximo.start_time).slice(0,5)}.`:' Depois disso não tem mais ninguém marcado.'}
+
+Prosseguir com o encaixe?`
+  }
   let slotsReq=0
   function bindSlotsPanel(){
     $('booking-date')?.addEventListener('change',refreshSlots)
@@ -32,7 +60,7 @@
   function renderAdminSlots(slots,duration){
     const box=$('booking-slots'),head=$('booking-slots-count'),hint=$('booking-slots-hint')
     box.replaceChildren()
-    if(!slots.length){head.textContent='Nenhum horário livre';hint.textContent=`Nenhum horário livre comporta ${duration} min nessa data. Confira a agenda do dia antes de encaixar na mão.`;return}
+    if(!slots.length){head.textContent='Nenhum horário livre';hint.textContent=`Nenhum horário livre comporta ${duration} min nessa data. Pra encaixar mesmo assim, digite o horário e marque "Permitir encaixe" lá embaixo.`;return}
     head.textContent=`${slots.length} horário${slots.length>1?'s':''} comporta${slots.length>1?'m':''} ${duration} min`
     slots.forEach(t=>{const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.dataset.slot=t;b.innerHTML=`<strong>${t}</strong>`;b.onclick=()=>{$('booking-time').value=t;markSelectedSlot();saveDraft()};box.appendChild(b)})
     markSelectedSlot()
@@ -159,4 +187,4 @@
   function loadPrefillForm(){const raw=sessionStorage.getItem('bdj-prefill-booking'),cRaw=sessionStorage.getItem('bdj-prefill-customer');if(raw){const x=JSON.parse(raw);fillForm(x);sessionStorage.removeItem('bdj-prefill-booking')}else if(cRaw){const c=JSON.parse(cRaw);fillForm({name:c.name,phone:c.phone,date:isoLocal(new Date()),time:'08:00',services:c.lastServices,notes:'Retorno'});sessionStorage.removeItem('bdj-prefill-customer')}else restoreDraft()}
   function fillForm(x){$('booking-name').value=x.name||'';$('booking-phone').value=x.phone||'';$('booking-date').value=x.date||isoLocal(new Date());$('booking-time').value=x.time||'08:00';$('booking-notes').value=x.notes||'';selectServicesByNames(x.services||'')}
   async function loadRescheduleForm(){const id=sessionStorage.getItem('bdj-reschedule-id');if(!id)return;const x=allBookings.find(r=>r.id===id);if(!x)return;$('booking-id').value=x.id;setText('booking-page-title','Remarcar agendamento');setText('booking-save-label','Salvar remarcação');fillForm({name:x.customer_name,phone:x.customer_phone,date:x.booking_date,time:x.start_time.slice(0,5),services:x.service_name,notes:x.notes||''});$('booking-name').disabled=true;$('booking-phone').disabled=true}
-  async function saveBooking(){const services=selectedServices(),msg=$('booking-message');if(!$('booking-name').value.trim()||phoneDigits($('booking-phone').value).length<10||!services.length){msg.textContent='Informe cliente, WhatsApp e ao menos um serviço.';return}const base={p_booking_date:$('booking-date').value,p_start_time:$('booking-time').value,p_service_name:services.map(s=>s.name).join(' + '),p_service_price:services.reduce((a,s)=>a+s.price,0),p_duration_minutes:services.reduce((a,s)=>a+s.duration,0),p_notes:$('booking-notes').value||null,p_allow_outside_hours:Boolean($('booking-allow-outside-hours')?.checked)};msg.textContent='Salvando...';let error;if($('booking-id').value)({error}=await sb.rpc('admin_reschedule_booking',{p_booking_id:$('booking-id').value,...base}));else({error}=await sb.rpc('admin_create_booking',{p_customer_name:$('booking-name').value.trim(),p_customer_phone:$('booking-phone').value,...base}));if(error){msg.textContent=friendlyDb(error.message);return}sessionStorage.removeItem(DRAFT_KEY);msg.textContent=$('booking-id').value?'Agendamento remarcado.':'Agendamento criado.';setTimeout(()=>location.href=`admin-agenda.html?data=${$('booking-date').value}`,700)}
+  async function saveBooking(){const services=selectedServices(),msg=$('booking-message');if(!$('booking-name').value.trim()||phoneDigits($('booking-phone').value).length<10||!services.length){msg.textContent='Informe cliente, WhatsApp e ao menos um serviço.';return}const base={p_booking_date:$('booking-date').value,p_start_time:$('booking-time').value,p_service_name:services.map(s=>s.name).join(' + '),p_service_price:services.reduce((a,s)=>a+s.price,0),p_duration_minutes:services.reduce((a,s)=>a+s.duration,0),p_notes:$('booking-notes').value||null,p_allow_outside_hours:Boolean($('booking-allow-outside-hours')?.checked),p_allow_overlap:Boolean($('booking-allow-overlap')?.checked)};if(base.p_allow_overlap){const aviso=encaixeAviso(base.p_booking_date,base.p_start_time,base.p_duration_minutes,$('booking-id').value||null);if(aviso&&!confirm(aviso)){msg.textContent='Encaixe não salvo.';return}}msg.textContent='Salvando...';let error;if($('booking-id').value)({error}=await sb.rpc('admin_reschedule_booking',{p_booking_id:$('booking-id').value,...base}));else({error}=await sb.rpc('admin_create_booking',{p_customer_name:$('booking-name').value.trim(),p_customer_phone:$('booking-phone').value,...base}));if(error){msg.textContent=friendlyDb(error.message);return}sessionStorage.removeItem(DRAFT_KEY);msg.textContent=$('booking-id').value?'Agendamento remarcado.':'Agendamento criado.';setTimeout(()=>location.href=`admin-agenda.html?data=${$('booking-date').value}`,700)}

@@ -1,3 +1,7 @@
+## 29.173.0 — Encaixe: "Permitir encaixe em cima de outro atendimento" no Novo agendamento
+
+**Pedido do Juliano (11/09/2026, 11h47, print do celular):** foi remarcar um cliente pra 17:50 num dia cheio e o painel recusou ("Esse período já está ocupado"). "Me permite excepcionalmente incluir algum cliente entre um e outro, eu sei que é muito rápido e que eu faço em menos tempo que o determinado do sistema." Segunda caixa no formulário, ao lado da de "fora do horário": marcada, manda `p_allow_overlap=true` e as funções `admin_create_booking` / `admin_reschedule_booking` (migration 151, assinatura nova) pulam SÓ a colisão com outros atendimentos. Bloqueio de agenda continua barrando; dia fechado e fora do expediente continuam na outra caixa; site e JuIA seguem sem encaixe. A dica de "nenhum horário livre" passou a explicar o caminho. E, pedido dele na sequência ("deve me dar uma mensagem pra eu pensar"), antes de salvar com encaixe o painel mostra quem já está no período, quanto os atendimentos somam e quantos minutos ele terá de fato ("somam 120 min, você terá 75 min, das 17:50 às 19:05; o próximo cliente é às 19:10. Prosseguir?") — só salva se ele confirmar. Cache: `agendamento.js` e `core` em `?v=29.173.0` nas 7 páginas; `ADMIN_VERSION` + `admin-version.json` em 29.173.0.
+
 ## 29.172.0 — Reforma do admin, fase 1: um menu só, avisos iguais em toda tela, cache alinhado
 
 **Pedido do Juliano (11/09/2026, ~11h):** "por que você não repensa todo meu módulo admin pra ficar nível de
