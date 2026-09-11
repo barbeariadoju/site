@@ -74,7 +74,7 @@
     if(trigger){trigger.disabled=true;trigger.textContent='Excluindo…'}
     const {error}=await sb.from('bookings').delete().eq('id',id).eq('status','cancelled');
     if(error){alert(error.message);if(trigger){trigger.disabled=false;trigger.textContent='🗑 Excluir registro'}return}
-    await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+    await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
   }
   function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b));root.querySelectorAll('[data-confirm-prepay]').forEach(b=>b.onclick=()=>confirmPrepay(b.dataset.confirmPrepay,b))}
 
@@ -131,7 +131,7 @@
       restore();
       return
     }
-    await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+    await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
   }
   function reviewWhatsAppLink(x){const msg=`Olá, ${x.customer_name}! Obrigado pela preferência. Foi um prazer atender você hoje na Barbearia do Ju. Se puder, deixe sua avaliação no Google: https://g.page/r/CaQfC5axIQQIEBM/review`;return whatsappBusinessUrl(x.customer_phone,msg)}
   // Grade de produtos reaproveitada tanto no modal de "Concluir" (produtos vendidos junto
@@ -572,7 +572,7 @@
       if(result.products_payment_method)body.products_payment_method=result.products_payment_method;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){alert(data?.error||error?.message||'Não foi possível salvar as alterações.');return}
-      await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+      await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
@@ -629,7 +629,7 @@
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){const raw=data?.error||error?.message||'';alert(raw.includes('non-2xx')?'Não foi possível concluir esta ação. Atualize a página e tente novamente.':raw||'Não foi possível atualizar o agendamento.');return}
       if(data?.extras?.attempted&&!data.extras.applied){alert(`Atendimento concluído, mas os extras (pontos de fidelidade / nº da visita) NÃO foram salvos: ${data.extras.error||'motivo desconhecido'}`)}
-      await loadBaseData();if(page==='atendimento')renderServiceMode();else{renderCalendar();await loadAgendaDay()}
+      await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
       if(status==='cancelled'){
         if(data?.email?.skipped)alert('Agendamento cancelado. O cliente não recebeu e-mail porque não há e-mail cadastrado.');
         else if(data?.email?.attempted&&!data?.email?.sent)alert(`Agendamento cancelado, mas o e-mail não pôde ser enviado.

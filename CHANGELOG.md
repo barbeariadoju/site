@@ -1,3 +1,7 @@
+## 29.171.0 — Painel: o card de hoje ganha as mesmas ações da Agenda
+
+**Pedido do Juliano (11/09/2026, ~10h50, com print):** abriu o atendimento das 10h no painel inicial e "nesta tela devia ter o botão de concluir" — e, no segundo print, as opções todas da Agenda. O card "Próximos atendimentos" do painel só tinha o link "Ver na agenda" (decisão da v28.26.0: "o dashboard é só um resumo rápido"). Revertida: agora o painel usa o MESMO `bookingCard()` da Agenda (WhatsApp, Remarcar, Concluir, Ausência, Cancelar, Editar, Novo retorno) e o mesmo modal de conclusão (pagamento, produtos, desconto, fidelidade). O que faltava por baixo: depois de qualquer ação o código redesenhava o calendário da Agenda, que não existe no painel — os 4 pontos de refresh ganharam o ramo `page===dashboard` → `renderDashboard()`. Cache: `dashboard.js` e `agenda.js` em `?v=29.171.0` nas 7 páginas; `ADMIN_VERSION` + `admin-version.json` em 29.171.0.
+
 ## 29.170.1 — Data e Horário descem pra junto da grade
 
 **Pedido do Juliano (11/09, 09h30, com print):** "colocar o campo pra escolher a data e embaixo já abre os horários disponíveis, seria mais funcional". Os campos Data e Horário saíram do topo (ficavam ao lado de Cliente/WhatsApp) e agora vêm depois dos serviços, num bloco "Data e horário", com a grade logo abaixo: a ordem da tela virou a ordem de pensar (quem → o quê → quando). Só HTML; `ADMIN_VERSION` + `admin-version.json` em 29.170.1 pra recarregar o painel aberto.

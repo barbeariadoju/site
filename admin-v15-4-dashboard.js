@@ -49,9 +49,13 @@
     setText('metric-noshows',noShowsToday.length);setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);
     // Card colapsável reaproveitado da Agenda (v28.26.0) — pedido do Juliano: poder clicar
     // num atendimento aqui e ver o detalhe completo (pagamento, produtos etc.) sem precisar
-    // ir pra tela da Agenda. Ação só tem o link "Ver na agenda" — editar/mudar status continua
-    // só na Agenda/Atendimento, o dashboard é só um resumo rápido.
+    // ir pra tela da Agenda.
+    // v29.171.0 (pedido do Juliano, 11/09/2026, com print): o card aqui só tinha "Ver na
+    // agenda" — ele abriu o atendimento das 10h no painel e não tinha como concluir. Agora é
+    // o MESMO card da Agenda (bookingCard: WhatsApp, Remarcar, Concluir, Ausência, Cancelar,
+    // Editar, Novo retorno), com o mesmo modal de conclusão; depois de qualquer ação o painel
+    // se redesenha (setStatus/editBooking chamam renderDashboard quando page==='dashboard').
     const list=$('dashboard-today-list'),active=todayRows.filter(x=>x.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time));
-    list.innerHTML=active.length?active.map(x=>bookingCardHtml(x,`<a href="admin-agenda.html?data=${x.booking_date}">Ver na agenda</a>`)).join(''):'<div class="admin-empty">Nenhum atendimento para hoje.</div>';
+    list.innerHTML=active.length?active.map(x=>bookingCard(x)).join(''):'<div class="admin-empty">Nenhum atendimento para hoje.</div>';
     bindBookingActions(list);
     const alerts=$('dashboard-alerts'),noShows=customers.filter(c=>c.noShows>0).sort((a,b)=>b.noShows-a.noShows).slice(0,5);alerts.innerHTML=noShows.length?noShows.map(c=>`<div class="admin-alert-row"><span>${esc(c.name)}</span><strong>${c.noShows} ausência${c.noShows>1?'s':''}</strong></div>`).join(''):'<div class="admin-empty">Nenhuma ausência registrada.</div>'}
