@@ -4,7 +4,7 @@
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
   const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
-  const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = window.BDJ_H.money; // v29.179.0: uma cópia só, em admin-ux-v30.js
   const phoneDigits = (s = '') => String(s).replace(/\D/g, '');
   const formatPhone = (p = '') => { p = phoneDigits(p); return p.length === 11 ? `(${p.slice(0, 2)}) ${p.slice(2, 7)}-${p.slice(7)}` : p; };
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

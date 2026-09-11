@@ -2587,7 +2587,12 @@ Deno.serve(async req=>{
   &&/\b(depois|mais tarde|apos|pos)\b/.test(normalizedQuestion)
   &&!/\bdepois (eu|te|a gente|vejo|aviso|falo|confirmo|retorno|passo)\b/.test(normalizedQuestion)
   &&Boolean(state?.last_requested_time)&&state?.last_requested_date===state?.date&&!state?.completed
- const requestedTime=requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):'')
+ // v29.180.0 — caso Renato (11/09/2026, 13h29): "Humm a partir das 14 não consigo, mas agradeço" foi
+ // lido como pedido das 14h e a JuIA se embolou. É o contrário: um TETO ("tenho que terminar antes
+ // das 14"). O horário citado vira maxTime, sai do pedido, e a lista só mostra o que TERMINA até lá.
+ const tetoDeHorario=Boolean(requestedTimeRaw)&&/\b(a partir d[ae]s?|depois d[ae]s?|apos (as|da|de)?)\s*\d{1,2}(:\d{2})?\s*h?(oras)?\s*(eu )?(ja )?(nao|n) (consigo|posso|da|rola|tenho como|vou poder|vou conseguir)|\b(so|somente|apenas) (ate|antes d[ae]s?) (as )?\d|\b(ate|antes d[ae]s?) (as )?\d{1,2}(:\d{2})?\s*h?(oras)?\s*(no maximo|eu consigo|consigo|da|posso|tenho que (sair|ir|voltar|estar))/.test(normalizedQuestion)
+ const maxTime=tetoDeHorario?requestedTimeRaw:''
+ const requestedTime=tetoDeHorario?'':(requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):''))
  // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
  // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
@@ -2673,7 +2678,10 @@ Deno.serve(async req=>{
   // v29.138.0 (caso Carlos, 03/09/2026, 10h25): "Beleza vou ver e te aviso" recebeu a MESMA
   // pergunta de novo ("manhã, tarde ou final do dia?"). Quem diz que vai ver e avisa depois
   // está adiando, não perguntando — resposta é "combinado, fico no aguardo", e só.
-  const adiou=/\b(vou|vo) (ver|olhar|conferir|confirmar|checar)\b|\bte (aviso|falo|chamo|retorno|mando (mensagem|msg))\b|\b(depois|mais tarde|amanha) (eu )?(te )?(aviso|falo|chamo|confirmo|retorno)\b|\bqualquer coisa (eu )?(te )?(chamo|aviso|falo)\b/.test(q)&&!/\?/.test(q)
+  // v29.180.0 — caso Breno (11/09/2026, 14h49): "Certo, só um minuto então" e "vou só ver se posso ir
+  // mais cedo" caíram no "me embolei" (o primeiro) e na repetição da oferta (o segundo). Quem pede
+  // um minuto está pensando: "fico no aguardo", e só.
+  const adiou=/\b(vou|vo) (so |ja |rapidinho |dar uma )?(ver|olhar|olhada|conferir|confirmar|checar)\b|\b(so |apenas )?um (minuto|minutinho|momento|momentinho|instante|instantinho|segundo|segundinho)\b|\bja (te )?(falo|volto|respondo|aviso)\b|\b(pera|perai|pera ai|espera ai|aguarda ai|calma ai)\b|\bte (aviso|falo|chamo|retorno|mando (mensagem|msg))\b|\b(depois|mais tarde|amanha) (eu )?(te )?(aviso|falo|chamo|confirmo|retorno)\b|\bqualquer coisa (eu )?(te )?(chamo|aviso|falo)\b/.test(q)&&!/\?/.test(q)
   const dispensaPura=q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n),?\s*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
    reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
@@ -2980,7 +2988,8 @@ Deno.serve(async req=>{
   const serviceNames=chosen.map((s:any)=>s.name).join(' + ')
   const {data,error}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration})
   if(error)return respond({error:error.message},500)
-  const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+  const minutosDe=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
+  const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5)).filter((t:string)=>!maxTime||minutosDe(t)+duration<=minutosDe(maxTime))
 
   // v29.170.0 — caso Venilson (10/09/2026, 21h50): a reserva de sábado 14:15 tinha acabado de ser
   // feita (o "Reservado!" morreu no timeout do webhook) e a JuIA respondeu "no sábado não tenho
@@ -3012,7 +3021,7 @@ Deno.serve(async req=>{
      ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Ou te aviso se abrir vaga ${emDia(waitlistOffer.date)}, ou já reservo ${emDia(nextAvail.date)} (${slotsPhrase(nextAvail.slots)}). Qual prefere?`
      :hojeEncerrado
      ?`Hoje já encerramos (atendemos até ${new Date(today()+'T12:00:00-03:00').getUTCDay()===6?'15h':'19h'}). ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
-     :`${emDiaCap(next.date)} não tenho mais horário para ${serviceNames}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
+     :`${emDiaCap(next.date)} não tenho mais horário para ${serviceNames}${maxTime?` que termine antes das ${horaFalada(maxTime)}`:''}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
     // v29.170.0 — caso Venilson (21h48): "te aviso assim que abrir vaga hoje" com a barbearia já
     // fechada há três horas. Depois do fechamento não existe vaga pra abrir hoje: sem lista de espera.
     next.pending_waitlist=hojeEncerrado?null:waitlistOffer
@@ -3367,8 +3376,25 @@ Deno.serve(async req=>{
   // novo, ou cancelar?". Se o conflito e o agendamento desta conversa (state.completed no
   // mesmo dia/horario), a resposta certa e "ja esta reservado".
   if(conflicting&&state?.completed&&String(conflicting.start_time||'').slice(0,5)===String(next.time||state?.time||'')){
-   reply=`Já está reservado${next.name?', '+firstName(next.name):''} 😊 ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Te espero!`
-   actions=[]
+   // v29.180.0 — caso Breno (11/09/2026, 14h54): logo depois do "Reservado! (Corte)" ele pediu
+   // "marcar cabelo e sobrancelha" e recebeu "Já está reservado (Corte de cabelo)" — a sobrancelha
+   // foi ignorada e o Juliano incluiu na mão. Serviço citado que NÃO está na reserva é pedido de
+   // INCLUIR: confirma com o composto e o bloco de troca de serviço grava no "sim".
+   const jaTem=normalize(String(conflicting.service_name||''))
+   const extras=chosen.filter((s:any)=>!jaTem.includes(normalize(s.name)))
+   if(extras.length&&verifiedPhone){
+    const atuais=String(conflicting.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+    const todos=[...atuais,...extras]
+    const composed={name:todos.map((s:any)=>s.name).join(' + '),price:todos.reduce((a:number,s:any)=>a+Number(s.price||0),0),duration:todos.reduce((a:number,s:any)=>a+Number(s.duration||0),0)}
+    next.pending_change_service_booking_id=conflicting.id
+    next.pending_change_service_new_name=composed.name
+    next.pending_change_service_composed=composed
+    reply=`Confirmando: incluir ${extras.map((s:any)=>s.name).join(' + ')} no seu agendamento de ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)}? Fica ${composed.name} (${money(composed.price)}, aproximadamente ${composed.duration} min). Responda sim ou não.`
+    actions=[{label:'Sim, incluir',message:'Sim, pode incluir'},{label:'Não, manter',message:'Não, manter como está'}]
+   }else{
+    reply=`Já está reservado${next.name?', '+firstName(next.name):''} 😊 ${formatDateBR(conflicting.booking_date)} às ${String(conflicting.start_time).slice(0,5)} (${conflicting.service_name}). Te espero!`
+    actions=[]
+   }
    next.completed=true
    intent='other'
    handoff=false

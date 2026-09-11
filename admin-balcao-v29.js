@@ -15,7 +15,7 @@
   const productCatalog = window.BDJ_PRODUCTS || [];
   const $ = (id) => document.getElementById(id);
   const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
-  const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = window.BDJ_H.money; // v29.179.0: uma cópia só, em admin-ux-v30.js
   const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const formatPhoneDisplay = (digits = '') => {
     const d = String(digits).replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
@@ -269,6 +269,8 @@
       }
 
       msg.textContent = 'Atendimento registrado.' + note;
+      // v29.179.0: quando o Balcão está embutido na tela Hoje, avisa a tela de fora pra ela se redesenhar.
+      if (window.parent !== window) { try { window.parent.postMessage({ type: 'bdj:walkin-saved' }, location.origin); } catch (_) {} }
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
       $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = ''; $('balcao-tip').value = '';

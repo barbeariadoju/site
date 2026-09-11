@@ -60,5 +60,8 @@
   const sidebar = document.querySelector('[data-shell="sidebar"]');
   if (sidebar && !sidebar.children.length) sidebar.innerHTML = sidebarHtml;
 
+  // v29.179.0 — modo embutido (?embed=1): a tela abre dentro de um modal de outra tela (caso: Balcão
+  // dentro da Hoje). Some menu, barra do celular e cabeçalho; o conteúdo fica sozinho.
+  if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('is-embed');
   window.BDJ_SHELL = { page, groups: GROUPS };
 })();

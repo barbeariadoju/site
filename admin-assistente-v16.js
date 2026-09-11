@@ -8,7 +8,7 @@
   let snapshot = null;
 
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const money = (v) => Number(v || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
+  const money = window.BDJ_H.money; // v29.179.0: uma cópia só, em admin-ux-v30.js
   // v29.152.0 — só serve pra CASAR telefones (inativos, faltas reincidentes), nunca pra exibir:
   // devolve DDD + 8 últimos dígitos, ignorando o 55 e o nono dígito, como phone_match_key do
   // banco. Antes comparava os dígitos exatos e o mesmo cliente gravado com e sem 55 virava dois.

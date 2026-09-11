@@ -14,7 +14,10 @@
   // tinha a sua cópia (12 arquivos); todas equivalentes, só a de Mensagens tratava null como ''.
   // Esta trata: null/undefined viram '' (o comportamento mais seguro dos dois).
   const esc = (s = '') => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  window.BDJ_H = { esc };
+  // v29.179.0 — money também: 6 telas tinham a MESMA cópia; Vales converte centavos antes de chamar;
+  // Fidelidade usava "money" só pra virar número (renomeado pra num lá).
+  const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  window.BDJ_H = { esc, money };
   const root = document.createElement('div'); root.className = 'admin-toast-region'; root.setAttribute('aria-live', 'polite'); document.body.appendChild(root);
 
   function toast(message, type = 'info', timeout = 3200) {

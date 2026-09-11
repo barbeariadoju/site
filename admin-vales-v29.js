@@ -8,7 +8,7 @@
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
   const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
-  const money = (cents) => (Number(cents || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = (cents) => window.BDJ_H.money(Number(cents || 0) / 100); // v29.179.0: centavos → reais, formatação única (admin-ux-v30.js)
   const dateLabel = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
   const STATUS_LABEL = { pending_payment: 'Aguardando Pix', active: 'Ativo', used: 'Usado', expired: 'Vencido', cancelled: 'Cancelado' };
   const phoneLabel = (p = '') => { const d = String(p).replace(/\D/g, '').replace(/^55/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d; };

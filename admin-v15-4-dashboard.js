@@ -87,7 +87,26 @@
     renderEsperaHoje(today);
     // ---- Clientes com ausência ----
     const alerts=$('dashboard-alerts'),noShows=customers.filter(c=>c.noShows>0).sort((a,b)=>b.noShows-a.noShows).slice(0,5);alerts.innerHTML=noShows.length?noShows.map(c=>`<div class="admin-alert-row"><span>${esc(c.name)}</span><strong>${c.noShows} ausência${c.noShows>1?'s':''}</strong></div>`).join(''):BDJ_UX.empty('Nenhuma ausência registrada.');
+    const bb=$('today-balcao');if(bb&&!bb.dataset.bound){bb.dataset.bound='1';bb.onclick=openBalcaoInline}
     $('today-refresh')?.addEventListener('click',async e=>{const b=e.currentTarget;BDJ_UX.setBusy(b,true,'Atualizando…');try{await loadBaseData();renderDashboard()}finally{BDJ_UX.setBusy(b,false)}},{once:true});
+  }
+  // v29.179.0 — BALCÃO DENTRO DA TELA HOJE (pedido do Juliano: "arruma tudo o que faltou"). O botão
+  // "Sem hora marcada" abre o Atendimento Balcão num modal, embutido (admin-balcao.html?embed=1), sem
+  // sair da tela: uma implementação só do formulário, e a Hoje se redesenha quando o Balcão avisa
+  // (postMessage 'bdj:walkin-saved') que registrou o atendimento.
+  function openBalcaoInline(){
+    let modal=document.getElementById('balcao-inline-modal');
+    if(!modal){
+      modal=document.createElement('div');modal.id='balcao-inline-modal';modal.className='admin-modal';modal.hidden=true;
+      modal.innerHTML='<div class="admin-modal-backdrop" data-balcao-close></div><section class="admin-modal-card admin-embed-card" role="dialog" aria-modal="true" aria-label="Atendimento sem hora marcada"><header class="admin-embed-head"><strong>Atendimento sem hora marcada</strong><span><a href="admin-balcao.html">Abrir em tela cheia</a><button type="button" data-balcao-close aria-label="Fechar">×</button></span></header><iframe title="Atendimento Balcão" loading="lazy"></iframe></section>';
+      document.body.appendChild(modal);
+      modal.querySelectorAll('[data-balcao-close]').forEach(x=>x.onclick=()=>{modal.hidden=true});
+      window.addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='bdj:walkin-saved')return;await loadBaseData();renderDashboard();BDJ_UX.toast('Atendimento de balcão registrado. A tela Hoje foi atualizada.','success')});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)modal.hidden=true});
+    }
+    const frame=modal.querySelector('iframe');
+    if(!frame.getAttribute('src'))frame.src='admin-balcao.html?embed=1&app=1';
+    modal.hidden=false;
   }
   function firstNameOf(name){return String(name||'').trim().split(/\s+/)[0]||'cliente'}
   // Serviço líquido = mesma regra dos Relatórios (v29.138.0): cortesia não é receita, prêmio da

@@ -13,7 +13,7 @@
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
   const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
-  const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = window.BDJ_H.money; // v29.179.0: uma cópia só, em admin-ux-v30.js
   const dayLabel = (iso) => iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
   const KIND_LABEL = {
     cota_servico: 'Serviço', cota_produto: 'Produto', consumo: 'Consumo',

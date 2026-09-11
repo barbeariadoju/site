@@ -3,7 +3,7 @@
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
   const $ = (id) => document.getElementById(id);
   const esc = window.BDJ_H.esc; // v29.177.0: uma cópia só, em admin-ux-v30.js
-  const money = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const money = window.BDJ_H.money; // v29.179.0: uma cópia só, em admin-ux-v30.js
   const phoneDigits = (s = '') => String(s).replace(/\D/g, '');
   // v29.152.0 — cliente único é por DDD + 8 últimos dígitos (regra de phone_match_key do banco),
   // não pelos dígitos exatos: o mesmo telefone gravado com e sem o 55 contava como dois clientes
