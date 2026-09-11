@@ -69,6 +69,53 @@
     const actionsHtml=`<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Novo retorno</button>${reactivateHtml}${deleteHtml}`;
     return actionsHtml
   }
+  // v29.178.0 — REMARCAR SEM SAIR DA TELA (fase 3 da reforma, item que tinha ficado de fora; o
+  // Juliano perguntou duas vezes "faltou alguma etapa?"). Antes, Remarcar gravava o id no
+  // sessionStorage e navegava pro formulário de Novo agendamento — troca de contexto no meio do
+  // atendimento. Agora abre um modal em cima do card: data, grade de horários que cabem (a mesma
+  // get_available_slots_excluding, sem o próprio agendamento na conta), campo livre, e as duas
+  // exceções (fora do horário / encaixe, com a conta dos minutos da v29.173.0). Serviço, preço,
+  // duração e observação ficam como estão; pra trocar serviço junto, o link leva ao formulário.
+  async function rescheduleInline(id){
+    const b=allBookings.find(x=>x.id===id);if(!b)return;
+    let modal=document.getElementById('reschedule-inline-modal');
+    if(!modal){modal=document.createElement('div');modal.id='reschedule-inline-modal';modal.className='admin-modal';modal.hidden=true;document.body.appendChild(modal)}
+    const dur=Number(b.duration_minutes)||30;
+    modal.innerHTML=`<div class="admin-modal-backdrop" data-rs-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-rs-cancel>&times;</button><h2>Remarcar</h2><p class="privacy-note"><strong>${esc(b.customer_name)}</strong> · ${esc(b.service_name)} · ${dur} min. Está em ${formatDate(b.booking_date)} às ${String(b.start_time).slice(0,5)}. <a href="#" data-rs-full>Trocar serviço junto</a></p><div class="booking-form-grid"><label>Data<input type="date" data-rs-date value="${b.booking_date}"></label><label>Horário<input type="time" step="900" data-rs-time value="${String(b.start_time).slice(0,5)}"></label></div><div class="booking-slot-header"><strong>Horários que cabem</strong><small data-rs-count></small></div><div class="agenda-slots booking-slots-v14" data-rs-slots></div><p class="field-help" data-rs-hint></p><label class="admin-checkbox-row"><input type="checkbox" data-rs-outside> Permitir fora do horário de funcionamento</label><label class="admin-checkbox-row"><input type="checkbox" data-rs-overlap> Permitir encaixe em cima de outro atendimento</label><div class="admin-modal-actions"><button type="button" data-rs-cancel>Cancelar</button><button type="button" class="btn primary" data-rs-save>Salvar remarcação</button></div><p class="field-help" data-rs-msg></p></section>`;
+    const q=sel=>modal.querySelector(sel),dateEl=q('[data-rs-date]'),timeEl=q('[data-rs-time]');
+    let req=0;
+    const mark=()=>{const cur=timeEl.value;modal.querySelectorAll('[data-rs-slots] .agenda-slot').forEach(x=>x.classList.toggle('is-selected',x.dataset.slot===cur))};
+    async function loadSlots(){
+      const r=++req;q('[data-rs-count]').textContent='Consultando…';q('[data-rs-hint]').textContent='';
+      const {data,error}=await sb.rpc('get_available_slots_excluding',{p_date:dateEl.value,p_duration_minutes:dur,p_exclude_booking_id:b.id});
+      if(r!==req)return;
+      const box=q('[data-rs-slots]');box.replaceChildren();
+      if(error){q('[data-rs-count]').textContent='';q('[data-rs-hint]').textContent='Não consegui consultar os horários agora.';console.error(error);return}
+      const slots=(data||[]).map(x=>String(x.slot_time).slice(0,5));
+      q('[data-rs-count]').textContent=slots.length?`${slots.length} horário${slots.length>1?'s':''} comporta${slots.length>1?'m':''} ${dur} min`:'Nenhum horário livre';
+      if(!slots.length)q('[data-rs-hint]').textContent='Pra encaixar mesmo assim, digite o horário e marque "Permitir encaixe".';
+      slots.forEach(t=>{const el=document.createElement('button');el.type='button';el.className='agenda-slot';el.dataset.slot=t;el.innerHTML=`<strong>${t}</strong>`;el.onclick=()=>{timeEl.value=t;mark()};box.appendChild(el)});
+      mark();
+    }
+    dateEl.onchange=loadSlots;timeEl.oninput=mark;
+    const close=()=>{modal.hidden=true};
+    modal.querySelectorAll('[data-rs-cancel]').forEach(x=>x.onclick=close);
+    q('[data-rs-full]').onclick=e=>{e.preventDefault();sessionStorage.setItem('bdj-reschedule-id',b.id);location.href='admin-agendamento.html?modo=remarcar'};
+    q('[data-rs-save]').onclick=async()=>{
+      const msg=q('[data-rs-msg]'),date=dateEl.value,time=timeEl.value;
+      if(!date||!time){msg.textContent='Informe data e horário.';return}
+      const overlap=q('[data-rs-overlap]').checked;
+      if(overlap&&typeof encaixeAviso==='function'){const aviso=encaixeAviso(date,time,dur,b.id);if(aviso&&!await BDJ_UX.confirm(aviso)){msg.textContent='Encaixe não salvo.';return}}
+      const btn=q('[data-rs-save]');BDJ_UX.setBusy(btn,true,'Salvando…');
+      try{
+        const {error}=await sb.rpc('admin_reschedule_booking',{p_booking_id:b.id,p_booking_date:date,p_start_time:time,p_service_name:b.service_name,p_service_price:Number(b.service_price||0),p_duration_minutes:dur,p_notes:b.notes||null,p_allow_outside_hours:q('[data-rs-outside]').checked,p_allow_overlap:overlap});
+        if(error){msg.textContent=friendlyDb(error.message);return}
+        close();BDJ_UX.toast(`Remarcado: ${formatDate(date)} às ${time}.`,'success');
+        await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
+      }finally{BDJ_UX.setBusy(btn,false)}
+    };
+    ensureModalStyles();modal.hidden=false;loadSlots();
+  }
   async function deleteBooking(id,trigger){
     const booking=allBookings.find(x=>x.id===id);
     if(!booking)return;
@@ -78,7 +125,7 @@
     if(error){alert(error.message);if(trigger){trigger.disabled=false;trigger.textContent='🗑 Excluir registro'}return}
     await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
   }
-  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>{sessionStorage.setItem('bdj-reschedule-id',b.dataset.reschedule);location.href='admin-agendamento.html?modo=remarcar'});root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b));root.querySelectorAll('[data-confirm-prepay]').forEach(b=>b.onclick=()=>confirmPrepay(b.dataset.confirmPrepay,b))}
+  function bindBookingActions(root){root.querySelectorAll('[data-toggle-card]').forEach(b=>b.onclick=()=>{const detail=b.closest('.admin-booking-card').querySelector('.admin-booking-detail');const opening=!detail.classList.contains('is-open');detail.classList.toggle('is-open',opening);b.setAttribute('aria-expanded',String(opening))});root.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>setStatus(b.dataset.id,b.dataset.status,b));root.querySelectorAll('[data-reschedule]').forEach(b=>b.onclick=()=>rescheduleInline(b.dataset.reschedule));root.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>{const x=allBookings.find(r=>r.id===b.dataset.return);prefillReturnStorage(x);location.href='admin-agendamento.html?modo=retorno'});root.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editBooking(b.dataset.edit,b));root.querySelectorAll('[data-delete-booking]').forEach(b=>b.onclick=()=>deleteBooking(b.dataset.deleteBooking,b));root.querySelectorAll('[data-reactivate]').forEach(b=>b.onclick=()=>reactivateBooking(b.dataset.reactivate,b));root.querySelectorAll('[data-confirm-prepay]').forEach(b=>b.onclick=()=>confirmPrepay(b.dataset.confirmPrepay,b))}
 
   // v29.3.0 — confirma que o Pix caiu e avisa o cliente pelo WhatsApp. É o que fecha
   // o ciclo: até aqui o cliente pagava, avisava, e nunca recebia retorno nenhum.
