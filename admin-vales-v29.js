@@ -129,7 +129,7 @@
   }
 
   async function cancelar(id) {
-    if (!confirm('Cancelar este pedido de vale? Use quando o Pix não foi feito.')) return;
+    if (!await BDJ_UX.confirm('Cancelar este pedido de vale? Use quando o Pix não foi feito.')) return;
     const { error } = await sb.from('gift_cards').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', id);
     if (error) { alert(error.message); return; }
     await load();

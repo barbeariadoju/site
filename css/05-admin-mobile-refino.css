@@ -716,3 +716,17 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 .admin-sidebar nav .admin-nav-group{display:block;margin:14px 8px 3px;font-size:var(--t-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:800}
 .admin-sidebar nav .admin-nav-group:first-child{margin-top:2px}
 @media(max-width:760px){.admin-sidebar nav .admin-nav-group{display:none}}
+
+/* v29.174.0 — Fase 2: caixa de diálogo da casa (BDJ_UX.confirm / BDJ_UX.prompt), no lugar do
+   confirm()/prompt() nativo. Reusa .admin-modal; o cancelar é o primeiro botão (mesma regra dos
+   outros modais), o principal fica dourado e vira vermelho quando a ação é destrutiva. */
+.admin-dialog-card{width:min(460px,100%);padding:26px 24px}
+.admin-dialog-card h2{font-size:var(--t-3xl);margin:0 0 12px}
+.admin-dialog-text{margin:0;font-size:var(--t-md);line-height:1.55;color:#e8e8e8;white-space:pre-line}
+.admin-dialog-field{display:block;margin-top:16px;color:var(--gold2);font-size:var(--t-sm);font-weight:800}
+.admin-dialog-field input{display:block;width:100%;margin-top:7px;background:#0b0b0b;color:#fff;border:1px solid rgba(240,201,135,.3);border-radius:var(--r-sm);padding:12px 14px;font:inherit}
+.admin-dialog-field input:focus{outline:none;border-color:rgba(240,201,135,.75);box-shadow:var(--ring)}
+.admin-dialog .admin-modal-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px}
+.admin-dialog .admin-modal-actions .btn.is-danger{background:linear-gradient(135deg,#d75c5c,#a83434);color:#fff;border-color:transparent}
+.admin-dialog .admin-modal-actions>button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media(max-width:700px){.admin-dialog .admin-modal-actions{display:grid}.admin-dialog .admin-modal-actions>button:first-child{order:2}}

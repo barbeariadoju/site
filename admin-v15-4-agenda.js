@@ -70,7 +70,7 @@
   async function deleteBooking(id,trigger){
     const booking=allBookings.find(x=>x.id===id);
     if(!booking)return;
-    if(!confirm(`Excluir definitivamente o agendamento cancelado de ${esc(booking.customer_name)} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})?\n\nIsso remove o registro da tela pra sempre — use só pra testes/lixo, não pra cancelamentos reais de cliente que você queira manter no histórico.`))return;
+    if(!await BDJ_UX.confirm(`Excluir definitivamente o agendamento cancelado de ${esc(booking.customer_name)} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})?\n\nIsso remove o registro da tela pra sempre — use só pra testes/lixo, não pra cancelamentos reais de cliente que você queira manter no histórico.`))return;
     if(trigger){trigger.disabled=true;trigger.textContent='Excluindo…'}
     const {error}=await sb.from('bookings').delete().eq('id',id).eq('status','cancelled');
     if(error){alert(error.message);if(trigger){trigger.disabled=false;trigger.textContent='🗑 Excluir registro'}return}
@@ -81,7 +81,7 @@
   // v29.3.0 — confirma que o Pix caiu e avisa o cliente pelo WhatsApp. É o que fecha
   // o ciclo: até aqui o cliente pagava, avisava, e nunca recebia retorno nenhum.
   async function confirmPrepay(id,btn){
-    if(!confirm('Confirmar que o Pix deste cliente caiu na conta?\n\nEle vai receber um aviso no WhatsApp.'))return;
+    if(!await BDJ_UX.confirm('Confirmar que o Pix deste cliente caiu na conta?\n\nEle vai receber um aviso no WhatsApp.'))return;
     const antes=btn.textContent; btn.disabled=true; btn.textContent='Confirmando…';
     try{
       const {data:{session}}=await sb.auth.getSession();
@@ -104,7 +104,7 @@
   async function reactivateBooking(id,trigger){
     const booking=allBookings.find(x=>x.id===id);
     if(!booking)return;
-    if(!confirm(`Reativar o agendamento de ${booking.customer_name} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})? Ele volta como CONFIRMADO.`))return;
+    if(!await BDJ_UX.confirm(`Reativar o agendamento de ${booking.customer_name} (${formatDate(booking.booking_date)} às ${booking.start_time.slice(0,5)})? Ele volta como CONFIRMADO.`))return;
     const restore=()=>{if(trigger){trigger.disabled=false;trigger.textContent='↩️ Reativar'}};
     if(trigger){trigger.disabled=true;trigger.textContent='Reativando…'}
 
@@ -115,7 +115,7 @@
       const {data:slots}=await sb.rpc('get_available_slots',{p_date:booking.booking_date,p_duration_minutes:dur});
       const livres=(Array.isArray(slots)?slots:[]).map(s=>String(s.slot_time||s.start_time||s).slice(0,5)).filter(Boolean);
       const sugestao=livres.length?`\n\nHorários livres em ${formatDate(booking.booking_date)} (${dur} min):\n${livres.join('  ·  ')}`:'\n\nNão há horário livre na grade desse dia — você ainda pode digitar um horário manualmente (ex.: logo após o atendimento anterior).';
-      const escolha=prompt(`Esse horário já foi ocupado por outro agendamento.\n\nDigite o novo horário para reativar (formato HH:MM), ou cancele para desistir.${sugestao}`,livres[0]||booking.start_time.slice(0,5));
+      const escolha=await BDJ_UX.prompt(`Esse horário já foi ocupado por outro agendamento.\n\nDigite o novo horário para reativar (formato HH:MM), ou cancele para desistir.${sugestao}`,livres[0]||booking.start_time.slice(0,5));
       if(escolha===null){restore();return}
       const hora=String(escolha).trim();
       if(!/^\d{1,2}:\d{2}$/.test(hora)){alert('Horário inválido. Use o formato HH:MM, por exemplo 18:15.');restore();return}
@@ -596,7 +596,7 @@
       completionCourtesyReason=choice.courtesy_reason||'';
     }else{
       const prompts={no_show:'Registrar ausência?',cancelled:'Cancelar e liberar o horário? O cliente receberá um e-mail de aviso caso tenha e-mail cadastrado.'};
-      if(prompts[status]&&!confirm(prompts[status]))return;
+      if(prompts[status]&&!await BDJ_UX.confirm(prompts[status]))return;
     }
     const booking=allBookings.find(x=>x.id===id),button=trigger||document.querySelector(`[data-status="${status}"][data-id="${id}"]`),oldText=button?.textContent;
     if(button){button.disabled=true;button.textContent=({cancelled:'Cancelando…',completed:'Concluindo…',no_show:'Salvando…',confirmed:'Confirmando…'})[status]||'Salvando…'}
@@ -668,4 +668,4 @@ ${data?.email?.error||'Verifique os registros da função.'}`);
    msg.textContent=error?error.message:(dates.length>1?`${dates.length} dias bloqueados.`:'Bloqueio criado.')
    if(!error){$('block-reason').value='';$('block-range-end').value='';await refreshCalendar();await loadBlocks()}
   }
-  async function deleteBlock(id){if(!confirm('Liberar este bloqueio?'))return;const {error}=await sb.from('schedule_blocks').delete().eq('id',id);if(error)alert(error.message);else loadBlocks()}
+  async function deleteBlock(id){if(!await BDJ_UX.confirm('Liberar este bloqueio?'))return;const {error}=await sb.from('schedule_blocks').delete().eq('id',id);if(error)alert(error.message);else loadBlocks()}

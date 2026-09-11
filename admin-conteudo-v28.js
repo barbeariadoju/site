@@ -325,7 +325,7 @@
     const suggested = new Date(Date.now() + 60 * 60 * 1000);
     const pad = (n) => String(n).padStart(2, '0');
     const suggestedText = `${pad(suggested.getDate())}/${pad(suggested.getMonth() + 1)} ${pad(suggested.getHours())}:${pad(suggested.getMinutes())}`;
-    const answer = prompt('Publicar automaticamente em (dia/mês hora:minuto):', suggestedText);
+    const answer = await BDJ_UX.prompt('Publicar automaticamente em (dia/mês hora:minuto):', suggestedText);
     if (answer === null) return;
     const m = answer.trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})$/);
     if (!m) { alert('Formato inválido. Use dia/mês hora:minuto, por exemplo 21/08 18:00.'); return; }

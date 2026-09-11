@@ -282,13 +282,13 @@
   }
 
   async function cancelEntry(id) {
-    if (!confirm('Cancelar este pedido de espera?')) return;
+    if (!await BDJ_UX.confirm('Cancelar este pedido de espera?')) return;
     const { error } = await sb.from('waitlist').update({ status: 'cancelado' }).eq('id', id);
     if (error) { alert(error.message); return; }
     await load();
   }
   async function deleteEntry(id) {
-    if (!confirm('Excluir definitivamente este registro da lista de espera?')) return;
+    if (!await BDJ_UX.confirm('Excluir definitivamente este registro da lista de espera?')) return;
     const { error } = await sb.from('waitlist').delete().eq('id', id);
     if (error) { alert(error.message); return; }
     await load();

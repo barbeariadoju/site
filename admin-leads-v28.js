@@ -100,7 +100,7 @@
     const button = $('leads-campaign-send');
     const result = $('leads-campaign-result');
     const filter = $('leads-campaign-filter').value.trim();
-    if (!confirm(filter ? `Disparar campanha manual pra leads antigos sobre "${filter}"?` : 'Disparar campanha manual pra TODOS os leads antigos (sem filtro de serviço)?')) return;
+    if (!await BDJ_UX.confirm(filter ? `Disparar campanha manual pra leads antigos sobre "${filter}"?` : 'Disparar campanha manual pra TODOS os leads antigos (sem filtro de serviço)?')) return;
     button.disabled = true; result.textContent = 'Disparando...';
     const { data, error } = await sb.functions.invoke('conversation-leads-campaign', { body: { service_filter: filter } });
     button.disabled = false;

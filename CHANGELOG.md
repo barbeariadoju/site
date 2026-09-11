@@ -1,3 +1,15 @@
+## 29.174.0 — Reforma do admin, fase 2: casca única e caixas de diálogo da casa
+
+**Pedido do Juliano (11/09/2026, ~12h):** "vamos voltar e pode aplicar todas as suas sugestões no admin" — aceitou as três recomendações da proposta (Visão geral + Modo Atendimento viram "Hoje"; caixa do dia na tela Hoje; fase 2 antes da 3). Esta é a fase 2.
+
+**Casca única (`admin-shell-v30.js`).** O cartão de login e o menu lateral saíram das 18 páginas (eram 5 variações do login e, até a fase 1, 5 menus) e viraram dois espaços vazios (`data-shell="login"` e `data-shell="sidebar"`) que um arquivo só preenche, sempre igual. Carrega logo depois do `agenda-config`, antes de qualquer script de tela — a Fidelidade quebrou no teste justamente porque o script dela vinha antes e procurava `#admin-signin` num espaço ainda vazio; a ordem agora é conferida por script nas 18 páginas.
+
+**Caixas de diálogo da casa (`admin-ux-v30.js`, sucessor do v22-4).** `BDJ_UX.confirm()` e `BDJ_UX.prompt()` substituem os 17 `confirm()` e 9 `prompt()` nativos (caixa cinza do navegador, "Esta página diz…") em 11 arquivos. Mesmo contrato das nativas (true/false; texto ou null), então a troca nos chamadores foi `confirm(` → `await BDJ_UX.confirm(` — todos já eram `async`. Enter confirma, Esc cancela, ação destrutiva (excluir, apagar, encerrar) sai com botão vermelho. Também entrou `BDJ_UX.empty()` pro estado vazio. CSS em css/05; `style.css?v=29.174.0`.
+
+**Cache:** 11 JS mexidos + core em `?v=29.174.0` em todas as páginas que os carregam; `ADMIN_VERSION` + `admin-version.json` em 29.174.0. `admin-ux-v22-4.js` removido do repositório (nenhuma página o carrega mais).
+
+**Fora desta fase (fica pra 5):** CSS do admin ainda mora em css/04 e css/05 junto com o do site; helpers (esc/money/login) continuam copiados por arquivo.
+
 ## 29.173.0 — Encaixe: "Permitir encaixe em cima de outro atendimento" no Novo agendamento
 
 **Pedido do Juliano (11/09/2026, 11h47, print do celular):** foi remarcar um cliente pra 17:50 num dia cheio e o painel recusou ("Esse período já está ocupado"). "Me permite excepcionalmente incluir algum cliente entre um e outro, eu sei que é muito rápido e que eu faço em menos tempo que o determinado do sistema." Segunda caixa no formulário, ao lado da de "fora do horário": marcada, manda `p_allow_overlap=true` e as funções `admin_create_booking` / `admin_reschedule_booking` (migration 151, assinatura nova) pulam SÓ a colisão com outros atendimentos. Bloqueio de agenda continua barrando; dia fechado e fora do expediente continuam na outra caixa; site e JuIA seguem sem encaixe. A dica de "nenhum horário livre" passou a explicar o caminho. E, pedido dele na sequência ("deve me dar uma mensagem pra eu pensar"), antes de salvar com encaixe o painel mostra quem já está no período, quanto os atendimentos somam e quantos minutos ele terá de fato ("somam 120 min, você terá 75 min, das 17:50 às 19:05; o próximo cliente é às 19:10. Prosseguir?") — só salva se ele confirmar. Cache: `agendamento.js` e `core` em `?v=29.173.0` nas 7 páginas; `ADMIN_VERSION` + `admin-version.json` em 29.173.0.

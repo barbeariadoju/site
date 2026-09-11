@@ -129,7 +129,7 @@
   async function setStatus(id, status) {
     // Encerrar é a ação que o Juliano queria a um clique de distância, mas é também a que
     // não dá para desfazer sem conversa — por isso o aviso diz exatamente o que acontece.
-    if (status === 'encerrado' && !confirm('Encerrar a parceria?\n\nO acesso dele é revogado e nenhuma cota-parte nova é gerada. O histórico de atendimentos e repasses é preservado (é ele que comprova os pagamentos feitos).')) return;
+    if (status === 'encerrado' && !await BDJ_UX.confirm('Encerrar a parceria?\n\nO acesso dele é revogado e nenhuma cota-parte nova é gerada. O histórico de atendimentos e repasses é preservado (é ele que comprova os pagamentos feitos).')) return;
     const { error } = await sb.rpc('admin_set_professional_status', { p_id: id, p_status: status });
     if (error) { alert(error.message); return; }
     await loadProfessionals();
@@ -223,8 +223,8 @@
   // que alguém alega não ter recebido.
   async function markPaid() {
     if (!lastSettlementId) return;
-    if (!confirm('Confirmar que o Pix do repasse já foi feito?\n\nO recibo vai pro WhatsApp dele para confirmação de recebimento.')) return;
-    const referencia = prompt('Referência do Pix (opcional — end-to-end, ou deixe em branco):', '') || null;
+    if (!await BDJ_UX.confirm('Confirmar que o Pix do repasse já foi feito?\n\nO recibo vai pro WhatsApp dele para confirmação de recebimento.')) return;
+    const referencia = await BDJ_UX.prompt('Referência do Pix (opcional — end-to-end, ou deixe em branco):', '') || null;
     const btn = $('eq-mark-paid'); btn.disabled = true; btn.textContent = 'Registrando…';
     try {
       const { error } = await sb.rpc('admin_mark_settlement_paid', {
@@ -252,11 +252,11 @@
   async function addEntry() {
     const profId = $('eq-prof-select').value;
     if (!profId) return;
-    const tipo = prompt('Tipo do lançamento:\n\nressarcimento — dano acordado (Anexo I, 3.4)\nestorno — venda estornada depois do repasse\najuste — correção combinada\n\nDigite um dos três:', 'ressarcimento');
+    const tipo = await BDJ_UX.prompt('Tipo do lançamento:\n\nressarcimento — dano acordado (Anexo I, 3.4)\nestorno — venda estornada depois do repasse\najuste — correção combinada\n\nDigite um dos três:', 'ressarcimento');
     if (!tipo) return;
-    const descricao = prompt('Descrição (obrigatória — lançamento sem motivo não é contestável):', '');
+    const descricao = await BDJ_UX.prompt('Descrição (obrigatória — lançamento sem motivo não é contestável):', '');
     if (!descricao) return;
-    const valorTxt = prompt('Valor em reais. Use número negativo para descontar do repasse (ex.: -50 para um ressarcimento de R$ 50):', '-0');
+    const valorTxt = await BDJ_UX.prompt('Valor em reais. Use número negativo para descontar do repasse (ex.: -50 para um ressarcimento de R$ 50):', '-0');
     const valor = Number(String(valorTxt).replace(',', '.'));
     if (!Number.isFinite(valor) || valor === 0) { alert('Valor inválido.'); return; }
     const { error } = await sb.rpc('admin_add_ledger_entry', {

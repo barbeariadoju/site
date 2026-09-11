@@ -289,7 +289,7 @@
   async function removeEntry(id) {
     const row = entries.find(e => e.id === id);
     if (!row) return;
-    if (!confirm(`Excluir o lançamento de ${money(row.amount)} em "${row.category}"?`)) return;
+    if (!await BDJ_UX.confirm(`Excluir o lançamento de ${money(row.amount)} em "${row.category}"?`)) return;
     const { error } = await sb.from('finance_entries').delete().eq('id', id);
     if (error) { console.error(error); return msg('Não foi possível excluir.'); }
     await load();
@@ -320,7 +320,7 @@
       });
 
     if (!toInsert.length) return msg('Os fixos deste mês já estão lançados.');
-    if (!confirm(`Repetir ${toInsert.length} lançamento(s) fixo(s) do mês passado?`)) return;
+    if (!await BDJ_UX.confirm(`Repetir ${toInsert.length} lançamento(s) fixo(s) do mês passado?`)) return;
 
     const { error: insErr } = await sb.from('finance_entries').insert(toInsert);
     if (insErr) { console.error(insErr); return msg('Não foi possível repetir.'); }

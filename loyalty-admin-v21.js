@@ -10,11 +10,11 @@ function render(){const q=($('#loyalty-search').value||'').toLowerCase();const l
 // corte concluído (migration 052): grava em loyalty_events como 'adjustment' e
 // já cuida do estouro de 10 carimbos = 1 recompensa.
 async function adjustPoints(customerId,name){
-  const raw=prompt(`Quantos carimbos ajustar para ${name}?\n(número positivo pra adicionar, negativo pra remover, ex.: -2)`);
+  const raw=await BDJ_UX.prompt(`Quantos carimbos ajustar para ${name}?\n(número positivo pra adicionar, negativo pra remover, ex.: -2)`);
   if(raw===null)return;
   const delta=parseInt(raw,10);
   if(!Number.isFinite(delta)||delta===0){alert('Informe um número diferente de zero.');return}
-  const reason=prompt('Motivo do ajuste (fica no histórico, opcional):')||null;
+  const reason=await BDJ_UX.prompt('Motivo do ajuste (fica no histórico, opcional):')||null;
   const {error}=await sb.rpc('admin_adjust_loyalty_points',{p_customer_id:customerId,p_delta:delta,p_description:reason});
   if(error){alert(error.message);return}
   await load();
