@@ -64,6 +64,8 @@ ondulado" não pede corte) — é decisão do modelo, não há regra determinís
 bloqueada pela política de auto mode desta sessão) — cancelar quinta 17/09 14:15 e remarcar sábado
 19/09 de 10:00 pra 09:00 com só "Alisamento / Relaxamento" (55 min, R$ 70).
 
+**NO AR** (11/09, ~09h20 BRT): commit 01c7ea3 no GitHub Pages (curl: admin-version.json 29.170.0, painel e cache novos em admin-agendamento.html); migration 150 aplicada via apply_migration (success); `ju-ia-site` **v247** e `whatsapp-webhook` **v112** via CLI, verify_jwt igual ao anterior (true / false). `npm test`: 109 unit + 48 e2e, tudo verde.
+
 **Varredura das outras 23 conversas de 10/09:** nada novo de código. Repetem-se padrões já conhecidos
 (cliente que diz "depois eu vejo" depois de "não tenho na manhã"; o Juliano assumiu 6 conversas na mão
 e fechou 4 — Vytor 16:30, Paulo terça 16:30, Levi quinta 16:00, Dr. 13:30). Rascunhos do cron das 8h
