@@ -1,3 +1,9 @@
+## 29.176.0 — Reforma do admin, fase 4 (parte 1): no celular, "Mais" abre todas as telas
+
+**Pedido do Juliano (11/09/2026):** "pode aplicar todas as suas sugestões no admin". A barra inferior do celular (`admin-pwa.js`) tinha 7 atalhos fixos e deixava de fora Balcão, Financeiro, Equipe, Lista de espera, Vales, Fidelidade, Relatórios, Avaliações e Funil — pelo telefone, essas telas simplesmente não existiam. Agora são 5 atalhos do dia (Hoje, Agenda, Agendar, Clientes, Balcão) + **Mais**, que sobe uma folha com todas as telas nos mesmos 4 grupos do menu — a lista vem da casca (`window.BDJ_SHELL.groups`), uma só pra desktop e celular. Esc e toque fora fecham. CSS em css/05; `style.css`, `admin-pwa.js` e `core` em `?v=29.176.0`; `ADMIN_VERSION` + `admin-version.json` em 29.176.0.
+
+**Ainda da fase 4 (próxima sessão):** cards e modais que cabem numa mão (o modal de Concluir ainda é longo no telefone), teclado numérico nos campos de valor. **Fase 5 inteira pendente:** Financeiro diário, Equipe, Relatórios e Central de Conteúdo na mesma linguagem; CSS do admin em arquivo próprio; uma cópia de cada helper (hoje 15).
+
 ## 29.175.0 — Reforma do admin, fase 3: a tela "Hoje"
 
 **Decisões do Juliano (11/09/2026):** Visão geral e Modo Atendimento viram uma tela só; o caixa do dia mora nela; "no visão geral já é o resumão do dia, eu iria na agenda só quando quisesse consultar algo específico".
