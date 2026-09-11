@@ -1,3 +1,44 @@
+## 29.172.0 — Reforma do admin, fase 1: um menu só, avisos iguais em toda tela, cache alinhado
+
+**Pedido do Juliano (11/09/2026, ~11h):** "por que você não repensa todo meu módulo admin pra ficar nível de
+software profissional?" e, na sequência, o sentimento: "quando eu olho pro admin eu sinto que fui eu que fiz,
+não sinto que foi um grande engenheiro de software que desenvolveu". Antes de mexer em qualquer tela, foi
+feito um inventário das 18 páginas (relatório no artifact "Barbearia OS, reforma"). O diagnóstico que
+explica o sentimento dele, em números:
+
+- **5 menus laterais diferentes** entre as 18 páginas: `admin.html` e `admin-relatorios.html` com 17 itens
+  (sem Vales-presente), `admin-fidelidade.html` com 15 (sem Modo Atendimento, Mensagens e Notificações),
+  metade dos links sem `data-admin-nav` e `class="active"` em vez de `is-active` — o realce nem acendia.
+  Ordem diferente em pelo menos 4 variações.
+- **Dois visuais para o mesmo aviso:** `admin-ux-v22-4.js` (que transforma `alert()` em toast dourado e
+  captura erro não tratado) só era carregado em 8 das 18 páginas. Conteúdo (14 alerts), Equipe (12),
+  Vales (3), Espera (2) e Fidelidade (2) mostravam a caixa cinza nativa do navegador.
+- **Cache desalinhado:** o mesmo arquivo com versões diferentes conforme a página (`agenda-config-v6.js`
+  em 4 versões, `admin-pwa.js` em 2, `admin-v15-4-core.js` em 2). Risco real de misturar versões.
+
+**O que entrou (só estrutura, nenhuma tela mudou de função):**
+- Menu único nas 18 páginas, gerado por script a partir de uma lista só, com os mesmos 18 itens em
+  **4 grupos**: Dia a dia (Visão geral, Agenda, Novo agendamento, Modo Atendimento, Balcão, Lista de
+  espera) · Clientes (CRM, Fidelidade, Vales, Funil de Reativação) · Dinheiro (Financeiro, Relatórios,
+  Equipe) · Comunicação (Mensagens, Notificações, Assistente IA, Avaliações, Central de Conteúdo).
+  Item ativo marcado no próprio HTML (`is-active`), então funciona também nas páginas que não carregam
+  o core. Rótulo de grupo só no desktop (`.admin-nav-group`, css/05); no celular o menu segue como
+  faixa rolável.
+- `admin-ux-v22-4.js` em todas as 18 páginas: toast + rede de segurança de erro em todo lugar.
+- Versões de cache unificadas: `agenda-config-v6.js` 29.32.0, `admin-pwa.js` 28.58.0, `style.css`
+  29.172.0 (com o import da css/05 no mesmo número) e `admin-v15-4-core.js` 29.172.0 nas 7 páginas.
+- `ADMIN_VERSION` + `admin-version.json` em 29.172.0.
+
+**Decidido contra a recomendação óbvia:** não removi o bloco `@media(max-width:760px)` que aparece
+duas vezes em `css/05-admin-mobile-refino.css` — a auditoria dizia "byte a byte idêntico", o script
+conferiu e a primeira linha difere no fim; remover às cegas podia derrubar regra viva. Fica para a
+fase 2, quando o CSS do admin ganha arquivo próprio.
+
+**Próximas fases (no artifact, aguardando o Juliano escolher):** 2) casca única (login, menu e
+cabeçalho num arquivo só) + componentes de modal/confirmação/vazio; 3) "Hoje" como tela única
+(painel + Modo Atendimento + caixa do dia) e remarcar sem sair da Agenda; 4) celular de verdade
+(barra inferior com tudo, gestos); 5) telas secundárias (Financeiro diário, Equipe, Conteúdo).
+
 ## 29.171.0 — Painel: o card de hoje ganha as mesmas ações da Agenda
 
 **Pedido do Juliano (11/09/2026, ~10h50, com print):** abriu o atendimento das 10h no painel inicial e "nesta tela devia ter o botão de concluir" — e, no segundo print, as opções todas da Agenda. O card "Próximos atendimentos" do painel só tinha o link "Ver na agenda" (decisão da v28.26.0: "o dashboard é só um resumo rápido"). Revertida: agora o painel usa o MESMO `bookingCard()` da Agenda (WhatsApp, Remarcar, Concluir, Ausência, Cancelar, Editar, Novo retorno) e o mesmo modal de conclusão (pagamento, produtos, desconto, fidelidade). O que faltava por baixo: depois de qualquer ação o código redesenhava o calendário da Agenda, que não existe no painel — os 4 pontos de refresh ganharam o ramo `page===dashboard` → `renderDashboard()`. Cache: `dashboard.js` e `agenda.js` em `?v=29.171.0` nas 7 páginas; `ADMIN_VERSION` + `admin-version.json` em 29.171.0.

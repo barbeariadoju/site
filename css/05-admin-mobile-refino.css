@@ -710,3 +710,9 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+
+/* v29.172.0 — Fase 1 da reforma do admin: menu único, em 4 grupos (Dia a dia / Clientes /
+   Dinheiro / Comunicação). Rótulo só no desktop; no celular o menu vira faixa rolável e o rótulo some. */
+.admin-sidebar nav .admin-nav-group{display:block;margin:14px 8px 3px;font-size:var(--t-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.admin-sidebar nav .admin-nav-group:first-child{margin-top:2px}
+@media(max-width:760px){.admin-sidebar nav .admin-nav-group{display:none}}
