@@ -48,7 +48,9 @@
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
     return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}<small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
-  function bookingCard(x){
+  function bookingCard(x){return bookingCardHtml(x,bookingActionsHtml(x))}
+  // v29.175.0: as ações viraram função própria — a tela Hoje coloca a pergunta "já cortou aqui antes?" (do antigo Modo Atendimento) na frente das mesmas ações.
+  function bookingActionsHtml(x){
     // Excluir registro só aparece pra CANCELADOS — pedido do Juliano (31/07/2026) pra
     // limpar um teste dele mesmo da tela sem apagar histórico de cliente real (cancelamento
     // de cliente de verdade continua visível por padrão). RLS trava a mesma regra no banco
@@ -65,7 +67,7 @@
     const notPast=x.booking_date>isoLocal(new Date())||(x.booking_date===isoLocal(new Date())&&x.start_time>new Date().toTimeString().slice(0,8));
     const reactivateHtml=x.status==='cancelled'?`<button data-reactivate="${x.id}" data-past="${notPast?'0':'1'}">↩️ Reativar${notPast?'':' (escolher horário)'}</button>`:'';
     const actionsHtml=`<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.customer_email?`<a href="${emailLink(x)}">E-mail</a>`:''}${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button data-reschedule="${x.id}">Remarcar</button><button data-status="completed" data-id="${x.id}">Concluir</button><button data-status="no_show" data-id="${x.id}">Ausência</button><button class="is-danger" data-status="cancelled" data-id="${x.id}">Cancelar</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Novo retorno</button>${reactivateHtml}${deleteHtml}`;
-    return bookingCardHtml(x,actionsHtml)
+    return actionsHtml
   }
   async function deleteBooking(id,trigger){
     const booking=allBookings.find(x=>x.id===id);

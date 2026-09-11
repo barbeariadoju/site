@@ -730,3 +730,18 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 .admin-dialog .admin-modal-actions .btn.is-danger{background:linear-gradient(135deg,#d75c5c,#a83434);color:#fff;border-color:transparent}
 .admin-dialog .admin-modal-actions>button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @media(max-width:700px){.admin-dialog .admin-modal-actions{display:grid}.admin-dialog .admin-modal-actions>button:first-child{order:2}}
+
+/* v29.175.0 — Fase 3: tela "Hoje" (marcador "agora" na linha do dia, caixa do dia, faixa compacta de números). */
+.admin-now-line{display:flex;align-items:center;gap:10px;margin:6px 0;color:var(--gold2);font-size:var(--t-xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.admin-now-line::before,.admin-now-line::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(240,201,135,.55),rgba(240,201,135,.08))}
+.admin-now-line::after{background:linear-gradient(90deg,rgba(240,201,135,.08),rgba(240,201,135,.55))}
+.admin-now-line.is-end{color:#ffb4a8}
+.admin-today-side{display:grid;gap:18px;align-content:start}
+.admin-metrics.is-compact{margin-top:22px}.admin-metrics.is-compact article{padding:12px 14px}.admin-metrics.is-compact strong{font-size:var(--t-lg);color:#e6e6e6}
+.admin-caixa{display:grid;gap:14px}
+.admin-caixa-total{display:grid;gap:2px}.admin-caixa-total span{color:#969696;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;font-weight:800}.admin-caixa-total strong{font-family:'Bebas Neue',Impact,sans-serif;font-size:var(--t-5xl);line-height:1;color:var(--gold2);letter-spacing:.02em}.admin-caixa-total small{color:#969696}
+.admin-caixa-rows{list-style:none;margin:0;padding:0;display:grid}.admin-caixa-rows li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07);font-size:var(--t-sm)}.admin-caixa-rows li span{color:#bdbdbd}.admin-caixa-rows li b{font-variant-numeric:tabular-nums}
+.admin-caixa-formas{display:flex;flex-wrap:wrap;gap:8px}.admin-caixa-formas span{display:grid;gap:1px;padding:8px 12px;border:1px solid rgba(240,201,135,.22);border-radius:var(--r-sm);background:#0e0e0e;min-width:96px}.admin-caixa-formas small{color:#969696;font-size:var(--t-xs)}.admin-caixa-formas b{font-variant-numeric:tabular-nums}.admin-caixa-formas em{color:#969696;font-style:normal;font-size:var(--t-sm)}
+.admin-caixa-link{color:var(--gold2);font-weight:800;text-decoration:none;font-size:var(--t-sm)}
+.admin-alert-row span small{display:block;color:#969696;font-size:var(--t-xs);font-weight:500}.admin-alert-row a{color:var(--gold2);font-weight:800;text-decoration:none;align-self:center}
+@media(max-width:760px){.admin-metrics.is-primary{grid-template-columns:repeat(2,1fr)}.admin-metrics.is-compact{grid-template-columns:repeat(2,1fr)}}

@@ -1,3 +1,19 @@
+## 29.175.0 — Reforma do admin, fase 3: a tela "Hoje"
+
+**Decisões do Juliano (11/09/2026):** Visão geral e Modo Atendimento viram uma tela só; o caixa do dia mora nela; "no visão geral já é o resumão do dia, eu iria na agenda só quando quisesse consultar algo específico".
+
+**A tela (`admin.html`, `admin-v15-4-dashboard.js`):**
+- Cabeçalho com o dia por extenso e o resumo em uma linha ("4 restantes · 3 concluídos · próximo: Luiz às 14:00"), botão Atualizar, "Sem hora marcada" (Balcão) e "Novo agendamento".
+- Seis números que importam na hora (Restantes, Concluídos, Faturado com a caixinha à parte, Serviços, Cadeira/câmera, Alarme); os outros oito (agendados, aguardando, confirmados, ticket médio, serviços por cliente, ausências, amanhã, clientes) desceram pra uma faixa compacta no fim.
+- **Linha do dia:** o card completo da Agenda (v29.171.0) + a pergunta "já cortou aqui antes?" que só existia no Modo Atendimento (v29.98.0), e um marcador "agora · 12:05" no ponto certo da fila. Em `admin-v15-4-agenda.js`, as ações do card viraram `bookingActionsHtml(x)` pra tela Hoje compor.
+- **Caixa do dia:** o que entrou hoje (serviços líquidos + produtos, só concluídos; mesma conta dos Relatórios: cortesia = 0, prêmio da fidelidade abatido; `service_price` já vem líquido do desconto manual, migration 147, então NÃO se abate de novo), caixinha à parte, despesas lançadas hoje (`finance_entries` do dia) e a divisão por forma de pagamento (serviço pela `payment_method`, produto pela `products_payment_method` ou, sem ela, a do serviço).
+- **Querem vaga hoje:** quem está na lista de espera pedindo hoje (data exata, janela que cobre hoje ou dia da semana marcado), com atalho pra Encaixar.
+- Clientes com ausência, como antes.
+
+**Modo Atendimento:** `admin-atendimento.html` virou redirecionamento pra `admin.html` (links e atalhos antigos continuam funcionando); saiu do menu (17 destinos). `admin-v15-4-atendimento.js` continua carregado porque é dele a pergunta de primeira vez. Menu: "Visão geral" agora se chama "Hoje".
+
+**Cache:** `dashboard`, `agenda`, `shell`, `core` e `style.css` em `?v=29.175.0`; `ADMIN_VERSION` + `admin-version.json` em 29.175.0. `npm test`: 109 unit + 48 e2e verdes.
+
 ## 29.174.0 — Reforma do admin, fase 2: casca única e caixas de diálogo da casa
 
 **Pedido do Juliano (11/09/2026, ~12h):** "vamos voltar e pode aplicar todas as suas sugestões no admin" — aceitou as três recomendações da proposta (Visão geral + Modo Atendimento viram "Hoje"; caixa do dia na tela Hoje; fase 2 antes da 3). Esta é a fase 2.
