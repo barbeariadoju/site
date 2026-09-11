@@ -1983,7 +1983,12 @@ Deno.serve(async (request: Request) => {
               verified_phone: phone,
               whatsapp_name: pushName,
             }),
-          })
+          // v29.170.0 — caso Venilson (10/09/2026, 21h50): a JuIA levou 16 s pra responder "Vou para
+          // Bragança sábado" (consultou agenda, RESERVOU sábado 14:15 e montou a confirmação), o
+          // timeout padrão de 15 s abortou a espera aqui — mas a reserva já estava no banco. O
+          // cliente nunca viu o "Reservado!", e a mensagem seguinte encontrou o sábado "cheio".
+          // Abortar a espera não desfaz o que a IA já fez: espera o que ela precisar (teto 45 s).
+          }, 45000)
 
           const ai = await aiResponse.json().catch(() => ({}))
           if (!aiResponse.ok) {
@@ -2005,7 +2010,11 @@ Deno.serve(async (request: Request) => {
           // avisa que o Juliano está atendendo, mas resolve. E não volta a mudar por causa
           // de um handoff repetido do modelo na mesma resposta.
           if (takeoverAssumidoPelaJuia) {
-            reply = `O Juliano está atendendo na cadeira agora, mas eu já te adianto 😊 ${reply}`
+            // v29.170.0 — caso Venilson (21h54): "está atendendo na cadeira agora" às dez da noite.
+            const hSP = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
+            const wdSP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getDay()
+            const naCadeira = wdSP >= 2 && wdSP <= 6 && hSP >= 8 && hSP < (wdSP === 6 ? 15 : 19)
+            reply = naCadeira ? `O Juliano está atendendo na cadeira agora, mas eu já te adianto: ${reply}` : `O Juliano já encerrou por hoje, mas eu já te adianto: ${reply}`
             handoff = false
           }
 
@@ -2063,7 +2072,10 @@ Deno.serve(async (request: Request) => {
           // sendWhatsapp das respostas curtas — a resposta principal da IA saia por este
           // caminho direto, sem ela. Agora vale aqui tambem: se chegou mensagem nova enquanto
           // a IA pensava, esta resposta nasceu velha e quem processa a nova responde por todas.
-          if (await respostaFicouObsoleta()) {
+          // v29.170.0 (mesmo caso Venilson): resposta que CONFIRMA uma reserva nunca é obsoleta —
+          // a reserva existe, e o cliente precisa saber. Só o resto pode ser descartado.
+          const confirmaReserva = /Reservado!|Prontinho! Mudei|Prontinho! Troquei/.test(reply)
+          if (!confirmaReserva && await respostaFicouObsoleta()) {
             console.warn('[whatsapp-webhook] resposta da IA descartada: cliente escreveu de novo antes do envio', phone)
             return
           }

@@ -1,0 +1,12 @@
+-- v29.170.0 — "Horários que cabem" no formulário de agendamento do admin (pedido do Juliano,
+-- 11/09/2026, 08h43). Na noite anterior ele foi encaixar um cliente pelo painel e não tinha como
+-- saber quais horários comportavam Alisamento + Corte no sábado — abriu o site como cliente e
+-- mandou print. O painel passa a chamar get_available_slots_excluding(data, duração, id do
+-- agendamento em remarcação) — a MESMA função do site e da JuIA (fim de cada atendimento + grade
+-- de 15 em 15, término até 60 min após o fechamento), fonte única desde a migration 148/149.
+--
+-- Até aqui a função só tinha EXECUTE pra postgres e service_role (a 088 tirou o PUBLIC de
+-- propósito: expõe o id do agendamento excluído). O painel usa a sessão logada (role
+-- authenticated), então o grant vai só pra ela — anon continua sem acesso, e o site público
+-- continua na get_available_slots (sem o parâmetro de exclusão), que já era pública.
+grant execute on function public.get_available_slots_excluding(date, integer, uuid) to authenticated;

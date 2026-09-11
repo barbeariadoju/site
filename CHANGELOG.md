@@ -1,3 +1,75 @@
+## 29.170.0 — "Horários que cabem" no agendamento do admin; JuIA aprende com a noite do Venilson (9 erros)
+
+**Pedido do Juliano (11/09/2026, 08h43, "plano do dia"):** na noite anterior ele foi encaixar um cliente
+pelo painel e "tive dificuldade de visualizar os horários disponíveis pra corte" — acabou abrindo o site
+como se fosse cliente e mandando print da grade. Quer isso dentro do admin, "pra falar com assertividade
+pros clientes". E: "revisa esta conversa inteira, tem diversos erros da JuIA, muitos acertos também";
+o que mais o incomodou foi *"Na terça (15/09) tenho 08:00, 10:45, 13:30"* — "deveria dizer tenho alguns
+horários entre 8h e 19h, por exemplo".
+
+### Admin: painel "Horários que cabem nessa data" (`admin-agendamento.html`)
+Abaixo dos serviços, a mesma grade que o site mostra — chamando `get_available_slots_excluding`
+(fim de cada atendimento + grade de 15 em 15, término até 60 min após o fechamento), com a duração
+somada dos serviços marcados. Clicar num horário preenche o campo Horário; digitar continua livre
+(a grade é informação, não trava). Na remarcação, o próprio agendamento não conta como ocupado.
+Migration 150: `grant execute … to authenticated` (a 088 tinha tirado o PUBLIC de propósito; anon
+segue sem acesso, o site continua na `get_available_slots`). Cache: `admin-v15-4-agendamento.js`
+e `core` em `?v=29.170.0`, `ADMIN_VERSION` + `admin-version.json` em 29.170.0 (os dois juntos, regra
+da v29.99.0).
+
+### JuIA — caso Venilson (10/09, 21h44–21h58; 61 mensagens; cliente de Tuiuti, relaxamento)
+A conversa terminou com DOIS agendamentos no banco (quinta 17/09 14:15 e sábado 19/09 10:00, ambos
+"Alisamento + Corte"), um "me embolei" e o Juliano fechando na mão de manhã (sábado 19/09 às 9h, só o
+relaxamento). O que aconteceu, na ordem, e o que mudou:
+
+1. **"Vamos fazer esse" às 21h48 virou "Hoje não tenho mais horário… te aviso assim que abrir vaga
+   hoje"** — a barbearia fechada há três horas. Agora, com o dia já encerrado, a resposta é "Hoje já
+   encerramos (atendemos até 19h). Na terça tenho…" e não existe lista de espera pra hoje.
+2. **A reserva de sábado 14:15 foi feita e o cliente nunca soube.** Log do webhook: a JuIA levou 16 s
+   (consultou, reservou, montou o "Reservado!"), o `fetchWithTimeout` padrão de 15 s abortou a espera,
+   mas a reserva já estava no banco. A mensagem seguinte encontrou sábado "cheio". Dois remendos:
+   (a) o webhook espera a JuIA até 45 s (abortar não desfaz o que ela fez); (b) resposta que confirma
+   reserva ("Reservado!", "Prontinho! Mudei/Troquei") nunca é descartada como obsoleta.
+3. **"No sábado não tenho mais horário"** quando o horário que faltava era o DELE — dia cheio em que o
+   próprio cliente já tem reserva agora responde "Você já está reservado no sábado às 14:15…".
+4. **A frase que incomodou o Juliano.** `tenhoSlots`: com mais de 4 horários, "tenho alguns horários
+   entre 08:00 e 17:00 (por exemplo 08:00, 09:30, 11:15 ou 17:00)"; com 4 ou menos, a lista é a faixa,
+   com "ou" no fim. Mesma faixa no "Conferi de novo…" e no "já está ocupado. O que tenho é: 8 horários".
+5. **"1 vez" (resposta à pergunta de primeira visita) não casou com `^1$`**, a pergunta morreu (one-shot)
+   e a mensagem caiu no bloco de remarcação — que negou o 14:15 que a própria JuIA acabara de reservar.
+   Aceita "1 vez", "1ª", "primeira"; "2 já sou cliente" idem.
+6. **Estado vazado:** a pergunta de conflito da reserva anterior deixou `pending_reschedule_*` vivo
+   depois da reserva nova. Reserva nova fecha toda pergunta antiga (reschedule, cancel, conflict,
+   change_service).
+7. **"Estou ocupado pela manhã" → lista com 08:00 e 09:30.** `detectPeriod` lia "pela manhã" como pedido
+   DE manhã. Período negado ("ocupado / não posso / trabalho / reunião … de manhã") vira `not_morning`
+   (e `not_afternoon`, `not_evening`), que `slotsForPeriod` filtra; a remarcação passou a respeitar o
+   período dito. Lista de espera não recebe período negado (guarda null).
+8. **"Isso" depois de "Prontinho! Mudei…" recebeu a CHAVE PIX.** O "sim" curto só é resposta à oferta
+   do Pix quando a última fala da JuIA foi a que ofereceu ("é só me pedir a chave").
+9. **"Não vou cortar" + "Só o alisamento" → duas listas numeradas, e o "2" virou "me embolei".** A lista
+   de troca de serviço saía sem estado (a do cancelamento tinha). Agora guarda os ids
+   (`pending_change_service_options`, registrada em PERGUNTAS) e o serviço já dito
+   (`pending_change_service_hint`): "2" → "Confirmando: trocar … de Alisamento + Corte para Alisamento /
+   Relaxamento? Responda sim ou não."
+   Bônus do mesmo caso (21h54): "O Juliano está atendendo na cadeira agora" às dez da noite → fora do
+   horário sai "O Juliano já encerrou por hoje, mas eu já te adianto".
+
+**Acertos que ficam:** "desondulação" → entendeu alisamento/relaxamento; pergunta de conflito antes de
+duplicar; áudio transcrito e respondido; remarcação 12/09→19/09 confirmada com sim/não.
+
+**Fora desta versão (anotado):** o modelo incluiu "Corte de cabelo" sozinho ("Mas como meu cabelo é
+ondulado" não pede corte) — é decisão do modelo, não há regra determinística; observar se repete.
+**Ação manual pendente:** o banco ainda tem os dois agendamentos do Venilson (a correção direta foi
+bloqueada pela política de auto mode desta sessão) — cancelar quinta 17/09 14:15 e remarcar sábado
+19/09 de 10:00 pra 09:00 com só "Alisamento / Relaxamento" (55 min, R$ 70).
+
+**Varredura das outras 23 conversas de 10/09:** nada novo de código. Repetem-se padrões já conhecidos
+(cliente que diz "depois eu vejo" depois de "não tenho na manhã"; o Juliano assumiu 6 conversas na mão
+e fechou 4 — Vytor 16:30, Paulo terça 16:30, Levi quinta 16:00, Dr. 13:30). Rascunhos do cron das 8h
+de hoje (IG/FB/Status) aguardam o crivo das 8h05; peças agendadas de hoje: IG/FB 12h e o Reel da toalha
+quente 18h30.
+
 ## 29.169.0 — Plano de 30 dias produzido e agendado; filtro "a conversa da cadeira não é assunto público"
 
 **Pedido do Juliano (10/09/2026, 15h):** "cadê meu gerente de marketing, publicação com vídeo programada só

@@ -38,6 +38,7 @@ const PERGUNTAS:{kind:string;flags:string[]}[]=[
  {kind:'cancel_pick',flags:['pending_cancel_options']},
  {kind:'cancel',flags:['pending_cancel_booking_id']},
  {kind:'reschedule',flags:['pending_reschedule_booking_id','pending_reschedule_new_date','pending_reschedule_new_time']},
+ {kind:'change_service_pick',flags:['pending_change_service_options']},
  {kind:'change_service',flags:['pending_change_service_booking_id','pending_change_service_new_name','pending_change_service_composed']},
  {kind:'products',flags:['pending_products_booking_id','pending_products_new_list','pending_products_summary','pending_products_action']},
  {kind:'waitlist',flags:['pending_waitlist']},
@@ -94,7 +95,13 @@ const firstName=(value:any)=>{const f=String(value||'').trim().split(/\s+/)[0]||
 // NUNCA dizer quantidade de horários nem despejar a lista inteira: amostra espalhada
 // de até 4 (mesmo padrão do v29.43.0) e o cliente responde qualquer horário.
 const slotsSample=(slots:string[])=>[slots[0],slots[Math.floor(slots.length/3)],slots[Math.floor(slots.length*2/3)],slots[slots.length-1]].filter((v,i,a)=>!!v&&a.indexOf(v)===i)
-const slotsPhrase=(slots:string[])=>slots.length<=4?slots.join(', '):`entre ${slots[0]} e ${slots[slots.length-1]} — por exemplo ${slotsSample(slots).join(', ')}`
+// v29.170.0 — caso Venilson (10/09/2026, 21h50): "Na terça (15/09) tenho 08:00, 10:45, 13:30" soou
+// como lista completa (e só de manhã) quando a terça tinha o dia inteiro livre. Pedido do Juliano:
+// dizer a FAIXA ("tenho alguns horários entre 8h e 19h") e só depois os exemplos. Com 4 ou menos,
+// a lista É a faixa — sai com "ou" no fim, como gente fala.
+const listaOu=(xs:string[])=>xs.length<=1?xs.join(''):`${xs.slice(0,-1).join(', ')} ou ${xs[xs.length-1]}`
+const slotsPhrase=(slots:string[])=>slots.length<=4?listaOu(slots):`entre ${slots[0]} e ${slots[slots.length-1]} — por exemplo ${listaOu(slotsSample(slots))}`
+const tenhoSlots=(slots:string[])=>slots.length<=4?`tenho ${listaOu(slots)}`:`tenho alguns horários entre ${slots[0]} e ${slots[slots.length-1]} (por exemplo ${listaOu(slotsSample(slots))})`
 // v29.69.0 — o jeito humano de dizer a data ("hoje", "amanhã", "terça (25/08)") virou
 // função: a troca determinística do fim do arquivo já fazia isso na resposta do modelo, mas
 // o código que monta resposta própria não tinha como usar — e por isso as frases de horário
@@ -340,6 +347,15 @@ const detectPeriod=(text:string)=>{
  // Palavras soltas usam \b (limite de palavra) em vez de includes() puro: "manha" também
  // aparece DENTRO de "amanha" (sem acento), então "tem horario amanha?" estava sendo lido
  // como pedido de manhã. \b garante que só casa a palavra inteira, não um pedaço de outra.
+ // v29.170.0 — caso Venilson (21h52): "Estou ocupado pela manhã" era lido como pedido DE manhã e a
+ // JuIA devolveu 08:00, 09:30, 11:15. Período negado vira "o resto do dia" (not_*), que
+ // slotsForPeriod entende.
+ const periodoTxt='(de manha|pela manha|manha|cedo|a tarde|de tarde|pela tarde|tarde|a noite|de noite|noite|fim do dia|final do dia)'
+ const negTxt='(ocupado|ocupada|nao (posso|consigo|da|tenho como|vou poder|rola)|so (depois|a partir)|trabalho|estou no trabalho|reuniao|compromisso|nem pensar|nao tem como|impossivel)'
+ const neg1=withoutGreeting.match(new RegExp(`\\b${negTxt}\\b[^.!?]{0,30}?\\b${periodoTxt}\\b`))
+ const neg2=withoutGreeting.match(new RegExp(`\\b${periodoTxt}\\b[^.!?]{0,30}?\\b${negTxt}\\b`))
+ const negado=neg1?neg1[neg1.length-1]:(neg2?neg2[1]:'')
+ if(negado)return /manha|cedo/.test(negado)?'not_morning':/tarde/.test(negado)?'not_afternoon':'not_evening'
  if(/\bmanha\b|pela manha|de manha|\bcedo\b/.test(withoutGreeting))return 'morning'
  if(/\btarde\b|pela tarde|de tarde/.test(withoutGreeting))return 'afternoon'
  if(/\bnoite\b|final do dia|fim do dia|depois das 18|apos as 18/.test(withoutGreeting))return 'evening'
@@ -350,9 +366,13 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
  if(period==='morning')return hour<12
  if(period==='afternoon')return hour>=12&&hour<18
  if(period==='evening')return hour>=18
+ if(period==='not_morning')return hour>=12
+ if(period==='not_afternoon')return hour<12||hour>=18
+ if(period==='not_evening')return hour<18
  return true
 })
-const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':'final do dia'
+const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':period==='not_morning'?'tarde ou fim do dia':period==='not_afternoon'?'manhã ou fim do dia':period==='not_evening'?'manhã ou tarde':'final do dia'
+const periodoFalado=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à tarde':p==='evening'?'no fim do dia':p==='not_morning'?'depois do meio-dia':p==='not_afternoon'?'de manhã ou no fim do dia':p==='not_evening'?'até as 18h':''
 // v29.12.0 — caso real 11/08/2026: cliente respondeu "Indiferente" e depois "QQ horário"
 // para a pergunta "manhã, tarde ou final do dia?" e a JuIA repetiu a MESMA pergunta, porque
 // nenhuma dessas respostas casa com um período. "Sem preferência" é uma resposta legítima:
@@ -1795,8 +1815,13 @@ Deno.serve(async req=>{
        next.date=null
       }
      }else{
-      reply=`Em ${formatDateBR(next.date)} consigo te atender ${slotsPhrase(allSlots)}. Qual fica melhor pra você?`
-      actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
+      // v29.170.0 — caso Venilson: "Estou ocupado pela manhã" recebeu a mesma lista com 08:00 e 09:30.
+      const perRem=detectPeriod(normalizedQuestion)||String(next.period||'')
+      const slotsRem=perRem?slotsForPeriod(allSlots,perRem):allSlots
+      const listaRem=slotsRem.length?slotsRem:allSlots
+      const notaRem=perRem&&!slotsRem.length?`${periodoFalado(perRem).charAt(0).toUpperCase()+periodoFalado(perRem).slice(1)} não sobrou nada. `:''
+      reply=`${notaRem}Em ${formatDateBR(next.date)}${perRem&&slotsRem.length?` ${periodoFalado(perRem)}`:''} consigo te atender ${slotsPhrase(listaRem)}. Qual fica melhor pra você?`
+      actions=slotsSample(listaRem).map((t:string)=>({label:t,message:t}))
      }
      handoff=false
     }else if(allSlots.includes(time)){
@@ -2116,7 +2141,20 @@ Deno.serve(async req=>{
     }
     handoff=false
    }
-   if(!upcomingBookings.length){
+   const pickOpts=Array.isArray(next.pending_change_service_options)?next.pending_change_service_options:null
+   const pickIdx=pickOpts&&/^\s*\d\b/.test(normalizedQuestion)?Number(normalizedQuestion.trim().charAt(0))-1:-1
+   const picked=pickIdx>=0?upcomingBookings.find((b:any)=>b.id===pickOpts![pickIdx]):null
+   const pickHint=picked&&next.pending_change_service_hint?findService(String(next.pending_change_service_hint)):null
+   if(pickOpts){next.pending_change_service_options=null;next.pending_change_service_hint=null}
+   if(picked&&pickHint&&normalize(pickHint.name)!==normalize(String(picked.service_name||''))){
+    next.pending_change_service_booking_id=picked.id
+    next.pending_change_service_new_name=pickHint.name
+    reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(picked.booking_date)} às ${String(picked.start_time).slice(0,5)}, de "${picked.service_name}" para "${pickHint.name}" (${money(pickHint.price)}, aproximadamente ${pickHint.duration} min)? Responda sim ou não.`
+    actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+    handoff=false
+   }else if(picked){
+    askOrConfirm(picked)
+   }else if(!upcomingBookings.length){
     reply='Não encontrei nenhum agendamento futuro nesse número para trocar o serviço.'
     handoff=false
    }else if(upcomingBookings.length===1){
@@ -2126,7 +2164,12 @@ Deno.serve(async req=>{
     if(matched){
      askOrConfirm(matched)
     }else{
-     reply='Você tem mais de um agendamento futuro. Qual deles quer trocar o serviço?\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
+     // v29.170.0 — caso Venilson (21h56): a lista saía SEM estado, então o "2" do cliente não tinha
+     // dono e virou "me embolei". Agora a lista guarda os ids (como a do cancelamento) e o serviço
+     // que ele já tinha dito ("só o alisamento"), pra confirmar direto depois do número.
+     next.pending_change_service_options=upcomingBookings.map((b:any)=>b.id)
+     next.pending_change_service_hint=swapTailService?swapTailService.name:null
+     reply='Você tem mais de um agendamento futuro. Qual deles quer trocar o serviço? Me responde com o número:\n'+upcomingBookings.map((b:any,i:number)=>`${i+1}. ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} — ${b.service_name}`).join('\n')
      actions=upcomingBookings.map((b:any)=>({label:`${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:`Trocar o serviço do de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}`}))
      handoff=false
     }
@@ -2651,8 +2694,8 @@ Deno.serve(async req=>{
  // pergunta não se repete (one-shot).
  if(state?.pending_first_visit&&verifiedPhone){
   next.pending_first_visit=null
-  const fvFirst=/^\s*1\s*$/.test(normalizedQuestion)||/\b(primeira vez|primeira visita|nunca (fui|vim|cortei)|to conhecendo|estou conhecendo)\b/.test(normalizedQuestion)
-  const fvPrior=/^\s*2\s*$/.test(normalizedQuestion)||/\b(ja sou cliente|ja era cliente|cliente antigo|cliente de antes|ja frequento|sempre corto|ja cortava|de longa data|cliente (ha|a) (tempos|anos|muito tempo))\b/.test(normalizedQuestion)
+  const fvFirst=/^\s*1\b/.test(normalizedQuestion)||/\b(primeira( vez| visita)?|1a vez|nunca (fui|vim|cortei)|to conhecendo|estou conhecendo)\b/.test(normalizedQuestion)
+  const fvPrior=/^\s*2\b/.test(normalizedQuestion)||/\b(ja sou cliente|ja era cliente|cliente antigo|cliente de antes|ja frequento|sempre corto|ja cortava|de longa data|cliente (ha|a) (tempos|anos|muito tempo))\b/.test(normalizedQuestion)
   if(fvFirst!==fvPrior){
    try{
     const fvDigits=String(verifiedPhone).replace(/\D/g,'')
@@ -2939,12 +2982,22 @@ Deno.serve(async req=>{
   if(error)return respond({error:error.message},500)
   const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
 
-  if(!allSlots.length){
+  // v29.170.0 — caso Venilson (10/09/2026, 21h50): a reserva de sábado 14:15 tinha acabado de ser
+  // feita (o "Reservado!" morreu no timeout do webhook) e a JuIA respondeu "no sábado não tenho
+  // mais horário" — o horário que faltava era o DELE. Dia cheio em que o próprio cliente já tem
+  // reserva = lembrar a reserva, nunca negar o dia.
+  const ownSameDay=!allSlots.length?upcomingBookings.find((b:any)=>b.booking_date===next.date):null
+  const hojeEncerrado=(()=>{if(next.date!==today())return false;const wd=new Date(today()+'T12:00:00-03:00').getUTCDay();const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));return h>=(wd===6?15:19)})()
+  if(!allSlots.length&&ownSameDay){
+   reply=`Você já está reservado ${emDia(next.date)} às ${String(ownSameDay.start_time).slice(0,5)} (${ownSameDay.service_name}). Se quiser mudar o horário ou o serviço, é só me dizer.`
+   actions=[]
+   handoff=false
+  }else if(!allSlots.length){
    // v28.37.0 (item 4): antes só sugeria o próximo dia aberto — agora também oferece
    // lista de espera pro dia ORIGINAL que o cliente pediu (mesmo recurso que já existe
    // no site, agendar/horario/join-waitlist). Captura next.date ANTES de sobrescrever
    // com nextAvail.date logo abaixo.
-   const waitlistOffer={date:next.date,period:effectivePeriod||null,service_name:serviceNames,service_price:chosen.reduce((a:number,s:any)=>a+s.price,0),duration_minutes:duration}
+   const waitlistOffer={date:next.date,period:(effectivePeriod&&!String(effectivePeriod).startsWith('not_'))?effectivePeriod:null,service_name:serviceNames,service_price:chosen.reduce((a:number,s:any)=>a+s.price,0),duration_minutes:duration}
    const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
    if(nextAvail){
     // v29.69.0 — caso de sábado (22/08/2026, 16h27): o cliente insistiu no mesmo dia
@@ -2956,11 +3009,15 @@ Deno.serve(async req=>{
     // v29.138.0 (pedido do Juliano, 05/09/2026): menos texto, foco em fechar. Diz que não
     // tem, dá o próximo dia com 3 horários e UMA pergunta. A lista de espera vira uma linha.
     reply=jaDisseQueNaoTem
-     ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Ou te aviso se abrir vaga ${emDia(waitlistOffer.date)}, ou já reservo ${emDia(nextAvail.date)} (${slotsSample(nextAvail.slots).slice(0,3).join(', ')}). Qual prefere?`
-     :`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} não tenho mais horário para ${serviceNames}. ${emDia(nextAvail.date).charAt(0).toUpperCase()+emDia(nextAvail.date).slice(1)} tenho ${slotsSample(nextAvail.slots).slice(0,3).join(', ')}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
-    next.pending_waitlist=waitlistOffer
+     ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Ou te aviso se abrir vaga ${emDia(waitlistOffer.date)}, ou já reservo ${emDia(nextAvail.date)} (${slotsPhrase(nextAvail.slots)}). Qual prefere?`
+     :hojeEncerrado
+     ?`Hoje já encerramos (atendemos até ${new Date(today()+'T12:00:00-03:00').getUTCDay()===6?'15h':'19h'}). ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
+     :`${emDiaCap(next.date)} não tenho mais horário para ${serviceNames}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
+    // v29.170.0 — caso Venilson (21h48): "te aviso assim que abrir vaga hoje" com a barbearia já
+    // fechada há três horas. Depois do fechamento não existe vaga pra abrir hoje: sem lista de espera.
+    next.pending_waitlist=hojeEncerrado?null:waitlistOffer
     next.date=nextAvail.date
-    actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}]
+    actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),...(hojeEncerrado?[]:[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}])]
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
     // direct: aqui a pergunta É sobre a lista (não há dia alternativo) — um "sim" solto
@@ -3197,7 +3254,7 @@ Deno.serve(async req=>{
        : `${motivo} O mais próximo que tenho é ${proximos[0]}. Serve pra você?${sobra}`
       actions=[...proximos,...resto.slice(0,4)].map((t:string)=>({label:t,message:t}))
      }else{
-      const ocupadoBase=`${emDia(next.date)} às ${effectiveTime} já está ocupado. O que tenho é: ${alternatives.slice(0,8).join(', ')}.`
+      const ocupadoBase=`${emDia(next.date)} às ${effectiveTime} já está ocupado. ${tenhoSlots(alternatives).charAt(0).toUpperCase()+tenhoSlots(alternatives).slice(1)}.`
       reply=ocupadoBase.charAt(0).toUpperCase()+ocupadoBase.slice(1)
       actions=alternatives.slice(0,8).map((t:string)=>({label:t,message:t}))
      }
@@ -3579,6 +3636,12 @@ Deno.serve(async req=>{
       // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
       // não faz mais sentido; sem limpar, um "sim" posterior ainda podia reativá-la.
       next.pending_waitlist=null
+      // v29.170.0 — caso Venilson (21h51): a pergunta de conflito da reserva anterior deixou
+      // pending_reschedule_* vivo; o "1 vez" seguinte caiu no bloco de remarcação e a JuIA negou o
+      // 14:15 que ela mesma tinha acabado de reservar. Reserva nova fecha toda pergunta antiga.
+      next.pending_reschedule_booking_id=null;next.pending_reschedule_new_date=null;next.pending_reschedule_new_time=null
+      next.pending_cancel_booking_id=null;next.pending_cancel_options=null;next.pending_conflict_choice=null
+      next.pending_change_service_booking_id=null;next.pending_change_service_new_name=null;next.pending_change_service_composed=null;next.pending_change_service_options=null;next.pending_change_service_hint=null
     }
    }
   }
@@ -3772,7 +3835,7 @@ Deno.serve(async req=>{
  // com a oferta do Pix e este bloco reescreve o reply por cima da remarcação. Um "sim" só é
  // resposta à oferta do Pix quando NÃO existe outra pergunta da JuIA em aberto (pending_*).
  const pendenciaAberta=Object.keys(next||{}).some(k=>k.startsWith('pending_')&&(next as any)[k])||Object.keys(state||{}).some(k=>k.startsWith('pending_')&&(state as any)[k])
- const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion)||(Boolean(state?.pix_offered)&&simpleYes&&!pendenciaAberta))
+ const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion)||(Boolean(state?.pix_offered)&&simpleYes&&!pendenciaAberta&&/pedir a chave/i.test(ultimaFalaJuIA)))
   &&!/\b(ja paguei|paguei|comprovante|enviei|mandei|fiz o pix|transferi)\b/.test(normalizedQuestion)
   &&!/\b(celular|telefone|outra chave|segunda chave|cpf|cnpj)\b/.test(normalizedQuestion)
  if(pixKeyAsk&&verifiedPhone&&upcomingBookings.length&&!handoff){

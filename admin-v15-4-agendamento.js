@@ -1,7 +1,43 @@
 // admin-v15-4-agendamento.js - parte 6/7 de admin-v15-4.js. Modo Novo
 // agendamento / remarcacao (admin-agendamento.html). Ver header de
 // admin-v15-4-core.js.
-  function initBookingForm(){$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();bindCustomerSearch();$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='08:00';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else{loadPrefillForm();bindDraftAutosave()}}
+  function initBookingForm(){$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();bindCustomerSearch();bindSlotsPanel();$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='08:00';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else{loadPrefillForm();bindDraftAutosave()}refreshSlots()}
+  // v29.170.0 — HORÁRIOS QUE CABEM (pedido do Juliano, 11/09/2026, 08h43). Na noite anterior ele
+  // foi encaixar o Venilson pelo painel e não tinha como saber quais horários comportavam
+  // Alisamento + Corte no sábado — acabou abrindo o site como se fosse cliente e mandando print.
+  // Agora o próprio formulário mostra, pra data e serviços escolhidos, a mesma grade que o site
+  // mostra (get_available_slots_excluding: fim de cada atendimento + grade de 15 em 15, término
+  // até 60 min após o fechamento). Clicar num horário preenche o campo. Na remarcação, o próprio
+  // agendamento não conta como ocupado (mover 15:00 pra 14:30 é livre). O campo Horário continua
+  // livre pra digitar qualquer coisa — a grade é informação, não trava.
+  let slotsReq=0
+  function bindSlotsPanel(){
+    $('booking-date')?.addEventListener('change',refreshSlots)
+    $('booking-services')?.addEventListener('change',refreshSlots)
+    $('booking-time')?.addEventListener('input',markSelectedSlot)
+  }
+  async function refreshSlots(){
+    const box=$('booking-slots'),head=$('booking-slots-count'),hint=$('booking-slots-hint')
+    if(!box||!head||!hint)return
+    const date=$('booking-date').value,services=selectedServices()
+    const duration=services.reduce((a,s)=>a+Number(s.duration||0),0)
+    const req=++slotsReq
+    if(!date||!duration){box.replaceChildren();head.textContent='';hint.textContent=date?'Escolha o(s) serviço(s) pra ver os horários que cabem.':'Escolha a data.';return}
+    hint.textContent='';head.textContent='Consultando…'
+    const {data,error}=await sb.rpc('get_available_slots_excluding',{p_date:date,p_duration_minutes:duration,p_exclude_booking_id:$('booking-id').value||null})
+    if(req!==slotsReq)return
+    if(error){head.textContent='';hint.textContent='Não consegui consultar os horários agora.';console.error(error);return}
+    renderAdminSlots((data||[]).map(r=>String(r.slot_time).slice(0,5)),duration)
+  }
+  function renderAdminSlots(slots,duration){
+    const box=$('booking-slots'),head=$('booking-slots-count'),hint=$('booking-slots-hint')
+    box.replaceChildren()
+    if(!slots.length){head.textContent='Nenhum horário livre';hint.textContent=`Nenhum horário livre comporta ${duration} min nessa data. Confira a agenda do dia antes de encaixar na mão.`;return}
+    head.textContent=`${slots.length} horário${slots.length>1?'s':''} comporta${slots.length>1?'m':''} ${duration} min`
+    slots.forEach(t=>{const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.dataset.slot=t;b.innerHTML=`<strong>${t}</strong>`;b.onclick=()=>{$('booking-time').value=t;markSelectedSlot();saveDraft()};box.appendChild(b)})
+    markSelectedSlot()
+  }
+  function markSelectedSlot(){const cur=$('booking-time')?.value;document.querySelectorAll('#booking-slots .agenda-slot').forEach(b=>b.classList.toggle('is-selected',b.dataset.slot===cur))}
   // Busca de cliente com dropdown próprio (nome + telefone), no lugar do <input list>+
   // <datalist> nativo — dois problemas reais: 1) o popup nativo do navegador "sequestra"
   // as setas do teclado pra navegar a lista em vez de mover o cursor no texto, impedindo
