@@ -1,3 +1,7 @@
+## 29.170.1 — Data e Horário descem pra junto da grade
+
+**Pedido do Juliano (11/09, 09h30, com print):** "colocar o campo pra escolher a data e embaixo já abre os horários disponíveis, seria mais funcional". Os campos Data e Horário saíram do topo (ficavam ao lado de Cliente/WhatsApp) e agora vêm depois dos serviços, num bloco "Data e horário", com a grade logo abaixo: a ordem da tela virou a ordem de pensar (quem → o quê → quando). Só HTML; `ADMIN_VERSION` + `admin-version.json` em 29.170.1 pra recarregar o painel aberto.
+
 ## 29.170.0 — "Horários que cabem" no agendamento do admin; JuIA aprende com a noite do Venilson (9 erros)
 
 **Pedido do Juliano (11/09/2026, 08h43, "plano do dia"):** na noite anterior ele foi encaixar um cliente
