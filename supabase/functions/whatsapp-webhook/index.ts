@@ -1124,7 +1124,43 @@ Deno.serve(async (request: Request) => {
             const { data: cancelledRows, error: cancelError } = await admin.rpc('whatsapp_cancel_booking', { p_phone: phone, p_booking_id: pendingConfirmation.id })
             const cancelled = Array.isArray(cancelledRows) ? cancelledRows[0] : cancelledRows
             if (!cancelError && cancelled) {
-              await sendWhatsapp(phone, 'Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário. Se quiser remarcar outro dia, é só me chamar.')
+              // v29.186.0 (caso Helder, 11/09/2026, 13h43): "3 — Preciso cancelar" recebia "se quiser
+              // remarcar outro dia, é só me chamar" e a conversa morria — a mesma lição da v29.181.0
+              // (JuIA conduz a remarcação), agora também neste caminho. A oferta vai pro estado da
+              // JuIA (pending_rebook), então "sim", horário ou dia na resposta caem no bloco dela.
+              let ofertaTxt = ''
+              try {
+                const nomesServ = String(cancelled.service_name || '').split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
+                const { data: svcRows } = await admin.from('services').select('name, duration_minutes').in('name', nomesServ)
+                const durTotal = (svcRows || []).reduce((a: number, s: any) => a + Number(s.duration_minutes || 0), 0) || Number(cancelled.duration_minutes) || 40
+                const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+                const cancelISO = String(cancelled.booking_date).slice(0, 10)
+                let oferta: { date: string, slots: string[] } | null = null
+                const dcur = new Date(hojeSP + 'T12:00:00-03:00')
+                for (let i = 0; i < 21 && !oferta; i++) {
+                  const iso = dcur.toISOString().slice(0, 10)
+                  if (iso !== cancelISO) {
+                    const { data: slotRows } = await admin.rpc('get_available_slots', { p_date: iso, p_duration_minutes: durTotal })
+                    const slots = (slotRows || []).map((x: any) => String(x.slot_time).slice(0, 5))
+                    if (slots.length) oferta = { date: iso, slots }
+                  }
+                  dcur.setDate(dcur.getDate() + 1)
+                }
+                if (oferta && nomesServ.length) {
+                  const sl = oferta.slots
+                  const amostra = [sl[0], sl[Math.floor(sl.length / 3)], sl[Math.floor(sl.length * 2 / 3)], sl[sl.length - 1]].filter((v, i, a) => !!v && a.indexOf(v) === i)
+                  const ou = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} ou ${xs[xs.length - 1]}`
+                  const tenho = sl.length <= 4 ? `tenho ${ou(sl)}` : `tenho alguns horários entre ${sl[0]} e ${sl[sl.length - 1]} (por exemplo ${ou(amostra)})`
+                  const amanhaSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 86400000))
+                  const wd = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][new Date(oferta.date + 'T12:00:00-03:00').getUTCDay()]
+                  const dia = oferta.date === hojeSP ? 'Hoje' : oferta.date === amanhaSP ? 'Amanhã' : `${wd === 'sábado' ? 'No' : 'Na'} ${wd} (${oferta.date.slice(8, 10)}/${oferta.date.slice(5, 7)})`
+                  ofertaTxt = ` Quer já deixar outro horário marcado para ${nomesServ.join(' + ')}? ${dia} ${tenho}. Se preferir outro dia, é só me dizer qual.`
+                  const { data: convRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+                  const st = (convRow?.state && typeof convRow.state === 'object') ? convRow.state as Record<string, unknown> : {}
+                  await admin.from('whatsapp_conversations').update({ state: { ...st, services: nomesServ, date: oferta.date, time: null, period: null, completed: false, pending_rebook: { date: oferta.date, services: nomesServ, cancelled_date: cancelISO }, last_question: { kind: 'rebook', at: new Date().toISOString(), reply: 'Quer já deixar outro horário marcado' } }, updated_at: new Date().toISOString() }).eq('phone', phone)
+                }
+              } catch (e) { console.error('[whatsapp-webhook] oferta de remarcação pós-cancelamento', e) }
+              await sendWhatsapp(phone, `Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário.${ofertaTxt || ' Se quiser remarcar outro dia, é só me chamar.'}`)
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {
                 await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {

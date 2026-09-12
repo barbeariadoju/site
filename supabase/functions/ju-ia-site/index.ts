@@ -643,6 +643,18 @@ Deno.serve(async req=>{
  const linkMatch=message.match(/(https?:\/\/\S+|www\.\S+)/i)
  if(linkMatch&&message.replace(/https?:\/\/\S+|www\.\S+/gi,'').trim().length<15){
   const rawLink=/^https?:\/\//i.test(linkMatch[0])?linkMatch[0]:`https://${linkMatch[0]}`
+  // v29.186.0 (caso Guilherme, 12/09/2026, 11h26): o cliente mandou o link do comprovante do Pix
+  // (recibo.infinitepay.io) logo depois do atendimento — o descritor de link leu a página como se
+  // fosse pedido e a JuIA respondeu "hoje não tenho mais horário…". Comprovante é comprovante:
+  // agradece, avisa o Juliano e não abre agenda.
+  if(/recibo|comprovante|receipt|infinitepay|picpay|nubank|mercadopago|pagseguro|pagbank|stone\.com|cielo|itau|bradesco|santander|caixa\.gov|bb\.com|inter\.co|sicoob|sicredi|\bpix\b/i.test(rawLink)){
+   const reply='Comprovante recebido, obrigado! Vou repassar ao Juliano.'
+   const vpLink=chamadorBackend?String(body.verified_phone||'').replace(/\D/g,''):''
+   const pushSecretL=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrlL=Deno.env.get('SUPABASE_URL')
+   if(pushSecretL&&supabaseUrlL&&vpLink)await fetch(`${supabaseUrlL}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretL},body:JSON.stringify({custom:{title:'Comprovante recebido pelo WhatsApp',body:`${String(body?.whatsapp_name||'').trim()||vpLink} mandou um link de comprovante: ${rawLink.slice(0,90)}`,url:'/admin-agenda.html?app=1',tag:`comprovante-${vpLink}`}})}).catch(()=>{})
+   await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state,intent:'other'}]).then(()=>{})
+   return respond({reply,intent:'other',state,actions:[],handoff:false})
+  }
   const linkContext=await describeLinkContent(rawLink,key||'').catch((err)=>{console.error('[ju-ia-site] describe_link',err);return null})
   if(linkContext){
    message=linkContext
@@ -1113,7 +1125,7 @@ Deno.serve(async req=>{
  // pergunta "É corte de cabelo?", e o serviço de sempre não era assumido. Pergunta de agenda
  // com horário ou dia na frase conta como availability pra este bloco, seja qual for o intent.
  const perguntaDeAgendaComHorario=/\b(tem|teria|consegue|da pra|d[aá] pra|rola|vaga|horario|hor[aá]rio)\b/.test(normalizedQuestion)&&(Boolean(extractRequestedTime(message))||/\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado)\b/.test(normalizedQuestion))
- if((intent==='availability'||intent==='book'||perguntaDeAgendaComHorario)&&!chosen.length&&verifiedPhone&&hasCustomer&&usualServices.length&&!usualIsOnlyAddon&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest){
+ if((intent==='availability'||intent==='book'||perguntaDeAgendaComHorario)&&!chosen.length&&verifiedPhone&&hasCustomer&&usualServices.length&&!usualIsOnlyAddon&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest&&!next.usual_rejected){
   if(intent!=='availability'&&intent!=='book')intent='availability'
   next.services=usualServices.map((s:any)=>s.name)
   chosen.push(...usualServices)
@@ -1447,7 +1459,12 @@ Deno.serve(async req=>{
  // explícita/botão ("quero entrar na lista de espera") continua valendo nos dois casos.
  // "Não" com oferta pendente descarta a oferta (sem isso, um "sim" qualquer mais tarde
  // na mesma conversa reativava a lista do nada).
- const waitlistAsk=includesAny(normalizedQuestion,['lista de espera','fila de espera','me avisa quando abrir','me avise quando abrir','entrar na lista','quero entrar na espera','avisa se abrir'])
+ // v29.186.0 (caso 😎🤘🏽, 11/09/2026, 15h48): "Se abrir uma vaga poderia me avisar" não casava com
+ // nenhuma frase fixa — a JuIA repetiu a oferta palavra por palavra, o cliente nunca entrou na
+ // lista e ainda levou três cobranças automáticas. Aceitar a oferta é qualquer pedido de aviso:
+ // "me avisa/avise", "pode(ria) me avisar", "avisa aí", "se abrir/vagar/surgir … avis…".
+ const waitlistAsk=includesAny(normalizedQuestion,['lista de espera','fila de espera','entrar na lista','quero entrar na espera'])
+  ||/\b(me avis[ae]\b|me avisar\b|pode(ria)? (me )?avisar\b|avisa (ai|aqui|por aqui|sim)\b|(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar)[^.!?]{0,40}\bavis)/.test(normalizedQuestion)
  // v29.69.0 — os DOIS casos de sábado (22/08/2026, 11h45 e 16h29): depois de "não encontrei
  // horário hoje; o próximo dia é terça… ou entro com você na lista de espera", os clientes
  // responderam "Não obrigado" e "Vou deixar obrigado". A JuIA só limpava a oferta e seguia
@@ -1455,6 +1472,17 @@ Deno.serve(async req=>{
  // repetir a mesma frase e cair no "me embolei". Recusa à oferta de outro dia é fim de
  // assunto, não deixa de ser uma conversa em aberto: agradece, deixa a porta aberta e para.
  // Só quando a recusa vem SECA: se ele emenda um dia, horário ou período novo, é pedido novo.
+ // v29.186.0 (caso Julio, 12/09/2026, 10h50): já com a terça reservada, "combinado, mas se vagar
+ // horários hoje, me avise" recebeu "Combinado. Se surgir algum horário para hoje, avisaremos você"
+ // — promessa do modelo, sem lista de espera nenhuma (a oferta tinha sido apagada na reserva).
+ // Pedido de aviso com serviço conhecido monta a oferta na hora: o dia é o citado ("hoje",
+ // "amanhã", dia da semana) ou o do último pedido.
+ if(waitlistAsk&&!next.pending_waitlist&&chosen.length&&verifiedPhone){
+  const wlSemana=weekdayDatesMentioned(normalizedQuestion,today())
+  const wlAmanha=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
+  const wlDia=/\bhoje\b/.test(normalizedQuestion)?today():/\bamanha\b/.test(normalizedQuestion)?wlAmanha:(wlSemana[0]||state?.date||next.date||today())
+  next.pending_waitlist={date:wlDia,period:detectPeriod(normalizedQuestion)||null,service_name:chosen.map((s:any)=>s.name).join(' + '),service_price:chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0),duration_minutes:chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)}
+ }
  let recusouOfertaDeOutroDia=false
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&next.pending_waitlist){
   // "Vou deixar obrigado" (caso real, sábado 22/08 11h46) não casava com simpleNo — não tem
@@ -2388,6 +2416,11 @@ Deno.serve(async req=>{
    intent='book';handoff=false
   }else if(!nomeouServico&&(bareUc==='2'||simpleNo)){
    next.usual_assumed=false
+   // v29.186.0 (caso Ju, 11/09/2026, 19h47): "2 — outro serviço" → "Corte + Barba" → "Reservo Barba
+   // Express + Corte de cabelo, como da última vez?" — a suposição do "de sempre" voltou por cima
+   // do serviço que ele acabou de escolher, e o Juliano fechou na mão (era Raspar + Barba na
+   // navalha). Quem rejeitou o "de sempre" não recebe o "de sempre" de novo nesta conversa.
+   next.usual_rejected=true
    next.services=[];chosen=[]
    next.date=puc.date;next.time=puc.time
    reply=`Sem problema. Qual serviço você quer ${emDia(puc.date)} às ${puc.time}? Por exemplo: corte, barba, corte + barba.`
@@ -2634,6 +2667,9 @@ Deno.serve(async req=>{
  }else if(soGentileza&&intent==='availability'){
   intent='other'
  }
+ // v29.186.0 (caso 12/09 10h12): "Blz obrigado!" depois de "hoje não tenho, na terça tenho…" recebeu
+ // um "Obrigado!" seco de volta. Agradecimento sem reserva fechada ganha porta aberta.
+ if(soGentileza&&!next.completed&&String(reply).trim().length<=14)reply='Eu que agradeço. Quando quiser marcar, é só me chamar por aqui.'
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
  // cliente pode dizer o período antes mesmo de ter escolhido o serviço (ex.: "tem
@@ -3834,6 +3870,16 @@ Deno.serve(async req=>{
  // "desculpa") ouve primeiro que está tudo bem — a agenda vem depois. Sem isso a resposta
  // certa ("hoje não tenho mais horário") soava como bronca. Falta avisada ganha "obrigado por
  // avisar" (é o que o Juliano respondeu na mão às 10h01); desculpa solta ganha só o "imagina".
+ // v29.186.0 (caso Guilherme, 12/09/2026, 08h08): "Esse é meu número pessoal, o antigo tô usando só
+ // pra trabalho" foi ignorado — a JuIA respondeu só a pergunta de horário e o Juliano teve que
+ // perguntar o número antigo na mão. Troca de número é cadastro: reconhece e avisa o Juliano.
+ const trocouNumero=/\b(numero|contato|whats(app)?|celular) (novo|pessoal|atual|de agora)\b|\b(novo|outro) (numero|whats(app)?|contato|celular)\b|(troquei|mudei) (de|o|meu) (numero|chip|celular|whats(app)?)|\bnumero antigo\b/.test(normalizedQuestion)
+ if(trocouNumero){
+  const antigo=extractPhoneFromMessage(message)
+  reply=`Anotado: vou pedir pro Juliano atualizar seu cadastro com este número${antigo?` (o antigo era ${antigo})`:''}. ${reply}`.trim()
+  const pushSecretN=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrlN=Deno.env.get('SUPABASE_URL')
+  if(pushSecretN&&supabaseUrlN&&verifiedPhone)await fetch(`${supabaseUrlN}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretN},body:JSON.stringify({custom:{title:'Cliente trocou de número',body:`${String(body?.whatsapp_name||contextFullName||'').trim()||verifiedPhone} avisou que este é o número novo (${verifiedPhone})${antigo?`; o antigo era ${antigo}`:''}. Atualize o cadastro.`,url:'/admin-clientes.html?app=1',tag:`numero-novo-${verifiedPhone}`}})}).catch(()=>{})
+ }
  const avisouFalta=/\bdespertador\b|perdi a hora|nao consegui (ir|chegar|vir)|nao deu (pra|para) (ir|vir)|nao pude (ir|vir)|acabei nao (indo|vindo)|tive um imprevisto|\bimprevisto\b|me atrasei|dormi demais|\besqueci\b|passei mal|fiquei doente/.test(normalizedQuestion)
  const pediuDesculpa=/desculp\w*|\bperdao\b|foi mal|mil perdoes/.test(normalizedQuestion)
  if((avisouFalta||pediuDesculpa)&&!/imagina|acontece|sem problema/i.test(reply)){
@@ -3873,7 +3919,11 @@ Deno.serve(async req=>{
  // (next.completed) ou virou handoff/cancelamento/remarcação, apaga o lead: não faz
  // sentido cobrar alguém que já resolveu o que queria.
  if(verifiedPhone){
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
+  // v29.186.0: lista de espera tem cobrança própria (caso 😎🤘🏽: três nudges em cima de quem só pediu
+  // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
+  // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
+  // cobrar — é gente que já decidiu.
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia
   if(next.completed){
    // v28.34.0: vira agendamento de verdade — preserva a linha (resolution='booked') em
    // vez de apagar, pra o painel admin-leads.html conseguir calcular taxa de recuperação.
