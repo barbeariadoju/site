@@ -1,3 +1,15 @@
+## 29.184.0 — Corte infantil (e Raspar a cabeça) de volta ao /agendar/ (12/09, meio-dia)
+
+**Pedido do Juliano (12/09/2026, ~11h45, print do `/agendar/#servicos`):** "corte infantil sumiu daqui". Na seção "Cortes masculinos" só havia dois cartões: Corte + Lavagem e Corte de cabelo.
+
+**O que encontrei:** o `/agendar/` é HTML estático (cartões escritos à mão, não gerados do catálogo), e o histórico do Git não tem nenhuma versão dele com Corte de cabelo infantil ou Raspar a cabeça — os dois serviços estão no banco (`services`, ativos, R$ 40, 40 min), no `services-catalog-v7.js`, no `/precos/`, em `servicos.html` e têm página própria, mas nunca tiveram cartão na tela de agendamento. Pior: as páginas `servico-corte-infantil.html` e `servico-raspar-a-cabeca.html` mandavam para `agendar/?servico=corte-de-cabelo`, ou seja, quem clicava "agendar" na página do corte infantil chegava com o **corte adulto** pré-selecionado. A JuIA já sabia vender os dois (regra pai e filho da v29.62.0); o site, não.
+
+**O que entrou:** dois cartões na seção "Cortes masculinos", logo depois do Corte de cabelo, com o texto do catálogo: **Corte de cabelo infantil** (etiqueta "Para o seu filho", aproximadamente 40 min, R$ 40) e **Raspar a cabeça** (etiqueta "Máquina ou navalha", aproximadamente 40 min, R$ 40). E os links das duas páginas de serviço passaram a pré-selecionar o serviço certo (`?servico=corte-de-cabelo-infantil` e `?servico=raspar-a-cabeca`). Raspar a cabeça entrou junto sem ter sido pedido, de propósito: é o mesmo defeito, com a mesma correção, e um cliente da página dele caía no mesmo corte errado.
+
+**Regra da casa preservada:** o carrinho (`service-cart-v22-5.js`) já não deixa somar dois cortes, com a única exceção adulto + infantil (pai e filho) — os cartões novos entram nessa regra sem mudar nada no JS.
+
+`npm test`: 109 unit verdes; 48 e2e com a mesma de rota intermitente de hoje (`/agendar/horario/` direto) falhando na suíte cheia e passando sozinha (4/4) — terceira vez no dia, tarefa separada já sugerida. Conferido também no navegador, no servidor local dos testes: os dois cartões aparecem na seção "Cortes" e `?servico=corte-de-cabelo-infantil` abre o carrinho com o Corte de cabelo infantil. Sem bump de `?v=` (só HTML).
+
 ## 29.183.0 — QR Code do Wi-Fi na página "Você está na barbearia" (12/09, fim da manhã)
 
 **Pedido do Juliano (12/09/2026, ~11h20, print da página):** "disponibiliza nesta tela o QR Code do meu Wi-Fi também, vai me ajudar". A página `na-barbearia.html` (a do QR da parede) tinha rede e senha em texto com botão "Copiar", e o QR só do Pix. Quem chega pelo celular ainda precisava digitar `Barbearia_2026` na tela de Wi-Fi.
