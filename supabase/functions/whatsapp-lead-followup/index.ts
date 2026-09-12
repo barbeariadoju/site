@@ -219,7 +219,7 @@ Deno.serve(async (request: Request) => {
   // liberou a vaga nem por quê.
   const { data: reopenedLeads, error: reopenedError } = await admin
     .from('conversation_leads')
-    .select('phone, customer_name, date_interest, last_message_at')
+    .select('phone, customer_name, date_interest, service_interest, last_message_at')
     .not('slot_reopened_at', 'is', null)
     .is('slot_reopened_notified_at', null)
     .is('resolved_at', null)
@@ -232,9 +232,33 @@ Deno.serve(async (request: Request) => {
         await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
         continue
       }
+      // v29.182.0 (caso Amanda, 12/09/2026, 10h00): saiu "abriu uma vaga de novo pra 15/09/2026"
+      // sem ninguém ter conferido a agenda — a marca era de um cancelamento de HOJE (07h57), a data
+      // do lead tinha mudado às 09h59, e às 10h00 a vaga de hoje já nem existia mais. Agora: dia
+      // passado ou sem vaga real = não avisa (e limpa a marca, pra uma reabertura de verdade poder
+      // avisar depois). Com vaga, a mensagem traz os horários e o dia em português.
+      const dateISO = String(lead.date_interest || '').slice(0, 10)
+      if (!dateISO || dateISO < todayBRT) {
+        await admin.from('conversation_leads').update({ slot_reopened_at: null, slot_reopened_notified_at: null }).eq('phone', lead.phone)
+        reopenedSkipped++
+        continue
+      }
+      const firstService = String(lead.service_interest || '').split(/\s*\+\s*/)[0] || ''
+      const { data: svc } = firstService ? await admin.from('services').select('duration_minutes').eq('name', firstService).maybeSingle() : { data: null }
+      const dur = Number(svc?.duration_minutes) || 45
+      const { data: slotRows } = await admin.rpc('get_available_slots', { p_date: dateISO, p_duration_minutes: dur })
+      const slots = (slotRows || []).map((x: any) => String(x.slot_time).slice(0, 5))
+      if (!slots.length) {
+        await admin.from('conversation_leads').update({ slot_reopened_at: null, slot_reopened_notified_at: null }).eq('phone', lead.phone)
+        reopenedSkipped++
+        continue
+      }
+      const amostra = [slots[0], slots[Math.floor(slots.length / 3)], slots[Math.floor(slots.length * 2 / 3)], slots[slots.length - 1]].filter((v, i, a) => !!v && a.indexOf(v) === i)
+      const frase = slots.length <= 4 ? slots.join(', ') : `entre ${slots[0]} e ${slots[slots.length - 1]} (por exemplo ${amostra.join(', ')})`
+      const amanhaBRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 24 * 3600 * 1000))
+      const diaLabel = dateISO === todayBRT ? 'hoje' : dateISO === amanhaBRT ? 'amanhã' : `pra ${formatDateBR(dateISO)}`
       const name = firstName(lead.customer_name)
-      const dateLabel = formatDateBR(lead.date_interest)
-      await sendWhatsapp(lead.phone, `Boa notícia${name ? `, ${name}` : ''}! 🎉 Abriu uma vaga de novo pra ${dateLabel}, que era o dia que você queria. Ainda tem interesse? Se quiser, já posso ver um horário pra você.`)
+      await sendWhatsapp(lead.phone, `Boa notícia${name ? `, ${name}` : ''}! Abriu vaga de novo ${diaLabel}${lead.service_interest ? ` para ${lead.service_interest}` : ''}, que era o dia que você queria: tenho ${frase}. Quer que eu reserve um horário pra você?`)
       await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
       reopenedSent++
     } catch (error) {

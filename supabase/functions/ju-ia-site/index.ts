@@ -869,6 +869,10 @@ Deno.serve(async req=>{
  if(next.completed&&ai.updates?.date&&ai.updates.date!==state.date){next.time=null;next.completed=false}
  let chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
+ // v29.182.0 (caso Amanda, 12/09/2026): o dia que o CLIENTE pediu, guardado antes de o fluxo
+ // trocar next.date pelo dia alternativo oferecido. É o que vai pro lead (date_interest): o
+ // gatilho de "vaga reaberta" tem que olhar o dia que ele queria, não o que a JuIA sugeriu.
+ let dataPedidaOriginal:string|null=null
  // v29.138.0 (caso João, 05/09/2026, 11h59): "Juliano consegue falar comigo?" recebeu
  // "Consigo te atender na terça sim!" e "N quero a inteligência artificial / N ta dando
  // certo" ficou sem resposta. Pedido explícito de gente é determinístico: uma frase curta,
@@ -1878,7 +1882,7 @@ Deno.serve(async req=>{
        // v29.69.0: sem o "(${weekday})" — formatDateBR já sai como "terça (25/08)" na troca
        // determinística do fim da função, e saía "terça (25/08) (terça-feira)" pro cliente.
        reply=`Não encontrei horário ${emDia(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)}: consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
-       next.date=nextAvail.date
+       dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
        actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
       }else{
        reply='Não encontrei horário disponível nas próximas semanas para esse atendimento. Quer falar direto com a equipe?'
@@ -1922,7 +1926,7 @@ Deno.serve(async req=>{
      const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
      if(nextAvail){
       reply=`Não encontrei horário ${emDia(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)}: consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
-      next.date=nextAvail.date
+      dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
       actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
      }else{
       reply='Não encontrei horário disponível nas próximas semanas para esse atendimento. Quer falar direto com a equipe?'
@@ -2910,7 +2914,7 @@ Deno.serve(async req=>{
     const nextAvail=await findNextAvailableDate(supabase,pedido,durP)
     if(nextAvail){
      diaFechadoPedido={date:pedido,reason:excepcional?(excepcional.reason||null):null,excepcional:Boolean(excepcional)}
-     next.date=nextAvail.date
+     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     }
    }else if(!next.date)next.date=pedido
   }
@@ -2928,7 +2932,7 @@ Deno.serve(async req=>{
     if(nextAvail){
      const noSlotsIntro=next.date===today()?'Hoje não temos horários disponíveis':`Não temos horários ${emDia(next.date)}`
      reply=`${noSlotsIntro}. O próximo dia com agenda aberta é ${formatDateBR(nextAvail.date)}. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
-     next.date=nextAvail.date
+     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     }else{
      reply='No momento não encontrei agenda aberta nas próximas semanas. Quer falar direto com a equipe?'
     }
@@ -3095,7 +3099,7 @@ Deno.serve(async req=>{
     // v29.170.0 — caso Venilson (21h48): "te aviso assim que abrir vaga hoje" com a barbearia já
     // fechada há três horas. Depois do fechamento não existe vaga pra abrir hoje: sem lista de espera.
     next.pending_waitlist=hojeEncerrado?null:waitlistOffer
-    next.date=nextAvail.date
+    dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),...(hojeEncerrado?[]:[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}])]
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
@@ -3811,14 +3815,31 @@ Deno.serve(async req=>{
  // abertura é fixa; se há pedido em aberto, o resto continua sendo a resposta do modelo.
  // "beleza"/"suave"/"tranquilo" sem "?" são confirmação, não pergunta — ficam de fora.
  const saudTexto=normalize(message.trim())
- const saudMatch=saudTexto.length<=60?saudTexto.match(/^((?:(?:oi+|ola|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*ai|eai|fala|salve)\b[\s,!.?]*)+)?(?:(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)\b)?[\s,!.?]*(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\s,!.?]*$/):null
+ // v29.182.0 (caso Amanda, 12/09/2026, 09h59): "Oi, tudo bem? Meu despertador não tocou e por
+ // isso não consegui ir. Você ainda tem horário pra hoje?" passava de 60 caracteres e o gate
+ // deixava o "tudo bem?" sem resposta — a JuIA foi direto ao "não tenho horário" (seca, na
+ // palavra do Juliano). A saudação passa a ser lida na CABEÇA da mensagem (até o primeiro
+ // "?", "." ou "!"); mensagem longa só ganha a resposta ao "tudo bem?", nunca vira saudação
+ // isolada — o pedido que vem depois continua sendo respondido pelo fluxo normal.
+ const saudLonga=saudTexto.length>60
+ const saudCabeca=saudLonga?(saudTexto.match(/^[^?.!\n]{0,60}[?.!]/)?.[0]||''):saudTexto
+ const saudMatch=saudCabeca?saudCabeca.match(/^((?:(?:oi+|ola|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*ai|eai|fala|salve)\b[\s,!.?]*)+)?(?:(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)\b)?[\s,!.?]*(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\s,!.?]*$/):null
  // A resposta dele ao nosso "e você?" ("tudo bem também", "ótimo, obrigado") não é saudação
  // nova nem pergunta: reage curto e vai pro que ele precisa — sem "e você?" de novo (loop).
  const respondeuComoEsta=/e voce\?/.test(normalize(ultimaFalaJuIA))&&saudTexto.length<=50&&/^(?:(?:tudo|td|to|tou|estou|ta|eu tb|eu tbm|aqui)\s*)?(?:bem|otimo|otima|joia|tranquilo|certo|de boa|suave|na paz|melhor|firme|beleza|blz)(?:\s*(?:tambem|tbm|demais|por aqui|gracas a deus|e voce\??|e vc\??))*[\s!.,]*(?:obrigad[oa]|valeu|brigado)?(?:\s*por perguntar)?[\s!.,?]*$/.test(saudTexto)
  const perguntouComoEstou=Boolean(!respondeuComoEsta&&saudMatch&&saudMatch[2]&&(/\?/.test(saudTexto)||/^(tudo|td|como)/.test(saudMatch[2])))
- const saudacaoIsolada=!respondeuComoEsta&&Boolean(saudMatch&&(saudMatch[1]||perguntouComoEstou))
- const semPedidoEmAberto=!chosen.length&&!next.date&&!next.time&&!next.completed&&!['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
- if(respondeuComoEsta&&semPedidoEmAberto)reply='Que bom! Me diz o que você precisa que eu já vejo pra você.'
+ const saudacaoIsolada=!saudLonga&&!respondeuComoEsta&&Boolean(saudMatch&&(saudMatch[1]||perguntouComoEstou))
+ const semPedidoEmAberto=!saudLonga&&!chosen.length&&!next.date&&!next.time&&!next.completed&&!['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
+ // v29.182.0 (caso Amanda): quem se justifica ("meu despertador não tocou", "perdi a hora",
+ // "desculpa") ouve primeiro que está tudo bem — a agenda vem depois. Sem isso a resposta
+ // certa ("hoje não tenho mais horário") soava como bronca. Falta avisada ganha "obrigado por
+ // avisar" (é o que o Juliano respondeu na mão às 10h01); desculpa solta ganha só o "imagina".
+ const avisouFalta=/\bdespertador\b|perdi a hora|nao consegui (ir|chegar|vir)|nao deu (pra|para) (ir|vir)|nao pude (ir|vir)|acabei nao (indo|vindo)|tive um imprevisto|\bimprevisto\b|me atrasei|dormi demais|\besqueci\b|passei mal|fiquei doente/.test(normalizedQuestion)
+ const pediuDesculpa=/desculp\w*|\bperdao\b|foi mal|mil perdoes/.test(normalizedQuestion)
+ if((avisouFalta||pediuDesculpa)&&!/imagina|acontece|sem problema/i.test(reply)){
+  const abertura=avisouFalta?'Imagina, acontece. Obrigado por avisar.':'Imagina, sem problema.'
+  reply=`${perguntouComoEstou?'Tudo bem por aqui! ':''}${abertura} ${reply.replace(/^(?:tudo (?:bem|[óo]timo|certo|joia)[^.!?]*[.!?]\s*)?(?:(?:sem problema|imagina|n[ãa]o tem problema|fique tranquil[oa])[^.!?]*[.!?]\s*)?/i,'')}`.trim()
+ }else if(respondeuComoEsta&&semPedidoEmAberto)reply='Que bom! Me diz o que você precisa que eu já vejo pra você.'
  else if(perguntouComoEstou&&semPedidoEmAberto)reply='Tudo bem por aqui, e você? Como posso te ajudar hoje?'
  else if(perguntouComoEstou&&!/e voc[eê]\?|e vc\?|contigo\?/i.test(reply))reply=`Tudo bem por aqui, e você? ${reply.replace(/^tudo (?:bem|[óo]timo|certo|joia)[^.!?]*[.!?]\s*/i,'')}`.trim()
  else if(saudacaoIsolada&&semPedidoEmAberto)reply='Espero que esteja tudo bem com você! Como posso te ajudar hoje?'
@@ -3874,7 +3895,14 @@ Deno.serve(async req=>{
      kind,
      last_message_text:message.slice(0,300),
      service_interest:chosen.length?chosen.map((s:any)=>s.name).join(' + '):null,
-     date_interest:next.date||null,
+     // v29.182.0 (caso Amanda): o dia que ELE pediu (ver dataPedidaOriginal). E a marca de "vaga
+     // reaberta" zera a cada mensagem nova: a JuIA acabou de responder com a agenda ao vivo, então
+     // uma reabertura anterior já está contemplada — sem isso, a marca velha (07h57, cancelamento
+     // do Lucas em 12/09) saiu às 10h00 com a data NOVA do lead: "abriu vaga pra 15/09", dia que
+     // ela nunca pediu e que nem estava cheio.
+     date_interest:dataPedidaOriginal||next.date||null,
+     slot_reopened_at:null,
+     slot_reopened_notified_at:null,
      last_message_at:new Date().toISOString(),
      followup_stage:0,
      followup_1_sent_at:null,
