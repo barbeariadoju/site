@@ -1,3 +1,23 @@
+## 29.181.0 — JuIA conduz a remarcação depois do cancelamento (12/09, manhã)
+
+**Pedido do Juliano (12/09/2026, ~08h, print do Lucas):** "ensine a JuIA a conduzir a remarcação quando o cliente cancelar". A conversa das 07h56: "Preciso desmarcar" → "É o seu agendamento de hoje às 10:00 para Corte de cabelo + Barba Express + Sobrancelha Masculina que você quer cancelar?" → "Sim" → *"Pronto! Cancelei… Se quiser marcar outro horário, é só me dizer."* E parou. Quem cancela quase sempre ainda quer o serviço, só não naquele dia — deixar a iniciativa com ele é cadeira vazia. Uma mudança em `ju-ia-site` (**v249**, `verify_jwt=true` igual ao anterior):
+
+**1. A resposta do cancelamento já oferece o próximo dia.** Depois do "Pronto! Cancelei…", a JuIA guarda o serviço do agendamento cancelado (pelo `service_name`, partido no " + "), procura o próximo dia com vaga para aquela duração **a partir de hoje, pulando o dia do agendamento cancelado** (se ele não pôde nesse dia, oferecer outro horário do mesmo dia é surdez) e responde: *"Pronto! Cancelei seu agendamento de hoje às 10:00. Quer já deixar outro horário marcado para Corte de cabelo + Barba Express + Sobrancelha Masculina? Na terça (15/09) tenho alguns horários entre 08:00 e 17:30 (por exemplo 08:00, 11:15, 14:30 ou 17:30). Se preferir outro dia, é só me dizer qual."* Sem vaga em 21 dias, sai a frase antiga. Botões (só no site): 4 horários de exemplo, "Outro dia", "Depois eu vejo".
+
+**2. A resposta à oferta é tratada em código (`pending_rebook`, registrada no registro único de perguntas como `rebook`).** Vale um turno — qualquer resposta fecha a oferta:
+- "Sim" / "pode ser" → lista o dia oferecido (fluxo normal de disponibilidade, com o serviço já anotado);
+- horário ("10:00") → checa a agenda daquele dia e segue pro fecho de sempre (oferta única, "posso confirmar?");
+- dia ("sexta", "amanhã", "hoje") ou período → a data vira a citada e segue o fluxo normal;
+- "Prefiro outro dia" → *"Claro. Para qual dia você quer ver os horários para …?"*;
+- "não", "depois eu vejo", "te aviso", "vou deixar" → *"Tudo bem. Quando quiser remarcar, é só me chamar por aqui que eu vejo os horários com você."* e limpa serviço/dia do estado (sem isso um número solto mais tarde viraria "Vamos marcar!", caso João 29.150.0);
+- outro pedido de agenda por cima (cancelar outro, remarcar) → o bloco dele resolve; mudança de assunto → a oferta cai e a conversa segue.
+
+**Detalhe que quase passou:** a reserva feita na própria conversa deixa `completed=true` no estado, e `notSpecialFlow` exige `!completed` — se o cliente marcasse e cancelasse na mesma conversa, o "sim" à oferta não abriria a agenda. O cancelamento agora zera `completed`.
+
+**Erro no caminho, registrado de propósito:** a primeira aplicação do patch (heredoc no Bash do Windows) comeu um nível de barra invertida — `\b` virou caractere de backspace e `\s*\+\s*` virou `s*+s*`, regex que nem compila. O esbuild passou (não valida o conteúdo de regex literal), e só uma conferência byte a byte (`cat -A`) pegou. Corrigido antes do deploy; as 11 regex das linhas novas foram carregadas com `new RegExp` para provar que compilam. Lição: com esta ferramenta, escrever o script em arquivo, nunca por heredoc/`node -e`.
+
+**Conferido em produção** (sessões `deploy-check-v29181-*`, chave publicável, telefone de teste `5599900011234`, apagadas de `site_chat_messages` em seguida — 10 linhas): "Sim" → lista da terça (15/09) com pergunta de período; "10:00" → *"Sim! na terça (15/09) às 10:00 está livre… Quer incluir mais alguma coisa?"* com `time=10:00`; "Não, depois eu vejo" → frase de encerramento, estado limpo; "Prefiro outro dia" → pergunta do dia com o serviço; "Sexta" → sexta (18/09). **O que não deu pra conferir daqui:** o turno do cancelamento em si (a oferta nascendo do `doCancel`) exige chamada com `service_role`, que esta máquina não tem à mão — fica pra conferir no WhatsApp com um agendamento de teste. `npm test`: unit verde e 48 e2e — uma de rota (`/agendar/horario/` direto, sem relação com a function) falhou na primeira rodada e passou ao repetir o spec (4/4). Sem bump de `?v=` (só function).
+
 ## 29.180.0 — JuIA aprende com o Breno e o Renato (11/09, à tarde)
 
 **Pedido do Juliano (11/09/2026, ~15h20, dois prints):** "revisa estas duas conversas, são ricas e tem coisa pra ensinar a JuIA". As duas terminaram com ele assumindo na mão ("vc estava sendo conduzido pela IA da nossa barbearia"). Três erros, três correções em `ju-ia-site` (**v248**, `verify_jwt=true` igual ao anterior):

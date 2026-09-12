@@ -37,6 +37,7 @@ const PERGUNTAS:{kind:string;flags:string[]}[]=[
  {kind:'conflict',flags:['pending_conflict_choice']},
  {kind:'cancel_pick',flags:['pending_cancel_options']},
  {kind:'cancel',flags:['pending_cancel_booking_id']},
+ {kind:'rebook',flags:['pending_rebook']},
  {kind:'reschedule',flags:['pending_reschedule_booking_id','pending_reschedule_new_date','pending_reschedule_new_time']},
  {kind:'change_service_pick',flags:['pending_change_service_options']},
  {kind:'change_service',flags:['pending_change_service_booking_id','pending_change_service_new_name','pending_change_service_composed']},
@@ -1518,8 +1519,40 @@ Deno.serve(async req=>{
     reply='Não consegui cancelar agora — pode já ter passado do horário ou já ter sido cancelado. Se precisar, o Juliano confirma direto com você.'
     handoff=true
    }else{
-    reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Se quiser marcar outro horário, é só me dizer.`
     handoff=false
+    // v29.181.0 — pedido do Juliano (12/09/2026, caso Lucas, 07h57): depois do "Pronto! Cancelei…
+    // se quiser marcar outro horário, é só me dizer" a conversa morria. Quem cancela quase sempre
+    // ainda quer o serviço, só não naquele dia. A JuIA passa a CONDUZIR a remarcação: guarda o
+    // serviço do agendamento cancelado, acha o próximo dia com vaga (pulando o dia cancelado — se
+    // ele não pôde nesse dia, oferecer outro horário do mesmo dia é surdez) e oferece com horários
+    // de exemplo. "Sim" lista os horários daquele dia; horário, dia ou período na resposta segue o
+    // fluxo normal de agendamento; "não"/"depois eu vejo" encerra sem insistir (bloco pending_rebook).
+    const cancelledISO=String(cancelled.booking_date).slice(0,10)
+    const rebookServices=String(cancelled.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p.trim())).filter(Boolean)
+    const rebookNames=rebookServices.map((s:any)=>s.name)
+    const rebookDuration=rebookServices.reduce((a:number,s:any)=>a+Number(s.duration||0),0)||Number(cancelled.duration_minutes)||40
+    let rebookOffer:{date:string,slots:string[]}|null=null
+    if(rebookNames.length){
+     try{
+      // findNextAvailableDate começa no dia SEGUINTE ao informado: partir de "ontem" inclui hoje.
+      const ontem=new Date(today()+'T12:00:00-03:00');ontem.setDate(ontem.getDate()-1)
+      rebookOffer=await findNextAvailableDate(supabase,ontem.toISOString().slice(0,10),rebookDuration)
+      if(rebookOffer&&rebookOffer.date===cancelledISO)rebookOffer=await findNextAvailableDate(supabase,cancelledISO,rebookDuration)
+     }catch(rbErr){console.error('[ju-ia-site] remarcação pós-cancelamento: slots',rbErr)}
+    }
+    if(rebookOffer){
+     reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Quer já deixar outro horário marcado para ${rebookNames.join(' + ')}? ${emDiaCap(rebookOffer.date)} ${tenhoSlots(rebookOffer.slots)}. Se preferir outro dia, é só me dizer qual.`
+     next.services=rebookNames
+     next.date=rebookOffer.date
+     next.time=null;next.period=null
+     next.pending_rebook={date:rebookOffer.date,services:rebookNames,cancelled_date:cancelledISO}
+     actions=[...slotsSample(rebookOffer.slots).map((t:string)=>({label:t,message:t})),{label:'Outro dia',message:'Prefiro outro dia'},{label:'Depois eu vejo',message:'Depois eu vejo'}]
+    }else{
+     reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Se quiser marcar outro horário, é só me dizer.`
+    }
+    // a reserva feita nesta conversa (se era ela) deixou de existir: sem isso, notSpecialFlow
+    // ficava travado e "sim" à oferta acima não abria a agenda.
+    next.completed=false
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')
     const supabaseUrl=Deno.env.get('SUPABASE_URL')
     if(pushSecret&&supabaseUrl)await fetch(`${supabaseUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'❌ Agendamento cancelado pela JuIA',body:`${cancelled.customer_name||customerFirstName} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}\n${cancelled.service_name}`,url:'/admin-agenda.html?app=1',tag:`booking-cancelled-${cancelled.id}`}})}).catch(()=>{})
@@ -1587,6 +1620,43 @@ Deno.serve(async req=>{
     actions=upcomingBookings.map((b:any,i:number)=>({label:`${i+1} — ${formatDateBR(b.booking_date)} ${String(b.start_time).slice(0,5)}`,message:String(i+1)}))
     handoff=false
    }
+  }
+ }
+
+ // v29.181.0 — resposta à oferta de remarcação feita logo depois do cancelamento (ver doCancel).
+ // A oferta vale um turno: qualquer resposta a fecha. Pedido de agenda por cima (cancelar outro,
+ // remarcar) segue pro bloco dele; mudança de assunto deixa a conversa seguir normal.
+ if(next.pending_rebook&&typeof next.pending_rebook==='object'){
+  const rb=next.pending_rebook
+  const rbNames:string[]=Array.isArray(rb.services)?rb.services.filter((n:string)=>findService(n)):[]
+  const rbTime=extractRequestedTime(message)
+  const rbSemana=weekdayDatesMentioned(normalizedQuestion,today())
+  const rbAmanha=/\bamanha\b/.test(normalizedQuestion)&&!/\bdepois de amanha\b/.test(normalizedQuestion)
+  const rbDia=rbSemana.length>0||rbAmanha||/\b(hoje|depois de amanha|semana que vem|proxima semana)\b/.test(normalizedQuestion)||Boolean(ai.updates?.date)
+  const rbPeriodo=Boolean(detectPeriod(normalizedQuestion))
+  const rbOutroDia=!rbTime&&!rbDia&&/\b(outro dia|outra data|outra semana|outro horario|prefiro outro)\b/.test(normalizedQuestion)
+  const rbRecusa=!rbTime&&!rbDia&&!rbPeriodo&&((simpleNo&&!simpleYes)||postponeSignal(normalizedQuestion)||/\b(vou deixar|deixa (pra la|assim|quieto|pra depois)|fica (pra|para) (a )?proxima|nao precisa|melhor deixar|deixo (pra|para) (depois|outro dia)|depois eu (vejo|marco|falo)|por enquanto nao|agora nao|ainda nao sei)\b/.test(normalizedQuestion))
+  next.pending_rebook=null
+  if(intent==='cancel'||intent==='reschedule'||intent==='change_service'||intent==='update_products'){
+   // outro pedido de agenda por cima: o bloco dele resolve
+  }else if(rbRecusa){
+   reply='Tudo bem. Quando quiser remarcar, é só me chamar por aqui que eu vejo os horários com você.'
+   actions=[];intent='other';handoff=false
+   next.date=null;next.time=null;next.period=null;next.services=[];chosen=[]
+  }else if(rbOutroDia){
+   reply=`Claro. Para qual dia você quer ver os horários${rbNames.length?` para ${rbNames.join(' + ')}`:''}?`
+   actions=[];intent='other';handoff=false
+   next.date=null;next.time=null
+  }else if(rbTime||rbDia||rbPeriodo||(simpleYes&&!simpleNo)){
+   // horário, dia, período ou "sim": segue o fluxo normal de disponibilidade/reserva, com o
+   // serviço do agendamento cancelado já anotado e o dia oferecido como padrão.
+   if(!next.services.length&&rbNames.length){next.services=rbNames;chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)}
+   if(rbSemana.length===1&&!ai.updates?.date)next.date=rbSemana[0]
+   else if(rbAmanha&&!ai.updates?.date){const am=new Date(today()+'T12:00:00-03:00');am.setDate(am.getDate()+1);next.date=am.toISOString().slice(0,10)}
+   else if(/\bhoje\b/.test(normalizedQuestion)&&!ai.updates?.date)next.date=today()
+   if(!next.date)next.date=rb.date
+   if(rbTime)next.time=rbTime
+   if(intent!=='book'&&intent!=='availability')intent='availability'
   }
  }
 
