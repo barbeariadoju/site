@@ -1,3 +1,17 @@
+## 29.187.0 — Tela Hoje anda por dia: ontem, anteontem, qualquer dia (12/09, fim da tarde)
+
+**Pedido do Juliano (12/09/2026, ~15h40, print da tela Hoje):** "nesta tela deveria ter a opção de ver a tela de ontem e dos dias anteriores, por exemplo agora queria saber quantos serviços eu fiz ontem, não achei, seria funcional". A tela Hoje (v29.175.0) era só do dia corrente: a data vinha de `new Date()` em todo lugar.
+
+**O que entrou** (`admin-v15-4-dashboard.js`, `admin.html`):
+- No cabeçalho, **◀ Dia anterior** e **Dia seguinte ▶**; quando está em outro dia aparece **Voltar pra hoje**. A URL também aceita `admin.html?dia=2026-09-11` (link direto pra um dia).
+- Tudo que era "hoje" passa a ser o dia escolhido: linha do dia (com Concluir/Remarcar/Ausência funcionando como na Agenda), caixa do dia com despesas daquele dia, lista de espera daquele dia, e as métricas (restantes, concluídos, faturado, serviços feitos, ausências, "amanhã" relativo ao dia escolhido). Os rótulos mudam junto ("Faturado no dia", "atendimentos no dia", "Entrou nesse dia"); a etiqueta em cima do título diz Hoje, Ontem, Amanhã, Dia anterior ou Dia seguinte.
+- O que é do **momento**, não do dia, só existe no dia real: o marcador "agora" na fila, o "próximo: Fulano às 14:00" e o texto "restantes"; em dia passado o resumo vira "8 concluídos · 1 ausência · 2 sem desfecho registrado" (marcado que ficou pendente/confirmado sem ninguém dar baixa — é o que vale conferir). Câmera e alarme continuam ao vivo, independentes do dia.
+- Atualizar, o Balcão embutido e as ações dos cards mantêm o dia escolhido ao redesenhar.
+
+**Sem CSS novo:** os botões entraram nas ações do cabeçalho que já existem (no celular viram linhas cheias, como os outros). Os dados já estavam carregados — a tela lê os últimos 3000 agendamentos — então andar de dia é instantâneo.
+
+**Cache:** `admin-v15-4-dashboard.js?v=29.187.0` no `admin.html`; `admin-v15-4-core.js?v=29.187.0` nas 6 páginas que o carregam (a constante `ADMIN_VERSION` mora nele); `ADMIN_VERSION` + `admin-version.json` em 29.187.0 — é o que faz o painel aberto recarregar sozinho. `npm test`: 109 unit e 48 e2e verdes (16 telas do painel incluídas); a e2e de rota intermitente do dia falhou uma vez e passou sozinha. **Erro no caminho, registrado:** a primeira rodada deu 16 falhas de "connection refused" nas telas do painel — não era o código, era um `serve` velho preso na porta 8090 desde a prévia do navegador às 15h21; morto o processo, tudo verde. **Não conferido ao vivo:** a tela Hoje exige login, então a navegação por dia foi provada pelos testes com sessão fictícia e por leitura do código, não no painel real.
+
 ## 29.186.0 — Rodada de revisão do WhatsApp de 11 e 12/09: sete lições para a JuIA (12/09, fim da tarde)
 
 **Pedido do Juliano (12/09/2026, ~15h30):** "não tive tempo de revisar todas as mensagens do whats da barbearia, mas desconfio que tem coisa lá pra ensinar a JuIA — antes de eu ir embora, uma rodada: revise todas as mensagens de hoje e de ontem e ensine a JuIA o que for necessário". Lidas as 26 conversas dos dois dias em `whatsapp_messages` (entrada, saída da JuIA e o que ele respondeu na mão). Os casos Breno/Renato (v29.180.0), Lucas (v29.181.0) e Amanda (v29.182.0) já tinham sido tratados. Sobraram sete, corrigidos em `ju-ia-site` **v251** (`verify_jwt=true`) e `whatsapp-webhook` **v113** (`verify_jwt=false`), ambos iguais ao anterior:

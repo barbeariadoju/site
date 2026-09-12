@@ -13,7 +13,23 @@
 //     despesas lançadas hoje e a divisão por forma de pagamento — antes o Financeiro era só mensal;
 //   - lista de espera de hoje (quem pediu vaga pra hoje), e os clientes com ausência.
   const HOJE_PAGAMENTOS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
-  function renderDashboard(){const today=isoLocal(new Date()),tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);const tmr=isoLocal(tomorrow),todayRows=allBookings.filter(x=>x.booking_date===today),tomorrowRows=allBookings.filter(x=>x.booking_date===tmr&&['pending','confirmed'].includes(x.status)),completed=todayRows.filter(x=>x.status==='completed'),noShowsToday=todayRows.filter(x=>x.status==='no_show');setText('metric-today',todayRows.filter(x=>x.status!=='cancelled').length);setText('metric-pending',todayRows.filter(x=>x.status==='pending').length);setText('metric-confirmed',todayRows.filter(x=>x.status==='confirmed').length);setText('metric-revenue',money(completed.reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)))+Number(x.products_price||0),0)));setText('metric-completed',completed.length);
+  // v29.187.0 (pedido do Juliano, 12/09/2026, ~15h40): "nesta tela deveria ter a opção de ver a tela de
+  // ontem e dos dias anteriores — queria saber quantos serviços fiz ontem e não achei". A tela Hoje
+  // passa a andar por dia: ◀ ▶ no cabeçalho, "Voltar pra hoje" quando está em outro dia, e ?dia=AAAA-MM-DD
+  // na URL. Tudo que era "hoje" (linha do dia, caixa, despesas, lista de espera, métricas) vira "o dia
+  // escolhido"; o marcador "agora", o "próximo" e o texto "restantes" só existem no dia real; câmera e
+  // alarme são do momento, não do dia. Atualizar e o Balcão mantêm o dia escolhido.
+  let hojeDia=null;
+  function diaEscolhido(){const real=isoLocal(new Date());if(!hojeDia){const q=new URLSearchParams(location.search).get('dia');hojeDia=/^\d{4}-\d{2}-\d{2}$/.test(q||'')?q:real}return hojeDia}
+  function mudarDia(delta){const d=new Date(diaEscolhido()+'T12:00:00');d.setDate(d.getDate()+delta);hojeDia=isoLocal(d);renderDashboard()}
+  function bindDiaNav(){
+    const p=$('today-prev'),n=$('today-next'),h=$('today-now');
+    if(p&&!p.dataset.bound){p.dataset.bound='1';p.onclick=()=>mudarDia(-1)}
+    if(n&&!n.dataset.bound){n.dataset.bound='1';n.onclick=()=>mudarDia(1)}
+    if(h&&!h.dataset.bound){h.dataset.bound='1';h.onclick=()=>{hojeDia=isoLocal(new Date());renderDashboard()}}
+  }
+  function rotuloDia(id,titulo,sub){const el=$(id);const art=el&&el.closest('article');if(!art)return;const s=art.querySelector('span'),m=art.querySelector('small');if(s&&titulo)s.textContent=titulo;if(m&&sub)m.textContent=sub}
+  function renderDashboard(){bindDiaNav();const today=diaEscolhido(),realHoje=isoLocal(new Date()),ehHoje=today===realHoje,tomorrow=new Date(today+'T12:00:00');tomorrow.setDate(tomorrow.getDate()+1);const tmr=isoLocal(tomorrow),todayRows=allBookings.filter(x=>x.booking_date===today),tomorrowRows=allBookings.filter(x=>x.booking_date===tmr&&['pending','confirmed'].includes(x.status)),completed=todayRows.filter(x=>x.status==='completed'),noShowsToday=todayRows.filter(x=>x.status==='no_show');setText('metric-today',todayRows.filter(x=>x.status!=='cancelled').length);setText('metric-pending',todayRows.filter(x=>x.status==='pending').length);setText('metric-confirmed',todayRows.filter(x=>x.status==='confirmed').length);setText('metric-revenue',money(completed.reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)))+Number(x.products_price||0),0)));setText('metric-completed',completed.length);
     // Pedido do Juliano: ticket médio e média de serviços por cliente do dia — mesma
     // lógica de contagem usada no snapshot da JuIA admin (split de combo por "+", telefone
     // normalizado pra distinct clients), só que aqui local, direto dos dados já carregados.
@@ -64,11 +80,19 @@
     // ---- Cabeçalho do dia ----
     const active=todayRows.filter(x=>['pending','confirmed'].includes(x.status)).sort((a,b)=>a.start_time.localeCompare(b.start_time));
     setText('metric-remaining',active.length);
-    const agora=new Date(),nowHM=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
-    const titulo=agora.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+    const agora=new Date(),nowHM=ehHoje?`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`:'99:99';
+    const titulo=new Date(today+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
     setText('today-title',titulo.charAt(0).toUpperCase()+titulo.slice(1));
-    const proximo=active.find(x=>String(x.start_time).slice(0,5)>=nowHM)||null;
-    setText('today-sub',!todayRows.filter(x=>x.status!=='cancelled').length?'Nenhum atendimento marcado pra hoje.':`${active.length} restante${active.length===1?'':'s'} · ${completed.length} concluído${completed.length===1?'':'s'}${proximo?` · próximo: ${firstNameOf(proximo.customer_name)} às ${String(proximo.start_time).slice(0,5)}`:active.length?' · o restante já passou do horário':''}`);
+    const ontemReal=(()=>{const d=new Date(realHoje+'T12:00:00');d.setDate(d.getDate()-1);return isoLocal(d)})(),amanhaReal=(()=>{const d=new Date(realHoje+'T12:00:00');d.setDate(d.getDate()+1);return isoLocal(d)})();
+    setText('today-eyebrow',ehHoje?'Hoje':today===ontemReal?'Ontem':today===amanhaReal?'Amanhã':today<realHoje?'Dia anterior':'Dia seguinte');
+    const btnNow=$('today-now');if(btnNow)btnNow.hidden=ehHoje;
+    rotuloDia('metric-revenue',ehHoje?'Faturado hoje':'Faturado no dia',null);
+    rotuloDia('metric-completed',null,ehHoje?'atendimentos hoje':'atendimentos no dia');
+    rotuloDia('metric-servicos-hoje',null,ehHoje?'feitos hoje':'feitos no dia');
+    rotuloDia('metric-remaining',null,ehHoje?'ainda por atender':(today<realHoje?'ficaram sem desfecho':'marcados'));
+    const proximo=ehHoje?(active.find(x=>String(x.start_time).slice(0,5)>=nowHM)||null):null;
+    const resumoOutroDia=`${completed.length} concluído${completed.length===1?'':'s'} · ${noShowsToday.length} ausência${noShowsToday.length===1?'':'s'}${active.length?(today<realHoje?` · ${active.length} sem desfecho registrado`:` · ${active.length} marcado${active.length===1?'':'s'}`):''}`;
+    setText('today-sub',!todayRows.filter(x=>x.status!=='cancelled').length?(ehHoje?'Nenhum atendimento marcado pra hoje.':'Nenhum atendimento nesse dia.'):ehHoje?`${active.length} restante${active.length===1?'':'s'} · ${completed.length} concluído${completed.length===1?'':'s'}${proximo?` · próximo: ${firstNameOf(proximo.customer_name)} às ${String(proximo.start_time).slice(0,5)}`:active.length?' · o restante já passou do horário':''}`:resumoOutroDia);
 
     // ---- Linha do dia (card completo da Agenda + pergunta de primeira vez + marcador "agora") ----
     const list=$('dashboard-today-list'),fila=todayRows.filter(x=>x.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time));
@@ -77,7 +101,7 @@
       let pre='';
       if(!marcado&&String(x.start_time).slice(0,5)>nowHM){marcado=true;pre=`<div class="admin-now-line"><span>agora · ${nowHM}</span></div>`}
       return pre+bookingCardHtml(x,(typeof primeiraVezHtml==='function'?primeiraVezHtml(x):'')+bookingActionsHtml(x))
-    }).join('')+(!marcado&&fila.some(x=>['pending','confirmed'].includes(x.status))?`<div class="admin-now-line is-end"><span>agora · ${nowHM} — os de cima ainda estão em aberto</span></div>`:''):BDJ_UX.empty('Nenhum atendimento para hoje. Dia livre pra balcão, conteúdo e descanso.');
+    }).join('')+(ehHoje&&!marcado&&fila.some(x=>['pending','confirmed'].includes(x.status))?`<div class="admin-now-line is-end"><span>agora · ${nowHM} — os de cima ainda estão em aberto</span></div>`:''):BDJ_UX.empty(ehHoje?'Nenhum atendimento para hoje. Dia livre pra balcão, conteúdo e descanso.':'Nenhum atendimento nesse dia.');
     bindBookingActions(list);
     list.querySelectorAll('[data-firsttime]').forEach(b=>b.onclick=()=>marcarPrimeiraVez(b));
 
@@ -122,8 +146,9 @@
     });
     const formas=Object.entries(porForma).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
     const balcao=completed.filter(x=>x.channel==='balcao').length;
-    box.innerHTML=`<div class="admin-caixa-total"><span>Entrou hoje</span><strong>${money(serv+prod)}</strong><small>${completed.length} atendimento${completed.length===1?'':'s'} concluído${completed.length===1?'':'s'}${balcao?` · ${balcao} sem hora marcada`:''}</small></div>
-      <ul class="admin-caixa-rows"><li><span>Serviços</span><b>${money(serv)}</b></li><li><span>Produtos</span><b>${money(prod)}</b></li><li><span>Caixinha (à parte, é sua)</span><b>${money(tips)}</b></li><li id="today-caixa-despesas"><span>Despesas lançadas hoje</span><b>…</b></li></ul>
+    const ehHojeCaixa=today===isoLocal(new Date());
+    box.innerHTML=`<div class="admin-caixa-total"><span>${ehHojeCaixa?'Entrou hoje':'Entrou nesse dia'}</span><strong>${money(serv+prod)}</strong><small>${completed.length} atendimento${completed.length===1?'':'s'} concluído${completed.length===1?'':'s'}${balcao?` · ${balcao} sem hora marcada`:''}</small></div>
+      <ul class="admin-caixa-rows"><li><span>Serviços</span><b>${money(serv)}</b></li><li><span>Produtos</span><b>${money(prod)}</b></li><li><span>Caixinha (à parte, é sua)</span><b>${money(tips)}</b></li><li id="today-caixa-despesas"><span>${ehHojeCaixa?'Despesas lançadas hoje':'Despesas lançadas no dia'}</span><b>…</b></li></ul>
       <div class="admin-caixa-formas">${formas.length?formas.map(([k,v])=>`<span><small>${esc(HOJE_PAGAMENTOS[k]||(k==='(sem registro)'?'Sem forma registrada':k))}</small><b>${money(v)}</b></span>`).join(''):'<em>Nada concluído ainda.</em>'}</div>
       <a class="admin-caixa-link" href="admin-financeiro.html">Ver o Financeiro do mês →</a>`;
     sb.from('finance_entries').select('amount,category').eq('entry_date',today).then(({data,error})=>{
