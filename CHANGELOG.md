@@ -1,3 +1,11 @@
+## 29.188.1 — Celular: botões do cabeçalho da tela Hoje em duas colunas, e o "Voltar pra hoje" só quando não é hoje (15/09, ~11h)
+
+**Pedido do Juliano (15/09/2026, ~10h58, print do celular):** "olha isso" — os seis botões do cabeçalho da tela Hoje (◀ Dia anterior, Dia seguinte ▶, Voltar pra hoje, Atualizar, Sem hora marcada, Novo agendamento) apareciam como ovais espremidos numa linha só, com o texto cortado, e o "Voltar pra hoje" aparecia mesmo estando em hoje. E: "não encontrei algumas funções no mobile, como Fidelidade".
+
+**Causa:** o `css/06` (v29.177.0) dava `flex:1` a cada botão no celular — seis botões dividindo a largura do telefone. E o `display` do `.btn` (css/02) vencia o atributo `hidden` do botão "Voltar pra hoje", que a v29.187.0 esconde por atributo. **Correção (css/06):** abaixo de 760px o cabeçalho vira grade de duas colunas com botões cheios e texto que quebra; `hidden` passa a mandar. Cache: `style.css` + `css/06` em 29.188.1 nas 76 páginas; `ADMIN_VERSION` + `admin-version.json` em 29.188.1 pra recarregar o painel aberto no celular.
+
+**Fidelidade no celular:** está no botão **Mais** (☰) da barra de baixo, grupo Clientes — a barra tem 5 atalhos do dia e o Mais abre a folha com as 17 telas (v29.176.0). Nada mudou aqui; anotado que o Mais não foi óbvio pra ele — se voltar a acontecer, vale trocar um atalho da barra ou dar destaque ao Mais.
+
 ## 29.188.0 — Fidelidade: o prêmio voltou a existir de verdade — aviso, selo no card, baixa no Concluir (15/09, manhã)
 
 **Pedido do Juliano (15/09/2026, ~10h20, print da tela Hoje):** "primeira coisa a consertar: o Juliano Prando estava com bastante pontos, na sexta estava com 9, fez 2 serviços e agora aparece com 1 (…) ele não gozou do presente da fidelidade dele, que seria 1 serviço grátis. Precisamos nos organizar porque outro cliente pode passar batido e o cara achar que eu não quero dar o benefício pra ele. Fiz a Barba Express dele hoje e não cobrei, falei que ia ser na fidelidade." E, em seguida: "quando eu concluir a barba dele em fidelidade, vamos disparar alguma mensagem de agradecimento?"

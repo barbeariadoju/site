@@ -336,7 +336,9 @@ body.admin-more-open{overflow:hidden}
 .admin-mini-item .admin-booking-summary-main{gap:4px}
 .admin-header-actions{display:flex;gap:10px;flex-wrap:wrap}
 .service-mode-list{display:grid;gap:12px}
-@media(max-width:760px){.admin-header-actions{width:100%}.admin-header-actions .btn{flex:1}}
+/* v29.188.1 — no celular os 6 botões do cabeçalho (v29.187.0) viravam ovais espremidos numa linha só, com o texto cortado; e o Voltar pra hoje aparecia mesmo em hoje (o display do .btn vencia o atributo hidden). Duas colunas cheias, e hidden manda. */
+@media(max-width:760px){.admin-header-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}.admin-header-actions .btn{width:100%;justify-content:center;text-align:center;padding:12px 10px;white-space:normal;line-height:1.15}}
+.admin-header-actions .btn[hidden],.admin-header-actions [hidden]{display:none!important}
 .admin-toast{pointer-events:auto;display:grid;grid-template-columns:28px 1fr 24px;align-items:center;gap:10px;padding:13px 14px;border-radius:var(--r-sm);background:#171717;border:1px solid rgba(255,255,255,.13);box-shadow:var(--sh-2);opacity:0;transform:translateY(-10px);transition:.18s ease}
 .admin-toast.show{opacity:1;transform:none}
 .admin-toast>span{display:grid;place-items:center;width:26px;height:26px;border-radius:var(--r-circle);background:rgba(240,201,135,.18);color:#e5ca67;font-weight:900}
