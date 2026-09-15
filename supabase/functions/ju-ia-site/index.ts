@@ -3992,11 +3992,20 @@ Deno.serve(async req=>{
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
   const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia
+  // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
+  // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
+  // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com
+  // followup_stage=0 e o cron cobrava de novo. Quem disse que vai decidir depois já decidiu por
+  // enquanto: o lead SAI do funil (mesma saída da gentileza/recusa). Se ele voltar com dia ou
+  // serviço, nasce um lead novo naturalmente. Regra do Juliano: "quero que impeça que isto ocorra".
+  const adiouLead=next.dismissed===true
+   ||/\b(semana que vem|proxima semana|outro dia|outra hora|mais pra frente|fica pra (proxima|outra)|deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|agora nao (da|consigo|vai dar)|nao vai dar (hoje|essa semana)|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
+   ||/\bainda nao (consigo|sei|defin\w*|da pra|tenho certeza)\b|\bnao sei ainda\b|\bsem previsao\b|\bquando (eu )?(conseguir|souber|puder|definir|decidir)\b|\b(te|lhe) aviso\b|\bdepois (eu )?(te )?(falo|aviso|vejo|marco|confirmo|passo)\b|\bvou (ver|olhar|pensar) e (te )?(falo|aviso|confirmo)\b/.test(normalizedQuestion)
   if(next.completed){
    // v28.34.0: vira agendamento de verdade — preserva a linha (resolution='booked') em
    // vez de apagar, pra o painel admin-leads.html conseguir calcular taxa de recuperação.
    await supabase.from('conversation_leads').update({resolved_at:new Date().toISOString(),resolution:'booked',updated_at:new Date().toISOString()}).eq('phone',verifiedPhone).then(()=>{})
-  }else if(isSpecialFlow){
+  }else if(isSpecialFlow||adiouLead){
    await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
   }else{
    // v29.102.0: mesma detecção de saudação isolada usada na resposta calorosa acima —

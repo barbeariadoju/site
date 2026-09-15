@@ -1,3 +1,13 @@
+## 29.192.0 — Quem disse "semana que vem" sai do funil: sem cobrança da JuIA em cima de quem já adiou (15/09, fim da tarde)
+
+**Pedido do Juliano (15/09/2026, ~19h20, print do Adriano):** "não gostei do comportamento da JuIA, o cliente nitidamente já disse que vai decidir semana que vem — quero que impeça que isto ocorra novamente". A conversa: reativação de 30 dias às 14h → "vou tentar nessa semana, mas ainda não tenho certeza" → às 16h45 a primeira cobrança do funil ("só passando pra saber se ainda tem interesse") → 👍 → "Acho que vai ficar para a semana que vem" → *"Sem problema, fica combinado"* (certo) → "Ainda não consigo definir" → *"Sem problema, fique à vontade"* (certo) → 👍 → "Obrigado!" → **às 19h15, de novo: "só passando pra saber se ainda tem interesse"**.
+
+**Causa:** a resposta estava certa, o funil não. Cada mensagem do cliente com serviço na memória regravava o lead em `conversation_leads` com `followup_stage=0`, e o cron `whatsapp-lead-followup` cobrava duas horas depois da última mensagem — inclusive depois de "semana que vem". A saída do funil só existia pra agradecimento, recusa do dia alternativo e lista de espera (v29.186.0); adiar não contava.
+
+**Correção (`ju-ia-site` v255, `verify_jwt=true` igual ao anterior):** adiar é sair do funil. "Semana que vem", "próxima semana", "outro dia", "mais pra frente", "deixa pra próxima", "agora não dá", "ainda não consigo/sei/defini", "não sei ainda", "sem previsão", "quando eu conseguir/souber/decidir", "te aviso", "depois eu falo/vejo/marco", "vou ver e te falo" — e qualquer dispensa que a JuIA já reconhecia (`next.dismissed`) — apagam o lead, como a gentileza e a recusa já faziam. Se o cliente voltar com dia ou serviço, nasce um lead novo naturalmente. **Dado acertado na mão:** o lead do Adriano foi apagado (estava na etapa 1, a etapa 2 sairia amanhã).
+
+**Não conferido ao vivo:** a mecânica do lead exige telefone verificado (canal WhatsApp) e a chamada de teste pelo site não passa por ela — conferido por leitura; o texto das respostas foi conferido em produção (sessão `deploy-check-v29192-*`, apagada). Sem mudança em JS/CSS do site.
+
 ## 29.191.0 — Envio manual de WhatsApp pelo sistema (function `whatsapp-send`) e JuIA muda no número pessoal do Juliano (15/09, fim da tarde)
 
 **Pedido do Juliano (15/09/2026, ~16h):** "responda o Matheus e o José Carlos por mim — se não tiver um jeito de você enviar a mensagem pelo WhatsApp, crie". E: "o 1666 é o meu pessoal". Sobre o John Maicon: "veio, cortou, fez barba e não quis o bônus, disse que na próxima resgata; cuide pra que o bônus continue lá e ele continue pontuando — hoje fez cabelo e barba express, 2 pontos".
