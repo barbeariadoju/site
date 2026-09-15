@@ -27,7 +27,7 @@
   const page = document.body.dataset.adminPage || 'dashboard';
   const $ = (id) => document.getElementById(id);
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
-  let session=null, allBookings=[], customerProfiles=[], experienceRequests=[], customers=[];
+  let session=null, allBookings=[], customerProfiles=[], experienceRequests=[], customers=[], loyaltyAccounts=[], loyaltyRewards=[];
   let selectedDate=isoLocal(new Date()), calendarMonth=new Date(); calendarMonth.setDate(1);
   let monthBlocks=[];
   function isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -69,6 +69,28 @@
     return !(Number(customerProfiles.find(p=>phoneKey(p.phone)===ph)?.prior_visits||0)>0)
   }
   function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
+  // v29.188.0 — fidelidade visível onde o Juliano decide (caso Juliano Prando, 15/09/2026:
+  // fechou 10 pontos na sexta, ninguém viu, e a barba de terça saiu "na fidelidade" de cabeça).
+  // Cadastro pelo telefone (mesma chave do visitNumber), conta de fidelidade pelo id do cadastro.
+  function loyaltyFor(phone=''){
+    const ph=phoneKey(phone);if(!ph)return {points:0,rewards:0,expires:null,found:false};
+    const ids=customerProfiles.filter(p=>phoneKey(p.phone)===ph).map(p=>p.id);
+    const acc=loyaltyAccounts.find(a=>ids.includes(a.customer_id));
+    if(!acc)return {points:0,rewards:0,expires:null,found:false};
+    const exp=loyaltyRewards.filter(r=>ids.includes(r.customer_id)&&r.expires_at).map(r=>r.expires_at).sort()[0]||null;
+    return {points:Number(acc.points||0),rewards:Number(acc.rewards_available||0),expires:exp,found:true};
+  }
+  // Selo no card: concluído com prêmio = "Prêmio usado"; em aberto com prêmio = verde, chamando;
+  // sem prêmio = só os pontos, discreto (e "quase lá" a partir de 8).
+  function loyaltyBadgeHtml(x){
+    if(x.status==='completed'){
+      const ld=Number(x.loyalty_discount||0);
+      return ld>0?`<span class="admin-visit-badge is-reward" title="Prêmio do cartão fidelidade usado neste atendimento">🎁 Prêmio usado${x.loyalty_free_service?` · ${esc(x.loyalty_free_service)}`:''}</span>`:'';
+    }
+    const lo=loyaltyFor(x.customer_phone);if(!lo.found)return '';
+    if(lo.rewards>0){const vence=lo.expires?` · vence ${new Date(lo.expires).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`:'';return `<span class="admin-visit-badge is-reward" title="Fechou 10 pontos: 1 serviço por nossa conta. No Concluir, Bônus de fidelidade já vem marcado.">🎁 Prêmio pra usar: 1 serviço por nossa conta${vence}</span>`}
+    return `<span class="admin-visit-badge is-points" title="Pontos do cartão fidelidade (10 = 1 serviço por nossa conta)">${lo.points}/10 pontos${lo.points>=8?' · quase lá':''}</span>`;
+  }
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
   function ageFromBirth(date){if(!date)return null;const b=new Date(date+'T12:00:00'),t=new Date();let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a>=0?a:null}
@@ -87,6 +109,8 @@
   // pagamento empilhadas) ficou grande demais e obrigava rolar muito com várias entradas.
   function priceSummaryHtml(x){
     const s=Number(x.service_price||0),p=Number(x.products_price||0);
+    // v29.188.0 — prêmio da fidelidade abatido no card (antes somava o serviço cheio no Total)
+    const ld=x.courtesy?0:Math.min(Number(x.loyalty_discount||0),s);
     let pay='';
     if(x.payment_method){
       const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
@@ -103,7 +127,7 @@
     // mostra o preço de tabela ao lado e o motivo, pra ele lembrar o que combinou.
     const disc=Number(x.discount_amount||0);
     const discHtml=disc>0?` · 🏷️ Desconto ${money(disc)}${x.discount_reason?` <i>(${esc(x.discount_reason)})</i>`:''}`:'';
-    return `<small class="admin-price-summary">Serviços ${money(s)}${disc>0?` <i>(tabela ${money(s+disc)})</i>`:''} · Produtos ${money(p)} · <b>Total ${money(s+p)}</b>${pay}${discHtml}${tipHtml}</small>`;
+    return `<small class="admin-price-summary">Serviços ${money(s)}${disc>0?` <i>(tabela ${money(s+disc)})</i>`:''}${ld>0?` · 🎁 Fidelidade −${money(ld)}${x.loyalty_free_service?` <i>(${esc(x.loyalty_free_service)})</i>`:''}`:''} · Produtos ${money(p)} · <b>Total ${money(s-ld+p)}</b>${pay}${discHtml}${tipHtml}</small>`;
   }
   // v29.12.0 — o admin fica aberto o dia inteiro no celular do Juliano e NUNCA recarrega
   // sozinho. Em 11/08/2026 isso custou caro: três correções foram publicadas de manhã e à
@@ -112,7 +136,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.187.0'
+  const ADMIN_VERSION='29.188.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
@@ -151,16 +175,22 @@
   function showLogin(msg=''){$('admin-login').hidden=false;$('admin-app').hidden=true;if($('admin-message'))$('admin-message').textContent=msg}
   async function renderAuth(){if(!session){showLogin();return}$('admin-login').hidden=true;$('admin-app').hidden=false;await loadBaseData();if(page==='dashboard')renderDashboard();if(page==='agenda')initAgenda();if(page==='clientes')initCRM();if(page==='agendamento')initBookingForm();if(page==='atendimento')initServiceMode()}
   async function loadBaseData(){
-    const [{data:b,error:be},{data:p,error:pe},{data:e,error:ee}]=await Promise.all([
+    // v29.188.0 — fidelidade junto (caso Juliano Prando, 15/09/2026): o card da Agenda/Hoje e o
+    // Concluir precisam saber se o cliente tem prêmio pra usar. Duas tabelas pequenas; erro
+    // aqui nunca derruba a tela — só some o selo.
+    const [{data:b,error:be},{data:p,error:pe},{data:e,error:ee},{data:la},{data:lr}]=await Promise.all([
       // v29.84.0: payments embutido pra Agenda mostrar COMO o cliente pagou online
       // (Pix/débito/crédito) — pedido do Juliano ao ver "Pago online (PagBank)" sem o meio.
       sb.from('bookings').select('*, payments(method,status)').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),
       sb.from('customer_profiles').select('*').order('name',{ascending:true}),
-      sb.from('experience_requests').select('id,customer_id,booking_id,status,feedback,created_at,answered_at').order('created_at',{ascending:false}).limit(3000)
+      sb.from('experience_requests').select('id,customer_id,booking_id,status,feedback,created_at,answered_at').order('created_at',{ascending:false}).limit(3000),
+      sb.from('loyalty_accounts').select('customer_id,points,rewards_available,lifetime_points'),
+      sb.from('loyalty_rewards').select('customer_id,status,expires_at').in('status',['available','reserved'])
     ]);
     if(be){console.error(be);allBookings=[]}else allBookings=b||[];
     if(pe){console.error(pe);customerProfiles=[]}else customerProfiles=p||[];
     if(ee){console.warn('Experience requests indisponível:',ee.message);experienceRequests=[]}else experienceRequests=e||[];
+    loyaltyAccounts=Array.isArray(la)?la:[];loyaltyRewards=Array.isArray(lr)?lr:[];
 
     // Garante que clientes vindos somente de agendamentos também tenham perfil no CRM.
     // Sem isso, o botão de exclusão ficava desativado por falta do id do perfil.

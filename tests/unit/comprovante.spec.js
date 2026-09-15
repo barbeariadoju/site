@@ -191,6 +191,23 @@ describe('montarMensagemComprovante', () => {
     expect(sem).not.toContain('caixinha');
   });
 
+  // v29.188.0 — caso Juliano Prando (15/09/2026): quem usou o prêmio do cartão recebe o
+  // agradecimento na abertura do comprovante, dizendo qual serviço foi por nossa conta.
+  it('agradece o prêmio da fidelidade na abertura, com o serviço premiado', () => {
+    const inteiro = norm(montarMensagemComprovante({ ...base, servicoNome: 'Barba Express', servicoValor: 25, pagamentoServico: 'fidelidade', fidelidadeServico: 'Barba Express' }));
+    expect(inteiro).toContain('Barba Express de hoje foi por nossa conta: você fechou os 10 pontos do cartão fidelidade');
+    expect(inteiro).toContain('Obrigado por ser cliente de casa, Wellington.');
+    expect(inteiro).toContain('a visita de hoje vale o primeiro ponto do próximo');
+    expect(inteiro).toContain('Nada a pagar — prêmio do cartão fidelidade');
+    const combo = norm(montarMensagemComprovante({ ...base, servicoNome: 'Corte de cabelo + Barba Express', servicoValor: 65, descontoFidelidade: 40, fidelidadeServico: 'Corte de cabelo', pagamentoServico: 'credito' }));
+    expect(combo).toContain('Corte de cabelo de hoje foi por nossa conta');
+    expect(combo).toContain('Prêmio do cartão fidelidade (Corte de cabelo): -R$ 40,00');
+    const semPremio = norm(montarMensagemComprovante(base));
+    expect(semPremio).not.toContain('por nossa conta');
+    const cortesia = norm(montarMensagemComprovante({ ...base, cortesia: true, pagamentoServico: 'fidelidade' }));
+    expect(cortesia).not.toContain('fechou os 10 pontos');
+  });
+
   it('convida o walk-in a agendar, numa linha só', () => {
     const msg = norm(montarMensagemComprovante({ ...base, balcao: true }));
     expect(msg).toContain('já deixo seu horário reservado');

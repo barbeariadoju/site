@@ -26,7 +26,8 @@
   // por admin-v15-4-atendimento.js via bookingCardHtml() pra manter o mesmo visual.
   function bookingCardHtml(x,actionsHtml){
     const email=x.customer_email?`<a class="admin-contact-link" href="${emailLink(x)}">✉ ${esc(x.customer_email)}</a>`:'';
-    const total=money(Number(x.service_price||0)+Number(x.products_price||0));
+    // v29.188.0 — o resumo do card abate o prêmio da fidelidade (serviço por nossa conta = R$ 0)
+    const total=money(Math.max(0,Number(x.service_price||0)-(x.courtesy?0:Math.min(Number(x.loyalty_discount||0),Number(x.service_price||0))))+Number(x.products_price||0));
     // v28.68.0: cliente que avisou ter feito o Pix antecipado. É DECLARAÇÃO do cliente, não
     // confirmação de pagamento — por isso o texto pede conferência em vez de afirmar "pago".
     // v29.3.0: a declaração agora diz PARA QUAL CHAVE, pra abrir o app certo de primeira,
@@ -46,7 +47,7 @@
         : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
       : '';
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
-    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}<small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small></span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){return bookingCardHtml(x,bookingActionsHtml(x))}
   // v29.175.0: as ações viraram função própria — a tela Hoje coloca a pergunta "já cortou aqui antes?" (do antigo Modo Atendimento) na frente das mesmas ações.
@@ -304,7 +305,16 @@
       // de conclusão ainda perguntava a forma de pagamento. Pix antecipado confirmado = pré-seleciona
       // Pix e avisa; dá pra trocar se por acaso o registro estiver errado.
       const prepaid=!!(booking.prepay_declared_at&&booking.prepay_confirmed_at);
-      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>':'')+paymentPickerHtml(prepaid?'pix':'');
+      // v29.188.0 — caso Juliano Prando (15/09/2026): cliente com prêmio de fidelidade chega ao
+      // Concluir com "Bônus de fidelidade" já marcado e um aviso em cima, pra não passar batido.
+      // Sem prêmio no sistema, marcar "Bônus" mostra o alerta (não bloqueia: a palavra dele vale,
+      // e o gatilho do banco registra o resgate sem saldo no histórico do cliente).
+      const loyaltyInfo=(typeof loyaltyFor==='function')?loyaltyFor(booking.customer_phone):{points:0,rewards:0,found:false};
+      const temPremio=!prepaid&&loyaltyInfo.rewards>0;
+      const loyaltyNoteHtml=temPremio
+        ?`<p class="privacy-note checkout-loyalty-note">🎁 <b>Este cliente tem 1 serviço por nossa conta</b> (fechou 10 pontos). "Bônus de fidelidade" já está marcado — se ele preferir pagar e guardar o prêmio, é só trocar a forma.</p>`
+        :`<p class="privacy-note checkout-loyalty-note is-warn" data-loyalty-warn hidden>⚠️ Este cliente <b>não tem prêmio disponível</b> no sistema (${loyaltyInfo.found?`${loyaltyInfo.points}/10 pontos`:'sem cartão ainda'}). Concluir assim registra o serviço por nossa conta mesmo assim.</p>`;
+      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>':'')+loyaltyNoteHtml+paymentPickerHtml(prepaid?'pix':(temPremio?'fidelidade':''));
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
       // v29.65.0 — pedido do Juliano (22/08/2026): um clique "já avaliou no Google" que fica
@@ -364,7 +374,7 @@
       const visitInput=modal.querySelector('[data-visit-number]');
       visitInput.value='';
       visitInput.placeholder=booking.id?`o sistema conta ${visitNumber(booking)}ª`:'';
-      let selectedPayment=prepaid?'pix':'',selectedProductsPayment='';
+      let selectedPayment=prepaid?'pix':(temPremio?'fidelidade':''),selectedProductsPayment='';
       // v29.84.0 — "checkout" na conclusão (pedido do Juliano, 28/08): total a cobrar sempre
       // visível, descontando o que já foi pago online (Checkout PagBank grava payments.amount_cents;
       // Pix antecipado manual confirmado vale o preço do serviço da reserva).
@@ -468,6 +478,7 @@
         if(!btn)return;
         selectedPayment=selectedPayment===btn.dataset.paymentOption?'':btn.dataset.paymentOption;
         paymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===selectedPayment));
+        {const warn=paymentSlot.querySelector('[data-loyalty-warn]');if(warn)warn.hidden=selectedPayment!=='fidelidade'}
       };
       const onProductsPaymentClick=e=>{
         const btn=e.target.closest('[data-payment-option]');
@@ -586,6 +597,7 @@
         if(!btn)return;
         selectedPayment=selectedPayment===btn.dataset.paymentOption?'':btn.dataset.paymentOption;
         paymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===selectedPayment));
+        {const warn=paymentSlot.querySelector('[data-loyalty-warn]');if(warn)warn.hidden=selectedPayment!=='fidelidade'}
       };
       const onProductsPaymentClick=e=>{
         const btn=e.target.closest('[data-payment-option]');

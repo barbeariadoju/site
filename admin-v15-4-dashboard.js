@@ -97,11 +97,15 @@
     // ---- Linha do dia (card completo da Agenda + pergunta de primeira vez + marcador "agora") ----
     const list=$('dashboard-today-list'),fila=todayRows.filter(x=>x.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time));
     let marcado=false;
-    list.innerHTML=fila.length?fila.map(x=>{
+    // v29.188.0 — quem tem prêmio de fidelidade pra usar aparece em cima da fila (caso Juliano
+    // Prando, 15/09: fechou 10 pontos na sexta, ninguém viu, e a barba de terça saiu de cabeça).
+    const premioHoje=fila.filter(x=>['pending','confirmed'].includes(x.status)&&(typeof loyaltyFor==='function')&&loyaltyFor(x.customer_phone).rewards>0);
+    const premioHtml=premioHoje.length?`<div class="admin-day-callout">🎁 <b>Prêmio de fidelidade pra usar ${ehHoje?'hoje':'nesse dia'}:</b> ${premioHoje.map(x=>`${esc(x.customer_name)} (${String(x.start_time).slice(0,5)})`).join(', ')} — 1 serviço por nossa conta. No Concluir, "Bônus de fidelidade" já vem marcado.</div>`:'';
+    list.innerHTML=premioHtml+(fila.length?fila.map(x=>{
       let pre='';
       if(!marcado&&String(x.start_time).slice(0,5)>nowHM){marcado=true;pre=`<div class="admin-now-line"><span>agora · ${nowHM}</span></div>`}
       return pre+bookingCardHtml(x,(typeof primeiraVezHtml==='function'?primeiraVezHtml(x):'')+bookingActionsHtml(x))
-    }).join('')+(ehHoje&&!marcado&&fila.some(x=>['pending','confirmed'].includes(x.status))?`<div class="admin-now-line is-end"><span>agora · ${nowHM} — os de cima ainda estão em aberto</span></div>`:''):BDJ_UX.empty(ehHoje?'Nenhum atendimento para hoje. Dia livre pra balcão, conteúdo e descanso.':'Nenhum atendimento nesse dia.');
+    }).join('')+(ehHoje&&!marcado&&fila.some(x=>['pending','confirmed'].includes(x.status))?`<div class="admin-now-line is-end"><span>agora · ${nowHM} — os de cima ainda estão em aberto</span></div>`:''):BDJ_UX.empty(ehHoje?'Nenhum atendimento para hoje. Dia livre pra balcão, conteúdo e descanso.':'Nenhum atendimento nesse dia.'));
     bindBookingActions(list);
     list.querySelectorAll('[data-firsttime]').forEach(b=>b.onclick=()=>marcarPrimeiraVez(b));
 

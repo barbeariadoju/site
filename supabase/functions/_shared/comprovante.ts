@@ -246,8 +246,19 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
   // v29.159.0 (pedido do Juliano, 09/09/2026): quem deixou caixinha recebe um agradecimento
   // à parte, logo na abertura. Sem emoji — regra da casa, e o teste desta mensagem confere.
   const caixinha = Number(d.caixinha || 0)
+  // v29.188.0 (pergunta do Juliano, 15/09/2026: "quando eu concluir a barba do Juliano em
+  // fidelidade vamos disparar alguma mensagem de agradecimento?"): quem usou o prêmio do cartão
+  // recebe o agradecimento na abertura do próprio comprovante — é a mensagem que já sai na hora,
+  // com o cliente na porta. Diz QUAL serviço foi por nossa conta (no combo só um é o prêmio) e
+  // que o cartão recomeçou: a visita de hoje já vale o primeiro ponto do próximo. Sem emoji.
+  const usouPremio = !d.cortesia && (Number(d.descontoFidelidade || 0) > 0 || String(d.pagamentoServico || '').toLowerCase() === 'fidelidade')
+  const qualPremio = String(d.fidelidadeServico || '').trim()
+  const agradecePremio = usouPremio
+    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: você fechou os 10 pontos do cartão fidelidade e este é o seu prêmio. Obrigado por ser cliente de casa, ${primeiro}. O cartão já recomeçou — a visita de hoje vale o primeiro ponto do próximo.`
+    : ''
   return [
     `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,
+    ...(agradecePremio ? [agradecePremio] : []),
     ...(caixinha > 0 ? [`E um agradecimento especial pela caixinha, ${primeiro}. É um gesto que não passa despercebido e que eu recebo com muita gratidão.`] : []),
     '',
     montarCupom(d),
