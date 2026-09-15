@@ -1,3 +1,17 @@
+## 29.191.0 — Envio manual de WhatsApp pelo sistema (function `whatsapp-send`) e JuIA muda no número pessoal do Juliano (15/09, fim da tarde)
+
+**Pedido do Juliano (15/09/2026, ~16h):** "responda o Matheus e o José Carlos por mim — se não tiver um jeito de você enviar a mensagem pelo WhatsApp, crie". E: "o 1666 é o meu pessoal". Sobre o John Maicon: "veio, cortou, fez barba e não quis o bônus, disse que na próxima resgata; cuide pra que o bônus continue lá e ele continue pontuando — hoje fez cabelo e barba express, 2 pontos".
+
+**Não existia envio manual pelo sistema:** toda resposta humana saía do celular dele (o webhook só reconhece o eco `fromMe`). Entrou a function **`whatsapp-send` v1** (`verify_jwt=false`, autenticação própria): manda UM texto pra UM telefone em nome do Juliano (`sent_by=human`), aplica a regra sem emoji (`sem-emoji.ts`), grava em `whatsapp_messages` com o id da Evolution (o webhook reconhece o eco e não duplica) e liga o `human_takeover` da conversa — igual ao que acontece quando ele responde do celular. Quem pode chamar: header `x-webhook-secret` (crons, SQL via `net.http_post` com o segredo do vault — foi assim que as duas mensagens saíram) **ou** `Authorization: Bearer <JWT do admin>` com `is_admin()` (pra um futuro botão "responder" na tela Mensagens). Nunca a chave publicável sozinha.
+
+**Mensagens enviadas** (Evolution 200, ids gravados, takeover ligado): Matheus — pesquisa corrigida pra satisfeito, desculpa pela demora, "quando quiser marcar o próximo, é só me chamar"; José Carlos — "sem problema ter feito a barba em Campinas; quando quiser o corte, me diz o dia e o período que eu já deixo reservado".
+
+**JuIA muda no número pessoal (`whatsapp-webhook` v115):** `state.juia_muted=true` na conversa (`whatsapp_conversations`) = a mensagem fica guardada e a JuIA fica quieta — sem resposta, sem push, sem lead, sem pesquisa. Ligado no número pessoal do Juliano (ele usa o WhatsApp da barbearia como bloco de notas: links, fotos, telefones; a JuIA respondia a tudo, marcou corte de teste e respondeu em espanhol a um link). Os leads de conversa desse número (alisamento, 08/09) foram apagados pra o follow-up parar. O número fica só no banco, não no código (repositório público). Pra desligar: tirar a chave do `state`.
+
+**John Maicon, conferido:** 2/10 pontos (o "Corte + Lavagem + Barba Express" de hoje creditou 2 — combo Corte + Lavagem = 1, Barba Express = 1, regra da v29.189.0), 1 prêmio disponível até 15/10, marcado como avisado (ele soube pessoalmente). O aviso automático que estava segurado desde a v29.188.0 fica sem sentido e não sai.
+
+`npm run test:unit` verde; sem mudança em JS/CSS do site.
+
 ## 29.190.0 — Rodada de revisão do WhatsApp de sábado (12/09) a terça (15/09): nove lições para a JuIA (15/09, tarde)
 
 **Pedido do Juliano (15/09/2026, ~14h30):** "revisa todas as conversas da JuIA de hoje até sábado, tem coisa pra arrumar — mas olha nos seus históricos de manutenção de sábado, porque no sábado você chegou a arrumar algumas coisas da JuIA também". Lidas as 50 conversas de WhatsApp de 12/09 (depois da rodada v29.186.0, ~15h30) até 15/09 (`whatsapp_messages`, entrada, saída da JuIA e o que ele respondeu na mão) e as 9 sessões do chat do site do período (todas espelho do WhatsApp). Conferido contra o que já tinha entrado no sábado (v29.180.0 a v29.187.0: Breno/Renato, Lucas, Amanda, corte infantil, descanso, sete lições do dia 11/12) — nada daquilo regrediu; o "Consigo agenda pra agora?" anotado como pendente na v29.180.0 apareceu de novo (João) e foi tratado agora.

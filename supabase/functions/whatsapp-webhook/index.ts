@@ -950,6 +950,15 @@ Deno.serve(async (request: Request) => {
         // a lista de espera e a pesquisa de lead não podem atropelar. Sem isso, o "Sim"
         // do cancelamento caiu na pesquisa pendente e o agendamento errado ficou de pé.
         const aiState = (conversation?.state || {}) as Record<string, unknown>
+        // v29.191.0 — número pessoal do Juliano (pedido dele, 15/09/2026): ele usa o WhatsApp da
+        // barbearia como bloco de notas (manda pra si links, fotos, telefones) e a JuIA respondia a
+        // tudo — até marcou um corte de teste e respondeu em espanhol a um link. state.juia_muted=true
+        // = a mensagem fica guardada e a JuIA fica quieta: sem resposta, sem push, sem lead, sem
+        // pesquisa. Liga/desliga direto no state da conversa (whatsapp_conversations).
+        if (aiState.juia_muted === true) {
+          console.log('[whatsapp-webhook] juia_muted: guardado sem resposta', phone)
+          return json({ ok: true, muted: true })
+        }
         // v29.141.0 — registro único da JuIA (state.last_question, ver PERGUNTAS em ju-ia-site):
         // qualquer pergunta aberta dela — confirmação do serviço de sempre, oferta 1/2, escolha
         // de encaixe, lista de espera — tem a mesma prioridade que cancelar/remarcar tinham
