@@ -1386,17 +1386,18 @@ Deno.serve(async req=>{
   // "Para consultar sua fidelidade, informe seu WhatsApp com DDD" — o cliente perguntou o que
   // É o programa e levou um pedido de dado, sem uma palavra de resposta. Quem pergunta o que é
   // ouve a REGRA primeiro; o saldo vem junto quando já dá pra consultar.
-  // A regra é a do gatilho no banco (migration 013): 1 ponto por atendimento com corte
-  // concluído, 10 pontos = 1 corte grátis. Nada de "clube" — a assinatura ainda não existe,
+  // A regra é a do gatilho no banco (migration 154, v29.189.0): 1 ponto por SERVIÇO concluído,
+  // combo do catálogo (já com desconto) vale 1; 10 pontos = 1 serviço por nossa conta. Nada de
+  // "clube" — a assinatura ainda não existe,
   // e a JuIA não pode confirmar um produto que não está no ar.
-  const regraFidelidade='Hoje o que temos é o cartão fidelidade, e ele é automático: a cada corte concluído você ganha 1 ponto, e com 10 pontos o próximo corte é por nossa conta. Não tem cartão de papel nem custo nenhum, os pontos ficam ligados ao seu WhatsApp.'
+  const regraFidelidade='Hoje o que temos é o cartão fidelidade, e ele é automático: cada serviço concluído vale 1 ponto (combo do catálogo, que já vem com desconto, vale 1), e com 10 pontos o próximo serviço é por nossa conta. Não tem cartão de papel nem custo nenhum, os pontos ficam ligados ao seu WhatsApp.'
   if(!knownPhone){reply=isExplainQuestion?`${regraFidelidade} Se quiser saber quantos pontos você já tem, me manda seu número com DDD.`:'Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}
   else if(!context?.customer_id){reply=isExplainQuestion?`${regraFidelidade} Ainda não encontrei um cadastro nesse número — posso fazer seu agendamento e já começar seu histórico.`:'Ainda não encontrei um cadastro de fidelidade nesse número. Posso fazer seu agendamento e iniciar seu histórico.'}
-  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} corte(s) gratuito(s) disponível(is)! 🎁 No ciclo atual, está com ${points}/10 pontos.`}
+  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar! 🎁 No ciclo atual, está com ${points}/10 pontos.`}
   else{
    const missing=Math.max(0,10-points)
-   const encouragement=points===0?'Seu cartão está pronto para começar.':points>=9?'Falta apenas 1 atendimento para ganhar seu corte gratuito! 🎉':points>=5?'Você já passou da metade do caminho.':'Cada corte concluído soma 1 ponto.'
-   reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um corte gratuito. ${encouragement}`
+   const encouragement=points===0?'Seu cartão está pronto para começar.':points>=9?'Falta só 1 ponto para ganhar um serviço por nossa conta! 🎉':points>=5?'Você já passou da metade do caminho.':'Cada serviço concluído soma 1 ponto (combo do catálogo vale 1).'
+   reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um serviço por nossa conta. ${encouragement}`
   }
   if(isExplainQuestion&&context?.customer_id&&!reply.startsWith('Hoje o que temos'))reply=`${regraFidelidade} ${reply}`
  }
@@ -3712,9 +3713,10 @@ Deno.serve(async req=>{
       const loyaltyRemaining=chosen.filter((s:any)=>s!==freedService)
       const loyaltyNote=!(verifiedPhone&&hasCustomer)?'':
         rewardApplied&&freedService?(loyaltyRemaining.length?` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')} — e ainda pontua com ele(s) 😄`:` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Obrigada pela preferência 😄`):
-        rewards>0?` A propósito, você já tem ${rewards} corte(s) grátis disponível(is) pela fidelidade — é só avisar quando quiser usar! 🎁`:
-        points===9?` Ah, e esse atendimento vai completar seu cartão fidelidade — no próximo corte você ganha um grátis! 🎉`:
-        ` A propósito, você está com ${points} ponto(s) de fidelidade — faltam ${Math.max(0,10-points)} pra ganhar um serviço grátis. 💈`
+        rewards>0?` A propósito, você já tem ${rewards} serviço(s) por nossa conta pela fidelidade — é só avisar quando quiser usar! 🎁`:
+        // v29.189.0 — 1 ponto por serviço (combo do catálogo = 1 item de `chosen`): fecha o cartão quando os pontos + os serviços deste agendamento chegam a 10
+        points+chosen.length>=10?` Ah, e esse atendimento vai completar seu cartão fidelidade — o próximo serviço é por nossa conta! 🎉`:
+        ` A propósito, você está com ${points} ponto(s) de fidelidade — faltam ${Math.max(0,10-points)} pra ganhar um serviço por nossa conta (cada serviço concluído vale 1 ponto). 💈`
       // v29.43.7 — pedido do Juliano (18/08): oferecer o pagamento antecipado tambem no WhatsApp,
       // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
       // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.

@@ -254,7 +254,7 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
   const usouPremio = !d.cortesia && (Number(d.descontoFidelidade || 0) > 0 || String(d.pagamentoServico || '').toLowerCase() === 'fidelidade')
   const qualPremio = String(d.fidelidadeServico || '').trim()
   const agradecePremio = usouPremio
-    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: você fechou os 10 pontos do cartão fidelidade e este é o seu prêmio. Obrigado por ser cliente de casa, ${primeiro}. O cartão já recomeçou — a visita de hoje vale o primeiro ponto do próximo.`
+    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: você fechou os 10 pontos do cartão fidelidade e este é o seu prêmio. Obrigado por ser cliente de casa, ${primeiro}. O cartão já recomeçou — o que você fez hoje já conta pro próximo.`
     : ''
   return [
     `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,

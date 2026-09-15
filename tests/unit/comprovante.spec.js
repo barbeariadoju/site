@@ -197,7 +197,7 @@ describe('montarMensagemComprovante', () => {
     const inteiro = norm(montarMensagemComprovante({ ...base, servicoNome: 'Barba Express', servicoValor: 25, pagamentoServico: 'fidelidade', fidelidadeServico: 'Barba Express' }));
     expect(inteiro).toContain('Barba Express de hoje foi por nossa conta: você fechou os 10 pontos do cartão fidelidade');
     expect(inteiro).toContain('Obrigado por ser cliente de casa, Wellington.');
-    expect(inteiro).toContain('a visita de hoje vale o primeiro ponto do próximo');
+    expect(inteiro).toContain('o que você fez hoje já conta pro próximo');
     expect(inteiro).toContain('Nada a pagar — prêmio do cartão fidelidade');
     const combo = norm(montarMensagemComprovante({ ...base, servicoNome: 'Corte de cabelo + Barba Express', servicoValor: 65, descontoFidelidade: 40, fidelidadeServico: 'Corte de cabelo', pagamentoServico: 'credito' }));
     expect(combo).toContain('Corte de cabelo de hoje foi por nossa conta');
