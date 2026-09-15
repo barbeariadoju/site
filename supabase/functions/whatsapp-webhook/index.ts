@@ -1028,7 +1028,13 @@ Deno.serve(async (request: Request) => {
             }
           }
         }
-        if (stillActive && !takeoverAssumidoPelaJuia) {
+        // v29.190.0 — caso Matheus (14/09/2026, 12h05): o "2" da pesquisa liga o human_takeover e
+        // manda o menu (1 reparo · 2 ressarcimento · 3 sugestão). A resposta dele ("Boa tarde, 1" e,
+        // um minuto depois, "Foi satisfeito.") caía AQUI, no silêncio do takeover — o interceptador
+        // do menu, mais abaixo, nunca rodava. Ele ficou sem resposta nenhuma por um dia. Com
+        // pending_unsat em aberto, a mensagem é resposta ao menu: não silencia.
+        const unsatPendente = !!((aiState.pending_unsat as { token?: string } | undefined)?.token)
+        if (stillActive && !takeoverAssumidoPelaJuia && !unsatPendente) {
           try {
             const alertKey = `takeover_msg_${phone}`
             const { data: lastAlert } = await admin
@@ -1314,8 +1320,12 @@ Deno.serve(async (request: Request) => {
           const unsatState = (unsatConvRow?.state || {}) as Record<string, any>
           const pendUnsat = unsatState.pending_unsat as any
           if (pendUnsat?.token && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'survey')) {
-            const rawUnsat = normalize(text).trim()
+            // v29.190.0 — "Boa tarde, Juliano\n\n2" / "Boa tarde,\n\n1": a saudação na frente do número
+            // não pode virar "relato registrado". E "Foi satisfeito." depois do 2 é correção: o cliente
+            // apertou errado — registra satisfeito, solta o takeover e avisa o Juliano.
+            const rawUnsat = normalize(text).replace(/^(?:(?:oi|ola|opa|bom dia|boa tarde|boa noite|juliano|ju|tudo bem)[\s,.!]*)+/, '').trim()
             const nUnsat = /^([123])\1*[\s!.,]*$/.test(rawUnsat) ? Number(rawUnsat[0]) : 0
+            const corrigiuSatisfeito = !/insatisfeit/.test(rawUnsat) && (/^(?:foi |fiquei |estou |to |ta |tava |fico )?satisfeit[oa]\b/.test(rawUnsat) || /\b(errei|foi engano|me enganei|apertei errado|cliquei errado|era (o )?1\b|queria (o )?1\b|fiquei satisfeit)/.test(rawUnsat))
             const clearUnsat = async () => {
               await admin.from('whatsapp_conversations').update({ state: { ...unsatState, pending_unsat: null }, updated_at: new Date().toISOString() }).eq('phone', phone)
             }
@@ -1329,6 +1339,14 @@ Deno.serve(async (request: Request) => {
               }).catch((error) => console.error('[whatsapp-webhook] push unsat choice', error))
             }
             const nomeUnsat = pendUnsat.customer_name || phone
+            if (corrigiuSatisfeito) {
+              await clearUnsat()
+              await admin.from('experience_requests').update({ status: 'satisfied', answer: 'satisfied', updated_at: new Date().toISOString() }).eq('token', pendUnsat.token)
+              await admin.from('whatsapp_conversations').update({ human_takeover: false, human_takeover_at: null, updated_at: new Date().toISOString() }).eq('phone', phone)
+              await sendWhatsapp(phone, `Que bom! Então fica registrado como satisfeito${pendUnsat.customer_name ? `, ${primeiroNome(pendUnsat.customer_name)}` : ''}. Obrigado pelo retorno, e até a próxima. 🙏`)
+              await pushUnsat('✅ Cliente corrigiu: ficou SATISFEITO', `${nomeUnsat} respondeu 2 por engano e corrigiu pra satisfeito. Nada a fazer.`)
+              return
+            }
             if (nUnsat === 1 || /reparo|retoque|ajust|reagend|remarc|corrigir|arrumar/.test(rawUnsat)) {
               await clearUnsat()
               await sendWhatsapp(phone, 'Claro! Me diz o dia e o horário que ficam melhores pra você que o Juliano confirma o reparo por aqui — sem nenhum custo, e com prioridade 😊')

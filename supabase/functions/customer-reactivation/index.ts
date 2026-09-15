@@ -96,16 +96,19 @@ Deno.serve(async (request: Request) => {
     // v29.71.2 (25/08): a 1a leva saiu com "Oi, MOISES!" — 5 dos 141 cadastros estao em
     // CAIXA ALTA e o nome ia cru pro vocativo, denunciando texto de robo. Nome todo maiusculo
     // (ou todo minusculo) vira Capitalizado; nome ja bem escrito (Vinícius, McCarthy) fica intacto.
-    const nomeCase = (nomeCru === nomeCru.toUpperCase() || nomeCru === nomeCru.toLowerCase())
-      ? nomeCru.charAt(0).toUpperCase() + nomeCru.slice(1).toLowerCase()
-      : nomeCru
-    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|dr|dra|sr|sra|conta)$/i.test(nomeCru) || nomeCru.length < 3 ? '' : nomeCase
+    // v29.190.0 — "Sr Magno" saía "Oi!" sem nome (15/09): título na frente usa a palavra seguinte.
+    const partesNome = String(c.name || '').trim().split(/\s+/)
+    const nomeBase = /^(dr|dra|sr|sra|prof|seu|dona)\.?$/i.test(partesNome[0] || '') && partesNome[1] ? partesNome[1] : nomeCru
+    const nomeCase = (nomeBase === nomeBase.toUpperCase() || nomeBase === nomeBase.toLowerCase())
+      ? nomeBase.charAt(0).toUpperCase() + nomeBase.slice(1).toLowerCase()
+      : nomeBase
+    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|conta)$/i.test(nomeBase) || nomeBase.length < 3 ? '' : nomeCase
     const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
     const tempo = c.days_since >= 60 ? 'mais de dois meses' : c.days_since >= 45 ? 'mais de um mês e meio' : c.days_since >= 35 ? 'mais de um mês' : 'um mês'
     // v29.71.1 (25/08, pedido do Juliano no ensaio): "me diz o dia que eu confiro" soava
     // burocrático. CTA novo: pergunta direta + exemplo de resposta + "já deixo reservado"
     // (o mesmo verbo que converte no lead-followup desde a v29.51.0).
-    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde o seu último ${servico} com o Juliano — deve estar na hora de dar um trato, né? 😄\n\nQuer garantir um horário essa semana? É só me responder com o dia que fica melhor (pode ser "quinta à tarde") que eu já deixo reservado pra você — hora marcada, sem fila. Se preferir, dá pra agendar direto pelo site: https://www.barbeariadoju.com.br/agendar/`
+    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde a sua última vez aqui com o Juliano (${servico}) — deve estar na hora de dar um trato, né? 😄\n\nQuer garantir um horário essa semana? É só me responder com o dia que fica melhor (pode ser "quinta à tarde") que eu já deixo reservado pra você — hora marcada, sem fila. Se preferir, dá pra agendar direto pelo site: https://www.barbeariadoju.com.br/agendar/`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
