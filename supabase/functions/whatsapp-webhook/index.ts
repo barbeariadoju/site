@@ -3,7 +3,9 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
-import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso } from '../_shared/convite-retorno.ts'
+import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias } from '../_shared/convite-retorno.ts'
+// v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
+import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -1410,13 +1412,17 @@ Deno.serve(async (request: Request) => {
               return [0, 1, 2, 3].map((i) => lista[Math.round(i * passo)]).filter((v, i, a) => a.indexOf(v) === i)
             }
             const buscarDia = async (isoBase: string) => {
+              // v29.193.0 — na semana pedida, terça/quarta/quinta primeiro (dias fracos, ver
+              // _shared/dias-fracos.ts); sem dia fraco com horário, o primeiro dia que tiver.
+              const comVaga: { date: string, lista: string[] }[] = []
               for (let d = 0; d <= 6; d++) {
                 const iso = new Date(new Date(`${isoBase}T12:00:00Z`).getTime() + d * 24 * 3600 * 1000).toISOString().slice(0, 10)
                 const { data: slots } = await admin.rpc('get_available_slots', { p_date: iso, p_duration_minutes: duracao })
                 const lista = (slots || []).map((x: any) => String(x.slot_time).slice(0, 5))
-                if (lista.length) return { iso, lista }
+                if (lista.length) comVaga.push({ date: iso, lista })
               }
-              return null
+              const melhor = diasFracosPrimeiro(comVaga)[0]
+              return melhor ? { iso: melhor.date, lista: melhor.lista } : null
             }
             if (pendInvite.stage === 'defer') {
               // v29.149.0 — resposta a "daqui a quantos dias você quer que eu te chame?".
@@ -1885,7 +1891,57 @@ Deno.serve(async (request: Request) => {
               // /avaliar/ repassa o mesmo token pra mesma function, então o rastreio de cliques
               // da v29.29.0 continua idêntico — só a cara do link mudou.
               const trackedReviewLink = `https://www.barbeariadoju.com.br/avaliar/?t=${pending.token}`
-              const reply = alreadyReviewed
+              // v29.193.0 — RETORNO NA SAÍDA. Pedido do Juliano (16/09/2026): "ao invés de perguntar
+              // se foi satisfeito, por que não perguntamos se o cliente já deseja remarcar o retorno
+              // e sugerimos sempre de terça a quinta?". A pesquisa fica (é o que protege a avaliação
+              // no Google e pega o insatisfeito) e a oferta entra AQUI, no "satisfeito": 157 respostas
+              // satisfeitas até hoje, contra 2 aceites em ~110 convites de retorno no dia 12
+              // (return_invites) — o momento de boa vontade é este, não duas semanas depois.
+              // Mecânica reaproveitada da remarcação pós-cancelamento (state.pending_rebook +
+              // last_question 'rebook', ju-ia-site v29.181.0): "sim" reserva direto o horário
+              // oferecido (ju-ia-site v29.193.0), dia/horário/período segue o fluxo normal, "não"
+              // encerra sem insistir. Dia: terça, quarta ou quinta mais perto da cadência do cliente
+              // (customer_visit_cadence_days) ou do retorno típico do serviço; horário: o mais próximo
+              // do que ele acabou de vir. Sem oferta quando já existe agendamento futuro, quando o
+              // serviço não está no catálogo ou quando nenhum candidato tem horário — aí a resposta
+              // é a de sempre. A oferta tira da mensagem o "responda 1 se já avaliou" (um "1" com a
+              // oferta aberta iria pra JuIA) e a linha da sugestão: uma pergunta por mensagem.
+              let ofertaRetorno = ''
+              try {
+                const { data: visita } = await admin.from('bookings').select('service_name, duration_minutes, booking_date, start_time').eq('id', pending.booking_id).maybeSingle()
+                const hojeISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+                const { count: futuros } = await admin.from('bookings').select('id', { count: 'exact', head: true }).eq('phone_key', phone.slice(-8)).gte('booking_date', hojeISO).in('status', ['confirmed', 'pending']).neq('id', pending.booking_id)
+                if (visita && !(futuros ?? 0)) {
+                  const nomesServ = String(visita.service_name || '').split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
+                  const { data: svcRows } = await admin.from('services').select('name, duration_minutes').in('name', nomesServ)
+                  if (nomesServ.length && (svcRows || []).length === nomesServ.length) {
+                    const duracao = (svcRows || []).reduce((a: number, s: any) => a + Number(s.duration_minutes || 0), 0) || Number(visita.duration_minutes) || 40
+                    const { data: cadencia } = await admin.rpc('customer_visit_cadence_days', { p_phone: phone })
+                    const retorno = retornoTipicoDias(typeof cadencia === 'number' ? cadencia : null, nomesServ[0])
+                    let escolhido: { date: string, time: string } | null = null
+                    for (const iso of candidatosRetorno(String(visita.booking_date).slice(0, 10), retorno, hojeISO).slice(0, 4)) {
+                      const { data: slotRows } = await admin.rpc('get_available_slots', { p_date: iso, p_duration_minutes: duracao })
+                      const t = horarioMaisProximo((slotRows || []).map((x: any) => String(x.slot_time).slice(0, 5)), String(visita.start_time || '').slice(0, 5))
+                      if (t) { escolhido = { date: iso, time: t }; break }
+                    }
+                    if (escolhido) {
+                      const wd = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][diaDaSemana(escolhido.date)]
+                      ofertaRetorno = `Quer já deixar o próximo reservado? Pela sua rotina, ${wd} (${escolhido.date.slice(8, 10)}/${escolhido.date.slice(5, 7)}) às ${escolhido.time} fica bom — ${nomesServ.join(' + ')}. Me responde *sim* que eu reservo, ou me diz outro dia.`
+                      const { data: convRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+                      const st = (convRow?.state && typeof convRow.state === 'object') ? convRow.state as Record<string, unknown> : {}
+                      await admin.from('whatsapp_conversations').update({ state: { ...st, services: nomesServ, date: escolhido.date, time: null, period: null, completed: false, pending_rebook: { date: escolhido.date, time: escolhido.time, services: nomesServ, after_booking_id: pending.booking_id }, last_question: { kind: 'rebook', at: new Date().toISOString(), reply: 'Quer já deixar o próximo reservado' } }, updated_at: new Date().toISOString() }).eq('phone', phone)
+                      console.log('[whatsapp-webhook] oferta de retorno na saída', phone, escolhido.date, escolhido.time, `cadencia=${cadencia ?? 'padrao'}`)
+                    }
+                  }
+                }
+              } catch (e) { console.error('[whatsapp-webhook] oferta de retorno na saída', e) }
+              const reply = ofertaRetorno
+                ? (alreadyReviewed
+                  ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
+                  : skipGoogleAsk
+                    ? `Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\n${ofertaRetorno}`
+                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}`)
+                : alreadyReviewed
                 // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
                 // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
                 // da rede do cliente. Quem ainda não avaliou continua recebendo SÓ o pedido

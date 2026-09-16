@@ -10,6 +10,8 @@ const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{stat
 // lógica do site (assets/js/service-rules.js). Ver o bloco "serviceRuleNote" abaixo.
 import { normalizeServiceSet as normalizeServiceFamilies, swapWithinFamily, familiesOf as familiesOfService } from '../_shared/service-rules.ts'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+// v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
+import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 // v29.190.0 — caso 12/09 18h41 (sábado à noite): "ele está atendendo na cadeira" com a barbearia
 // fechada. Mesma régua do webhook (naCadeira): terça a sábado, 8h às 19h, sábado até 15h.
@@ -455,17 +457,24 @@ async function findNextAvailableDate(supabase:any,fromISO:string,durationMinutes
 // "QUAIS dias" (caso Tiago: "para que dia você tem vaga pra cortar essa semana?"). Quem
 // pergunta por dias tem que receber dias — não a mesma pergunta de volta. minTime aplica o
 // piso de horário ("após as 19h") direto na lista, em vez de jogar a restrição fora.
+// v29.193.0 — pedido do Juliano (16/09/2026): quarta e quinta são os dias mais vazios da casa
+// (5,3 e 6,5 atendimentos/dia contra 8,9 na sexta, 8 semanas até 13/09). Quem não tem dia fixo
+// aceita o primeiro dia que aparece — então a varredura olha a janela INTEIRA e deixa a escolha
+// com selecionarDiasOferta (_shared/dias-fracos.ts): até 2 dias fracos mais próximos e o resto
+// pelos mais próximos, em ordem cronológica. Quem pergunta na sexta continua vendo hoje; só o
+// destaque (horários mostrados e primeiro botão) vai pra terça. Dia citado pelo nome não passa
+// por aqui (availabilityForDates); "agora" também não (next.asap fixa hoje).
 async function findAvailableDatesInRange(supabase:any,fromISO:string,durationMinutes:number,maxDays=7,maxDates=3,minTime=''){
  const out:{date:string,slots:string[]}[]=[]
  const d=new Date(fromISO+'T12:00:00-03:00')
- for(let i=0;i<maxDays&&out.length<maxDates;i++){
+ for(let i=0;i<maxDays;i++){
   const iso=d.toISOString().slice(0,10)
   const {data}=await supabase.rpc('get_available_slots',{p_date:iso,p_duration_minutes:durationMinutes})
   const slots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5)).filter((t:string)=>!minTime||t>=minTime)
   if(slots.length)out.push({date:iso,slots})
   d.setDate(d.getDate()+1)
  }
- return out
+ return selecionarDiasOferta(out,maxDates).lista
 }
 // Mesma varredura, mas só nos dias que o cliente citou pelo nome — e devolve TAMBÉM os que
 // ficaram sem vaga, porque "quarta eu não tenho" é informação que ele pediu (e evita que a
@@ -1694,8 +1703,16 @@ Deno.serve(async req=>{
    else if(rbAmanha&&!ai.updates?.date){const am=new Date(today()+'T12:00:00-03:00');am.setDate(am.getDate()+1);next.date=am.toISOString().slice(0,10)}
    else if(/\bhoje\b/.test(normalizedQuestion)&&!ai.updates?.date)next.date=today()
    if(!next.date)next.date=rb.date
+   // v29.193.0 — oferta de RETORNO NA SAÍDA (whatsapp-webhook, resposta "satisfeito"): a oferta
+   // traz dia E horário (rb.time) e promete "responda sim que eu reservo". "Sim" seco, sem dia,
+   // horário ou período por cima, reserva direto o horário oferecido (intent book); qualquer
+   // outra resposta segue como na oferta pós-cancelamento, e o horário oferecido não gruda.
+   const rbSimDireto=(simpleYes&&!simpleNo)&&!rbTime&&!rbDia&&!rbPeriodo&&/^\d{2}:\d{2}$/.test(String(rb.time||''))
    if(rbTime)next.time=rbTime
-   if(intent!=='book'&&intent!=='availability')intent='availability'
+   else if(rbSimDireto)next.time=String(rb.time)
+   else next.time=null
+   if(rbSimDireto)intent='book'
+   else if(intent!=='book'&&intent!=='availability')intent='availability'
   }
  }
 
@@ -2894,7 +2911,10 @@ Deno.serve(async req=>{
  const desistenciaSignal=/\b(deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|semana que vem|proxima semana|outro dia|outra hora|depois eu (vejo|falo|marco|passo)|fica pra (proxima|outra)|mais pra frente|agora nao (da|consigo|vai dar)|nao vai dar hoje|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
  // v29.190.0 — "agora não consigo, tem horário amanhã pra corte?" caía aqui e a pergunta do amanhã
  // sumia ("Fica combinado assim"). Desistência com pergunta de agenda na mesma frase é pedido.
- if(desistenciaSignal&&!availabilityAsk&&activelyBooking&&notSpecialFlow&&!requestedTime&&!requestedPeriod&&!simpleYes&&intent!=='book'){
+ // v29.193.0 — "quais dias você tem pra corte na próxima semana?" também caía aqui (availabilityAsk
+ // só conhece "tem horário/vaga"): quem PERGUNTA por dias não está desistindo — segue pra varredura.
+ const perguntaPorDias=/\b(quais? dias?|que dias?|qual dia|dias disponiveis|tem (vaga|horario|agenda)|algum (dia|horario))\b/.test(normalizedQuestion)
+ if(desistenciaSignal&&!availabilityAsk&&!perguntaPorDias&&activelyBooking&&notSpecialFlow&&!requestedTime&&!requestedPeriod&&!simpleYes&&intent!=='book'){
   const semanaQueVem=/semana que vem|proxima semana/.test(normalizedQuestion)
   const nome=hasCustomer&&customerFirstName!=='cliente'?`, ${customerFirstName}`:''
   reply=`Sem problema${nome}! 😊 Fica combinado assim. Se quiser já deixar seu horário garantido ${semanaQueVem?'na semana que vem':'pra outro dia'}, me diz o dia e o horário que ficam bons pra você (ex.: "terça às 14h") que eu reservo por aqui mesmo.`
@@ -3021,7 +3041,14 @@ Deno.serve(async req=>{
   const pisoDeHorario=/\b(apos|depois d[ae]s?|a partir d[ae]s?)\b/.test(normalizedQuestion)&&Boolean(requestedTime)
   const minTime=pisoDeHorario?requestedTime:''
   const diasCitados=weekdayDatesMentioned(normalizedQuestion,today())
-  const perguntaDeDias=/\b(quais? dias?|que dias?|qual dia (voce|vc|voces|vcs)|que dia (voce|vc|voces|vcs)|essa semana|nessa semana|nesta semana|proximos dias|dias disponiveis|quando (voce|vc|voces|vcs))\b/.test(normalizedQuestion)
+  // v29.193.0 — "qualquer dia", "quando tiver", "tanto faz", "próxima semana" também são pedido
+  // de dias (antes caíam em "Para qual dia você quer ver os horários?", devolvendo a pergunta a
+  // quem acabou de dizer que não tem preferência). "Próxima semana" varre a partir da segunda
+  // que vem, não de hoje. A desistência ("acho que fica pra semana que vem") já foi tratada
+  // antes deste bloco (desistenciaSignal) e não chega aqui.
+  const perguntaDeDias=/\b(quais? dias?|que dias?|qual dia (voce|vc|voces|vcs)|que dia (voce|vc|voces|vcs)|essa semana|nessa semana|nesta semana|proximos dias|dias disponiveis|quando (voce|vc|voces|vcs)|qualquer dia|quando tiver|quando der|quando puder|tanto faz o dia|nao importa o dia|proxima semana|semana que vem)\b/.test(normalizedQuestion)
+  const pediuSemanaQueVem=/\b(proxima semana|semana que vem)\b/.test(normalizedQuestion)
+  const inicioVarredura=pediuSemanaQueVem?somarDiasIso(today(),((8-diaDaSemana(today()))%7)||7):today()
   const jaPerguntouODia=/(para|pra) qual dia/i.test(ultimaFalaJuIA)
   // v29.70.0: o handoff=false do fim deste bloco (que existe pra não vazar handoff do
   // modelo) estava engolindo o pedido de exceção fora do horário — o Juliano nunca
@@ -3030,7 +3057,7 @@ Deno.serve(async req=>{
   if(diasCitados.length||perguntaDeDias||jaPerguntouODia||minTime){
    const varredura=diasCitados.length
     ?await availabilityForDates(supabase,diasCitados,duration,minTime)
-    :await findAvailableDatesInRange(supabase,today(),duration,7,3,minTime)
+    :await findAvailableDatesInRange(supabase,inicioVarredura,duration,7,3,minTime)
    const comVaga=varredura.filter((d:any)=>d.slots.length)
    const semVaga=diasCitados.length?varredura.filter((d:any)=>!d.slots.length):[]
    const nota=semVaga.length?` ${semVaga.map((d:any)=>minTime?`${emDiaCap(d.date)} não tenho nada depois das ${horaFalada(minTime)}`:semVagaTxt(d.date)).join(' e ')}.`:''
@@ -3041,10 +3068,13 @@ Deno.serve(async req=>{
     reply=`Para ${serviceNames} (aproximadamente ${duration} min) consigo te atender ${emDia(comVaga[0].date)}${minTime?` depois das ${horaFalada(minTime)}`:''}: ${slotsPhrase(comVaga[0].slots)}.${nota} Qual horário fica melhor pra você?`
     actions=slotsSample(comVaga[0].slots).map((t:string)=>({label:t,message:t}))
    }else if(comVaga.length){
+    // v29.193.0 — os horários mostrados e o primeiro botão são do dia em DESTAQUE (primeiro dia
+    // fraco da lista; sem dia fraco, o primeiro). Dia citado pelo nome segue cronológico.
+    const destaque=(diasCitados.length?comVaga[0]:diaDestaque(comVaga))||comVaga[0]
     const lista=comVaga.map((d:any)=>diaHumano(d.date))
     const listaTxt=`${lista.slice(0,-1).join(', ')} e ${lista[lista.length-1]}`
-    reply=`Para ${serviceNames} (aproximadamente ${duration} min) tenho vaga ${minTime?`depois das ${horaFalada(minTime)} `:''}nestes dias: ${listaTxt}.${nota} ${emDiaCap(comVaga[0].date)} consigo te atender ${slotsPhrase(comVaga[0].slots)}. Qual dia fica melhor pra você?`
-    actions=comVaga.map((d:any)=>({label:diaHumano(d.date),message:`Quero ${diaHumano(d.date)}`}))
+    reply=`Para ${serviceNames} (aproximadamente ${duration} min) tenho vaga ${minTime?`depois das ${horaFalada(minTime)} `:''}nestes dias: ${listaTxt}.${nota} ${emDiaCap(destaque.date)} consigo te atender ${slotsPhrase(destaque.slots)}. Qual dia fica melhor pra você?`
+    actions=[destaque,...comVaga.filter((d:any)=>d!==destaque)].map((d:any)=>({label:diaHumano(d.date),message:`Quero ${diaHumano(d.date)}`}))
    }else{
     // Nada dentro da restrição. O caso real é o piso alto demais: o Tiago pediu "após as
     // 19h" e a agenda abre até 18:30, porque fechamos às 19h. Dizer isso na hora, com o

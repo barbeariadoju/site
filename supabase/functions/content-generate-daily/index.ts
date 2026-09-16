@@ -231,6 +231,10 @@ function themeTextFor(context: Record<string, unknown>, campanha = ''): string {
       return 'domingo de manhã: a barbearia em repouso, luz clara de sol, silêncio e descanso, sem texto na imagem.'
     case 'segunda':
       return 'começo de semana: ferramentas limpas e organizadas, casa preparada para receber, luz clara de manhã, sem texto na imagem.'
+    case 'manha_meio_semana':
+      // v29.193.0 — sem "domingo" nem "começo de semana" no texto: o gate de estilo da arte
+      // (isDomingo/isSegunda) casa por string e não pode pegar este tema.
+      return 'manhã de meio de semana na barbearia: luz de manhã entrando pela vitrine, café recém-servido no balcão, cadeira pronta e ferramentas alinhadas, ambiente acolhedor e sossegado, sem pessoas e sem texto na imagem.'
     case 'servico_destaque':
       return `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
     case 'campanha':
@@ -656,6 +660,28 @@ ${NO_HARD_SELL}`
 
       contextFact = `Tema de hoje: SEGUNDA-FEIRA na voz da Barbearia do Ju. Ângulo desta semana — ${anguloSegunda} Escreva curto (2 a 4 linhas), com energia de começo de semana, sem clichê motivacional batido. Hoje a barbearia está FECHADA: é PROIBIDO falar de agenda de hoje, horário livre, encaixe ou vaga. Pode terminar com um convite leve para a semana ("a semana começa amanhã por aqui", "te esperamos a partir de terça").`
       context = { tipo: 'segunda', angulo: semanaDoMes, dia: todaySP }
+    } else if (dowSP === 2) {
+      // v29.193.0 — TERÇA É O DIA DA MANHÃ DE MEIO DE SEMANA (pedido do Juliano, 16/09/2026).
+      // Quarta e quinta são os dias mais vazios da casa (5,3 e 6,5 atendimentos/dia contra 8,9
+      // na sexta, 8 semanas até 13/09) e a MANHÃ é a faixa mais vazia deles — quem vem no meio
+      // da semana vem depois do trabalho. Uma vez por semana, na terça (primeiro dia aberto, com a
+      // semana inteira pela frente), o post fala com quem tem a manhã livre: profissional liberal
+      // com o consultório fechado na quarta, quem faz o próprio horário em casa, quem já se
+      // aposentou, o pai que leva o filho. Enquadramento é EXCLUSIVIDADE — a casa naquela hora é
+      // de quem pode escolher — nunca vacância: a regra da v28.58.0 (SCARCITY_VIOLATION) derruba
+      // qualquer legenda que cheire a agenda vazia, e o crivo das 8h05 sabe deste tema. Antes de
+      // reta_final/campanha de propósito: com campanha ativa a rotação nunca roda (v29.88.0) e
+      // este tema tem que sair toda terça.
+      const semanaDoMes = Math.ceil(Number(todaySP.slice(-2)) / 7)
+      const anguloManha = [
+        'PROFISSIONAL LIBERAL: consultório, escritório ou clínica que fecha na quarta (ou na quinta) de manhã — a folga do meio da semana é a hora de sentar na cadeira com tempo, sem encaixar entre um paciente e outro.',
+        'QUEM FAZ O PRÓPRIO HORÁRIO: autônomo, home office, quem manda na própria agenda de trabalho — escolhe o corte pra manhã de terça a quinta e volta pro dia com o visual pronto, sem trânsito de fim de tarde.',
+        'A MANHÃ SEM PRESSA: quem já se aposentou ou tem a manhã livre — café na chegada, conversa boa, o Juliano começando o dia com um cliente só. Tom de respeito e acolhimento, sem infantilizar ninguém.',
+        'PAI E FILHO: o corte do pequeno na manhã de quarta ou quinta — um cliente por vez, sem plateia, no ritmo da criança (corte infantil existe na casa). Fale com o pai, sem clichê de "momento especial".',
+      ][(semanaDoMes - 1) % 4]
+
+      contextFact = `Tema de hoje (sai toda terça, uma vez por semana): A MANHÃ DE MEIO DE SEMANA na Barbearia do Ju — terça, quarta e quinta de manhã, o horário em que a casa é mais de quem escolhe o próprio horário. Público desta semana — ${anguloManha} ENQUADRAMENTO OBRIGATÓRIO: exclusividade e ritmo da casa naquela hora, com um fato concreto (o café recém-passado, a rua ainda acordando, o Juliano abrindo o dia com um cliente só, hora marcada e atendimento sem espera). É o horário de quem PODE escolher — e o convite é escolher a manhã de terça, quarta ou quinta. Fale em terceira pessoa ("tem gente que faz o próprio horário", "quem tem a manhã livre") — nunca afirme nada sobre a rotina de quem lê. É PROIBIDO, e derruba o texto inteiro: qualquer palavra ou ideia de agenda vazia — "horário livre", "horário disponível", "vaga", "janela", "encaixe", "movimento", "sem fila", "agenda tranquila", "barbearia tranquila/vazia/calma" (isso diz que ninguém vem), "aproveite", "promoção", "desconto". Não diga que quarta ou quinta é mais vazia; diga que a manhã de meio de semana é o melhor horário de quem tem a manhã livre. Termine com o convite direto de marcar a manhã de terça, quarta ou quinta. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
+      context = { tipo: 'manha_meio_semana', angulo: semanaDoMes, dia: todaySP }
     } else if (openSlotsCount > 0 && openSlotsCount <= 3) {
       // Escassez REAL: pouquíssimos horários restando é sinal de procura — pode falar.
       contextFact = `A agenda de hoje (${formatDateBR(todaySP)}) está QUASE CHEIA: restam só os últimos horários do dia. Convide a garantir um dos últimos horários de hoje, com tom de procura alta ("a agenda de hoje está fechando", "últimos horários do dia"). É PROIBIDO dizer o número exato de horários, citar horários específicos, ou usar as palavras "janela", "encaixe" e "vaga".`
@@ -731,6 +757,14 @@ ${NAO_INVASIVO}`
         '📅 Segunda é dia de organizar a semana — deixe o seu horário garantido antes que ela encha. Abrimos terça!',
         '✂️ Cuidar da própria imagem não é vaidade, é respeito por si mesmo. Semana nova, visual novo.',
         '💈 Hoje é dia de afiar as ferramentas e deixar tudo pronto pra você. Te esperamos a partir de terça!',
+      ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
+      // v29.193.0 — fallback da manhã de meio de semana: exclusividade, nunca vacância (passa
+      // pelo SCARCITY_VIOLATION de propósito: nada de "livre", "vaga", "sem fila", "tranquila").
+      manha_meio_semana: [
+        '☕ Terça, quarta e quinta de manhã: o café recém-passado, a rua ainda acordando e o Juliano abrindo o dia com um cliente só. Quem faz o próprio horário sabe escolher.',
+        '💈 Consultório fechado na quarta? A manhã de meio de semana na Barbearia do Ju é hora marcada, um cliente por vez e tempo pra fazer direito.',
+        '☕ Manhã de meio de semana na barbearia: café na chegada, hora marcada, atendimento sem espera e conversa boa. Terça, quarta ou quinta — escolha a sua.',
+        '💈 Corte do pequeno na manhã de quarta ou quinta: um cliente por vez, sem plateia e no ritmo dele. Escolha a manhã que fica melhor pra vocês.',
       ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
     }
     const base = FALLBACK_BASE[String(context.tipo)] || FALLBACK_BASE.experiencia
