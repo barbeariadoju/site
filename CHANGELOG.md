@@ -1,3 +1,25 @@
+## 29.196.2 — Termos reais de busca (Search Console + Google Meu Negócio) aplicados nos títulos: Barboterapia de volta ao título do artigo, home "Barbearia em Bragança Paulista", FAQ da hora marcada, rosto redondo, barba reta, valor das luzes (16/09, noite)
+
+**Pedido do Juliano (16/09/2026, noite):** o Gemini sugeriu pegar os termos mais buscados e usar como título de páginas/seções pra ranquear melhor; ele citou "barboterapia" como chute. Depois: "veja se consegue aproveitar outros títulos também".
+
+**De onde vieram os termos (dados, não achismo):** (1) Search Console, propriedade `sc-domain:barbeariadoju.com.br`, últimos 3 meses (10/07–14/09), aberto pelo Chrome dele — 258 consultas, 5,57 mil impressões, 103 cliques, CTR 1,9%, posição média 7,2; lidas as 60 primeiras por impressões; (2) Google Meu Negócio pelo Windsor (`search_keyword`, 6 meses) — o que digitam no Maps: "barbearia", "barbearia bragança paulista", "barbearia perto de mim", "barbeiro", "cabeleireiro", "barbearia do ju"; ninguém procura serviço pelo nome no Maps.
+
+**Top 10 do Search Console por impressões (cliques · impressões · posição):** barbearia do ju 42·558·2,0 · barbearia bragança paulista 1·507·7,3 · barbearia perto de mim 1·169·6,6 · barbearia 1·129·5,9 · barbearia em bragança paulista 1·102·8,5 · barbeiro bragança paulista 2·90·6,4 · barbearia bragança paulista perto de mim 1·72·8,2 · barbearia com hora marcada 0·57·11,4 · o que é barboterapia 0·45·20,5 · barboterapia o que é 0·39·10,4. Na sequência: barbearia bragança 36, barbeiro 35, cortes para rosto redondo masculino 25, barba falhada 25, pigmentação de barba 25 (posição 15), rosto redondo masculino 20, barba reta 13, valor do corte 11, valor para fazer luzes no cabelo masculino 11, barboterapia 11 (posição 38).
+
+**O chute do Gemini acertou, e a causa é nossa:** as buscas "barboterapia" caíam em `blog-barboterapia.html` (99 impressões, posição 18, zero clique) — e o artigo tinha PERDIDO a palavra do título quando o serviço sem ozônio foi renomeado pra "Barba na navalha com toalha quente" (v29.104). O Google ainda mandava gente pra lá, mas o título não dizia mais o que a pessoa digitou.
+
+**O que mudou (só HTML, sem JS/CSS, sem cache):**
+- `blog-barboterapia.html`: título, H1, og/twitter, JSON-LD e breadcrumb voltam a começar com **"Barboterapia: o que é e por que vale a pena"**; o primeiro parágrafo define o termo ("Barboterapia é o nome pelo qual muita gente conhece a barba feita na navalha com toalha quente") e nomeia as duas versões da casa (sem ozônio = Barba na navalha com toalha quente; com ozônio = Barboterapia com vaporizador de ozônio). Os 10 arquivos que linkavam com o título antigo ganharam o novo. URL igual.
+- `index.html`: `<title>` de "Barbearia do Ju — Centro de Bragança Paulista | Hora Marcada" para **"Barbearia em Bragança Paulista com hora marcada | Barbearia do Ju"** (a busca de 700+ impressões com CTR de 0,2% é exatamente "barbearia (em) bragança paulista"; o título agora começa com o que a pessoa digitou). H2 "Funcionamento" virou "Funcionamento: barbearia com hora marcada".
+- `perguntas-frequentes.html`: pergunta nova "A Barbearia do Ju é uma barbearia com hora marcada?" (HTML + FAQPage, 24 perguntas) — "barbearia com hora marcada" tinha 57 impressões na posição 11 e nenhuma página respondia com essas palavras.
+- `blog-melhor-corte-rosto-redondo.html`: H2 "Cortes para rosto redondo masculino: o que costuma funcionar bem" (a família "rosto redondo" soma ~80 impressões entre 5 variações, posição 7–10).
+- `blog-formato-barba-ideal.html`: seção nova "Barba reta: o pedido mais comum, e quando ela funciona" (13 impressões, sem seção que falasse disso).
+- `servico-luzes-masculinas.html`: a pergunta do FAQ virou "Qual o valor para fazer luzes no cabelo masculino?" (é a frase buscada; preço inalterado).
+
+**Decidido contra a recomendação do Gemini:** NÃO criar páginas novas pra "barbearia perto de mim", "barbearia aberta agora", "barbearia centro" — são buscas de proximidade que o Google resolve pelo Maps (GBP), e página por bairro/cidade é doorway (seção 5 do CLAUDE.md). Também não criar página só pra "barba falhada"/"pigmentação de barba": já existem artigo e página de serviço posicionados; o ganho ali é link interno e tempo, não página nova. "luzes masculinas mogi das cruzes" (34 impressões) é outra cidade — ignorado.
+
+**Como medir:** Search Console, mesmas 10 consultas, daqui a 4 semanas (14/10): CTR de "barbearia bragança paulista" (hoje 0,2%) e posição de "o que é barboterapia" (hoje 20). `npm test` verde: 138 unit + 48 e2e.
+
 ## 29.196.1 — Citações locais: os cadastros já existiam; o pacote virou roteiro de conferência, e o Guia de Bragança está com o número errado (16/09, noite)
 
 **Correção do Juliano (16/09/2026, logo depois do resumo do dia de folga):** "citações locais já temos cadastro em tudo isso". A seção 6 do `CLAUDE.md` dizia "nenhuma citação local foi criada" — estava errada, e eu montei o pacote da frente 1 em cima dela. **Erro meu de premissa:** deveria ter conferido de fora antes de escrever "criar".
