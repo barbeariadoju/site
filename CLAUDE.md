@@ -147,6 +147,15 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   **motivo da cortesia nunca vai pro cliente** — aquele campo é anotação interna.
 - **`admin-version.json` e a constante `ADMIN_VERSION` são separados de propósito**
   da versão do site. É o que decide o reload do painel aberto durante atendimento.
+- **O GTM lê `#agenda-email` e `#agenda-phone` na hora do `booking_confirmed`** (conversões
+  otimizadas do Google Ads, configuradas pelo suporte do Google em 16/09/2026: duas variáveis
+  de JavaScript personalizado + "dados fornecidos pelo usuário" na tag de conversão). Isso
+  depende de duas coisas que não podem mudar sem avisar: os ids desses inputs, e o
+  `fire('booking_confirmed', …)` em `agenda-v15.js` disparar com o formulário ainda na tela
+  (hoje dispara antes de trocar o bloco de status — o formulário fica no DOM). O consentimento
+  (`ad_user_data`) continua sendo o que libera o envio; a política de privacidade descreve isso
+  desde 16/09. Nunca colocar e-mail/telefone no `dataLayer` do evento: a tag do GA4 mandaria
+  junto, e PII no GA4 viola a política do Google.
 
 ---
 

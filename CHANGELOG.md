@@ -1,3 +1,13 @@
+## 29.195.2 — Reunião de Tag Implementation com o Google (16/09, 15h): o que mudou fora do repo, o que foi conferido, política de privacidade atualizada
+
+**O que o suporte do Google fez com o Juliano (GTM + GA4, fora do repositório):** conversões otimizadas do Google Ads na tag de conversão `booking_confirmed` — duas variáveis de JavaScript personalizado (e-mail e telefone) lidas da página na hora do evento e a variável "dados fornecidos pelo usuário" ligada à tag; versão do container publicada. No GA4: coleta de dados toda ativada; conferido que o evento `booking_confirmed` chega e que a conversão "Reservar o horário" está ativa e importada no Google Ads com valor (é a que otimiza os lances). O técnico confirmou que os dados estão na mesma página do evento. Pergunta do ajuste de lance por dia/hora (quarta e quinta de manhã) é da equipe de Ads — Juliano mandou e-mail pro Henrique.
+
+**Conferido aqui:** `agenda-v15.js` dispara `booking_confirmed` (linha `fire(...)`) ANTES de trocar o bloco de status, e o formulário continua no DOM depois — as variáveis do GTM que leem `#agenda-email`/`#agenda-phone` funcionam. Isso virou decisão registrada no `CLAUDE.md` (seção 5): esses ids e a ordem do disparo não mudam sem avisar; e-mail/telefone NUNCA vão pro `dataLayer` (a tag do GA4 mandaria junto — PII no GA4 viola a política do Google).
+
+**Testes da equipe de qualidade do Google:** dois agendamentos "teste" (teste@gmail.com, 15h20 e 15h30) — o Juliano cancelou e apagou na hora; sobraram dois cadastros "teste" em `customer_profiles` (sem reserva, sem WhatsApp enviado, sem fidelidade), arquivados agora. E-mails de confirmação/cancelamento foram pro teste@gmail.com (inofensivo). Eles avisaram que podem fazer mais testes assim, sempre com "teste" no nome.
+
+**Política de privacidade (`privacidade.html`):** a seção "Cookies e métricas" dizia que só o identificador anônimo, valor e serviços iam ao Google — ficou incompleta com as conversões otimizadas. Parágrafo novo: com cookies de marketing aceitos, e-mail e telefone do agendamento vão ao Google Ads criptografados (hash irreversível), só pra medir que o anúncio virou agendamento; com "somente essenciais", nada vai. Data de atualização: 16/09/2026. Só HTML, sem bump de cache.
+
 ## 29.196.0 — Dia de folga: citações locais prontas pra copiar, auditoria técnica do site, revisão da JuIA, revisão de segurança (RPCs internas fechadas pro anônimo) e artigo sobre sobrancelha (16/09, fim da tarde)
 
 **Pedido do Juliano (16/09/2026):** `/dia-de-folga` sem argumento — as cinco frentes, na ordem.
