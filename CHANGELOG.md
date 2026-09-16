@@ -1,3 +1,15 @@
+## 29.194.2 — Barba Express dita com todas as letras: "só na máquina, sem navalha e sem toalha quente"; JuIA compara com a barba que o cliente já reservou (16/09, começo da tarde)
+
+**Caso real (Maurício, 16/09/2026, 13h07, print do Juliano):** primeira visita, reservada pela manhã a Barba na navalha com toalha quente (R$ 40) pra hoje às 18h30. Às 13h07: "não vou raspar a barba inteira, seria outro valor para aparar e passar a maquininha?". A JuIA respondeu certo no preço — "Barba Express (só na máquina), por R$ 25,00" — mas (1) "só na máquina" não desenha pra quem precisa, e a preocupação do Juliano é deixar explícito que **não tem navalha nem toalha quente**; (2) ela respondeu como pra um desconhecido e ainda ofereceu "consultar um horário" pra quem já tinha horário — o cliente é que teve que dizer "já tenho horário para hoje às 18:30". Dado: nada a corrigir (a reserva ficou como está; "a gente vê na hora").
+
+**O que mudou:**
+- `ju-ia-site` v260: o resumo derivado do nome (`barbaResumo`) da Barba Express virou "só na máquina, sem navalha e sem toalha quente" — vale na lista das três barbas, nos combos e em toda cotação; o prompt manda dizer isso com todas as letras. Regra nova no prompt: cliente **com barba já reservada** perguntando preço ou diferença de outra barba recebe a COMPARAÇÃO (o reservado com dia, horário, valor e o que inclui; o outro com valor e o que não tem) e a oferta de trocar na reserva ou decidir na hora — nunca "posso consultar um horário" pra quem já tem horário. Helper `ehBarbaExpress` no lugar da comparação por texto do resumo (dois pontos do código filtravam a lista de barbas por `!=='só na máquina'` e quebrariam com a frase nova).
+- Descrição do serviço nos três lugares que o cliente lê: `services` (banco, fonte da JuIA), `services-catalog-v7.js` (site, `?v=29.194.2` nas 10 páginas que o carregam) e os dois cards de `agendar/index.html` — Barba Express: "Alinhamento rápido da barba, só na máquina — sem navalha e sem toalha quente."; Corte + Barba Express idem.
+
+**Conferido em produção** (sessões `deploy-check-v291942-*`, apagadas): a pergunta exata do Maurício → "Barba Express (só na máquina, sem navalha e sem toalha quente), por R$ 25,00"; "o que é a barba express?" → idem, com duração; a lista das três barbas sai com o resumo novo. **Não conferido ao vivo:** a comparação com a barba já reservada (exige WhatsApp verificado com reserva) — é regra de prompt, conferida por leitura.
+
+`npm test` verde: 124 unit + 48 e2e.
+
 ## 29.194.1 — Câmera: as quedas eram do contador, não da rede — leitor de vídeo em thread (16/09, meio-dia)
 
 **Pedido do Juliano (16/09/2026, ~12h10):** "consegue rodar uns testes nela aí já que você tem todo o acesso?", depois do alerta da v29.194.0 de que a câmera caía e reconectava quase a cada minuto.
