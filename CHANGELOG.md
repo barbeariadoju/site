@@ -1,3 +1,11 @@
+## 29.196.3 — Fotos do perfil do Google pela API (3 novas, 5 reprovadas no crivo) e regra da placa de horário antiga (16/09, noite)
+
+**Pedido do Juliano (16/09/2026, noite):** "vou tirar umas fotos, você escolhe as melhores e publica". Mandou 8.
+
+**Publicadas no perfil (Windsor `upload_media`, hospedadas em `assets/gbp/`):** ambiente visto da entrada (sofá, poste, cadeira, logo na parede — categoria INTERIOR), cadeira com espelho aceso, bancada e geladeira (INTERIOR), prateleira de produtos (ADDITIONAL — `PRODUCT` deu 400). **Reprovadas:** (1) cadeira com o balcão da recepção — cabo com etiqueta 220 V e tomada em primeiro plano, notebook aberto, bancada com bagunça; (2) cantinho do café — o cartaz de avaliação ao lado traz a senha do Wi-Fi legível em zoom, não vai pra galeria pública; (3–5) as três da fachada — **a placa física ainda mostra 8h30–18h e sábado 8h30–14h**, e o perfil diz 8h–19h / 8h–15h; foto oficial contradizendo o horário do perfil é pior que foto nenhuma (a `assets/fachada.jpg` do site é a versão corrigida digitalmente). Sugestão dada: trocar a placa junto com a plaquinha do reajuste que já está encomendada.
+
+**CLAUDE.md, seção 4:** a armadilha do upload de foto foi reescrita — trava só pela tela; pela API funciona, com o passo a passo e as regras do crivo. Sem código, sem cache.
+
 ## 29.196.2 — Termos reais de busca (Search Console + Google Meu Negócio) aplicados nos títulos: Barboterapia de volta ao título do artigo, home "Barbearia em Bragança Paulista", FAQ da hora marcada, rosto redondo, barba reta, valor das luzes (16/09, noite)
 
 **Pedido do Juliano (16/09/2026, noite):** o Gemini sugeriu pegar os termos mais buscados e usar como título de páginas/seções pra ranquear melhor; ele citou "barboterapia" como chute. Depois: "veja se consegue aproveitar outros títulos também".

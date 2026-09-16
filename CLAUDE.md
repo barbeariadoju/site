@@ -93,8 +93,14 @@ somava o serviço duas vezes (2× Barboterapia, R$ 80) até ganhar guarda.
 pilar ficou fora do sitemap por um dia porque o script imprimiu "adicionada" sem
 ter adicionado. **Sempre confira a contagem depois.**
 
-**Google Business Profile.** O upload de foto trava em qualquer automação (input
-dentro de iframe, janela de arquivo nativa) — use o app no celular. E a interface
+**Google Business Profile.** O upload de foto pela TELA do Google trava em qualquer
+automação (input dentro de iframe, janela de arquivo nativa). Pela API funciona: Windsor
+`google_my_business` → `upload_media` com a URL pública da foto (hospedar antes em
+`assets/gbp/`, commit + push, conferir 200). Categorias aceitas em 16/09/2026: `INTERIOR`,
+`ADDITIONAL`; `PRODUCT` devolve 400 nesta categoria de negócio. Toda foto passa pelo crivo
+antes (Read na imagem): nada de cliente, nada de cabo/tomada/bagunça no quadro, e **nunca a
+placa física de horário** — ela ainda mostra 8h30–18h/8h30–14h (o horário real é 8h–19h /
+8h–15h) e contradiz o perfil. E a interface
 abre sozinha o overlay *"Escolha o elemento para o qual você está enviando
 feedback"* quando o clique erra o alvo: **nunca interaja com ele**, recarregue.
 
