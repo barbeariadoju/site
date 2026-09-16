@@ -1,3 +1,11 @@
+## 29.196.1 — Citações locais: os cadastros já existiam; o pacote virou roteiro de conferência, e o Guia de Bragança está com o número errado (16/09, noite)
+
+**Correção do Juliano (16/09/2026, logo depois do resumo do dia de folga):** "citações locais já temos cadastro em tudo isso". A seção 6 do `CLAUDE.md` dizia "nenhuma citação local foi criada" — estava errada, e eu montei o pacote da frente 1 em cima dela. **Erro meu de premissa:** deveria ter conferido de fora antes de escrever "criar".
+
+**Conferido de fora no mesmo dia:** o Guia de Bragança tem a ficha (`/clientefree/barbearia-do-ju/`) com **"rua Antonio da Cruz n°481"** — o certo é Rua Dr. Antônio da Cruz, **482** —, telefone certo, e sem CEP, horário, site, descrição e foto. Endereço divergente entre diretórios pesa mais no SEO local do que ficha ausente. Bing não mostra painel local na busca; Apple, Solutudo e o detalhe do Facebook não dá pra ver sem login.
+
+**O que mudou (só documentação, sem código, sem cache):** `SEO-CITACOES-PACOTE.md` reescrito de "criar" para "abrir cada ficha e igualar campo a campo", com a tabela do que foi visto e o Guia de Bragança em primeiro no checklist (~30 min); `CLAUDE.md` seção 6 corrigida com aviso pra não propor "criar citações" de novo; memória do projeto atualizada.
+
 ## 29.195.2 — Reunião de Tag Implementation com o Google (16/09, 15h): o que mudou fora do repo, o que foi conferido, política de privacidade atualizada
 
 **O que o suporte do Google fez com o Juliano (GTM + GA4, fora do repositório):** conversões otimizadas do Google Ads na tag de conversão `booking_confirmed` — duas variáveis de JavaScript personalizado (e-mail e telefone) lidas da página na hora do evento e a variável "dados fornecidos pelo usuário" ligada à tag; versão do container publicada. No GA4: coleta de dados toda ativada; conferido que o evento `booking_confirmed` chega e que a conversão "Reservar o horário" está ativa e importada no Google Ads com valor (é a que otimiza os lances). O técnico confirmou que os dados estão na mesma página do evento. Pergunta do ajuste de lance por dia/hora (quarta e quinta de manhã) é da equipe de Ads — Juliano mandou e-mail pro Henrique.

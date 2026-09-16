@@ -171,9 +171,12 @@ dobra, popup que deixou de bloquear o próprio CTA, pré-seleção de serviço p
 
 **O que ainda limita a nota, e não é código:**
 
-- **Autoridade externa.** Nenhuma citação local foi criada. As cinco mais baratas
-  seguem em aberto: Apple Business Connect, Bing Places, Solutudo, guiadebraganca
-  e Facebook. É a maior alavanca parada.
+- **Autoridade externa.** ⚠️ Corrigido em 16/09/2026: a barbearia **já tem cadastro**
+  em Apple Business Connect, Bing Places, Solutudo, Guia de Bragança e Facebook
+  (informação do Juliano). O problema não é ausência, é **consistência**: o Guia de
+  Bragança lista "rua Antonio da Cruz n°481" (certo: Rua Dr. Antônio da Cruz, 482),
+  sem CEP, horário, site nem foto. Roteiro de conferência campo a campo em
+  `SEO-CITACOES-PACOTE.md`. Não proponha "criar citações" de novo.
 - **Cadência no perfil.** Meta: 3 fotos + 1 post por semana, com pelo menos uma
   de ambiente (a foto do interior tem 2,21 mil visualizações, muito acima das de
   resultado).

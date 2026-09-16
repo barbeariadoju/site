@@ -1,8 +1,19 @@
 # Pacote de citações locais — Barbearia do Ju
 
-Preparado em 16/09/2026 (dia de folga, frente 1). Objetivo: criar as cinco citações locais
-mais baratas que ainda estão em aberto (`CLAUDE.md`, seção 6). O Juliano cria as contas; este
-arquivo é o que se copia e cola em cada uma.
+Preparado em 16/09/2026 (dia de folga, frente 1). **Correção do mesmo dia:** o Juliano avisou
+que a barbearia JÁ TEM cadastro nos cinco diretórios. Então o trabalho não é criar, é **abrir
+cada ficha e deixar os dados idênticos** aos da tabela abaixo (que são os do Google Business
+Profile). O que foi possível conferir de fora:
+
+| Diretório | O que apareceu em 16/09 | Situação |
+|---|---|---|
+| Guia de Bragança | Ficha em `https://guiadebraganca.com.br/clientefree/barbearia-do-ju/`: **"rua Antonio da Cruz n°481"** (o número certo é **482**, e falta o "Dr."), telefone certo, categoria "Barbearias"; **sem** CEP, horário, site, descrição e foto | **Corrigir primeiro** — endereço divergente é pior que ficha ausente |
+| Facebook | Página existe (nome e cidade visíveis sem login) | Conferir endereço, telefone, horário, site e botão "Reservar" logado |
+| Bing Places | Não aparece painel local na busca do Bing para "Barbearia do Ju" Bragança Paulista | Conferir no painel se a ficha está publicada e verificada |
+| Apple Business Connect | Não dá pra conferir de fora | Conferir no painel |
+| Solutudo | A ficha não foi localizada pela busca pública | Conferir no painel se está publicada |
+
+Este arquivo é o que se compara campo a campo em cada uma.
 
 **Regra de ouro (NAP consistente):** nome, endereço e telefone têm que ser IDÊNTICOS em todos
 os diretórios e iguais ao Google Business Profile. Não abrevie "Rua" nem "Dr.", não troque a
@@ -190,16 +201,16 @@ A página já existe (Barbearia do Ju, vinculada ao Instagram @barbeariadoju_). 
 
 ---
 
-## Checklist do Juliano (na ordem — ~40 minutos no total)
+## Checklist do Juliano (na ordem — ~30 minutos no total; os cadastros já existem)
 
-1. **Bing Places** (10 min): https://www.bingplaces.com/ → entrar com conta Microsoft → "Importar do Google" → conferir campos → verificar por telefone.
-2. **Apple Business Connect** (10 min): https://businessconnect.apple.com/ → entrar com ID Apple → "Adicionar local" → colar o bloco 1 → subir as 5 fotos + logo → pedir verificação.
-3. **Facebook** (8 min): https://www.facebook.com/ → Página → "Editar detalhes" → colar o bloco 5 → botão "Reservar" com o link de agendamento.
-4. **Solutudo** (7 min): https://www.solutudo.com.br/ → "Cadastre sua empresa" → plano gratuito → colar o bloco 3.
-5. **Guia de Bragança** (5 min): https://guiadebraganca.com.br/ → "Anuncie"/"Cadastre" → colar o bloco 4 (ou mandar o texto pelo canal que o guia indicar).
+1. **Guia de Bragança** (5 min): entrar na conta do guia (ou mandar pro contato deles, contato@guiadebraganca.com.br / (11) 4033-2000, se a edição for por eles) e corrigir: endereço `Rua Dr. Antônio da Cruz, 482` (está 481), CEP `12900-350`, horário, site com UTM do bloco 4, descrição longa, as 5 fotos + logo.
+2. **Bing Places** (8 min): https://www.bingplaces.com/ → entrar → abrir a ficha existente → comparar com o bloco 2 campo a campo → se a ficha estiver "não verificada", pedir verificação por telefone.
+3. **Apple Business Connect** (8 min): https://businessconnect.apple.com/ → abrir o local → comparar com o bloco 1 → conferir se o link "Reservar" está com a UTM → conferir se as fotos estão lá.
+4. **Facebook** (5 min): Página → "Editar detalhes" → comparar com o bloco 5 → botão "Reservar" com o link de agendamento.
+5. **Solutudo** (4 min): https://www.solutudo.com.br/ → entrar → conferir se a ficha está publicada e igual ao bloco 3.
 
-Depois de cada um: me avisar ("Bing feito") que eu confiro se a ficha ficou pública, se o NAP
-bateu com o GBP e se o link com UTM está chegando no GA4 (`utm_medium=citation`).
+Depois de cada um: me avisar ("Guia feito") que eu confiro de fora se a ficha ficou pública, se
+o NAP bateu com o GBP e se o link com UTM está chegando no GA4 (`utm_medium=citation`).
 
 Fotos: estão no repositório (pasta `assets/`) e também no ar, por exemplo
 `https://www.barbeariadoju.com.br/assets/ambiente-corte.jpg` — dá pra baixar direto no celular
