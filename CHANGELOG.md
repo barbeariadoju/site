@@ -1,3 +1,18 @@
+## 29.195.1 — Confirmação de presença: "1" na frente confirma mesmo com "não vou pintar" no meio; serviço tirado na frase é ajustado na reserva (16/09, 15h)
+
+**Caso real (Sr. Magno, 16/09/2026, 15h09, print do Juliano):** ao pedido de confirmação do horário de amanhã 13h30 (Depilação orelhas + Depilação nasal + Pigmentação Capilar + Corte), ele respondeu *"1.  Mas qto o cabelo so vou cortar nao vou pintar depilacao nas orelhas e depilacao nasal ok podemos fazer"* — ou seja, **confirmo, e tirem a Pigmentação**. A JuIA respondeu *"Tudo bem, obrigado por avisar! Já liberei seu horário"* (cancelou), ofereceu outro horário hoje **com a Pigmentação dentro**, e quando ele disse "amanhã confirmado horário corte cabelo" respondeu *"Não encontrei nenhum agendamento futuro nesse número"* — porque ela mesma tinha cancelado. O Juliano assumiu na mão às 15h19.
+
+**Causa:** no webhook, cancelar era checado ANTES de confirmar, e o regex de cancelamento (`\bnao\b|nao vou|…`) casava o "nao vou" de "nao vou pintar". O "1." na frente nem era olhado, porque o teste do número exigia a mensagem inteira ser só o número.
+
+**Dado acertado na mão:** reserva `b3de52fb` reativada e confirmada — amanhã 13h30–15h15, Corte de cabelo + Depilação orelhas + Depilação nasal (R$ 90), sem a Pigmentação, como ele pediu e como o Juliano respondeu; estado da conversa alinhado (serviços, `completed`). Nada de vaga oferecida à lista de espera nesse meio-tempo (conferido).
+
+**Correção (`whatsapp-webhook` v117, `verify_jwt=false` igual ao anterior):**
+- Leitura da resposta virou módulo puro `_shared/confirmacao-presenca.ts` (14 testes): **número na frente decide** ("1.", "1 -", "2 por favor", "1111!!"); sem número, remarcar antes de cancelar (regra da v28.59.0) e **negação sobre serviço nunca cancela** ("não vou pintar", "sem barba", "só vou cortar") — só negação sobre vir ("não vou poder ir", "não posso").
+- `servicosNegados`: cada negação vale para o PRIMEIRO serviço citado depois dela — a frase do Sr. Magno tira só a Pigmentação e mantém as depilações (o "depilação nas orelhas" vem depois do "pintar"). "Só o corte" tira tudo que não é corte. Tirar tudo não é ajuste (devolve vazio e a mensagem segue o fluxo normal).
+- No "1" com serviço tirado, a reserva é ajustada na hora (`phone_change_booking_service`, a mesma RPC da troca pela JuIA) e a confirmação sai com o que fica e o valor: *"Confirmado! Te esperamos amanhã às 13:30. Anotei: fica Corte de cabelo + Depilação orelhas + Depilação nasal (cera quente) (R$ 90,00), sem Pigmentação Capilar (Tintura)."* Push pro Juliano em qualquer caso (ajustado, ou "não consegui ajustar, confira na Agenda").
+
+**Não conferido ao vivo:** o fluxo exige pedido de confirmação pendente num WhatsApp real — a leitura da frase está coberta pelos testes com o texto exato do caso; a chamada da RPC foi conferida por leitura (é a da troca de serviço já em uso). `npm run test:unit` verde (138).
+
 ## 29.195.0 — "Como foi feito" na tela Concluir e no Balcão, com lembrete no card do próximo atendimento (16/09, tarde)
 
 **Pedido do Juliano (16/09/2026, ~14h30, caso Tatiane):** "ontem eu fiz 2 cortes nela pra chegar neste resultado (…) pra mim seria mais fácil se tivesse como eu colocar estas observações na tela Concluir, assim no próximo atendimento viria um lembrete igual aparece os serviços: máquina 1 dos lados e 4 em cima, ou corte todo na tesoura, ou degradê alto navalhado". Antes, o único lugar era Clientes → Preferências de estilo (ninguém lembra de ir lá depois do corte), e o card do dia não mostrava nada do cadastro.

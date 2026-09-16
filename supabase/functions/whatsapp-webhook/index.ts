@@ -6,6 +6,9 @@ import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-con
 import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias } from '../_shared/convite-retorno.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
+// v29.195.1 — resposta ao pedido de confirmação de presença (caso Sr. Magno): número na frente
+// decide; negação sobre serviço não cancela; serviço tirado na mesma frase é ajustado na reserva.
+import { lerRespostaConfirmacao, servicosNegados } from '../_shared/confirmacao-presenca.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -1116,11 +1119,18 @@ Deno.serve(async (request: Request) => {
           // presença são sempre remarcação.
           // v29.90.0 (caso Pedro, "1111!!"): dígito repetido conta como o dígito em TODOS os
           // menus numerados — cliente animado repete a tecla.
-          const isReschedule = /^2+[\s!.,]*$/.test(trimmedNormalized) || /remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(normalizedReply)
-          // "não" decide sobre confirmação solta: "não vou poder ir, pode cancelar".
-          // Mesmo padrão de simpleYes/simpleNo do ju-ia-site.
-          const isDecline = !isReschedule && (/^3+[\s!.,]*$/.test(trimmedNormalized) || /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(normalizedReply))
-          const isConfirm = !isReschedule && !isDecline && (/^1+[\s!.,]*$/.test(trimmedNormalized) || /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(normalizedReply))
+          // v29.195.1 — caso Sr. Magno (16/09/2026, 15h09): "1.  Mas qto o cabelo so vou cortar nao vou
+          // pintar depilacao nas orelhas e depilacao nasal ok podemos fazer" = CONFIRMO, e tirem a
+          // Pigmentação. Cancelar era checado antes de confirmar e o regex casava o "nao vou" de
+          // "nao vou pintar": horário de amanhã cancelado, oferta de outro horário COM a Pigmentação,
+          // e "não encontrei nenhum agendamento" quando ele reclamou. Agora a leitura mora em
+          // _shared/confirmacao-presenca.ts (testada): número na frente decide; sem número, remarcar
+          // antes de cancelar, e negação sobre SERVIÇO ("nao vou pintar", "sem barba", "so vou cortar")
+          // nunca cancela — só negação sobre VIR.
+          const acaoConfirmacao = lerRespostaConfirmacao(normalizedReply)
+          const isReschedule = acaoConfirmacao === 'reschedule'
+          const isDecline = acaoConfirmacao === 'decline'
+          const isConfirm = acaoConfirmacao === 'confirm'
 
           if (isReschedule) {
             // v29.86.0: se a mensagem JÁ traz o dia/horário novo ("mudar para hoje às 19:30"),
@@ -1204,7 +1214,37 @@ Deno.serve(async (request: Request) => {
               // não dá pra cravar "hoje" (bug de texto herdado da janela antiga de 3h).
               const confirmedTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
               const confirmedDayWord = String(confirmed.booking_date) === confirmedTodaySP ? 'hoje' : 'amanhã'
-              await sendWhatsapp(phone, `Confirmado! ✅ Te esperamos ${confirmedDayWord} às ${String(confirmed.start_time).slice(0, 5)}. Qualquer imprevisto, é só me chamar por aqui. 😊`)
+              // v29.195.1 — serviço tirado na mesma frase do "1" ("nao vou pintar") é ajustado na
+              // reserva na hora (phone_change_booking_service, a mesma RPC da troca pela JuIA), e a
+              // confirmação já sai com o que fica e o valor. Se não der pra ajustar, o Juliano recebe
+              // push pra fazer na mão — a confirmação sai do mesmo jeito.
+              let ajusteTxt = ''
+              try {
+                const nomeReserva = String(confirmed.service_name || pendingConfirmation.service_name || '')
+                const negados = servicosNegados(nomeReserva, normalizedReply)
+                if (negados.length) {
+                  const ficam = nomeReserva.split(/\s*\+\s*/).map((s: string) => s.trim()).filter((s: string) => s && !negados.includes(s))
+                  const { data: svcRows } = await admin.from('services').select('name,price,duration_minutes').in('name', ficam)
+                  const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+                  let ok = false
+                  if (ficam.length && (svcRows || []).length === ficam.length) {
+                    const preco = (svcRows || []).reduce((a: number, s: any) => a + Number(s.price || 0), 0)
+                    const dur = (svcRows || []).reduce((a: number, s: any) => a + Number(s.duration_minutes || 0), 0)
+                    const { data: changedRows, error: changeErr } = await admin.rpc('phone_change_booking_service', { p_phone: phone, p_booking_id: pendingConfirmation.id, p_service_name: ficam.join(' + '), p_service_price: preco, p_duration_minutes: dur })
+                    const changed = Array.isArray(changedRows) ? changedRows[0] : changedRows
+                    if (!changeErr && changed) { ok = true; ajusteTxt = ` Anotei: fica ${ficam.join(' + ')} (${brl(Number(changed.service_price ?? preco))}), sem ${negados.join(' e ')}.` }
+                    else console.error('[whatsapp-webhook] ajuste de serviço na confirmação', changeErr)
+                  }
+                  const pushSecretAj = Deno.env.get('PUSH_WEBHOOK_SECRET')
+                  if (pushSecretAj) {
+                    await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecretAj },
+                      body: JSON.stringify({ custom: { title: ok ? '✂️ Cliente confirmou e tirou serviço' : '⚠️ Cliente confirmou e quer tirar serviço', body: `${confirmed.customer_name || phone} — ${formatDateBR(confirmed.booking_date)} às ${String(confirmed.start_time).slice(0, 5)}: sem ${negados.join(' e ')}${ok ? ` (ajustado: ${ficam.join(' + ')})` : ' — não consegui ajustar, confira na Agenda'}`, url: '/admin-agenda.html?app=1', tag: `confirm-adjust-${pendingConfirmation.id}` } }),
+                    }).catch((e) => console.error('[whatsapp-webhook] push ajuste confirmação', e))
+                  }
+                }
+              } catch (e) { console.error('[whatsapp-webhook] servicosNegados', e) }
+              await sendWhatsapp(phone, `Confirmado! ✅ Te esperamos ${confirmedDayWord} às ${String(confirmed.start_time).slice(0, 5)}.${ajusteTxt} Qualquer imprevisto, é só me chamar por aqui. 😊`)
               return
             }
           } else if (ambiguousShortReply && !isReschedule) {
