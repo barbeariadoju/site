@@ -3484,12 +3484,22 @@ Deno.serve(async req=>{
    const mmA=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
    const desdeAgora=allSlots.filter((t:string)=>mmA(t)>=agoraMin+5)
    next.asap=false
+   // v29.194.0 — bloqueio automático da câmera (cliente de porta na cadeira, migration 155): quem
+   // pede "agora" com o Juliano atendendo ouve isso, em vez de um silêncio sobre o porquê do
+   // primeiro horário estar mais pra frente. get_available_slots já pula o bloqueio.
+   let atendendoAgora=false
+   try{
+    const agoraHHMM=`${String(Math.floor(agoraMin/60)).padStart(2,'0')}:${String(agoraMin%60).padStart(2,'0')}`
+    const {data:blocoCam}=await supabase.from('schedule_blocks').select('id').eq('block_date',today()).eq('source','camera').eq('all_day',false).lte('start_time',agoraHHMM).gt('end_time',agoraHHMM).limit(1)
+    atendendoAgora=Array.isArray(blocoCam)&&blocoCam.length>0
+   }catch(e){console.error('[ju-ia-site] bloqueio da câmera',e)}
+   const abertura=atendendoAgora?'Neste momento o Juliano está atendendo um cliente. ':''
    if(desdeAgora.length){
     const seguintes=desdeAgora.slice(1,3)
-    reply=`Agora mesmo, o primeiro horário livre é ${desdeAgora[0]} para ${serviceNames} (aproximadamente ${duration} min)${seguintes.length?`; depois tenho ${seguintes.join(' e ')}`:''}. Me responde o horário que eu já deixo reservado.`
+    reply=`${abertura}${atendendoAgora?'O':'Agora mesmo, o'} primeiro horário livre é ${desdeAgora[0]} para ${serviceNames} (aproximadamente ${duration} min)${seguintes.length?`; depois tenho ${seguintes.join(' e ')}`:''}. Me responde o horário que eu já deixo reservado.`
     actions=desdeAgora.slice(0,3).map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`Agora não consigo: hoje já não tenho horário livre para ${serviceNames}. Quer que eu veja amanhã?`
+    reply=`${abertura}Agora não consigo: hoje já não tenho horário livre para ${serviceNames}. Quer que eu veja amanhã?`
     actions=[{label:'Ver amanhã',message:'Amanhã'}]
    }
   }else if(effectivePeriod){
