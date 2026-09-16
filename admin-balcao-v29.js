@@ -142,16 +142,20 @@
   async function searchCustomers(term) {
     const box = $('balcao-customer-results');
     const digits = term.replace(/\D/g, '');
-    let query = sb.from('customer_profiles').select('id,name,phone').limit(6).order('name', { ascending: true });
+    // v29.195.0: style_preferences vem junto pra preencher "Como foi feito" ao escolher o cliente.
+    let query = sb.from('customer_profiles').select('id,name,phone,style_preferences').limit(6).order('name', { ascending: true });
     query = digits.length >= 3 ? query.ilike('phone', `%${digits}%`) : query.ilike('name', `%${term}%`);
     const { data, error } = await query;
     if (error) { box.hidden = true; return; }
     box.hidden = false;
     if (!data || !data.length) { box.innerHTML = '<div class="is-empty">Nenhum cliente encontrado — pode continuar digitando pra cadastrar um novo.</div>'; return; }
-    box.innerHTML = data.map(c => `<button type="button" data-pick="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone)}"><strong>${esc(c.name)}</strong><small>${esc(formatPhoneDisplay(c.phone))}</small></button>`).join('');
+    const styleOf = c => Object.values(c.style_preferences || {}).map(v => String(v || '').trim()).filter(Boolean).join(', ');
+    box.innerHTML = data.map(c => `<button type="button" data-pick="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone)}" data-style="${esc(styleOf(c))}"><strong>${esc(c.name)}</strong><small>${esc(formatPhoneDisplay(c.phone))}</small></button>`).join('');
     box.querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
       $('balcao-name').value = btn.dataset.name;
       $('balcao-phone').value = formatPhoneDisplay(btn.dataset.phone);
+      // v29.195.0: "Como foi feito" da última vez já preenchido; ele ajusta se mudou
+      const styleField = $('balcao-style'); if (styleField) { styleField.value = btn.dataset.style || ''; styleField.dataset.prefill = btn.dataset.style || ''; }
       linkedCustomerId = btn.dataset.pick;
       renderCustomerTag(btn.dataset.name);
       box.hidden = true; box.innerHTML = '';
@@ -230,6 +234,16 @@
         p_tip_amount: Math.max(0, Number(String($('balcao-tip').value).replace(',', '.'))) || 0,
       });
       if (error) { msg.textContent = error.message; return; }
+      // v29.195.0 — "Como foi feito" vai pro cadastro (Preferências de estilo) quando mudou.
+      {
+        const styleField = $('balcao-style');
+        const styleNow = styleField ? styleField.value.trim() : '';
+        const stylePrefill = styleField ? (styleField.dataset.prefill || '') : '';
+        if (styleField && styleNow !== stylePrefill) {
+          const { data: styleRes, error: styleErr } = await sb.rpc('admin_set_customer_style', { p_phone: phone, p_style: styleNow });
+          if (styleErr || styleRes?.ok === false) alert(`Atendimento registrado, mas o "Como foi feito" NÃO foi salvo no cadastro: ${styleErr?.message || styleRes?.error || 'motivo desconhecido'}`);
+        }
+      }
 
       const row = Array.isArray(data) ? data[0] : data;
       let note = ' Cliente já estava no CRM — histórico atualizado.';
@@ -273,6 +287,7 @@
       if (window.parent !== window) { try { window.parent.postMessage({ type: 'bdj:walkin-saved' }, location.origin); } catch (_) {} }
 
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
+      { const styleField = $('balcao-style'); if (styleField) { styleField.value = ''; styleField.dataset.prefill = ''; } }
       $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = ''; $('balcao-tip').value = '';
       document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); });
       linkedCustomerId = null;

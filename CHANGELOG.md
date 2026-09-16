@@ -1,3 +1,18 @@
+## 29.195.0 — "Como foi feito" na tela Concluir e no Balcão, com lembrete no card do próximo atendimento (16/09, tarde)
+
+**Pedido do Juliano (16/09/2026, ~14h30, caso Tatiane):** "ontem eu fiz 2 cortes nela pra chegar neste resultado (…) pra mim seria mais fácil se tivesse como eu colocar estas observações na tela Concluir, assim no próximo atendimento viria um lembrete igual aparece os serviços: máquina 1 dos lados e 4 em cima, ou corte todo na tesoura, ou degradê alto navalhado". Antes, o único lugar era Clientes → Preferências de estilo (ninguém lembra de ir lá depois do corte), e o card do dia não mostrava nada do cadastro.
+
+**O que mudou:**
+- **Concluir** (`admin-v15-4-agenda.js`): campo "Como foi feito ✂️" logo abaixo de "Serviço realizado", já preenchido com o que está no cadastro, pra ele só ajustar. Se o texto mudou (apagar também conta), a conclusão grava via RPC nova `admin_set_customer_style` — em `customer_profiles.style_preferences`, o mesmo campo "Preferências de estilo" da tela Clientes (formato `item_1, item_2…`, separado por vírgula, ";", "·" ou quebra de linha). Falha na gravação avisa, mas não desfaz a conclusão.
+- **Balcão** (`admin-balcao.html` + `admin-balcao-v29.js`): mesmo campo acima de Observações; escolher um cliente do CRM na busca já preenche com o "como foi feito" dele; salva do mesmo jeito ao registrar.
+- **Lembrete no card** (`admin-v15-4-core.js` `styleReminderHtml`, usado no card da Agenda/Hoje): linha dourada "✂️ máquina 1 dos lados, máquina 4 em cima" abaixo dos serviços, em todo agendamento futuro e no concluído; some em cancelado/ausência. CSS em `css/06-admin-reforma.css`.
+- **Migration 156**: `admin_set_customer_style(p_phone, p_style)` (só admin, acha o cadastro pelos últimos 8 dígitos do telefone, não cria ficha).
+- Dado da Tatiane já preenchido à mão: "máquina 1 dos lados, máquina 4 em cima, corte de 15/09 levou 2 passadas pra chegar nesse resultado".
+
+**Cache:** `admin-v15-4-agenda.js`, `admin-v15-4-core.js`, `admin-balcao-v29.js`, `style.css` → `?v=29.195.0` em todas as páginas admin; `css/06-admin-reforma.css` idem no `style.css`.
+
+`npm test` verde (124 unit + 48 e2e). **Não conferido ao vivo:** a gravação a partir do Concluir exige sessão de admin no navegador — conferida por leitura; a RPC foi validada no banco (colunas e quebra do texto em itens).
+
 ## 29.194.2 — Barba Express dita com todas as letras: "só na máquina, sem navalha e sem toalha quente"; JuIA compara com a barba que o cliente já reservou (16/09, começo da tarde)
 
 **Caso real (Maurício, 16/09/2026, 13h07, print do Juliano):** primeira visita, reservada pela manhã a Barba na navalha com toalha quente (R$ 40) pra hoje às 18h30. Às 13h07: "não vou raspar a barba inteira, seria outro valor para aparar e passar a maquininha?". A JuIA respondeu certo no preço — "Barba Express (só na máquina), por R$ 25,00" — mas (1) "só na máquina" não desenha pra quem precisa, e a preocupação do Juliano é deixar explícito que **não tem navalha nem toalha quente**; (2) ela respondeu como pra um desconhecido e ainda ofereceu "consultar um horário" pra quem já tinha horário — o cliente é que teve que dizer "já tenho horário para hoje às 18:30". Dado: nada a corrigir (a reserva ficou como está; "a gente vê na hora").

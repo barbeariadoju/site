@@ -91,6 +91,20 @@
     if(lo.rewards>0){const vence=lo.expires?` · vence ${new Date(lo.expires).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`:'';return `<span class="admin-visit-badge is-reward" title="Fechou 10 pontos: 1 serviço por nossa conta. No Concluir, Bônus de fidelidade já vem marcado.">🎁 Prêmio pra usar: 1 serviço por nossa conta${vence}</span>`}
     return `<span class="admin-visit-badge is-points" title="Pontos do cartão fidelidade (10 = 1 serviço por nossa conta)">${lo.points}/10 pontos${lo.points>=8?' · quase lá':''}</span>`;
   }
+  // v29.195.0 — "Como foi feito" (pedido do Juliano, 16/09/2026, caso Tatiane: dois cortes pra
+  // chegar no resultado, e nada anotado). O texto vive em customer_profiles.style_preferences
+  // (o mesmo "Preferências de estilo" da tela Clientes); o Concluir e o Balcão gravam por
+  // admin_set_customer_style, e o card do agendamento mostra como lembrete, abaixo dos serviços.
+  function styleTextFor(phone=''){
+    const ph=phoneKey(phone);if(!ph)return '';
+    const p=customerProfiles.find(c=>c.phone&&phoneKey(c.phone)===ph&&!c.archived)||customerProfiles.find(c=>c.phone&&phoneKey(c.phone)===ph);
+    return p?Object.values(p.style_preferences||{}).map(v=>String(v||'').trim()).filter(Boolean).join(', '):'';
+  }
+  function styleReminderHtml(x){
+    if(x.status==='cancelled'||x.status==='no_show')return '';
+    const t=styleTextFor(x.customer_phone);
+    return t?`<small class="admin-style-reminder" title="Como foi feito da última vez — anotado no Concluir ou em Clientes › Preferências de estilo">✂️ ${esc(t)}</small>`:'';
+  }
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
   function ageFromBirth(date){if(!date)return null;const b=new Date(date+'T12:00:00'),t=new Date();let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a>=0?a:null}

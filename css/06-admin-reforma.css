@@ -457,6 +457,8 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
 /* v29.188.0 — fidelidade visível: prêmio pra usar (verde), pontos (discreto), aviso do dia, nota do Concluir */
 .admin-visit-badge.is-reward{background:rgba(143,214,148,.16);color:#8fd694;border:1px solid rgba(143,214,148,.45);white-space:normal}
 .admin-visit-badge.is-points{background:rgba(255,255,255,.05);color:#9a9a9a;font-weight:700}
+/* v29.195.0 — lembrete "como foi feito" no card (abaixo dos serviços); quebra linha, nunca corta */
+.admin-booking-summary-main small.admin-style-reminder{color:var(--gold2);font-weight:700;white-space:normal;display:block;-webkit-line-clamp:unset;line-clamp:unset}
 .admin-day-callout{border:1px solid rgba(143,214,148,.45);background:rgba(143,214,148,.08);color:#d9f5db;border-radius:12px;padding:10px 12px;font-size:var(--t-sm);line-height:1.4}
 .checkout-loyalty-note{margin:4px 0 8px;color:#8fd694;border:1px solid rgba(143,214,148,.35);border-radius:10px;padding:8px 10px}
 .checkout-loyalty-note.is-warn{color:var(--gold2);border-color:rgba(240,201,135,.45)}
