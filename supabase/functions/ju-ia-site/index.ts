@@ -4018,7 +4018,10 @@ Deno.serve(async req=>{
  }
  // v29.190.0 — caso José Carlos (14/09): "Fiz barba em campinas" recebeu a lista das três barbas.
  // Quem já resolveu fora ouve "sem problema" e a agenda da conversa é zerada.
- const jaFezFora=/\b(ja )?(fiz|cortei|aparei|fizemos|cortamos|raspei)\b[^.!?]{0,40}\b(em outr[oa]|em campinas|em sao paulo|em outra cidade|fora daqui|la mesmo|por la|em outro lugar|outra barbearia|outro barbeiro)|\bja (cortei|fiz a barba|aparei|resolvi|fiz)\b(?![^.!?]*\b(aqui|com voces|com o juliano)\b)/.test(normalizedQuestion)
+ // v29.196.0 — caso José (16/09, 10h53): "Precisei de cortar em campinas" recebeu "Vamos marcar! Corte + Barba
+ // R$ 80". O verbo no infinitivo (precisei de cortar, tive que fazer, acabei cortando) e a 3ª pessoa ("cortou em
+ // outra barbearia") também contam como já resolvido fora.
+ const jaFezFora=/\b(ja )?(fiz|cortei|aparei|fizemos|cortamos|raspei|precisei (de )?(cortar|fazer|aparar|raspar)|tive que (cortar|fazer|aparar|raspar)|acabei (cortando|fazendo|aparando)|cortou|fez)\b[^.!?]{0,40}\b(em outr[oa]|em campinas|em sao paulo|em outra cidade|fora daqui|la mesmo|por la|em outro lugar|outra barbearia|outro barbeiro)|\bja (cortei|fiz a barba|aparei|resolvi|fiz)\b(?![^.!?]*\b(aqui|com voces|com o juliano)\b)/.test(normalizedQuestion)
  if(jaFezFora){
   reply='Entendi, sem problema! Quando precisar de novo, é só me chamar por aqui que eu vejo o horário com você.'
   next.date=undefined;next.time=undefined;next.period=undefined;next.pending_rebook=undefined;next.usual_assumed=false
