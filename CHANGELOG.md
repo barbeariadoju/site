@@ -1,3 +1,15 @@
+## 29.196.4 — Perfil do Google: mais 4 fotos, retocadas a pedido do Juliano (fachadas com o horário corrigido na placa, café com Wi-Fi mascarado, cadeira e balcão sem cabo/tomada/bagunça) (16/09, noite)
+
+**Pedido do Juliano (16/09/2026, noite):** "as da fachada você pode fazer uma correção na arte e aproveitar", "do cantinho do café dá uma maquiada na senha do wifi", "da cadeira com balcão some com este cabo e tomada, notebook, papel, tudo o que te incomodar" — "e aproveitamos todas".
+
+**Feito (Pillow + OpenCV, sem IA generativa, arquivos em `assets/gbp/`):**
+- **Fachada de frente e fachada de perto:** as duas linhas de horário da placa foram reescritas — "08H00 ÀS 19H00" e "08H00 ÀS 15H00" — com fundo amostrado da própria placa (mantém o gradiente), fonte condensada parecida (Bahnschrift Bold Condensed) e leve desfoque pra casar com a foto. O resto da placa (mustache, "TERÇA A SEXTA", "SÁBADO", "FECHADO", telefone) é o original. Publicadas como EXTERIOR.
+- **Cantinho do café:** o QR do Wi-Fi e a linha "Senha …" do cartaz foram pixelados (o QR também codifica a senha). Pix e Instagram ficaram. INTERIOR.
+- **Cadeira com balcão:** cabo, plugue e tomada da parede removidos por inpainting; álcool em gel, lenço, porta-cartão e caixinha do balcão substituídos pela parede lisa (gradiente amostrado da faixa limpa ao lado). INTERIOR. **O notebook ficou:** a parede de ripas atrás dele não reconstruiu de forma convincente em três tentativas (borrão ou emenda visível no zoom) — decidi publicar com o notebook, que é um objeto normal de bancada, em vez de uma parede falsa. Se quiser sem ele, é refazer a foto com o notebook fechado.
+- **Fachada em ângulo: ficou de fora.** A placa tem um reflexo forte (faixa clara vertical) que atravessa as linhas do horário; a detecção das linhas falhou três vezes e o texto novo saiu cortando "TERÇA A SEXTA". Sem garantia de resultado limpo, não publiquei. As duas fachadas de frente cobrem a necessidade.
+
+Total do dia no perfil: 7 fotos (3 na primeira leva + 4 nesta). Sem código, sem cache.
+
 ## 29.196.3 — Fotos do perfil do Google pela API (3 novas, 5 reprovadas no crivo) e regra da placa de horário antiga (16/09, noite)
 
 **Pedido do Juliano (16/09/2026, noite):** "vou tirar umas fotos, você escolhe as melhores e publica". Mandou 8.
