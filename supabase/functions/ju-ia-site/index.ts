@@ -537,6 +537,28 @@ function findServicesLoose(text:string){
  }
  return found
 }
+// v29.193.1 — caso Lucas (16/09/2026, 10h12 e 10h17): "corte de cabelo, barba e sobrancelha para
+// sábado dia 19/09" e, já reservado, "tem sobrancelha tambem" — a sobrancelha sumiu nas duas. A
+// findServicesLoose parte a frase em vírgula/"e" e casa cada pedaço com nome de serviço; "sobrancelha
+// para sabado dia 19/09" e "tem sobrancelha tambem" não são nome de nada, e a segunda ainda caiu
+// no "já inclui Corte de cabelo" (o fallback do bloco de troca pegava chosen[0], que já estava
+// reservado). O mapa de palavra-chave que só aquele bloco tinha (v29.43.2) vira função e passa a
+// valer na leitura geral, com dois cuidados: negação na frente ("sem sobrancelha", "tira o pezinho")
+// não conta, e "sobrancelha" com "pigment" na frase é a Pigmentação de Sobrancelha (casa pelo nome).
+// Na leitura geral entram só as palavras inequívocas (`basicas`); o bloco de troca usa a lista toda.
+const PALAVRAS_SERVICO_BASICAS:[RegExp,string][]=[[/\bsobrancelha/,'Sobrancelha Masculina'],[/\bpezinho/,'Pezinho (acabamento)'],[/\bnasal\b/,'Depilação nasal (cera quente)'],[/barba express/,'Barba Express']]
+const PALAVRAS_SERVICO_TODAS:[RegExp,string][]=[...PALAVRAS_SERVICO_BASICAS,[/barboterapia.*ozon|ozon.*barboterapia/,'Barboterapia com vaporizador de ozônio'],[/barboterapia(?!.*ozon)/,'Barba na navalha com toalha quente'],[/\blavagem/,'Corte + Lavagem'],[/\bhidrata/,'Hidratação / Reconstrução Capilar'],[/pos.?alisamento|reconstrucao quimica/,'Reconstrução Química Pós-Alisamento']]
+function servicosPorPalavra(normalizedText:string,todas=false){
+ const out:any[]=[]
+ for(const [re,name] of (todas?PALAVRAS_SERVICO_TODAS:PALAVRAS_SERVICO_BASICAS)){
+  const m=re.exec(normalizedText);if(!m)continue
+  if(name==='Sobrancelha Masculina'&&/pigment/.test(normalizedText))continue
+  const antes=normalizedText.slice(Math.max(0,m.index-14),m.index)
+  if(/\b(sem|nao|nem|tira|tirar|remove|remover|menos|exceto)\s+(a\s+|o\s+|de\s+)?$/.test(antes))continue
+  const svc=findService(name);if(svc&&!out.some(o=>o.name===svc.name))out.push(svc)
+ }
+ return out
+}
 const textFrom=(d:any)=>typeof d?.output_text==='string'?d.output_text.trim():(d?.output||[]).flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('\n').trim()
 function parseJSON(text:string){try{return JSON.parse(text.replace(/^```json\s*|\s*```$/g,''))}catch{return null}}
 function serviceSuggestions(chosen:any[]){
@@ -1324,6 +1346,9 @@ Deno.serve(async req=>{
  const bareCabeloAsk=!cabeloOutroAssunto&&/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
+  // v29.193.1 (caso Lucas): palavra-chave solta no meio da frase ("… barba e sobrancelha para
+  // sábado", "tem sobrancelha tambem") também é serviço — ver servicosPorPalavra.
+  for(const s of servicosPorPalavra(normalizedQuestion)){if(!loose.some((l:any)=>l.name===s.name))loose.push(s)}
   // v28.31.5: não adicionar via fallback um serviço GENÉRICO quando uma variante mais
   // específica dele já está escolhida — bug real achado testando: "quanto tempo dura a
   // barboterapia com ozônio?" deixava o state com "Barboterapia com vaporizador de
@@ -2172,8 +2197,8 @@ Deno.serve(async req=>{
    // v29.104.0: "barboterapia" sozinha (sem "ozônio" na frase) aponta pra variante sem
    // ozônio, renomeada "Barba na navalha com toalha quente" — o lookahead negativo evita
    // dar match duplo quando a frase já diz "barboterapia com ozônio".
-   const kw:[RegExp,string][]=[[/sobrancelha/,'Sobrancelha Masculina'],[/pezinho/,'Pezinho (acabamento)'],[/nasal/,'Depilação nasal (cera quente)'],[/barba express/,'Barba Express'],[/barboterapia.*ozon|ozon.*barboterapia/,'Barboterapia com vaporizador de ozônio'],[/barboterapia(?!.*ozon)/,'Barba na navalha com toalha quente'],[/lavagem/,'Corte + Lavagem'],[/hidrata/,'Hidratação / Reconstrução Capilar'],[/pos.?alisamento|reconstrucao quimica/,'Reconstrução Química Pós-Alisamento']]
-   for(const [re,name] of kw){if(re.test(normalizedQuestion)){const svc=findService(name);if(svc&&!chosen.some((c:any)=>c.name===svc.name)){chosen.push(svc);next.services=chosen.map((c:any)=>c.name)}}}
+   // v29.193.1 — o mapa virou servicosPorPalavra (lista completa aqui), sem mudar o comportamento.
+   for(const svc of servicosPorPalavra(normalizedQuestion,true)){if(!chosen.some((c:any)=>c.name===svc.name)){chosen.push(svc);next.services=chosen.map((c:any)=>c.name)}}
   }
   if(chosen.length)intent='change_service'
  }
@@ -2232,9 +2257,30 @@ Deno.serve(async req=>{
    // composto, preco e duracao somados) e a confirmacao diz "incluir", nao "trocar".
    const addSignal=/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)
    const bookedNames=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
-   const desiredNew=swapTailService||chosen.find((x:any)=>!bookedNames.some((n:string)=>n.includes(normalize(x.name))))||desiredFresh||null
+   const jaReservado=(x:any)=>bookedNames.some((n:string)=>n.includes(normalize(x.name)))
+   // v29.193.1 (caso Lucas, "tem sobrancelha tambem"): o serviço a incluir é o que a MENSAGEM cita
+   // (palavra-chave ou nome) ou algo escolhido que ainda não está na reserva — nunca o chosen[0]
+   // sobrando da reserva recém-feita (era isso que virava "já inclui Corte de cabelo"). Se ele citou
+   // algo que já está na reserva, aí sim "já inclui"; se não deu pra entender o que incluir, pergunta.
+   const citados=[...servicosPorPalavra(normalizedQuestion,true),...findServicesLoose(message)].filter((x:any,i:number,a:any[])=>a.findIndex((y:any)=>y.name===x.name)===i)
+   const desiredNewReal=swapTailService||citados.find((x:any)=>!jaReservado(x))||chosen.find((x:any)=>!jaReservado(x))||null
+   const citadoJaReservado=citados.find((x:any)=>jaReservado(x))||null
+   const desiredNew=desiredNewReal||desiredFresh||null
    const askOrConfirm=(b:any)=>{
     next.pending_change_service_booking_id=b.id
+    if(addSignal&&!desiredNewReal){
+     const atuais=String(b.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+     if(citadoJaReservado&&/pezinho/i.test(citadoJaReservado.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
+      reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} 😉 Não precisa adicionar — está tudo certo!`
+     }else if(citadoJaReservado){
+      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${citadoJaReservado.name} 😊 Está tudo certo!`
+     }else{
+      reply=`Claro! Qual serviço você quer incluir no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name})?`
+     }
+     next.pending_change_service_booking_id=null
+     handoff=false
+     return
+    }
     if(addSignal&&desiredNew){
      const atuais=String(b.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
      if(/pezinho/i.test(desiredNew.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
