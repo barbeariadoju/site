@@ -99,8 +99,9 @@ automação (input dentro de iframe, janela de arquivo nativa). Pela API funcion
 `assets/gbp/`, commit + push, conferir 200). Categorias aceitas em 16/09/2026: `INTERIOR`,
 `ADDITIONAL`; `PRODUCT` devolve 400 nesta categoria de negócio. Toda foto passa pelo crivo
 antes (Read na imagem): nada de cliente, nada de cabo/tomada/bagunça no quadro, e **nunca a
-placa física de horário** — ela ainda mostra 8h30–18h/8h30–14h (o horário real é 8h–19h /
-8h–15h) e contradiz o perfil. E a interface
+placa física de horário** sem retoque — ela mostra 8h30–18h/8h30–14h (o horário real é 8h–19h /
+8h–15h) e o Juliano decidiu em 16/09/2026 deixar assim (a designer não responde). Toda foto de
+fachada passa pela correção digital das duas linhas antes de ir pro perfil. E a interface
 abre sozinha o overlay *"Escolha o elemento para o qual você está enviando
 feedback"* quando o clique erra o alvo: **nunca interaja com ele**, recarregue.
 
