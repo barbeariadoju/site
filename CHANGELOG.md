@@ -1,3 +1,11 @@
+## 29.198.1 — Remarcar zera o pedido de confirmação de presença (caso Levi, 17/09, meio-dia)
+
+**Pedido do Juliano (17/09/2026, 11h50, print do WhatsApp):** "JuIA não confirmou este rapaz que eu tinha remarcado". Levi tinha horário em 10/09 às 16h, confirmado pela JuIA no dia 9. No dia 10 o Juliano remarcou pelo painel pra 17/09 às 16h. No dia 16 o robô das confirmações não pediu nada, e ele mesmo mandou "passando pra confirmar seu horário hoje às 16hs".
+
+**Causa:** nenhum dos três caminhos de remarcação (painel, JuIA, link do site) zerava  / . O agendamento carregava o "já pedi, já confirmou" da data antiga, e a seleção do robô exige pedido ainda não feito — então pulava. Conferido no banco: hoje só o Levi estava nessa situação entre os futuros, mas todo remarcado pra mais de um dia à frente cairia nela.
+
+**Correção (migration 159, só banco, sem cache):** um gatilho em  — mudou data ou hora e o agendamento segue vivo → zera os três campos de confirmação e marca . Horário novo em até 36 h:  = agora (quem acabou de combinar o horário já confirmou presença de fato, o robô não pergunta de novo); mais longe: fica nulo e o pedido do dia anterior volta a valer. A função de seleção passou a olhar também o  na regra das 36 h, pra um remarcado pra amanhã não ganhar pedido por ter  antigo. Testado numa transação descartada com o próprio agendamento do Levi: remarcado pra 7 dias → pedido zerado, sem confirmação, fora da fila nas primeiras 3 h; remarcado pra amanhã → confirmado na hora e fora da fila. Nada gravado; o Levi de hoje ficou como o Juliano deixou.
+
 ## 29.198.0 — Ficha de cliente novo não era criada há 19 dias (caso Maurício Amorin), "Como foi feito" cria a ficha sozinho, e as caixinhas de serviço do admin passam a respeitar as famílias (17/09, manhã)
 
 **Pedido do Juliano (17/09/2026, "plano do dia"):** "fui concluir o do Maurício, apareceu [um aviso] mas o Como foi feito… não consegui ler, eu escrevi como foi feito mas não sei o que houve". E: "quando vou concluir posso colocar 2 cabelos, 2 barbas, ele não entende a redundância — quando eu selecionar barba na navalha, desselecionar a Barba Express; com ozônio, desselecionar Express e navalha; o mesmo com o corte: pezinho que já tá incluso, corte com lavagem etc."
