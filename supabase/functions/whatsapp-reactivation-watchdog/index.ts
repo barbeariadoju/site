@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -27,19 +26,31 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
 // conduzindo. 20min dá folga real pra uma pausa natural sem deixar o cliente
 // esperando o dia inteiro se o Juliano de fato se afastar.
 const INACTIVITY_MINUTES = 20
+// v29.85.0 — mensagem humana nos últimos 90 min = a conversa é do Juliano, o watchdog não toca.
+const HUMAN_RECENT_MINUTES = 90
+// v29.204.0 — cliente com pedido em aberto: o Juliano é cutucado por push a cada hora e a
+// conversa só volta pra JuIA (em silêncio) depois de 3 h sem resposta dele.
+const PENDING_RELEASE_MINUTES = 180
+const PENDING_PUSH_EVERY_MINUTES = 60
 
-const greetingNow = (): string => {
-  const hour = Number(
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date()),
-  )
-  return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
-}
+// v29.204.0 — caso Rodrigo Miranda (17/09/2026): o Juliano mandou os horários na mão às 17h17,
+// o cliente respondeu às 17h47 "Pode ser sábado às 14:45. Marca dois cortes, pode ser?", e às
+// 18h48 (91 min depois da última mensagem humana — 1 min além da guarda de 90) o watchdog
+// devolveu a conversa pra JuIA e mandou o "Boa noite! Ainda estou por aqui se precisar de algo…
+// agendar pelo site" — genérico, por cima de um pedido concreto, ignorando o que o cliente
+// tinha acabado de dizer. O Juliano teve que responder na mão às 18h51.
+//
+// Regra nova: o watchdog NÃO manda mais mensagem nenhuma pro cliente. Ele só decide se a
+// conversa volta pra JuIA e avisa o Juliano:
+//   - última mensagem é do cliente e parece um PEDIDO (pergunta, "pode ser", horário, marcar…):
+//     é o Juliano quem tem que responder. Push "fulano está esperando há X min" a cada hora,
+//     takeover mantido. Só depois de 3 h sem resposta a conversa volta pra JuIA, em silêncio,
+//     pra ela atender a PRÓXIMA mensagem dele — nunca um texto genérico por cima do pedido.
+//   - última mensagem é do cliente mas é despedida/figurinha/"obrigado", ou a última é nossa:
+//     conversa terminou; takeover volta pra JuIA em silêncio depois dos 20 min, sem mensagem.
+// O "cochicho" com link do site (v28.x) deixou de existir: em todos os casos reais revisados
+// ele saiu fora de hora (Kelvin, Helder, Rafael, Rodrigo 27/08, Rodrigo 17/09).
 
-// Evita mandar o "cochicho" de reativação quando a conversa já terminou naturalmente
-// (o cliente só reagiu com figurinha/emoji, ou mandou um agradecimento/despedida).
-// Sem isso, um cliente que já foi atendido recebia um "vim te lembrar de agendar"
-// logo depois de ter respondido com uma figurinha de "toca aqui" — soa robótico e
-// fora de contexto, especialmente se o atendimento já foi concluído no mesmo dia.
 const CLOSING_TEXT = /^(obrigad[oa]s?|valeu|vlw|blz|beleza|ok(ay)?|tranquilo|falou|ate (mais|logo|breve)|tchau|flw|show|top|jo[ií]a|de nada|por nada|combinado|fechado)[\s!.,]*$/
 function looksLikeClosingOrReaction(rawBody: string): boolean {
   const body = String(rawBody || '').trim()
@@ -48,33 +59,30 @@ function looksLikeClosingOrReaction(rawBody: string): boolean {
   const normalized = body.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
   return CLOSING_TEXT.test(normalized)
 }
-async function shouldSkipNudge(admin: any, phone: string): Promise<boolean> {
+const DESPEDIDA = /\b(abraco|abracos|bom fds|bom final de semana|boa semana|bom descanso|boa noite|bom dia|boa tarde|fico no aguardo|fico despreocupado|te aviso|eu aviso|passo ai|passo la|da um toque|da um tok|me avisa|qualquer coisa|ate (mais|logo|breve|amanha|sabado|segunda|terca|quarta|quinta|sexta))\b/
+const PEDIDO = /\?|\b(quero|queria|gostaria|pode|poderia|consigo|consegue|tem |teria|horario|marcar|agendar|remarcar|cancelar|quanto|qual|como|onde|quando|preciso|me (fala|diz|passa|manda)|disponivel|vaga)\b/
+
+type Ultima = { pendente: boolean; body: string; minutos: number; nossa: boolean }
+async function ultimaMensagem(admin: any, phone: string): Promise<Ultima | null> {
   const { data: last } = await admin
     .from('whatsapp_messages')
-    .select('direction, body, sent_by')
+    .select('direction, body, sent_by, created_at')
     .eq('phone', phone)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!last) return false
-  // Se a última mensagem foi enviada por nós (Juliano respondeu pessoalmente, ou a própria
-  // JuIA já respondeu), o cliente não está "esperando" nada agora — mandar "ainda estou por
-  // aqui" logo depois de o Juliano ter acabado de escrever é redundante e chato. Só faz
-  // sentido reativar quando quem escreveu por último foi o CLIENTE e ainda não teve resposta.
-  if (last.direction !== 'in') return true
-  if (looksLikeClosingOrReaction(last.body)) return true
-  // v29.43.5 (revisao 14-18/08): o cochicho saiu depois de "Um abraço, excelente fds" (Helder,
-  // com o Juliano ja tendo se despedido), "Da um tok eu vou 🙏" (Rafael Ferreira) e "se ta ai
-  // fico despreocupado" (Rafael) — frases de encerramento que a lista curta acima nao pegava.
-  // Regra invertida: so cochicha se a ultima frase do cliente PARECE PRECISAR de resposta
-  // (tem "?" ou palavra de pedido). Despedida, aviso ou combinado nao reabrem conversa.
-  const body = String(last.body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  const despedida = /\b(abraco|abracos|bom fds|bom final de semana|boa semana|bom descanso|boa noite|bom dia|boa tarde|fico no aguardo|fico despreocupado|te aviso|eu aviso|passo ai|passo la|da um toque|da um tok|me avisa|qualquer coisa eu chamo|depois eu (vejo|falo|marco|passo)|ate (mais|logo|breve|amanha|la)|nos falamos|combinado|fechou|beleza entao|ta bom|tudo bem)\b/.test(body)
-  const pedido = /\?|\b(quero|queria|gostaria|pode|poderia|consigo|consegue|tem |teria|horario|marcar|agendar|remarcar|cancelar|quanto|qual|como|onde|quando|preciso|me (fala|diz|passa|manda)|disponivel|vaga)\b/.test(body)
-  if (despedida && !pedido) return true
-  if (!pedido) return true
-  return false
+  if (!last) return null
+  const minutos = Math.round((Date.now() - new Date(last.created_at).getTime()) / 60000)
+  if (last.direction !== 'in') return { pendente: false, body: String(last.body || ''), minutos, nossa: true }
+  if (looksLikeClosingOrReaction(last.body)) return { pendente: false, body: String(last.body || ''), minutos, nossa: false }
+  const norm = String(last.body || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  // Despedida sem pedido ("até sábado", "te aviso") não é pendência; pedido é pendência mesmo com despedida junto.
+  const pedido = PEDIDO.test(norm)
+  if (!pedido) return { pendente: false, body: String(last.body || ''), minutos, nossa: false }
+  return { pendente: true, body: String(last.body || ''), minutos, nossa: false }
 }
+
+const primeiroNome = (s: unknown) => String(s || '').trim().split(/\s+/)[0] || ''
 
 Deno.serve(async (request: Request) => {
   const expected = Deno.env.get('WHATSAPP_WEBHOOK_SECRET')?.trim() || ''
@@ -86,12 +94,21 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+  const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+  const push = async (title: string, body: string, tag: string) => {
+    if (!pushSecret) return
+    await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+      body: JSON.stringify({ custom: { title, body: body.slice(0, 180), url: '/admin-mensagens.html?app=1', tag } }),
+    }).catch((error) => console.error('[whatsapp-reactivation-watchdog] push', error))
+  }
 
   const cutoff = new Date(Date.now() - INACTIVITY_MINUTES * 60 * 1000).toISOString()
 
   const { data: stale, error } = await admin
     .from('whatsapp_conversations')
-    .select('phone')
+    .select('phone, state')
     .eq('human_takeover', true)
     .lt('last_message_at', cutoff)
 
@@ -99,29 +116,44 @@ Deno.serve(async (request: Request) => {
     console.error('[whatsapp-reactivation-watchdog]', error)
     return json({ error: error.message }, 500)
   }
+  if (!stale || !stale.length) return json({ ok: true, reactivated: 0 })
 
-  let staleCandidates = (stale || []).map((row) => row.phone as string)
-  if (!staleCandidates.length) return json({ ok: true, reactivated: 0 })
+  // v29.85.0 — mensagem HUMANA na conversa nos últimos 90 min = o Juliano está conduzindo.
+  const humanCutoff = new Date(Date.now() - HUMAN_RECENT_MINUTES * 60 * 1000).toISOString()
+  const liberar: string[] = []
+  const esperando: { phone: string; nome: string; minutos: number; body: string }[] = []
+  let comHumano = 0
+  for (const row of stale) {
+    const phone = row.phone as string
+    const { data: humanRecente } = await admin.from('whatsapp_messages').select('id')
+      .eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
+      .gte('created_at', humanCutoff).limit(1)
+    if (humanRecente && humanRecente.length) { comHumano++; continue }
 
-  // v29.85.0 — caso Rodrigo (27/08, 13h30): o Juliano tinha respondido na mão às 13h07 e o
-  // cliente mandou um áudio às 13h09; 20 min depois o watchdog devolveu o controle pra JuIA
-  // e mandou o "ainda estou por aqui" (com link do site!) POR CIMA da conversa que era dele.
-  // Regra: mensagem HUMANA na conversa nos últimos 90 min = o Juliano está conduzindo — o
-  // takeover fica como está e nada de cochicho; o push de "cliente te escreveu" (webhook)
-  // já avisa ele. O watchdog só destrava conversa realmente abandonada.
-  {
-    const humanCutoff = new Date(Date.now() - 90 * 60 * 1000).toISOString()
-    const keep: string[] = []
-    for (const phone of staleCandidates) {
-      const { data: humanRecente } = await admin.from('whatsapp_messages').select('id')
-        .eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
-        .gte('created_at', humanCutoff).limit(1)
-      if (!humanRecente || !humanRecente.length) keep.push(phone)
-      else console.log('[whatsapp-reactivation-watchdog] pulado: Juliano respondeu há pouco, conversa é dele', phone)
+    const ultima = await ultimaMensagem(admin, phone)
+    if (ultima && ultima.pendente && ultima.minutos < PENDING_RELEASE_MINUTES) {
+      // Pedido em aberto e ainda dentro das 3 h: é do Juliano. Cutuca por push (1x/hora) e segura.
+      const st = (row.state && typeof row.state === 'object') ? row.state as Record<string, unknown> : {}
+      const lastPush = st.waiting_reply_push_at ? new Date(String(st.waiting_reply_push_at)).getTime() : 0
+      if (Date.now() - lastPush >= PENDING_PUSH_EVERY_MINUTES * 60 * 1000) {
+        const nome = primeiroNome(st.name) || phone
+        esperando.push({ phone, nome, minutos: ultima.minutos, body: ultima.body })
+        await admin.from('whatsapp_conversations').update({ state: { ...st, waiting_reply_push_at: new Date().toISOString() }, updated_at: new Date().toISOString() }).eq('phone', phone)
+      }
+      continue
     }
-    staleCandidates = keep
-    if (!staleCandidates.length) return json({ ok: true, reactivated: 0, kept_with_human: (stale || []).length })
+    liberar.push(phone)
   }
+
+  for (const e of esperando) {
+    await push(
+      `⏰ ${e.nome} está esperando sua resposta há ${e.minutos} min`,
+      `"${e.body.slice(0, 110)}" — a JuIA não vai responder por cima: a conversa é sua. Sem resposta em 3 h, ela volta a atender a próxima mensagem dele.`,
+      `waiting-reply-${e.phone}`,
+    )
+  }
+
+  if (!liberar.length) return json({ ok: true, reactivated: 0, kept_with_human: comHumano, waiting_juliano: esperando.length })
 
   // Reconfirma human_takeover=true e last_message_at < cutoff no próprio UPDATE
   // (não só no SELECT de cima), pra evitar reativar uma conversa que o cliente
@@ -129,7 +161,7 @@ Deno.serve(async (request: Request) => {
   const { data: updated, error: updateError } = await admin
     .from('whatsapp_conversations')
     .update({ human_takeover: false, updated_at: new Date().toISOString() })
-    .in('phone', staleCandidates)
+    .in('phone', liberar)
     .eq('human_takeover', true)
     .lt('last_message_at', cutoff)
     .select('phone')
@@ -140,67 +172,15 @@ Deno.serve(async (request: Request) => {
   }
 
   const phones = (updated || []).map((row) => row.phone as string)
-  if (!phones.length) return json({ ok: true, reactivated: 0 })
-
-  const evolutionApiUrl = requiredSecret('EVOLUTION_API_URL')
-  const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
-  const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
-  const nudgeText = `${greetingNow()}! 😊 Ainda estou por aqui se precisar de algo. Se preferir, também dá pra ver os serviços, consultar horários disponíveis e agendar direto pelo nosso site: www.barbeariadoju.com.br`
-  let skippedCount = 0
-  // v29.21.0 / v29.26.0 - guarda local de horario (20h-8h). A JANELA COMPLETA de contato
-  // (domingo e feriado nunca; sabado ate 15h; demais dias 8h-20h) e aplicada no AGENDADOR,
-  // pela migration 110: o cron so chama esta function quando public.juia_quiet_now() e falso.
-  // Regra em um lugar so; isto aqui e apenas rede de seguranca para disparo manual.
-  const quietHour = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
-  const quietHours = quietHour >= 20 || quietHour < 8
-
-  for (const phone of phones) {
-    try {
-      if (quietHours || await shouldSkipNudge(admin, phone)) {
-        skippedCount++
-        continue
-      }
-      const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: phone, text: semEmoji(nudgeText) }),
-      })
-      const sendData = await sendResponse.json().catch(() => ({}))
-      const sentMessageId = String(sendData?.key?.id || '') || null
-
-      await admin.from('whatsapp_messages').insert({
-        phone,
-        direction: 'out',
-        body: nudgeText,
-        sent_by: 'bot',
-        evolution_message_id: sentMessageId,
-      })
-
-      await admin
-        .from('whatsapp_conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('phone', phone)
-    } catch (sendError) {
-      console.error('[whatsapp-reactivation-watchdog] nudge falhou', phone, sendError)
-    }
+  if (phones.length) {
+    await push(
+      '🤖 JuIA voltou a atender',
+      phones.length === 1
+        ? `A conversa com ${phones[0]} ficou sem atividade; a JuIA responde a próxima mensagem. Nada foi enviado ao cliente.`
+        : `${phones.length} conversas ficaram sem atividade; a JuIA responde a próxima mensagem. Nada foi enviado aos clientes.`,
+      'whatsapp-auto-reactivate',
+    )
   }
 
-  const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
-  if (pushSecret) {
-    await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-      body: JSON.stringify({
-        custom: {
-          title: '🤖 JuIA reativada automaticamente',
-          body: phones.length === 1
-            ? `A conversa com ${phones[0]} ficou ${INACTIVITY_MINUTES} min sem atividade. A JuIA voltou a responder.`
-            : `${phones.length} conversas ficaram ${INACTIVITY_MINUTES} min sem atividade. A JuIA voltou a responder.`,
-          tag: 'whatsapp-auto-reactivate',
-        },
-      }),
-    }).catch((error) => console.error('[whatsapp-reactivation-watchdog] push', error))
-  }
-
-  return json({ ok: true, reactivated: phones.length, nudged: phones.length - skippedCount, skipped_nudge: skippedCount, phones })
+  return json({ ok: true, reactivated: phones.length, kept_with_human: comHumano, waiting_juliano: esperando.length, phones })
 })

@@ -36,6 +36,20 @@ Pra caber os dois botões do banner em uma linha eu renomeei "Somente essenciais
 
 **Testes:** 153 unit + 51 e2e, todos passando.
 
+## 29.204.0 — JuIA: fim do "ainda estou por aqui" por cima de pedido do cliente; watchdog cutuca o Juliano em vez de falar com o cliente (caso Rodrigo Miranda, 17/09, noite)
+
+**Pedido do Juliano (17/09/2026, ~18h55, print):** "arrumar da JuIA erro". Ele estava atendendo o Rodrigo na mão (mandou os horários às 17h17). O cliente respondeu às 17h47: *"Pode ser sábado às 14:45. Marca dois cortes, pode ser?"* — pedido concreto, pai e filho. Às 18h48 a JuIA mandou *"Boa noite! Ainda estou por aqui se precisar de algo. Se preferir, também dá pra ver os serviços, consultar horários e agendar direto pelo nosso site"* — genérico, com link, por cima de um pedido que só o Juliano podia fechar. Ele respondeu na mão às 18h51.
+
+**Causa:** o `whatsapp-reactivation-watchdog` (roda a cada minuto) devolve a conversa pra JuIA depois de 20 min sem atividade, com uma guarda de "mensagem humana nos últimos 90 min = conversa do Juliano" (v29.85.0, do OUTRO caso Rodrigo, 27/08). Às 18h48 a última mensagem humana tinha 91 minutos — 1 minuto além da guarda. Liberou, e o "cochicho" com link do site só era pulado quando a última fala do cliente NÃO parecia pedido; como parecia ("pode ser…?"), mandou. Ou seja: a regra mandava o texto genérico exatamente no caso em que ele é mais errado.
+
+**Correção (function redeployada):** o watchdog **não manda mais nenhuma mensagem pro cliente**. Ele só decide e avisa:
+- Última mensagem é do cliente e parece pedido (pergunta, "pode ser", horário, marcar, quanto…): **é do Juliano**. Push *"⏰ Rodrigo está esperando sua resposta há 61 min: '…'"* a cada hora (marca `waiting_reply_push_at` no estado da conversa), takeover mantido. Só depois de **3 h** sem resposta a conversa volta pra JuIA, **em silêncio**, pra ela atender a PRÓXIMA mensagem dele — nunca um texto genérico por cima do pedido.
+- Última mensagem é despedida/figurinha/"obrigado", ou é nossa: conversa acabou; takeover volta pra JuIA em silêncio depois dos 20 min, sem mensagem (antes também não mandava; agora está explícito).
+- A guarda dos 90 min continua.
+O "cochicho" com link do site deixou de existir: em todos os casos reais revisados ele saiu fora de hora (Kelvin 05/08, Helder e Rafael 14–18/08, Rodrigo 27/08, Rodrigo 17/09).
+
+**Verificado:** função recusa chamada sem segredo (401); disparo manual com o segredo = 200 sem candidatos; a conversa do Rodrigo está em atendimento humano desde a resposta do Juliano às 18h51 (o webhook marca sozinho). `verify_jwt` inalterado (false, cron).
+
 ## 29.203.1 — Content-Security-Policy no ar pelo Cloudflare, testada página a página; nota A no scanner (17/09, fim da tarde)
 
 **Pedido do Juliano (17/09/2026, ~16h35, print do securityheaders):** "outra auditoria, subimos para A mas ainda tem este campo em vermelho" — o único cabeçalho faltando era a CSP, que eu tinha deixado de fora de propósito na v29.202.1.
