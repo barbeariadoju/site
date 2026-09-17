@@ -150,7 +150,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.188.1'
+  const ADMIN_VERSION='29.198.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
@@ -207,37 +207,18 @@
     loyaltyAccounts=Array.isArray(la)?la:[];loyaltyRewards=Array.isArray(lr)?lr:[];
 
     // Garante que clientes vindos somente de agendamentos também tenham perfil no CRM.
-    // Sem isso, o botão de exclusão ficava desativado por falta do id do perfil.
+    // v29.198.0 — caso Maurício Amorin (17/09/2026): desde a v29.98.0 este passo era um upsert
+    // feito pelo navegador com on_conflict=phone_key, e o índice único de phone_key é PARCIAL
+    // (where phone_key is not null) — o Postgres recusava a inferência (42P10) e o erro morria
+    // no console. 17 clientes novos de site/JuIA ficaram 19 dias sem ficha, e o "Como foi feito"
+    // do Concluir falhava com "cadastro não encontrado". Agora é SQL no servidor
+    // (admin_sync_customer_profiles, migration 158) com `on conflict do nothing`, sem inferência.
     if(!pe && allBookings.length){
-      // v29.12.0 — ESTA ERA A FÁBRICA DE FICHAS DUPLICADAS (achada em 11/08/2026).
-      // A comparação era por dígitos EXATOS: um agendamento gravado como '11974998541'
-      // não "encontrava" a ficha do mesmo cliente gravada como '5511974998541', e este
-      // upsert criava uma ficha nova — automaticamente, toda vez que o admin abria. Foi
-      // assim que o John voltou a duplicar 3 minutos depois de eu unificar as fichas dele.
-      // Agora a comparação usa a chave canônica (mesma regra do phone_match_key do banco).
-      const existing=new Set(customerProfiles.map(x=>phoneKeyDb(x.phone)).filter(Boolean));
-      const latestByPhone=new Map();
-      allBookings.forEach(x=>{
-        const ph=phoneKeyDb(x.customer_phone);
-        if(!ph || existing.has(ph) || latestByPhone.has(ph))return;
-        latestByPhone.set(ph,{
-          name:String(x.customer_name||'Cliente').trim(),
-          // grava o telefone COMPLETO do agendamento, nunca a chave canônica (que é
-          // truncada em DDD + 8 dígitos e serve só pra comparar)
-          phone:phoneDigits(x.customer_phone),
-          email:x.customer_email?String(x.customer_email).trim().toLowerCase():null,
-          archived:false,
-          updated_at:new Date().toISOString()
-        });
-      });
-      const missing=[...latestByPhone.values()];
-      if(missing.length){
-        const {error:syncError}=await sb.from('customer_profiles').upsert(missing,{onConflict:'phone_key'});
-        if(syncError)console.error('Falha ao sincronizar clientes do CRM:',syncError);
-        else{
-          const {data:refreshed,error:refreshError}=await sb.from('customer_profiles').select('*').order('name',{ascending:true});
-          if(!refreshError)customerProfiles=refreshed||[];
-        }
+      const {data:synced,error:syncError}=await sb.rpc('admin_sync_customer_profiles');
+      if(syncError)console.error('Falha ao sincronizar clientes do CRM:',syncError);
+      else if(Number(synced?.created||0)>0){
+        const {data:refreshed,error:refreshError}=await sb.from('customer_profiles').select('*').order('name',{ascending:true});
+        if(!refreshError)customerProfiles=refreshed||[];
       }
     }
     customers=aggregateCustomers(allBookings,customerProfiles)

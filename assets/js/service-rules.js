@@ -183,3 +183,25 @@ export function swapWithinFamily(prevNames, mentionedNow){
   mentioned.forEach(m => { if(familiesOf(m).size && !services.some(s => same(s, m))) services.push(m); });
   return { services, swaps };
 }
+
+// v29.198.0 — CLIQUE numa lista de caixinhas do admin (Concluir, Editar, Balcão, Novo
+// agendamento). Pedido do Juliano (17/09/2026): "quando vou concluir posso colocar 2 cabelos
+// 2 barbas, ele não entende a redundância — quando eu selecionar barba na navalha, desselecionar
+// a Barba Express; com ozônio, desselecionar Express e navalha; o mesmo com o corte, pezinho que
+// já tá incluso, corte com lavagem etc." O carrinho do site já fazia isso (applyServiceRule);
+// aqui a diferença é que o clique é a PALAVRA DELE: onde o site diz "«Corte + Barba Express» já
+// inclui a barba, não precisa adicionar", o admin desmonta o combo e troca a parte (a mesma
+// lógica de troca da JuIA, swapWithinFamily). prevNames = o que já estava marcado (sem o que
+// acabou de ser clicado); devolve { services, message } — services é o conjunto final de
+// caixinhas marcadas. Pai e filho (adulto + infantil) continuam convivendo.
+export function toggleServiceSelection(prevNames, newName){
+  const prev = (prevNames || []).filter(Boolean).filter(n => !same(n, newName));
+  const r = applyServiceRule(prev, newName);
+  if(r.added || isIncluso(newName)) return { services: r.services, message: r.message };
+  const s = swapWithinFamily(prev, [newName]);
+  if(!s.swaps.length) return { services: prev, message: r.message };
+  const parts = s.services.filter(n => !same(n, newName) && !prev.some(p => same(p, n)));
+  const from = s.swaps.map(x => `«${x.from}»`).join(', ');
+  const to = [...parts, newName].map(n => `«${n}»`).join(' + ');
+  return { services: s.services, message: `Só 1 serviço de ${familyLabel(familiesOf(newName))} por atendimento — ${from} virou ${to}.` };
+}

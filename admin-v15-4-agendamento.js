@@ -134,7 +134,13 @@ Prosseguir com o encaixe?`
   function bindBookingServicePicker(){
     const box=$('booking-services');
     if(!box)return;
-    const update=()=>{
+    const update=e=>{
+      // v29.198.0 — regra das famílias nas caixinhas (1 corte + 1 barba; combo desmarca as partes;
+      // pezinho já vem no corte). Fonte única em assets/js/service-rules.js, via admin-service-rules-v30.js.
+      const clicked=e?.target?.matches?.('input[name="booking-service"]')?e.target:null;
+      const rule=clicked?window.BDJ_SERVICE_RULES?.applyToPicker?.(box,clicked,i=>i.name==='booking-service'?i.value:''):null;
+      const ruleMsg=box.querySelector('[data-service-rule-msg]');
+      if(ruleMsg){ruleMsg.textContent=rule?.message||'';ruleMsg.hidden=!rule?.message}
       box.querySelectorAll('.booking-service-option').forEach(label=>{
         const input=label.querySelector('input[name="booking-service"]');
         label.classList.toggle('is-selected',Boolean(input?.checked));
@@ -152,7 +158,11 @@ Prosseguir com o encaixe?`
       const total=chosen.reduce((a,s)=>a+Number(s.price||0),0);
       summary.innerHTML=`<strong>${chosen.length} serviço${chosen.length>1?'s':''} selecionado${chosen.length>1?'s':''}</strong><span>${duration} min • ${money(total)}</span>`;
     };
-    box.addEventListener('change',update);
+    // v29.198.0 — renderAuth roda mais de uma vez (sessão inicial + evento de auth) e chamava
+    // initBookingForm de novo: o innerHTML renova as caixinhas, mas o #booking-services é o mesmo
+    // elemento e ganhava um segundo 'change' — a regra rodava duas vezes e a segunda apagava a
+    // explicação. Liga uma vez só.
+    if(!box.dataset.ruleBound){box.dataset.ruleBound='1';box.addEventListener('change',update)}
     box.querySelectorAll('.booking-service-option').forEach(label=>label.addEventListener('click',e=>{
       if(e.target.matches('input'))return;
       const input=label.querySelector('input[name="booking-service"]');
@@ -161,7 +171,7 @@ Prosseguir com o encaixe?`
     update();
   }
 
-  function renderServicePicker(){const groups={};catalog.forEach(s=>(groups[s.category]??=[]).push(s));return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" name="booking-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')}
+  function renderServicePicker(){const groups={};catalog.forEach(s=>(groups[s.category]??=[]).push(s));return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" name="booking-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')+'<small class="field-help" data-service-rule-msg hidden></small>'}
   // Casa o cliente pela chave canonica do telefone (ultimos 8 digitos) e nao
   // pelos digitos exatos: assim 11 9xxxx, 55 11 9xxxx e variacoes de formato
   // caem no mesmo cadastro em vez de virar duas fichas do mesmo cliente.

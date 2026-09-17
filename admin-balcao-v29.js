@@ -67,11 +67,23 @@
   function renderServicePicker() {
     const groups = {};
     catalog.forEach(s => (groups[s.category] ??= []).push(s));
-    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s => `<label class="booking-service-option"><input type="checkbox" name="balcao-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('');
+    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s => `<label class="booking-service-option"><input type="checkbox" name="balcao-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('') + '<small class="field-help" data-service-rule-msg hidden></small>';
   }
   function selectedServices() { return [...document.querySelectorAll('input[name="balcao-service"]:checked')].map(i => catalog.find(s => s.name === i.value)).filter(Boolean); }
   function bindServicePicker() {
-    $('balcao-services').addEventListener('change', e => { if (e.target?.name === 'balcao-service') updateTotal(); });
+    const servicesBox = $('balcao-services');
+    if (servicesBox.dataset.ruleBound) return; // show() pode rodar de novo no evento de auth; liga uma vez só
+    servicesBox.dataset.ruleBound = '1';
+    servicesBox.addEventListener('change', e => {
+      if (e.target?.name !== 'balcao-service') return;
+      // v29.198.0 — regra das famílias (1 corte + 1 barba; combo desmarca as partes; pezinho já vem
+      // no corte). Fonte única em assets/js/service-rules.js, via admin-service-rules-v30.js.
+      const box = $('balcao-services');
+      const r = window.BDJ_SERVICE_RULES?.applyToPicker?.(box, e.target, i => i.name === 'balcao-service' ? i.value : '');
+      const msg = box.querySelector('[data-service-rule-msg]');
+      if (msg) { msg.textContent = r?.message || ''; msg.hidden = !r?.message; }
+      updateTotal();
+    });
   }
 
   function renderProductPicker() {
@@ -240,7 +252,7 @@
         const styleNow = styleField ? styleField.value.trim() : '';
         const stylePrefill = styleField ? (styleField.dataset.prefill || '') : '';
         if (styleField && styleNow !== stylePrefill) {
-          const { data: styleRes, error: styleErr } = await sb.rpc('admin_set_customer_style', { p_phone: phone, p_style: styleNow });
+          const { data: styleRes, error: styleErr } = await sb.rpc('admin_set_customer_style', { p_phone: phone, p_style: styleNow, p_name: ($('balcao-name')?.value || '').trim() || null });
           if (styleErr || styleRes?.ok === false) alert(`Atendimento registrado, mas o "Como foi feito" NÃO foi salvo no cadastro: ${styleErr?.message || styleRes?.error || 'motivo desconhecido'}`);
         }
       }

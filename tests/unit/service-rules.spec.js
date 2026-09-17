@@ -162,3 +162,49 @@ describe('swapWithinFamily', () => {
     expect(swapWithinFamily(['Corte de cabelo'], []).services).toEqual(['Corte de cabelo']);
   });
 });
+
+// v29.198.0 — clique nas caixinhas do admin (Concluir/Editar/Balcão/Novo agendamento):
+// pedido do Juliano de 17/09/2026, "ele não entende a redundância".
+import { toggleServiceSelection } from '../../assets/js/service-rules.js';
+describe('toggleServiceSelection (caixinhas do admin)', () => {
+  it('barba na navalha desmarca a Barba Express', () => {
+    const r = toggleServiceSelection(['Corte de cabelo', 'Barba Express'], 'Barba na navalha com toalha quente');
+    expect(r.services).toEqual(['Corte de cabelo', 'Barba na navalha com toalha quente']);
+    expect(r.message).toMatch(/Só 1 serviço de barba/);
+  });
+  it('barba com ozônio desmarca a navalha', () => {
+    const r = toggleServiceSelection(['Barba na navalha com toalha quente'], 'Barboterapia com vaporizador de ozônio');
+    expect(r.services).toEqual(['Barboterapia com vaporizador de ozônio']);
+  });
+  it('Corte + Lavagem desmarca o Corte de cabelo', () => {
+    const r = toggleServiceSelection(['Corte de cabelo', 'Sobrancelha Masculina'], 'Corte + Lavagem');
+    expect(r.services).toEqual(['Sobrancelha Masculina', 'Corte + Lavagem']);
+  });
+  it('pezinho em cima de um corte não entra (já está incluso)', () => {
+    const r = toggleServiceSelection(['Corte de cabelo'], 'Pezinho (acabamento)');
+    expect(r.services).toEqual(['Corte de cabelo']);
+    expect(r.message).toMatch(/já inclui o pezinho/);
+  });
+  it('corte em cima do pezinho tira o pezinho', () => {
+    const r = toggleServiceSelection(['Pezinho (acabamento)'], 'Corte de cabelo');
+    expect(r.services).toEqual(['Corte de cabelo']);
+  });
+  it('combo "Corte + X" desmarca corte e barba soltos', () => {
+    const r = toggleServiceSelection(['Corte de cabelo', 'Barba Express'], 'Corte + Barba Express');
+    expect(r.services).toEqual(['Corte + Barba Express']);
+  });
+  it('combo marcado + clique numa barba diferente: desmonta o combo e troca a barba', () => {
+    const r = toggleServiceSelection(['Corte + Barba Express'], 'Barboterapia com vaporizador de ozônio');
+    expect(r.services).toEqual(['Corte de cabelo', 'Barboterapia com vaporizador de ozônio']);
+    expect(r.message).toMatch(/«Corte \+ Barba Express» virou «Corte de cabelo» \+ «Barboterapia/);
+  });
+  it('pai e filho: corte infantil convive com o corte adulto', () => {
+    const r = toggleServiceSelection(['Corte de cabelo'], 'Corte de cabelo infantil');
+    expect(r.services).toEqual(['Corte de cabelo', 'Corte de cabelo infantil']);
+    expect(r.message).toBeNull();
+  });
+  it('serviço sem família só entra', () => {
+    const r = toggleServiceSelection(['Corte de cabelo'], 'Sobrancelha Masculina');
+    expect(r.services).toEqual(['Corte de cabelo', 'Sobrancelha Masculina']);
+  });
+});

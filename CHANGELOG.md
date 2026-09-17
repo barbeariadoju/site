@@ -1,3 +1,32 @@
+## 29.198.0 — Ficha de cliente novo não era criada há 19 dias (caso Maurício Amorin), "Como foi feito" cria a ficha sozinho, e as caixinhas de serviço do admin passam a respeitar as famílias (17/09, manhã)
+
+**Pedido do Juliano (17/09/2026, "plano do dia"):** "fui concluir o do Maurício, apareceu [um aviso] mas o Como foi feito… não consegui ler, eu escrevi como foi feito mas não sei o que houve". E: "quando vou concluir posso colocar 2 cabelos, 2 barbas, ele não entende a redundância — quando eu selecionar barba na navalha, desselecionar a Barba Express; com ozônio, desselecionar Express e navalha; o mesmo com o corte: pezinho que já tá incluso, corte com lavagem etc."
+
+**O que aconteceu com o Maurício (1ª visita, agendou pelo site):** o aviso que ele não conseguiu ler era *"Atendimento concluído, mas o 'Como foi feito' NÃO foi salvo no cadastro: cadastro não encontrado"*. O atendimento em si foi concluído certo (R$ 65, débito, caixinha R$ 5); só a anotação de estilo se perdeu — e o texto não tem como recuperar, foi só na tela. **A anotação precisa ser digitada de novo** (Clientes › Maurício Amorin › Preferências de estilo, ou no próximo Concluir dele).
+
+**A causa era maior que o Maurício.** A RPC `admin_set_customer_style` (v29.195.0, ontem) só atualiza ficha existente, confiando que "o admin já cria a ficha ao abrir" — e essa criação estava **quebrada desde a v29.98.0 (29/08)**: naquela versão o upsert do painel passou a usar `on_conflict=phone_key`, mas o índice único de `phone_key` é **parcial** (`where phone_key is not null`), e o Postgres recusa a inferência do ON CONFLICT em índice parcial (erro 42P10, *"there is no unique or exclusion constraint matching the ON CONFLICT specification"* — reproduzido com `explain insert … on conflict (phone_key)`). O erro ia pro `console.error` e ninguém via. Resultado: **17 clientes novos de site/JuIA desde 29/08 sem ficha** (Amanda, Breno, Bruno Brasiliano, Danilo, Fabrício, Gabriel, Guizo, Jessica, João Eduardo, Junior, Kennedy, Maurício, Murillo, Renatinho, Venilson, Vitor, Vytor) — sem ficha não existe "já avaliou no Google", estilo, aniversário nem observações; a fidelidade e a pesquisa seguiram por telefone, mas o cadastro em Clientes vinha só do agendamento. Erro meu de 29/08, registrado como manda a casa: troquei a chave do upsert sem conferir que o índice aceitava inferência, e o teste e2e não pega porque o mock do Supabase aceita qualquer POST.
+
+**Correção (migration 158 + painel):**
+- **`admin_sync_customer_profiles()`** (RPC nova): a sincronização sai do navegador e vira SQL no servidor, `insert … on conflict do nothing` (sem inferir índice), uma ficha por chave de telefone com o nome do agendamento mais recente. O painel chama ao carregar (`loadBaseData`, admin-v15-4-core.js) e só recarrega a lista se criou alguma. **Rodei o mesmo insert na hora: as 17 fichas já existem**, o Maurício incluso.
+- **`admin_set_customer_style`** ganhou `p_name` e **cria a ficha quando não existe** (nome do agendamento; sem nome, "Cliente"). Ficha arquivada passa a ser aceita em vez de recusada (é a mesma pessoa). Concluir e Balcão mandam o nome. Sem `anon`/`public` nas duas funções, igual à regra da 157.
+
+**Caixinhas de serviço com a regra das famílias (Concluir, Editar, Balcão e Novo agendamento):** a regra do Juliano de 22/08 (1 corte + 1 barba; Barboterapia/navalha/Express são alternativas; combo "Corte + X" já inclui as duas; pezinho já vem no corte; única exceção pai e filho) já valia no carrinho do site e na JuIA — a fonte única `assets/js/service-rules.js` — mas nunca nas caixinhas do admin, que deixavam marcar tudo. Agora um clique ajusta as outras caixinhas e explica numa linha embaixo da lista:
+- marcar **Barba na navalha** desmarca a Barba Express (e vice-versa); marcar **Barboterapia com ozônio** desmarca a que estava;
+- marcar **Corte + Lavagem** (ou Raspar a cabeça, ou um combo) desmarca o Corte de cabelo solto; marcar um combo **"Corte + X"** desmarca corte e barba soltos;
+- **pezinho** em cima de um corte não entra ("«Corte de cabelo» já inclui o pezinho"); corte em cima do pezinho tira o pezinho;
+- **corte infantil + corte adulto** continuam juntos (pai e filho);
+- **combo marcado + clique numa barba diferente:** o combo se desmonta e a barba troca ("«Corte + Barba Express» virou «Corte de cabelo» + «Barboterapia…»") — aqui o admin difere do site de propósito: no site a resposta é "não precisa adicionar", no admin o clique é a palavra dele, é o que ele viu fazer.
+- Desmarcar nunca mexe nas outras. Sem a regra carregada (módulo ES falhou), as caixinhas funcionam como antes — nunca é motivo pra tela quebrar.
+
+Implementação: função nova `toggleServiceSelection` na fonte única (9 testes unitários novos, 32 no arquivo), e a ponte `admin-service-rules-v30.js` (`<script type="module">` nas 7 páginas do admin) que expõe o módulo como `window.BDJ_SERVICE_RULES` pros scripts clássicos — os pickers só ligam um `change` no container. A cópia TS do `_shared` não muda: a regra em si é a mesma, só a função de clique é do admin.
+
+Cache: `?v=29.198.0` em core, agenda, agendamento e balcão nas 7 páginas + ponte; `ADMIN_VERSION` e `admin-version.json` em 29.198.0 (os dois juntos, regra da v29.99.0).
+
+**Achado no caminho (teste e2e novo pegou):** o picker de Novo agendamento e o do Balcão ligavam o `change` de novo a cada `renderAuth`/`show()` (sessão inicial + evento de auth): o innerHTML renovava as caixinhas, mas o container é o mesmo elemento e acumulava um segundo listener — a regra rodava duas vezes e a segunda passada apagava a explicação. Antes era invisível (só recalculava o total duas vezes). Os dois ligam uma vez só agora (`dataset.ruleBound`).
+
+Testes: 9 unitários novos em `service-rules.spec.js` e 2 e2e novos em `tests/e2e/admin/admin-regra-familias.spec.js` (provam que a ponte carrega na página real e que os cartões reagem ao toque, no Novo agendamento e no Balcão). `npm test` verde: 147 unit + 50 e2e.
+
+
 ## 29.197.0 — Três casos reais revisados por pedido do Juliano: saudação seca, dois cortes assumidos por engano, cobrança redundante de quem avisou que ia viajar (17/09, manhã)
 
 **Pedido do Juliano (17/09/2026):** "JuIA vacilou demais nestas duas mensagens, precisamos arrumar ela pra não errar de novo" — com prints de duas conversas reais do WhatsApp e a orientação "olha como eu conduzi e tente ensinar ela a não errar mais".
