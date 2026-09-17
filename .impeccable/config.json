@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-09-17T20:55:04.993Z",
+        "reason": "falso positivo medido na pagina ao vivo em 17/09/2026: h1 70.4px -> h2 30px = 2.35x e h2 -> h3 17.6px = 1.70x, nao 'menos de 1.25x em todos os passos'. A hierarquia h1/h2 foi separada nesta mesma versao (29.204.0)"
+      }
+    ]
+  }
+}
