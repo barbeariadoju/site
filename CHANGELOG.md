@@ -1,3 +1,16 @@
+## 29.198.2 — Avaliações Google: aprovar já publica (caso Mauricio Lamberti, 17/09, meio-dia)
+
+**Pedido do Juliano (17/09/2026, ~11h55):** "tem uma avaliação nova no Google, chegou notificação do nosso sistema com resposta legal, eu aprovei, mas não foi publicada".
+
+**O que aconteceu:** a avaliação (Mauricio Lamberti, 5 estrelas, "Lugar muito top, e atendimento de primeira!") entrou às 21h20 de 16/09 e ele aprovou o rascunho às 21h20 pela tela que a notificação abre. A resposta ficou parada em *aprovado*: desde a v28.33.0 publicar era um **segundo botão** ("Publicar no Google") no mesmo cartão, separado do "Aprovar" de propósito, pra garantir em código que o sistema nunca publica sozinho. Só que a decisão humana que essa regra exige é a aprovação — o segundo clique era só atrito, e passou batido.
+
+**Feito agora:**
+- Publiquei a resposta aprovada dele no Google pelo Windsor (`reply_to_review`, 14h58 UTC) e marquei a avaliação como publicada no sistema. Texto exatamente o que ele aprovou.
+- **"Aprovar" virou "Aprovar e publicar"** (`admin-avaliacoes-v28.js`): o mesmo clique grava a aprovação e chama a `google-reviews-publish`. Se o Google recusar, a resposta fica aprovada com o motivo no cartão e o botão "Publicar no Google" continua lá pra tentar de novo — nada se perde. A função de publicação não mudou: continua exigindo admin autenticado e continua sendo o único ponto que escreve no Google.
+- Teste e2e novo (`admin-avaliacoes-aprovar.spec.js`): aprovar uma avaliação pendente dispara a chamada à função de publicação. `npm test` verde: 147 unit + 51 e2e.
+
+Cache: `admin-avaliacoes-v28.js?v=29.198.2`. Sem banco, sem `ADMIN_VERSION` (a tela de avaliações não passa pelo reload automático do painel).
+
 ## 29.198.1 — Remarcar zera o pedido de confirmação de presença (caso Levi, 17/09, meio-dia)
 
 **Pedido do Juliano (17/09/2026, 11h50, print do WhatsApp):** "JuIA não confirmou este rapaz que eu tinha remarcado". Levi tinha horário em 10/09 às 16h, confirmado pela JuIA no dia 9. No dia 10 o Juliano remarcou pelo painel pra 17/09 às 16h. No dia 16 o robô das confirmações não pediu nada, e ele mesmo mandou "passando pra confirmar seu horário hoje às 16hs".

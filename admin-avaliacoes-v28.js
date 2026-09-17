@@ -80,7 +80,7 @@
           ${row.last_error ? `<p class="avaliacoes-no-draft">Falha ao publicar: ${esc(row.last_error)}</p>` : ''}
           <p class="field-help" data-row-message></p>
           <div class="avaliacoes-card-actions">
-            ${row.status === 'pending' ? `<button class="is-primary" data-approve="${row.id}">Aprovar</button><button class="is-danger" data-ignore="${row.id}">Ignorar</button>` : ''}
+            ${row.status === 'pending' ? `<button class="is-primary" data-approve="${row.id}">Aprovar e publicar</button><button class="is-danger" data-ignore="${row.id}">Ignorar</button>` : ''}
             ${row.status === 'approved' ? `<button class="is-primary" data-publish="${row.id}">Publicar no Google</button><button data-unapprove="${row.id}">Voltar pra pendente</button><button class="is-danger" data-ignore="${row.id}">Ignorar</button>` : ''}
             ${row.status === 'ignored' ? `<button data-reopen="${row.id}">Reabrir</button>` : ''}
           </div>
@@ -119,6 +119,18 @@
     button.disabled = true;
     const { error } = await sb.from('google_reviews').update({ status: 'approved', final_reply: finalReply }).eq('id', id);
     if (error) { cardMessage(id, error.message); button.disabled = false; return; }
+    // v29.198.2 — caso Mauricio Lamberti (17/09/2026): o Juliano aprovou pela notificação e a
+    // resposta ficou parada em 'aprovado', porque publicar era um SEGUNDO botão na mesma tela.
+    // Aprovar é a decisão humana que a regra 'nunca publica sozinha' exige — então aprovar publica.
+    // Se o Google falhar, a resposta fica aprovada com o erro no cartão e o botão 'Publicar no
+    // Google' continua lá pra tentar de novo.
+    button.textContent = 'Publicando...';
+    const { data, error: publishError } = await sb.functions.invoke('google-reviews-publish', { body: { id } });
+    if (publishError || data?.error) {
+      await load();
+      cardMessage(id, 'Aprovada, mas o Google não aceitou a publicação: ' + (data?.error || publishError?.message || 'motivo desconhecido') + '. Tente de novo em "Publicar no Google".');
+      return;
+    }
     await load();
   }
 
