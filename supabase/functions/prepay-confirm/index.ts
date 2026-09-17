@@ -65,15 +65,21 @@ Deno.serve(async (req) => {
         // com teste). Se a consulta falhar, o módulo cai no texto original ("antes").
         const { data: reserva } = await admin
           .from('bookings')
-          .select('booking_date,start_time,status')
+          .select('booking_date,start_time,status,prepay_amount,service_price,products_price')
           .eq('id', bookingId)
           .maybeSingle()
+        // v29.199.1 — sinal (prepay_amount): o valor confirmado é o do sinal, e o texto diz o que falta.
+        const totalReserva = Number(reserva?.service_price || 0) + Number(reserva?.products_price || 0)
+        const sinalConfirmado = Number(reserva?.prepay_amount || 0) > 0 ? Number(reserva?.prepay_amount) : 0
+        const valorConfirmado = sinalConfirmado > 0 ? sinalConfirmado : Number(row.valor || 0)
+        const restanteReserva = sinalConfirmado > 0 ? Math.max(0, totalReserva - sinalConfirmado) : 0
         const emSP = (opts: Intl.DateTimeFormatOptions) =>
           new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hourCycle: 'h23', ...opts }).format(new Date())
         const agoraSP = `${emSP({ year: 'numeric', month: '2-digit', day: '2-digit' })} ${emSP({ hour: '2-digit', minute: '2-digit' })}`
         const texto = mensagemPixConfirmado({
           clienteNome: String(row.customer_name || ''),
-          valor: Number(row.valor || 0),
+          valor: valorConfirmado,
+          restante: restanteReserva,
           bookingDate: String(reserva?.booking_date || ''),
           startTime: String(reserva?.start_time || ''),
           status: String(reserva?.status || ''),

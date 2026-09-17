@@ -3927,7 +3927,7 @@ Deno.serve(async req=>{
        next.pix_offered=false
        if(bookingId){
         try{
-         await supabase.from('bookings').update({prepay_key:'picpay',updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
+         await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:SINAL_QUIMICA,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
          const pushSecretS=Deno.env.get('PUSH_WEBHOOK_SECRET');const supabaseUrlS=Deno.env.get('SUPABASE_URL')
          if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:'Pedi sinal de R$ 50 (química, 1ª visita)',body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda.`,url:'/admin-agenda.html?app=1',tag:`sinal-quimica-${bookingId}`}})}).catch(()=>{})
         }catch(sinalErr){console.error('[ju-ia-site] sinal quimica',sinalErr)}

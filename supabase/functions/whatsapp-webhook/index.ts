@@ -633,7 +633,7 @@ Deno.serve(async (request: Request) => {
             const agoraSP = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date())
             const agoraMin = Number(agoraSP.slice(0, 2)) * 60 + Number(agoraSP.slice(3, 5))
             const { data: recente } = await admin.from('bookings')
-              .select('id, booking_date, start_time, duration_minutes, service_name, status, selected_products, service_price, products_price, prepay_declared_at')
+              .select('id, booking_date, start_time, duration_minutes, service_name, status, selected_products, service_price, products_price, prepay_declared_at, prepay_amount')
               .in('customer_phone', [phone, phone.replace(/^55/, '')]).eq('booking_date', hojeSP)
               .in('status', ['pending', 'confirmed', 'completed']).is('prepay_confirmed_at', null)
               .order('start_time', { ascending: false }).limit(3)
@@ -654,9 +654,24 @@ Deno.serve(async (request: Request) => {
             const valorLido = analiseImagem.startsWith('COMPROVANTE_PAGAMENTO|')
               ? analiseImagem.split('|')[1]?.trim().replace(/[^\d,.]/g, '') || ''
               : ''
-            const totalFmt = total.toFixed(2).replace('.', ',')
+            // v29.199.1 — SINAL (caso Murillo, 17/09/2026): pagou R$ 50 de sinal de um platinado de
+            // R$ 190 e a resposta foi "conferir o Pix de R$ 190,00". O valor esperado é o do sinal
+            // quando o agendamento tem prepay_amount (JuIA/Juliano pediram sinal) ou quando o
+            // comprovante mostra um valor claramente parcial (entre R$ 20 e o total) — aí o sinal
+            // fica gravado no agendamento pro Concluir e pro cupom baterem.
+            let sinalReserva = 0
+            try {
+              const { data: bSinal } = await admin.from('bookings').select('prepay_amount').eq('id', b.id).maybeSingle()
+              sinalReserva = Number(bSinal?.prepay_amount || 0) > 0 ? Number(bSinal?.prepay_amount) : 0
+            } catch { sinalReserva = 0 }
+            const valorLidoNum = valorLido ? Number(valorLido.replace(/\./g, '').replace(',', '.')) : 0
+            const valorPix = sinalReserva > 0 ? sinalReserva : (valorLidoNum >= 20 && valorLidoNum < total ? valorLidoNum : total)
+            const ehSinal = valorPix > 0 && valorPix < total
+            if (ehSinal && sinalReserva === 0) await admin.from('bookings').update({ prepay_amount: valorPix }).eq('id', b.id).is('prepay_amount', null)
+            const totalFmt = valorPix.toFixed(2).replace('.', ',')
+            const restanteFmt = Math.max(0, total - valorPix).toFixed(2).replace('.', ',')
             const divergencia = valorLido && valorLido.replace(/\./g, '') !== totalFmt.replace(/\./g, '')
-              ? `\n⚠️ O comprovante mostra R$ ${valorLido}, e o atendimento fechou em R$ ${totalFmt}.`
+              ? `\n⚠️ O comprovante mostra R$ ${valorLido}, e o valor esperado é R$ ${totalFmt}${ehSinal ? ' (sinal)' : ''}.`
               : ''
             await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: hasMedia ? `[comprovante recebido${docMsg?.fileName ? ': ' + docMsg.fileName : ''}${valorLido ? ` — R$ ${valorLido}` : ''}]` : text })
             // v29.122.0 (caso Israel, 02/09) — atendimento JÁ CONCLUÍDO não tem horário a
@@ -666,10 +681,12 @@ Deno.serve(async (request: Request) => {
             const jaAtendido = String(b.status) === 'completed'
             await sendWhatsapp(phone, jaAtendido
               ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
-              : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
+              : ehSinal
+                ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} (sinal) e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado; o restante, R$ ${restanteFmt}, você acerta no dia.`
+                : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
-              body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${totalFmt} · ${quando}${jaAtendido ? ' (já atendido)' : ''}\n${b.service_name}${divergencia}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
+              body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${totalFmt}${ehSinal ? ` (sinal; restante R$ ${restanteFmt} no dia)` : ''} · ${quando}${jaAtendido ? ' (já atendido)' : ''}\n${b.service_name}${divergencia}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
             return json({ ok: true, prepay_declared: b.id })
           }
           // v29.122.0 — COMPROVANTE SEM ATENDIMENTO ENCONTRADO. Antes, quando nenhuma reserva

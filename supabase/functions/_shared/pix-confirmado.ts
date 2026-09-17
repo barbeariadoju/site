@@ -30,6 +30,8 @@ export type DadosPixConfirmado = {
   status: string
   /** agora em America/Sao_Paulo, 'YYYY-MM-DD HH:MM' */
   agoraSP: string
+  /** v29.199.1 — quando o Pix é SINAL (parte do total): o que falta acertar no dia. 0/ausente = pagou tudo. */
+  restante?: number
 }
 
 export const money = (v: unknown) =>
@@ -64,12 +66,18 @@ export const mensagemPixConfirmado = (d: DadosPixConfirmado) => {
   const nome = primeiroNome(d.clienteNome)
   const valor = money(d.valor)
   const momento = momentoDaConfirmacao(d)
+  // v29.199.1 — caso Murillo (17/09/2026): sinal de R$ 50 de um platinado de R$ 190. A mensagem
+  // dizia "Pix de R$ 190,00" (o total). Com restante > 0 o texto fala em sinal e no que falta.
+  const restante = Number(d.restante || 0)
+  const sinal = restante > 0
 
   if (momento === 'depois') {
     return [
       'Pagamento confirmado.',
       '',
-      `${nome}, o Juliano conferiu e o seu Pix de ${valor} foi recebido. O atendimento de hoje está quitado, não há mais nada a acertar.`,
+      sinal
+        ? `${nome}, o Juliano conferiu e o seu Pix de ${valor} (sinal) foi recebido e já está abatido do atendimento de hoje.`
+        : `${nome}, o Juliano conferiu e o seu Pix de ${valor} foi recebido. O atendimento de hoje está quitado, não há mais nada a acertar.`,
       '',
       'Obrigado pela confiança. Até a próxima!',
       'Barbearia do Ju',
@@ -91,7 +99,9 @@ export const mensagemPixConfirmado = (d: DadosPixConfirmado) => {
   return [
     'Pagamento confirmado.',
     '',
-    `${nome}, o Juliano conferiu e o seu Pix de ${valor} foi recebido. Seu horário está garantido: é só chegar no horário combinado, sem precisar fazer mais nada.`,
+    sinal
+      ? `${nome}, o Juliano conferiu e o seu Pix de ${valor} (sinal) foi recebido. Seu horário está garantido: é só chegar no horário combinado. O restante, ${money(restante)}, você acerta no dia do atendimento.`
+      : `${nome}, o Juliano conferiu e o seu Pix de ${valor} foi recebido. Seu horário está garantido: é só chegar no horário combinado, sem precisar fazer mais nada.`,
     '',
     'Obrigado pela confiança, te esperamos!',
     'Barbearia do Ju',

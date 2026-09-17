@@ -71,3 +71,21 @@ describe('mensagemPixConfirmado', () => {
     }
   });
 });
+
+// v29.199.1 — caso Murillo (17/09/2026): sinal de R$ 50 de um platinado de R$ 190. A mensagem
+// de Pix confirmado dizia "Pix de R$ 190,00". Com restante > 0, fala em sinal e no que falta.
+describe('mensagemPixConfirmado com sinal', () => {
+  it('antes do horário: valor do sinal e o restante a acertar no dia', () => {
+    const m = norm(mensagemPixConfirmado({ ...base, valor: 50, restante: 140 }));
+    expect(m).toContain('Pix de R$ 50,00 (sinal)');
+    expect(m).toContain('O restante, R$ 140,00, você acerta no dia do atendimento.');
+    expect(m).not.toContain('sem precisar fazer mais nada');
+  });
+  it('depois do horário: sinal abatido do atendimento', () => {
+    const m = norm(mensagemPixConfirmado({ ...base, valor: 50, restante: 140, agoraSP: '2026-09-09 18:00' }));
+    expect(m).toContain('Pix de R$ 50,00 (sinal) foi recebido e já está abatido');
+  });
+  it('sem restante, texto de sempre', () => {
+    expect(norm(mensagemPixConfirmado({ ...base, restante: 0 }))).toContain('Pix de R$ 60,00 foi recebido. Seu horário está garantido');
+  });
+});

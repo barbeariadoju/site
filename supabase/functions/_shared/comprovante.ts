@@ -54,6 +54,8 @@ export type DadosComprovante = {
   pagamentoProdutos: string
   /** prepay_confirmed_at preenchido: vale como forma de pagamento por si só */
   pagamentoAntecipado: boolean
+  /** v29.199.1 — sinal por Pix confirmado (parte do total, prepay_amount). 0/ausente = não houve sinal. */
+  sinalPago?: number
   /** channel === 'balcao' */
   balcao: boolean
 }
@@ -174,6 +176,10 @@ export const montarCupom = (d: DadosComprovante) => {
   // v29.162.0 — desconto manual: só o que couber no serviço depois do prêmio, nunca negativo.
   const descontoManual = d.cortesia ? 0 : Math.min(Math.max(0, Number(d.desconto || 0)), Math.max(0, servicoValor - desconto))
   const total = d.cortesia ? 0 : Math.max(0, bruto - desconto - descontoManual)
+  // v29.199.1 — caso Murillo (17/09/2026): sinal de R$ 50 pago antes, por Pix; o resto no dia.
+  // O total do documento continua o total; o sinal aparece como abatimento e o restante com a
+  // forma dele. Sem isso o cupom dizia "Pago no Pix (pago antecipado)" pro serviço inteiro.
+  const sinal = d.cortesia ? 0 : Math.min(Math.max(0, Number(d.sinalPago || 0)), total)
 
   const totais: string[] = []
   if (desconto > 0 || descontoManual > 0 || d.cortesia) totais.push(`Subtotal: ${money(bruto)}`)
@@ -192,7 +198,12 @@ export const montarCupom = (d: DadosComprovante) => {
   // ainda foi pago (produto, ou o resto do combo) tem a forma dele; o serviço premiado, nenhuma.
   const pagServico = (pagoComFidelidade ? '' : metodoLabel(d.pagamentoServico)) || (d.pagamentoAntecipado ? 'no Pix (pago antecipado)' : '')
   const pagProdutos = metodoLabel(d.pagamentoProdutos) || pagServico
-  if (d.cortesia) {
+  if (sinal > 0) {
+    totais.push(`Sinal pago antes, no Pix: -${money(sinal)}`)
+    const resto = total - sinal
+    const pagResto = pagoComFidelidade ? '' : metodoLabel(d.pagamentoServico)
+    totais.push(resto > 0 ? `Restante de ${money(resto)}${pagResto ? ` pago ${pagResto}` : ''}` : 'Nada mais a pagar')
+  } else if (d.cortesia) {
     // O motivo da cortesia NÃO sai no comprovante de propósito: o campo é anotação interna do
     // Juliano ("João, funcionário", "reclamou do corte passado") e o cliente não é o público
     // dela. O que ele precisa saber é que não há nada a pagar.

@@ -251,3 +251,22 @@ describe('primeiroNome', () => {
     expect(cupom.startsWith('Olá, Kelvin.')).toBe(true);
   });
 });
+
+// v29.199.1 — caso Murillo (17/09/2026): sinal de R$ 50 por Pix confirmado antes, restante no débito.
+describe('montarCupom com sinal', () => {
+  it('mostra o total, o sinal abatido e o restante com a forma dele', () => {
+    const c = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Nevou / Platinado', servicoValor: 190, pagamentoServico: 'debito', pagamentoAntecipado: true, sinalPago: 50 }));
+    expect(c).toContain('*Total: R$ 190,00*');
+    expect(c).toContain('Sinal pago antes, no Pix: -R$ 50,00');
+    expect(c).toMatch(/Restante de R\$ 140,00 pago .*[Dd]ébito/);
+    expect(c).not.toContain('pago antecipado');
+  });
+  it('sinal que cobre tudo: nada mais a pagar', () => {
+    const c = norm(montarCupom({ ...base, servicoValor: 45, pagamentoServico: '', pagamentoAntecipado: true, sinalPago: 45 }));
+    expect(c).toContain('Nada mais a pagar');
+  });
+  it('sem sinal, comportamento antigo do pago antecipado', () => {
+    const c = norm(montarCupom({ ...base, pagamentoServico: '', pagamentoAntecipado: true }));
+    expect(c).toContain('pago antecipado');
+  });
+});

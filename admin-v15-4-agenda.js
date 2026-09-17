@@ -335,7 +335,10 @@
       const loyaltyNoteHtml=temPremio
         ?`<p class="privacy-note checkout-loyalty-note">🎁 <b>Este cliente tem 1 serviço por nossa conta</b> (fechou 10 pontos). "Bônus de fidelidade" já está marcado — se ele preferir pagar e guardar o prêmio, é só trocar a forma.</p>`
         :`<p class="privacy-note checkout-loyalty-note is-warn" data-loyalty-warn hidden>⚠️ Este cliente <b>não tem prêmio disponível</b> no sistema (${loyaltyInfo.found?`${loyaltyInfo.points}/10 pontos`:'sem cartão ainda'}). Concluir assim registra o serviço por nossa conta mesmo assim.</p>`;
-      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>':'')+loyaltyNoteHtml+paymentPickerHtml(prepaid?'pix':(temPremio?'fidelidade':''));
+      // v29.199.1 — sinal (prepay_amount): o aviso diz o valor do sinal e o que falta cobrar; a forma
+      // de pagamento pré-selecionada (Pix) é a do restante, e ele troca se o resto veio de outro jeito.
+      const sinalPago=prepaid&&Number(booking.prepay_amount||0)>0?Number(booking.prepay_amount):0;
+      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?(sinalPago>0?`<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou <b>sinal de ${money(sinalPago)}</b> no Pix (confirmado por você). Falta cobrar o restante — escolha a forma como ele pagou o resto.</p>`:'<p class="privacy-note" style="margin:4px 0 8px">💸 Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'):'')+loyaltyNoteHtml+paymentPickerHtml(prepaid?'pix':(temPremio?'fidelidade':''));
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
       // v29.65.0 — pedido do Juliano (22/08/2026): um clique "já avaliou no Google" que fica
@@ -402,7 +405,7 @@
       const totalBox=modal.querySelector('[data-checkout-total]');
       const paidRow=(booking.payments||[]).find(p=>p&&p.status==='paid');
       const paidLabel=paidRow?({pix:'Pix',credito:'crédito',debito:'débito'}[paidRow.method]||'online'):'Pix';
-      const paidValue=paidRow?Number(paidRow.amount_cents||0)/100:(prepaid?Number(booking.service_price||0):0);
+      const paidValue=paidRow?Number(paidRow.amount_cents||0)/100:(prepaid?(sinalPago>0?sinalPago:Number(booking.service_price||0)):0);
       // v29.138.0 — prêmio da fidelidade no check-out (caso Joao, 05/09/2026). Com "Bônus de
       // fidelidade" marcado: 1 serviço = ele inteiro é o prêmio; 2 ou mais = o Juliano escolhe
       // QUAL foi o prêmio e como o restante foi pago (o cupom do cliente sai com o valor certo).
