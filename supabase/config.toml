@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.prepay-deadline]
 verify_jwt = false
+
+[functions.cliente-area]
+verify_jwt = true
