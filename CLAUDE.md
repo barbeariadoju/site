@@ -78,7 +78,7 @@ então o estrago de um deslize desse não se desfaz editando depois.
 
 ## 4. Armadilhas que já custaram retrabalho
 
-**Cloudflare na frente (desde 17/09/2026).** O DNS e o proxy do domínio estão no Cloudflare (conta do Juliano, plano Free): HSTS 6 meses, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options e TLS 1.2 vêm de lá, não do repo. CSS/JS ficam até ~10 min na borda (HTML e JSON não são cacheados) — o  novo é o que garante versão nova; pra forçar, Caching → Configuration → Purge Everything no painel. "Always Use HTTPS" fica DESLIGADO (o GitHub Pages já redireciona; ligar nos dois dá loop). Não há CSP de propósito (GTM/GA/Meta/jsdelivr/Supabase quebrariam sem teste caso a caso).
+**Cloudflare na frente (desde 17/09/2026).** O DNS e o proxy do domínio estão no Cloudflare (conta do Juliano, plano Free): HSTS 6 meses, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options e TLS 1.2 vêm de lá, não do repo. CSS/JS ficam até ~10 min na borda (HTML e JSON não são cacheados) — o `?v=` novo é o que garante versão nova; pra forçar, Caching → Configuration → Purge Everything no painel. "Always Use HTTPS" fica DESLIGADO (o GitHub Pages já redireciona; ligar nos dois dá loop). Não há CSP de propósito (GTM/GA/Meta/jsdelivr/Supabase quebrariam sem teste caso a caso).
 
 **Cache.** Ao alterar qualquer `.js` ou `.css`, **bumpe o `?v=`** nas páginas que
 o carregam *e* no `style.css`. Já aconteceu de publicar código novo atrás de cache
