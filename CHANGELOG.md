@@ -1,3 +1,16 @@
+## 29.200.0 — Sinal de química tem prazo de 1 hora; vencido, o horário é liberado sozinho (17/09, começo da tarde)
+
+**Regra do Juliano (17/09/2026, ~13h):** "até 1h pra fazer o sinal; se não fizer, libera o horário. Isto só pra serviços de química, que são mais caros e duradouros e ocupam muito tempo na agenda." Fecha a pendência registrada na v29.199.1: o pedido de sinal saía sem prazo, e o primeiro cancelamento por ele (Teddy) foi na mão, 25 minutos depois do pedido.
+
+**Escopo (inalterado):** serviço com `upsell_tag = 'quimica'` em cliente sem atendimento concluído — o mesmo recorte da v29.199.0. Química em cliente antigo e qualquer outro serviço seguem sem sinal.
+
+**Como funciona:**
+- **JuIA** (`ju-ia-site`): ao pedir o sinal, a mensagem termina com *"O sinal precisa cair em até 1 hora a partir de agora; passado esse prazo, o horário é liberado automaticamente"*, grava `bookings.prepay_deadline_at = agora + 1h` (migration 161) e guarda o prazo em `sinal_pendente.deadline` no estado. O push pro Juliano avisa que o horário cai sozinho sem Pix em 1h.
+- **`prepay-deadline`** (function nova, cron `bdj-prepay-deadline` a cada 5 min, mesmo padrão dos outros robôs, segredo do vault): pega agendamentos com prazo vencido em que o cliente **nem declarou** o Pix (comprovante/"paguei", `prepay_declared_at`) **nem** o Juliano confirmou (`prepay_confirmed_at`), e que ainda não começaram. Cancela com anotação no agendamento, limpa o estado da conversa (senão a JuIA seguiria achando que ele tem horário), manda ao cliente, como JuIA e sem tirar a conversa do automático: *"como o sinal de R$ 50,00 não chegou dentro de 1 hora, o horário de 18/09 às 12:00 (Luzes) foi liberado. Se ainda quiser fazer, é só me chamar por aqui que eu consulto a disponibilidade e reservo de novo. Se você já fez o Pix, me manda o comprovante que eu vejo com o Juliano"* — e avisa o Juliano por push ("se o Pix aparecer no extrato, reative pela Agenda"). Horário que já passou só tem o prazo apagado.
+- **O que segura o cancelamento:** comprovante ou "já paguei" na conversa (o webhook marca `prepay_declared_at`), ou a confirmação do Juliano no painel. Cliente que paga em silêncio e ninguém confere em 1h perde o horário — o risco é assumido pela regra, e a mensagem de liberação já diz como reativar. Sem guarda de silêncio das 20h: é consequência direta de uma conversa de uma hora antes.
+
+Deploy via CLI (`prepay-deadline` v1 com `verify_jwt=false` no config.toml, como todo cron; `ju-ia-site` sem mudança de `verify_jwt`). Smoke test: function sem segredo = 401, disparo manual pelo cron com o segredo = 200 sem candidatos, JuIA respondendo preço de Luzes; sessões `deploy-check-v29.200.0-*` apagadas. Sem mudança no site nem no admin, sem cache. Testes automáticos não cobrem a function (Deno), como as demais.
+
 ## 29.199.1 — Sinal com o valor certo em todas as mensagens (caso Murillo), e o cancelamento do Teddy (17/09, começo da tarde)
 
 **Pedido do Juliano (17/09/2026, ~12h25, print do WhatsApp):** "ache o erro e corrija, e tem mais: vou confirmar lá o Pix dele, a mensagem tem que sair com valor certo". O Murillo pagou o sinal de R$ 50 às 12h22 (comprovante do C6 com R$ 50,00 legível) e a JuIA respondeu *"Vou passar pro Juliano conferir o Pix de R$ 190,00"* — o total do platinado, não o sinal.

@@ -3921,15 +3921,18 @@ Deno.serve(async req=>{
       // Sem liberação automática do horário: se não cair, a decisão de cancelar é dele.
       const SINAL_QUIMICA=50
       const quimicaPrimeiraVez=Boolean(verifiedPhone)&&visits===0&&chosen.some((s:any)=>s.category==='quimica')
-      const sinalNote=quimicaPrimeiraVez?` Como é o seu primeiro serviço de química aqui, eu reservo o horário com um sinal de ${money(SINAL_QUIMICA)} pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido.`:''
+      const sinalNote=quimicaPrimeiraVez?` Como é o seu primeiro serviço de química aqui, eu reservo o horário com um sinal de ${money(SINAL_QUIMICA)} pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido. O sinal precisa cair em até 1 hora a partir de agora; passado esse prazo, o horário é liberado automaticamente.`:''
       if(quimicaPrimeiraVez){
-       next.sinal_pendente={amount:SINAL_QUIMICA,booking_id:bookingId?String(bookingId):null,date:next.date,time:next.time}
+       // v29.200.0 — prazo de 1h (regra do Juliano, 17/09/2026): o cron prepay-deadline libera o horário
+       // se o sinal não for declarado nem confirmado até lá.
+       const sinalDeadline=new Date(Date.now()+60*60*1000).toISOString()
+       next.sinal_pendente={amount:SINAL_QUIMICA,booking_id:bookingId?String(bookingId):null,date:next.date,time:next.time,deadline:sinalDeadline}
        next.pix_offered=false
        if(bookingId){
         try{
-         await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:SINAL_QUIMICA,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
+         await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:SINAL_QUIMICA,prepay_deadline_at:sinalDeadline,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
          const pushSecretS=Deno.env.get('PUSH_WEBHOOK_SECRET');const supabaseUrlS=Deno.env.get('SUPABASE_URL')
-         if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:'Pedi sinal de R$ 50 (química, 1ª visita)',body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda.`,url:'/admin-agenda.html?app=1',tag:`sinal-quimica-${bookingId}`}})}).catch(()=>{})
+         if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:'Pedi sinal de R$ 50 (química, 1ª visita)',body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda. Sem Pix em 1h, o horário é liberado sozinho.`,url:'/admin-agenda.html?app=1',tag:`sinal-quimica-${bookingId}`}})}).catch(()=>{})
         }catch(sinalErr){console.error('[ju-ia-site] sinal quimica',sinalErr)}
        }
       }

@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.content-unpublish]
 verify_jwt = false
+
+[functions.prepay-deadline]
+verify_jwt = false
