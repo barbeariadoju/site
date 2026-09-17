@@ -1,3 +1,17 @@
+## 29.203.1 — Content-Security-Policy no ar pelo Cloudflare, testada página a página; nota A no scanner (17/09, fim da tarde)
+
+**Pedido do Juliano (17/09/2026, ~16h35, print do securityheaders):** "outra auditoria, subimos para A mas ainda tem este campo em vermelho" — o único cabeçalho faltando era a CSP, que eu tinha deixado de fora de propósito na v29.202.1.
+
+**Como foi feito, para não quebrar nada:** inventário do que as páginas realmente carregam (grep em todos os HTML/JS: Google Fonts, GTM, jsdelivr, Supabase; iframe só do GTM; service worker do admin) + o que o GTM injeta por baixo (GA4, Google Ads, Meta). A CSP entrou como 4º cabeçalho da regra de Transform do Cloudflare, enforcing (não report-only, porque o scanner só reconhece a enforcing). Depois, teste funcional no navegador em produção: home, /agendar/, /agendar/horario/, /cliente.html, /admin.html e uma página de serviço — supabase-js carregado, GTM ativo com o container certo, fontes carregadas, chamada REST e Functions do Supabase passando pela CSP, service worker registrado, e um ouvinte de `securitypolicyviolation` disparando os eventos de funil (`clique_agendamento`, `service_selected`) pra ver o que o GTM tenta carregar.
+
+**O teste pegou uma quebra real antes de virar problema:** a conversão do Google Ads bate em `pagead2.googlesyndication.com/measurement/conversion`, que não estava na primeira lista — a primeira versão da CSP bloqueou (`connect-src`). Sem o teste, a medição de conversão do Ads (que o suporte do Google configurou em 16/09) teria morrido em silêncio. Corrigido com curinga nos domínios do Google Ads (`*.googlesyndication.com`, `*.doubleclick.net`, `*.googleadservices.com`, `*.google.com`, `*.google.com.br`) e do Meta (`*.facebook.com`) em script/connect/frame. Segunda rodada: zero violações, e o ping de conversão saiu.
+
+**A política (resumo):** `default-src 'self'`; scripts só do próprio site, jsdelivr, GTM, GA, Google Ads e Meta (com `'unsafe-inline'`, inevitável em site estático com GTM e JSON-LD — é a limitação conhecida desta CSP); estilos do site + Google Fonts; fontes do site + gstatic; imagens de qualquer HTTPS (avatares de avaliação do Google, pixels); `connect-src` só Supabase (https e wss), GA, GTM, Google Ads, Meta, jsdelivr e Google Fonts; iframes só GTM, Google Ads, YouTube, Instagram e Facebook; `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, `form-action` só o site, WhatsApp e Hotmart; `upgrade-insecure-requests`.
+
+**Regra nova de manutenção (também no CLAUDE.md):** qualquer serviço externo novo no site ou no admin (um pixel, um embed, um CDN, uma API chamada do navegador) precisa entrar na CSP no Cloudflare ANTES de ir pro ar, senão o navegador bloqueia em silêncio. O ouvinte de `securitypolicyviolation` no console é o jeito de conferir.
+
+Sem código no repositório além deste registro. Scanner: A com os seis cabeçalhos verdes.
+
 ## 29.203.0 — Backup semanal do banco: todas as tabelas, comprimido, no Storage e no e-mail do Juliano (17/09, fim da tarde)
 
 **Pedido do Juliano (17/09/2026, ~16h):** "monta o backup sim" — depois de eu explicar que o plano Free do Supabase não faz backup automático e que perda de dados por erro é risco maior que invasão.
