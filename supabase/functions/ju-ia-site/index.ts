@@ -3913,7 +3913,27 @@ Deno.serve(async req=>{
       }
       // v29.139.0: data em linguagem humana ("hoje", "na terça (08/09)") e texto curto — a regra
       // do prompt (nunca DD/MM/AAAA) valia pro modelo mas não pra esta frase fixa.
-      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${money(price)}).${prodText} Te espero na Barbearia do Ju.${loyaltyNote}${prepayNote}${firstVisitAsk}${upsellAsk}`
+      // v29.199.0 — SINAL para química em primeira visita (regra do Juliano, 17/09/2026, casos Teddy e
+      // Murillo: luzes e platinado, 100-130 min de cadeira e produto, cliente que nunca veio). Vale pra
+      // TODO cliente novo em serviço com upsell_tag 'quimica' — regra da casa, não juízo de pessoa.
+      // A JuIA pede o sinal na própria confirmação, com a chave certa (e-mail, PicPay), marca o Pix
+      // pendente no agendamento e avisa o Juliano; quem confere o extrato e confirma é ele, no painel.
+      // Sem liberação automática do horário: se não cair, a decisão de cancelar é dele.
+      const SINAL_QUIMICA=50
+      const quimicaPrimeiraVez=Boolean(verifiedPhone)&&visits===0&&chosen.some((s:any)=>s.category==='quimica')
+      const sinalNote=quimicaPrimeiraVez?` Como é o seu primeiro serviço de química aqui, eu reservo o horário com um sinal de ${money(SINAL_QUIMICA)} pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido.`:''
+      if(quimicaPrimeiraVez){
+       next.sinal_pendente={amount:SINAL_QUIMICA,booking_id:bookingId?String(bookingId):null,date:next.date,time:next.time}
+       next.pix_offered=false
+       if(bookingId){
+        try{
+         await supabase.from('bookings').update({prepay_key:'picpay',updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
+         const pushSecretS=Deno.env.get('PUSH_WEBHOOK_SECRET');const supabaseUrlS=Deno.env.get('SUPABASE_URL')
+         if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:'Pedi sinal de R$ 50 (química, 1ª visita)',body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda.`,url:'/admin-agenda.html?app=1',tag:`sinal-quimica-${bookingId}`}})}).catch(()=>{})
+        }catch(sinalErr){console.error('[ju-ia-site] sinal quimica',sinalErr)}
+       }
+      }
+      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${money(price)}).${prodText} Te espero na Barbearia do Ju.${sinalNote}${loyaltyNote}${quimicaPrimeiraVez?'':prepayNote}${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
@@ -4208,8 +4228,10 @@ Deno.serve(async req=>{
   const b:any=upcomingBookings[0]
   const total=Number(b.service_price||0)+Number(b.products_price||0)
   const quando=b.booking_date===today()?'hoje':formatDateBR(b.booking_date)
+  // v29.199.0 — com sinal pendente (química, 1ª visita), a chave sai com o valor do SINAL, não o total.
+  const sinalAtivo=(state?.sinal_pendente&&Number(state.sinal_pendente.amount)>0&&(!state.sinal_pendente.booking_id||String(state.sinal_pendente.booking_id)===String(b.id)))?Number(state.sinal_pendente.amount):0
   reply=`Chave Pix (e-mail): contato@barbeariadoju.com.br
-💰 Valor: ${money(total)} — ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)}.
+💰 Valor: ${sinalAtivo?`${money(sinalAtivo)} de sinal (o restante, ${money(Math.max(0,total-sinalAtivo))}, você acerta no dia)`:money(total)} — ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)}.
 No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Quando fizer, me avisa que o Juliano confere 😉`
   actions=[]
   next.pix_offered=false

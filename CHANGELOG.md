@@ -1,3 +1,19 @@
+## 29.199.0 — Sinal de R$ 50 pelo Pix para química em primeira visita: regra da casa, na JuIA (17/09, começo da tarde)
+
+**Como nasceu (17/09/2026, ~12h):** a JuIA reservou Luzes (R$ 120, 100 min) pra amanhã às 12h pra um cliente novo, de DDD 12, e o Juliano mandou a foto de perfil dele dizendo que não sentiu confiança e perguntou o que fazer. **Recusei ajudar a barrar cliente pela aparência** — além de injusto, é o tipo de coisa que vira avaliação de 1 estrela ("me recusou por causa da minha aparência") e problema com o Código de Defesa do Consumidor, e a nota 5,0 com 108 avaliações é o maior patrimônio da casa. O risco real ali é outro: horário longo, com produto, de quem nunca veio — e esse risco se resolve com regra igual pra todo mundo. Propus o sinal; ele aprovou ("gostei desta regra") e pediu o mesmo pro outro cliente novo de amanhã com química.
+
+**Regra (vale pra qualquer cliente novo, sem exceção):** serviço com `upsell_tag = 'quimica'` (Luzes, Nevou / Platinado, Pigmentação Capilar, Alisamento) em cliente com zero atendimentos concluídos no sistema → o horário é reservado com **sinal de R$ 50 pelo Pix**, descontado do valor no dia. Sem liberação automática: se não cair, a decisão de cancelar é do Juliano.
+
+**Na JuIA (`ju-ia-site`, deploy via CLI, `verify_jwt` inalterado):** a própria mensagem de "Reservado!" já traz o pedido do sinal com a chave certa (e-mail `contato@barbeariadoju.com.br`, nome "Juliano Bruno Lopes Padilha", instituição PicPay), substitui a linha passiva "se preferir já deixar pago", marca o Pix pendente no agendamento (`prepay_key`) e avisa o Juliano por push ("Pedi sinal de R$ 50"). Se o cliente pedir a chave de novo, o valor que sai é o **do sinal**, com o restante explicitado ("o restante, R$ 140,00, você acerta no dia"), não o total. Estado da conversa guarda `sinal_pendente` (valor, agendamento, data, hora).
+
+**Feito na mão hoje, antes da regra entrar:** mensagem de pedido de sinal enviada pelo sistema (`whatsapp-send`, em nome do Juliano, 12h16) pro cliente novo de amanhã 13h45 (Corte + Nevou / Platinado, R$ 190); a conversa dele ficou em atendimento humano, como toda mensagem manual. Pro cliente das Luzes o Juliano manda ele mesmo, com o texto que passei (a chave por telefone (11) 96707-3038 também é Pix, confirmado por ele).
+
+**Erro meu no caminho, registrado:** na primeira versão do texto que passei pro Juliano eu afirmei que a chave era o telefone sem ter conferido — a JuIA sempre usou o e-mail. Ele confirmou que o telefone também é chave, então não houve dano; a lição é que dado de pagamento se lê no código antes de escrever.
+
+Smoke test em produção logo após o deploy (duas mensagens de site, 200 e resposta certa), sessões `deploy-check-v29.199.0-*` apagadas. Sem mudança no site, sem cache. Testes unitários e e2e não cobrem a function (Deno), como antes.
+
+**Também nesta sessão:** contagem de avaliações no Google atualizada no CLAUDE.md e na memória — **108 avaliações, nota 5,0** (eram 81 em 16/08).
+
 ## 29.198.2 — Avaliações Google: aprovar já publica (caso Mauricio Lamberti, 17/09, meio-dia)
 
 **Pedido do Juliano (17/09/2026, ~11h55):** "tem uma avaliação nova no Google, chegou notificação do nosso sistema com resposta legal, eu aprovei, mas não foi publicada".

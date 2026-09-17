@@ -187,7 +187,7 @@ dobra, popup que deixou de bloquear o próprio CTA, pré-seleção de serviço p
 - **Cadência no perfil.** Meta: 3 fotos + 1 post por semana, com pelo menos uma
   de ambiente (a foto do interior tem 2,21 mil visualizações, muito acima das de
   resultado).
-- **Avaliações.** 81 hoje, nota 5,0, 100% respondidas. Meta de 15+/mês, alvo 200
+- **Avaliações.** 108 em 17/09/2026 (eram 81 em 16/08), nota 5,0, 100% respondidas. Meta de 15+/mês, alvo 200
   em 12 meses. O concorrente Fígaro tem 467 — é o principal gap competitivo.
   **Nunca** ofereça desconto ou brinde em troca de avaliação: viola diretriz.
 
