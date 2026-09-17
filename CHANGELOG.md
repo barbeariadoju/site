@@ -1,3 +1,23 @@
+## 29.203.0 — Backup semanal do banco: todas as tabelas, comprimido, no Storage e no e-mail do Juliano (17/09, fim da tarde)
+
+**Pedido do Juliano (17/09/2026, ~16h):** "monta o backup sim" — depois de eu explicar que o plano Free do Supabase não faz backup automático e que perda de dados por erro é risco maior que invasão.
+
+**Como funciona (function `backup-weekly` + migration 164):**
+- Cron `bdj-backup-weekly`, **domingo 04h00 de Brasília** (07h00 UTC), mesmo padrão dos outros robôs (segredo do vault).
+- Despeja **todas as tabelas do schema public** (lista viva por `backup_list_tables()`, SECURITY DEFINER só pro service_role — tabela nova entra sozinha), paginado de 1000 em 1000. Fica de fora só `customer_area_otp` (códigos de acesso, lixo em 2 dias).
+- Um único arquivo `backup-barbearia-do-ju-AAAA-MM-DD.json.gz` com `{ generated_at, tables: { tabela: [linhas] }, counts, errors }`. O banco inteiro tem menos de 10 MB; comprimido dá bem menos.
+- **Bucket privado `backups`** (sem policy de storage: só service_role), pasta `semanal/`, **guarda as 12 últimas semanas** e apaga o resto.
+- **E-mail pro Juliano (Gmail) com o arquivo em anexo**, pelo Zoho Mail (mesmas credenciais do `send-email`; upload do anexo pela API e envio com `attachments`). Se o anexo falhar, o e-mail vai com um link assinado de 7 dias. É a cópia FORA do Supabase — e Gmail é Google, então atende ao "Google Drive" que ele pediu sem precisar de credencial nova do Google no servidor.
+- Push "Backup semanal feito" com totais e o status do e-mail.
+
+**Como restaurar (deixando escrito antes de precisar):** cada tabela do JSON é um array de linhas exatamente como o PostgREST devolve. Restauração é tabela a tabela, com `insert into public.<tabela> select * from jsonb_populate_recordset(null::public.<tabela>, $1::jsonb)` (colunas geradas/identity precisam de `overriding system value` ou de serem tiradas do JSON). **Nunca restaurar em cima do banco vivo sem antes conferir o que mudou depois da data do backup** — restauração parcial (uma tabela, algumas linhas) é o caso normal; a completa é só pra desastre.
+
+**Primeiro backup rodado na hora, duas vezes:** a primeira (11 s, 936 KB) veio com 11 tabelas em "permission denied" — tabelas criadas sem o grant de SELECT pro service_role (admin_users, professionals, cash_handovers, camera_*, blocked_customers, booking_customer_actions, service_price_changes, whatsapp_ad_clicks, professional_*). Corrigido com `grant select on all tables in schema public to service_role` + default privileges pra tabela futura, e rodado de novo: **54 tabelas, 14.070 linhas, 970 KB comprimido, zero erro, e-mail enviado com o anexo** (dois e-mails chegaram no Gmail dele; o segundo é o completo). Sem código no site, sem cache.
+
+**Também nesta versão — dica de um cliente pelo WhatsApp (17/09, 14h16):** o local do evento "Adicionar ao Google Calendar" e do arquivo .ics da página *Meu agendamento* passou de "Rua Dr. Antônio da Cruz, 482 - Centro, Bragança Paulista" para **"Barbearia do Ju, R. Dr. Antônio da Cruz, 482 - Centro, Bragança Paulista - SP, 12900-350, Brazil"** — com nome do estabelecimento, CEP e país o Google Maps casa o lugar certo e mostra o nome da barbearia no evento. `meu-agendamento-v25.js?v=29.203.0`.
+
+**Preço do Supabase Pro (pergunta dele):** US$ 25 por mês por organização (mais uso excedente, que hoje não acontece), cobrado em dólar no cartão, o que dá em torno de R$ 140–150 com IOF. Inclui backup diário automático com 7 dias de retenção, a proteção contra senha vazada (v29.202.0), projeto que nunca pausa por inatividade, 8 GB de banco e suporte por e-mail. Com este backup semanal no ar, o Pro deixa de ser urgente; vira decisão de conforto.
+
 ## 29.202.1 — Cloudflare na frente do GitHub Pages: proxy ligado, HSTS, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options, TLS mínimo 1.2 (17/09, fim da tarde)
 
 **Feito com o Juliano logado no painel do Cloudflare, pelo Chrome dele (item 3 dos "três casos"). Nada de código; é configuração da zona `barbeariadoju.com.br` (conta dele, plano Free).**

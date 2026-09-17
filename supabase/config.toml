@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.cliente-area]
 verify_jwt = true
+
+[functions.backup-weekly]
+verify_jwt = false
