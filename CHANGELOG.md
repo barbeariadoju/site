@@ -1,3 +1,20 @@
+## 29.202.1 — Cloudflare na frente do GitHub Pages: proxy ligado, HSTS, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options, TLS mínimo 1.2 (17/09, fim da tarde)
+
+**Feito com o Juliano logado no painel do Cloudflare, pelo Chrome dele (item 3 dos "três casos"). Nada de código; é configuração da zona `barbeariadoju.com.br` (conta dele, plano Free).**
+
+- **Proxy (nuvem laranja) ligado nos 5 registros web:** os 4 `A` da raiz (185.199.108–111.153, GitHub Pages) e o `CNAME www → barbeariadoju.github.io`. MX/TXT (e-mail, DMARC, DKIM, verificação) ficaram como estavam, "DNS only". Conferido por curl a cada passo: raiz → 301 pro www (redirect do próprio GitHub Pages, intacto), www/agendar/admin 200 com `Server: cloudflare`, HTTP → HTTPS 301.
+- **Modo SSL:** "Full" (automático do Cloudflare, já estava assim). Tentei fixar em "Full (strict)", o painel voltou pro automático; como o certificado do GitHub Pages é válido (Let's Encrypt), o automático tende a subir pra strict na varredura de 26/09. Não é bloqueio.
+- **HSTS:** ligado, `max-age` 6 meses (recomendado), **sem** `includeSubDomains` e **sem** preload de propósito (subdomínio sem HTTPS ficaria inacessível; preload é irreversível na prática). Junto veio o **`X-Content-Type-Options: nosniff`** (opção do mesmo diálogo).
+- **Regra de Transform (Response Headers) "Cabecalhos de seguranca (17/09/2026)"**, todas as requisições: `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`, `X-Frame-Options: SAMEORIGIN`. 1 de 10 regras do plano usada.
+- **TLS mínimo:** 1.2 (era 1.0).
+- **"Always Use HTTPS" ficou DESLIGADO de propósito:** o GitHub Pages já redireciona HTTP → HTTPS; ligar nos dois pontos é o cenário de `ERR_TOO_MANY_REDIRECTS` que o próprio painel avisa.
+- **Cache do navegador:** o padrão do Cloudflare reescrevia `Cache-Control` de JS/CSS pra 4 horas (o GitHub manda 10 min). Voltei pra **"Respect Existing Headers"** — o `?v=` continua sendo o que troca versão, e o `sw.js`/`admin-version.json` seguem com o comportamento de antes. Conferido: JS volta a sair com `max-age=600`; HTML e JSON não são cacheados na borda (`cf-cache-status: DYNAMIC`); CSS/JS ficam na borda por ~10 min (`HIT`).
+- **CSP fica de fora nesta rodada** (decisão registrada na v29.202.0): com GTM, GA, Meta, jsdelivr e Supabase na página, uma CSP restritiva quebra sem teste caso a caso; permissiva não protege.
+
+**Cabeçalhos conferidos no ar (curl na home):** `Strict-Transport-Security: max-age=15552000`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`, `X-Frame-Options: SAMEORIGIN`. Os 5 achados do relatório da Manus estão fechados ou decididos.
+
+**Armadilha nova pro CLAUDE.md:** o site agora passa pelo Cloudflare. "Confirmar no ar com curl" continua valendo, mas CSS/JS podem ficar até ~10 min na borda — URL nova (`?v=` novo) nunca está em cache, então o bump de versão é o que garante; se precisar forçar, Caching → Configuration → Purge Everything no painel.
+
 ## 29.202.0 — Os três casos da auditoria: área do cliente só com código por WhatsApp; senha mínima de 8; Cloudflare (17/09, fim da tarde)
 
 **Pedido do Juliano (17/09/2026, ~14h45):** "vamos arrumar os três casos" — os três que eu tinha deixado como decisão dele na v29.201.0.
