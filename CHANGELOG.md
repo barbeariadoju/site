@@ -1,3 +1,21 @@
+## 29.202.0 — Os três casos da auditoria: área do cliente só com código por WhatsApp; senha mínima de 8; Cloudflare (17/09, fim da tarde)
+
+**Pedido do Juliano (17/09/2026, ~14h45):** "vamos arrumar os três casos" — os três que eu tinha deixado como decisão dele na v29.201.0.
+
+**1. Área do cliente atrás de um código por WhatsApp (no ar).** `cliente.html` deixou de chamar `get_public_customer_summary(telefone)` direto com a chave anônima. Agora: o cliente digita o WhatsApp → a Edge Function nova `cliente-area` manda um código de 6 dígitos pro número → ele digita o código → só então a function (com `service_role`) chama a RPC e devolve o resumo. Sessão de 12 h no `sessionStorage` (token aleatório de 48 hex) pra recarregar sem novo código. Detalhes de segurança:
+- O `anon` **perdeu EXECUTE** na RPC (migration 163, parte B, aplicada depois que o site novo estava no ar — sem janela quebrada).
+- Telefone sem cadastro recebe **a mesma resposta** ("se este número tiver cadastro, o código chega") e nada é enviado nem gravado: não dá pra descobrir quem é cliente.
+- Anti-abuso: 3 códigos por telefone por hora, 60 s entre códigos, 5 tentativas por código, código vale 10 min. Código guardado como SHA-256 com pepper (`CUSTOMER_AREA_OTP_PEPPER`, se existir; senão derivado do secret do projeto). O texto gravado em `whatsapp_messages` sai com o código mascarado (`******`).
+- Tabela `customer_area_otp` (RLS ligada, sem policy — só a function toca), limpeza diária às 4h15 (`bdj-customer-area-otp-cleanup`).
+- `cliente-v30.js` substitui o `cliente-v23.js`; o formulário virou duas etapas (telefone → código), com "Trocar número ou pedir outro código". Mensagem do código sem emoji (regra de 01/09).
+- Smoke test em produção: `send` com número inexistente = 200 genérico; `verify` sem código = 400; `resume` com token inválido = 401; chamada sem `apikey` = 401 (`verify_jwt=true`, como o `ju-ia-site`). RPC conferida por `has_function_privilege`: anon false, service_role true.
+
+**2. Senha vazada: não dá no plano Free — compensado com senha mínima de 8.** A opção "Prevent use of leaked passwords" do Supabase Auth é **só do plano Pro** (a própria tela avisa "Only available on Pro plan and above"); tentei ligar pelo painel, o salvar não pega. Deixei o que o Free permite: **tamanho mínimo de senha subiu de 6 para 8** (Authentication → Sign In / Providers → Email). Vale para senhas novas e trocas; a senha atual do Juliano não muda. Se um dia o projeto for pro Pro (US$ 25/mês), a proteção contra senha vazada é um clique nessa mesma tela. O linter do Supabase vai continuar listando esse item — é o plano, não é descuido.
+
+**3. Cabeçalhos de segurança pelo Cloudflare.** Descoberta: o DNS do domínio **já está no Cloudflare** (nameservers `paris`/`cash.ns.cloudflare.com`), só que com o proxy desligado — o `www` resolve direto pros IPs do GitHub Pages. Não precisa mudar registrador: é ligar o proxy (nuvem laranja) no `www` e no domínio raiz, deixar SSL em "Full (strict)", ligar HSTS em SSL/TLS → Edge Certificates e criar uma regra de Transform (Response Headers) com `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` mínima e `X-Frame-Options: SAMEORIGIN` (CSP fica de fora nesta rodada: com GTM, GA, Meta, jsdelivr e Supabase na página, uma CSP restritiva exige testar caso a caso; uma permissiva não protege nada). **Pendente do login do Juliano no painel do Cloudflare** — eu não entro com credencial de ninguém; abri a tela de login no Chrome dele e sigo de lá quando ele entrar.
+
+Testes: `npm test` verde (153 unit + 51 e2e) antes do push do site. Sem `ADMIN_VERSION` (página pública). Cache: `cliente-v30.js?v=29.202.0`.
+
 ## 29.201.0 — Auditoria de segurança externa (Manus) conferida no código e no banco: o que fechei, o que já estava certo e o que é decisão do Juliano (17/09, tarde)
 
 **Pedido do Juliano (17/09/2026, ~14h20):** "analise isto e tome as medidas necessárias", com o PDF *"Análise de Segurança — Barbearia do Ju"* (Manus, 17/09, revisão externa passiva, sem acesso a repositório nem banco). Veredito do relatório: nenhuma falha crítica na superfície pública; 5 achados, todos do tipo "confirme no backend". Conferi cada um de verdade (regra da casa: ler antes de afirmar que falta), e cruzei com o linter de segurança do próprio Supabase (`get_advisors`).
