@@ -20,3 +20,8 @@ barbearia-camera.env
 # Artes: o PNG final vai pra Area de Trabalho, nao pro repo
 PLAQUINHA-*.png
 artes/.render-*.html
+
+# impeccable (skill instalado via npx impeccable install): binário por
+# plataforma não vai pro repo público (14 MB, específico de windows-x64,
+# baixado de novo sozinho no primeiro uso em cada máquina)
+.claude/skills/impeccable/scripts/bin/
