@@ -40,15 +40,20 @@ if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link as="image" fetchpriority="high" href="assets/fachada.webp" rel="preload" type="image/webp"/>
-<link as="style" href="css/01-site-base.css?v=29.111.0" rel="preload"/>
-<link as="style" href="css/02-site-interactions.css?v=29.25.0" rel="preload"/>
-<link as="style" href="css/03-site-mobile-contato.css?v=29.111.0" rel="preload"/>
-<link as="style" href="css/04-agenda-admin-core.css?v=29.108.0" rel="preload"/>
-<link as="style" href="css/05-admin-mobile-refino.css?v=29.3.0" rel="preload"/>
+<!-- ATENÇÃO: estes ?v= TÊM que ser iguais aos @import de /style.css. Ficaram
+     desatualizados entre 29.3.0 e 29.111.0 enquanto o style.css já estava em
+     29.161/29.179, e como a query string diferente é outra URL pro navegador,
+     a home baixava os 5 arquivos DUAS vezes (v29.204.0). Bumpou o style.css? Bumpe aqui também. -->
+<link as="style" href="css/01-site-base.css?v=29.204.0" rel="preload"/>
+<link as="style" href="css/02-site-interactions.css?v=29.204.0" rel="preload"/>
+<link as="style" href="css/03-site-mobile-contato.css?v=29.161.0" rel="preload"/>
+<link as="style" href="css/04-agenda-admin-core.css?v=29.204.0" rel="preload"/>
+<link as="style" href="css/05-admin-mobile-refino.css?v=29.179.0" rel="preload"/>
+<link as="style" href="css/06-admin-reforma.css?v=29.195.0" rel="preload"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="/style.css?v=29.196.0" rel="stylesheet"/>
+<link href="/style.css?v=29.204.0" rel="stylesheet"/>
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":["LocalBusiness","HairSalon"],"@id":"https://www.barbeariadoju.com.br/#barbearia","name":"Barbearia do Ju","alternateName":"Barbearia do Ju Bragança Paulista","description":"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 40, barba na navalha com toalha quente R$ 40. Nota 5,0 no Google. Agende online.","url":"https://www.barbeariadoju.com.br/","image":["https://www.barbeariadoju.com.br/assets/og-barbearia-do-ju.jpg","https://www.barbeariadoju.com.br/assets/fachada.webp"],"logo":"https://www.barbeariadoju.com.br/assets/marca-selo-transparente.png","telephone":"+55 11 96707-3038","priceRange":"R$","address":{"@type":"PostalAddress","streetAddress":"Rua Dr. Antônio da Cruz, 482","addressLocality":"Bragança Paulista","addressRegion":"SP","postalCode":"12900-350","addressCountry":"BR"},"geo":{"@type":"GeoCoordinates","latitude":-22.9540382,"longitude":-46.5420126},"areaServed":{"@type":"City","name":"Bragança Paulista"},"hasMap":"https://maps.app.goo.gl/VJAfv4MJpd84tmDY7","openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["https://schema.org/Tuesday","https://schema.org/Wednesday","https://schema.org/Thursday","https://schema.org/Friday"],"opens":"08:00","closes":"19:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":"https://schema.org/Saturday","opens":"08:00","closes":"15:00"}],"sameAs":["https://www.instagram.com/barbeariadoju_","https://maps.app.goo.gl/VJAfv4MJpd84tmDY7"],"paymentAccepted":"Dinheiro, Pix, cartão de crédito e cartão de débito","currenciesAccepted":"BRL","founder":{"@id":"https://www.barbeariadoju.com.br/#juliano"},"employee":{"@id":"https://www.barbeariadoju.com.br/#juliano"},"makesOffer":[{"@type":"Offer","itemOffered":{"@type":"Service","name":"Corte masculino"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Barba na navalha com toalha quente"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Barba express"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Luzes e pigmentação capilar"}}]},{"@type":"Person","@id":"https://www.barbeariadoju.com.br/#juliano","name":"Juliano Bruno Lopes Padilha","jobTitle":"Barbeiro e proprietário","description":"Farmacêutico graduado e especialista em Farmácia Clínica e Prescrição Farmacêutica pela Universidade São Francisco (USF). Barbeiro e proprietário da Barbearia do Ju, em Bragança Paulista, une conhecimento científico da Farmácia à prática da barbearia para oferecer um atendimento mais educativo e criterioso na escolha de produtos.","url":"https://www.barbeariadoju.com.br/sobre-o-juliano.html","image":"https://www.barbeariadoju.com.br/assets/juliano-retrato-rosto.jpg","worksFor":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"founderOf":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"alumniOf":{"@type":"CollegeOrUniversity","name":"Universidade São Francisco (USF)"},"hasCredential":[{"@type":"EducationalOccupationalCredential","credentialCategory":"degree","name":"Graduação em Farmácia"},{"@type":"EducationalOccupationalCredential","credentialCategory":"Specialization","name":"Especialização em Farmácia Clínica e Prescrição Farmacêutica","educationalLevel":"Postgraduate","recognizedBy":{"@type":"CollegeOrUniversity","name":"Universidade São Francisco (USF)"}}],"knowsAbout":["Farmácia Clínica","Cuidados com barba e cabelo masculino","Estética masculina","Composição de cosméticos"]},{"@type":"WebSite","@id":"https://www.barbeariadoju.com.br/#website","url":"https://www.barbeariadoju.com.br/","name":"Barbearia do Ju","inLanguage":"pt-BR","publisher":{"@id":"https://www.barbeariadoju.com.br/#barbearia"}},{"@type":"FAQPage","@id":"https://www.barbeariadoju.com.br/#faq","mainEntity":[{"@type":"Question","name":"Quanto custa o corte de cabelo masculino?","acceptedAnswer":{"@type":"Answer","text":"R$ 40,00, aproximadamente 45 minutos. O degradê e o corte social estão inclusos nesse valor — são acabamentos, não itens separados."}},{"@type":"Question","name":"Quanto tempo demora o atendimento?","acceptedAnswer":{"@type":"Answer","text":"Depende do serviço: corte leva aproximadamente 45 minutos, barba na navalha com toalha quente 40, e o combo Corte + Barba na navalha com toalha quente aproximadamente 1h10. Como o atendimento é individual e com hora marcada, esse tempo é só seu."}},{"@type":"Question","name":"Vocês atendem aos sábados?","acceptedAnswer":{"@type":"Answer","text":"Sim. Atendemos de terça a sexta das 8h às 19h, e aos sábados das 8h às 15h."}},{"@type":"Question","name":"Atendem crianças?","acceptedAnswer":{"@type":"Answer","text":"Sim. O corte infantil custa R$ 40,00 e é feito com o tempo e a paciência que criança pede."}},{"@type":"Question","name":"Aceita cartão?","acceptedAnswer":{"@type":"Answer","text":"Sim. Aceitamos Pix, dinheiro, cartão de débito e cartão de crédito."}},{"@type":"Question","name":"Precisa marcar horário ou atende por ordem de chegada?","acceptedAnswer":{"@type":"Answer","text":"Atendemos com agendamento e também por ordem de chegada, conforme a disponibilidade do momento. Para garantir seu horário, recomendamos agendar antes."}},{"@type":"Question","name":"Tem estacionamento perto?","acceptedAnswer":{"@type":"Answer","text":"Sim. Existem vagas de Zona Azul nas proximidades da barbearia, com valor de R$ 2,50 por hora."}},{"@type":"Question","name":"Onde fica a Barbearia do Ju?","acceptedAnswer":{"@type":"Answer","text":"Rua Dr. Antônio da Cruz, 482 — Centro — Bragança Paulista/SP."}},{"@type":"Question","name":"Quais serviços vocês fazem?","acceptedAnswer":{"@type":"Answer","text":"Cortes masculinos, barba, barba na navalha com toalha quente, sobrancelha, pigmentação, luzes, platinado, relaxamento, hidratação e outros cuidados de estética masculina."}},{"@type":"Question","name":"O cliente tem alguma cortesia?","acceptedAnswer":{"@type":"Answer","text":"Sim. Temos café cortesia, Wi‑Fi gratuito, TV e ambiente climatizado para tornar sua experiência mais confortável. As demais bebidas são vendidas à parte."}},{"@type":"Question","name":"E se eu não gostar do acabamento?","acceptedAnswer":{"@type":"Answer","text":"Não ficou do jeito que você queria? Volte em até 7 dias e a gente acerta sem cobrar nada."}},{"@type":"Question","name":"Posso comprar produtos e bebidas pelo site?","acceptedAnswer":{"@type":"Answer","text":"Sim. No catálogo de produtos você pode adicionar itens ao carrinho e enviar o pedido pelo WhatsApp para retirada na barbearia."}}]}]}</script>
-<link href="/juia-chat.css?v=28.16.1" rel="stylesheet"/>
+<link href="/juia-chat.css?v=29.204.0" rel="stylesheet"/>
 <style>.duration-picker select{width:100%;margin:10px 0 8px;padding:10px 12px;border-radius:12px;background:#0d0d0d;border:1px solid var(--line);color:var(--text);font-family:inherit;font-size:.92rem}.duration-picker #duration-service-result{color:var(--gold2);font-weight:800;min-height:1.3em}</style>
 </head>
 <body>
@@ -163,18 +168,25 @@ if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 <p class="eyebrow">Acesso rápido</p>
 <h2>Tudo em um só lugar.</h2>
 </div>
+<h3 class="links-group">Agendar e comprar</h3>
 <div class="links-grid">
 <a class="link-card" href="/agendar/#servicos"><i class="ico ico-calendar"></i><b>Serviços e agendamento</b><span>Consulte o catálogo e reserve seu horário.</span></a>
 <a class="link-card" href="cliente.html"><i class="ico ico-contact"></i><b>Minha área</b><span>Consulte fidelidade, última visita e próximo horário.</span></a>
+<a class="link-card" href="#vale-presente"><i class="ico ico-bag"></i><b>Vale-presente</b><span>Presenteie com corte, barba ou combo — veja como funciona.</span></a>
+<a class="link-card" href="produtos.html"><i class="ico ico-bag"></i><b>Produtos e bebidas</b><span>Veja cuidados masculinos e bebidas geladas disponíveis na barbearia.</span></a>
+</div>
+<h3 class="links-group">Falar com a gente</h3>
+<div class="links-grid">
 <a class="link-card" href="https://wa.me/5511967073038" rel="noopener" target="_blank"><i class="ico ico-whatsapp"></i><b>WhatsApp</b><span>Fale direto com o barbeiro.</span></a>
 <a class="link-card" href="mailto:contato@barbeariadoju.com.br"><i class="ico ico-contact"></i><b>E-mail corporativo</b><span>Envie sua dúvida ou contato profissional.</span></a>
 <a class="link-card" href="https://www.instagram.com/barbeariadoju_" rel="noopener" target="_blank"><i class="ico ico-instagram"></i><b>Instagram</b><span>Acompanhe trabalhos e novidades.</span></a>
+</div>
+<h3 class="links-group">Antes e depois da visita</h3>
+<div class="links-grid">
 <a class="link-card" href="https://maps.app.goo.gl/VJAfv4MJpd84tmDY7" rel="noopener" target="_blank"><i class="ico ico-map"></i><b>Como chegar</b><span>Abra a rota no Google Maps.</span></a>
-<a class="link-card" href="https://g.page/r/CaQfC5axIQQIEBM/review" rel="noopener" target="_blank"><i class="ico ico-google"></i><b>Avaliar no Google</b><span>Sua avaliação ajuda muito a barbearia.</span></a>
-<a class="link-card" href="salvar-contato.html"><i class="ico ico-contact"></i><b>Salvar contato</b><span>Adicione a Barbearia do Ju no celular.</span></a>
-<a class="link-card" href="produtos.html"><i class="ico ico-bag"></i><b>Produtos e bebidas</b><span>Veja cuidados masculinos e bebidas geladas disponíveis na barbearia.</span></a>
 <a class="link-card" href="na-barbearia.html"><i class="ico ico-contact"></i><b>Já estou na barbearia</b><span>Wi-Fi, Pix e o que você precisa enquanto está aqui.</span></a>
-<a class="link-card" href="#vale-presente"><i class="ico ico-bag"></i><b>Vale-presente</b><span>Presenteie com corte, barba ou combo — veja como funciona.</span></a>
+<a class="link-card" href="salvar-contato.html"><i class="ico ico-contact"></i><b>Salvar contato</b><span>Adicione a Barbearia do Ju no celular.</span></a>
+<a class="link-card" href="https://g.page/r/CaQfC5axIQQIEBM/review" rel="noopener" target="_blank"><i class="ico ico-google"></i><b>Avaliar no Google</b><span>Sua avaliação ajuda muito a barbearia.</span></a>
 </div>
 </section>
 <a aria-label="Agendar horário na Barbearia do Ju" class="mobile-agendar" href="/agendar/#servicos">✂️ Agendar horário</a>
@@ -224,7 +236,7 @@ if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 </div>
 <div class="review-actions">
 <a class="btn" href="blog.html">Ver artigos do blog →</a>
-<a class="btn ghost" href="https://pay.hotmart.com/S106993067N?offDiscount=LANCAMENTO" rel="noopener" target="_blank">📘 Guia Definitivo da Barba</a>
+<a class="btn ghost" href="https://pay.hotmart.com/S106993067N" rel="noopener" target="_blank">📘 Guia Definitivo da Barba</a>
 </div>
 </section>
 <section aria-label="Avaliações da Barbearia do Ju no Google" class="section google-review-card reveal">
@@ -243,18 +255,24 @@ if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 <p class="eyebrow">Serviços em destaque</p>
 <h2>Conheça cada serviço em detalhes.</h2>
 </div>
+<h3 class="links-group">Cabelo</h3>
 <div class="links-grid">
 <a class="link-card" href="servico-corte-masculino.html"><b>Corte Masculino</b><span>Corte completo com hora marcada, ajuste em até 7 dias — R$ 40,00.</span></a>
 <a class="link-card" href="servico-corte-degrade.html"><b>Corte Degradê</b><span>Técnica de acabamento incluída no Corte de cabelo — R$ 40,00.</span></a>
+<a class="link-card" href="servico-corte-infantil.html"><b>Corte Infantil</b><span>Atendimento com paciência para crianças — R$ 40,00.</span></a>
+</div>
+<h3 class="links-group">Barba e rosto</h3>
+<div class="links-grid">
 <a class="link-card" href="servico-barba-na-navalha.html"><b>Barba na navalha com toalha quente em Bragança Paulista</b><span>Toalha quente, esfoliação e óleos específicos — a partir de R$ 40,00.</span></a>
 <a class="link-card" href="servico-barba-express.html"><b>Barba Express</b><span>Alinhamento rápido da barba, só na máquina — R$ 25,00.</span></a>
 <a class="link-card" href="servico-sobrancelha-masculina.html"><b>Sobrancelha Masculina</b><span>Acabamento limpo e natural — R$ 15,00.</span></a>
-<a class="link-card" href="servico-corte-infantil.html"><b>Corte Infantil</b><span>Atendimento com paciência para crianças — R$ 40,00.</span></a>
+</div>
+<h3 class="links-group">Química e coloração</h3>
+<div class="links-grid">
 <a class="link-card" href="servico-luzes-masculinas.html"><b>Luzes Masculinas</b><span>Mechas de contraste com técnica especializada — R$ 120,00.</span></a>
 <a class="link-card" href="servico-platinado-masculino.html"><b>Platinado Masculino</b><span>Descoloração completa com acompanhamento técnico — R$ 150,00.</span></a>
-<a class="link-card" href="servicos.html"><b>Todos os serviços</b><span>Os 23 serviços da barbearia, com preço e duração de cada um.</span></a>
-<a class="link-card" href="/agendar/#servicos"><b>Ver catálogo completo</b><span>Todos os serviços, preços e horários disponíveis.</span></a>
 </div>
+<p class="links-all"><a href="servicos.html">Ver os 23 serviços com preço e duração →</a></p>
 </section>
 <section class="section reveal" id="avaliacoes">
 <div class="section-head">
@@ -445,7 +463,7 @@ if(d.readyState==='complete')loadGTM();else w.addEventListener('load',loadGTM)
 <script src="agenda-config-v6.js?v=28.16.1"></script><script src="/whatsapp-attrib-v29.js?v=29.139.0" defer></script>
 <script src="contact-form-v24-5.js?v=28.16.1" defer></script>
 <script src="juia-chat.js?v=29.102.0" defer></script>
-<script src="privacy-consent-v22-4.js?v=29.77.0" defer></script>
+<script src="privacy-consent-v22-4.js?v=29.204.0" defer></script>
 <script src="/funnel-events-v29.js?v=29.42.0" defer></script>
 </body>
 </html>

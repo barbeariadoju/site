@@ -337,7 +337,7 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
 .privacy-card{background:rgba(14,14,14,.94);border:1px solid rgba(240,201,135,.28);border-radius:var(--r-lg);padding:clamp(24px,5vw,52px);box-shadow:var(--sh-2)}
 .privacy-card h1{margin:.15em 0 .35em}
 .privacy-card h2{margin:1.7em 0 .45em;color:#e3c65d}
-.privacy-card p,.privacy-card li{color:#d4d4d4;line-height:1.7}
+.privacy-card p,.privacy-card li{color:#d4d4d4;line-height:1.7;max-width:72ch}
 .privacy-card ul{padding-left:1.2rem}
 .privacy-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
 .privacy-card p a,.privacy-card li a,.privacy-card details a{color:var(--gold2);font-weight:700;text-decoration:none}
@@ -365,7 +365,7 @@ body[data-admin-page]{background:#090909;color:#f4f1e8;min-height:100vh}
 .series-nav li{margin-bottom:4px}
 .series-nav li.current{color:#e3c65d;font-weight:700}
 .series-nav li.current a{color:#e3c65d}
-@media(max-width:680px){.cookie-banner{left:10px;right:10px;bottom:10px;display:block;padding:16px}.cookie-actions{margin-top:13px}.cookie-actions button{flex:1}.admin-toast-region{top:10px;right:10px;width:calc(100vw - 20px)}}
+@media(max-width:680px){.cookie-banner{left:10px;right:10px;bottom:10px;display:block;padding:10px 13px}.cookie-banner strong{display:none}.cookie-banner p{font-size:12.5px;line-height:1.35}.cookie-banner p a{display:inline;margin-top:0;font-size:inherit;white-space:nowrap}.cookie-actions{margin-top:8px}.cookie-actions button{flex:1;padding:8px 10px;font-size:13px;white-space:nowrap}.admin-toast-region{top:10px;right:10px;width:calc(100vw - 20px)}}
 /* V22.6 — ajustes de CRM, contato e carrinho */
 .contact-channel{min-width:0}
 .contact-channel>div{min-width:0}

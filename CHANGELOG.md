@@ -1,3 +1,41 @@
+## 29.204.0 — Auditoria e critique do site (skill impeccable): CTA do celular desbloqueado, texto de consentimento legível, CSS duplicado na home e o cupom expirado do e-book (17/09, noite)
+
+**Pedido do Juliano (17/09/2026, noite):** instalar a skill `impeccable` (`npx impeccable install`), rodar `/impeccable audit` + `/impeccable critique` no site inteiro e corrigir tudo — inclusive os itens P2/P3 e o achado de conteúdo fora do escopo de design.
+
+**Como foi auditado:** detector automático do impeccable em 13 páginas ao vivo (uma de cada template dos 54 do sitemap) + verificação manual no navegador em 375×812 e 1280×860. A critique rodou com um subagente cego, que não viu nada da auditoria técnica, pra não ancorar o julgamento de design nos números do detector.
+
+**O detector erra bastante, e conferir importou:** dos achados de "baixo contraste", 3 medidos de verdade com `getComputedStyle` na página ao vivo deram 9,6:1 a 13:1 (o detector reportava 1,0:1 a 2,4:1) — ele lê a cor declarada no gradiente/blur, não a efetivamente pintada. Os 32 alertas de "glow colorido" não existem no CSS (nenhum `box-shadow` de offset zero colorido), e os 42 de "borda fina com sombra larga" são o sistema de elevação do site (`--sh-1/2/3`, todos com offset). **Nada disso foi "corrigido", porque não estava quebrado.** O que sobrou depois da conferência é o que está abaixo.
+
+### Os dois P0 (os dois no celular, onde chega a maior parte do tráfego de anúncio)
+
+- **As duas barras fixas de "Agendar" estavam empilhadas uma em cima da outra.** A `.mobile-cta` (3 botões: Agendar/WhatsApp/Rota) entra em 850px com `bottom:10px`; a `.mobile-agendar` (barra dourada cheia) entra em 620px com `bottom:0`. Abaixo de 620px as duas ficavam na tela ao mesmo tempo, com **43px de sobreposição medidos** (a dourada cortando o terço de baixo da outra) e a ação de agendar aparecendo três vezes simultâneas contando o CTA do hero. Cada uma tinha sido validada contra o próprio breakpoint; ninguém tinha olhado a faixa onde as duas coexistem. Agora a dourada é o CTA primário e a `.mobile-cta` perde o botão duplicado, virando só WhatsApp e Rota, empilhada acima sem encostar (`bottom:calc(61px + env(safe-area-inset-bottom))`), com `body`, `.back-top` e `.welcome-pop` recalculados junto.
+- **O banner de cookies cobria por inteiro os dois CTAs do hero no primeiro carregamento.** Medido em 375×812: o banner ocupava y=555–802 (247px, 30% da tela) e os botões "Agendar horário" (633–693) e "Fale com o barbeiro" (707–767) ficavam **100% atrás dele** — ou seja, o primeiro passo do funil (`clique_agendamento`) era literalmente intocável até o visitante resolver o consentimento. O banner foi para **97px** (-61%): no celular o título some, o texto encurtou preservando a nuance que importa (a medição é sempre ativa, a escolha é só sobre anúncios — decisão de 26/08), o link da política virou inline e os botões cabem em uma linha. "Agendar horário" passou de 0% para **90% visível e totalmente clicável**. O texto completo continua na Política de Privacidade, linkada ali.
+
+### Os P1
+
+- **O texto de consentimento LGPD da JuIA era ilegível:** `.juia-privacy` estava com **9,5px e contraste 3,77:1** (o mínimo AA é 4,5:1), na frase "Ao conversar, você concorda com o uso dos dados apenas para atendimento e agendamento" — justamente a divulgação de uso de dados, em toda página que carrega o widget. Foi para **12px e 8,76:1**, usando o token `--juia-muted` que já existia.
+- **A home baixava o pacote CSS inteiro duas vezes.** Os `<link rel="preload">` no `<head>` do `index.html` estavam com `?v=` entre 29.3.0 e 29.111.0 enquanto o `style.css` já importava as mesmas 5 folhas em 29.161/29.179 — query string diferente é outra URL, então o navegador baixava tudo em duplicata. Era só na home (as outras páginas carregam só o `style.css`). Sincronizado, com o 06 que faltava incluído e um comentário no HTML avisando que os dois lugares têm que ser bumpados juntos.
+- **Hero disputando com a própria foto de fundo:** o overlay tinha só 18% de preto no topo, e a fachada tem texto branco real (a placa "HORÁRIO DE ATENDIMENTO") quase no mesmo peso visual do H1 — no celular dava efeito de dupla exposição. Overlay para 44% no topo e 78% em 55%, mais `text-shadow` no título e no subtítulo.
+- **Dois grids de 11 e 10 links, sem hierarquia.** "Acesso rápido" e "Serviços em destaque" eram listas planas onde "Serviços e agendamento" tinha exatamente o mesmo peso visual de "Salvar contato". Viraram subgrupos rotulados (`<h3 class="links-group">`): *Agendar e comprar* / *Falar com a gente* / *Antes e depois da visita*, e *Cabelo* / *Barba e rosto* / *Química e coloração*. Os dois cartões finais de "Serviços em destaque" ("Todos os serviços" e "Ver catálogo completo") apontavam pro mesmo lugar e competiam com serviços de verdade: viraram uma linha de link no fim da seção. Grid com `auto-fit` pra nenhum grupo deixar cartão órfão em linha própria.
+
+### Os P2/P3 que valiam
+
+- **H1 do hero e H2 de seção usavam a mesma regra CSS** (`clamp(2rem,5.5vw,4.2rem)` pros dois): rolar a home não dava nenhum sinal tipográfico de ter saído do hero. Separados — H1 em 45px, H2 em 27,2px na largura testada. Afeta só as 4 páginas com `class="section"` (home, blog, produtos, salvar-contato).
+- **Medida de leitura:** os artigos do blog, o guia pilar e a política tinham linhas de 90 a 140 caracteres (o confortável é 65–75). `.privacy-card p/li` ganharam `max-width:72ch`.
+- **Glow radial decorativo do `.bg-grain` removido** (o gradiente dourado atrás do hero, presente em 12 das 13 páginas). Era o único dos padrões "genéricos de IA" apontados pelo detector que existia de fato e não carregava informação nenhuma. **Não mexi** nos rótulos acima dos títulos (carregam informação real: localização, contexto de seção) nem nas bordas laterais coloridas do `.pharma-note`/`.warning-note`/`.highlight-text` — em conteúdo escrito por farmacêutico, a borda colorida de callout é convenção que ajuda a varredura, não enfeite.
+
+### Fora do escopo de design: o cupom expirado do e-book estava no ar havia duas semanas
+
+O bloco `.ebook-promo` ainda anunciava **"R$49,99 → R$24,99 · 50% off · lançamento"** com link `?offDiscount=LANCAMENTO`, em 8 páginas (7 artigos do blog + a home) — contra a decisão de 03/09/2026, que foi encerrar o cupom e deixar o e-book sem preço. Removidos os 7 blocos de preço e os 8 links com cupom, conferindo a contagem antes e depois (a armadilha de edição em massa que já custou caro aqui antes).
+
+### O erro desta versão, registrado de propósito
+
+Pra caber os dois botões do banner em uma linha eu renomeei "Somente essenciais" para "Só essenciais" — e **quebrei 16 testes e2e de uma vez**, porque `analytics.spec.js`, `cart.spec.js` e `booking-review.spec.js` usam esse rótulo como seletor pra dispensar o banner; sem dispensar, o banner interceptava todos os cliques seguintes. O `white-space:nowrap` que eu já tinha colocado no CSS *sozinho* resolvia o problema de altura: o rótulo original cabe em uma linha e o banner continua com 97px. Rótulo revertido, 16 testes de volta ao verde. **Lição: rótulo visível de botão é contrato de teste — conferir quem depende dele antes de reescrever.**
+
+**Cache:** `style.css`, `juia-chat.css` e `privacy-consent-v22-4.js` bumpados para 29.204.0 em **81, 54 e 56 referências** nas páginas vivas (contagem conferida depois, nenhuma referência antiga sobrou), mais os `@import` do `style.css` para as folhas 01, 02 e 04.
+
+**Testes:** 153 unit + 51 e2e, todos passando.
+
 ## 29.203.1 — Content-Security-Policy no ar pelo Cloudflare, testada página a página; nota A no scanner (17/09, fim da tarde)
 
 **Pedido do Juliano (17/09/2026, ~16h35, print do securityheaders):** "outra auditoria, subimos para A mas ainda tem este campo em vermelho" — o único cabeçalho faltando era a CSP, que eu tinha deixado de fora de propósito na v29.202.1.

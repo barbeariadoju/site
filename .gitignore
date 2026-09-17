@@ -25,3 +25,6 @@ artes/.render-*.html
 # plataforma não vai pro repo público (14 MB, específico de windows-x64,
 # baixado de novo sozinho no primeiro uso em cada máquina)
 .claude/skills/impeccable/scripts/bin/
+
+# impeccable: cache do hook é estado local da máquina
+.impeccable/hook.cache.json

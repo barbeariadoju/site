@@ -546,3 +546,17 @@ footer a:hover,
   .mobile-agendar{position:fixed;left:0;right:0;bottom:0;z-index:80;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;font-weight:900;font-size:var(--t-lg);text-decoration:none;box-shadow:var(--sh-2)}
   body:has(.mobile-agendar){padding-bottom:64px}
 }
+
+/* v29.204.0 — abaixo de 620px as DUAS barras fixas ficavam na tela ao mesmo
+   tempo: a .mobile-cta (3 botões, bottom:10px, entra em 850px) e esta barra
+   dourada (bottom:0, entra em 620px). Sobrepunham 43px uma na outra e
+   mostravam "Agendar" duas vezes, em dois estilos. Agora a barra dourada é o
+   CTA primário e a .mobile-cta perde o botão duplicado, virando só os dois
+   atalhos secundários (WhatsApp e Rota), empilhada acima sem encostar. */
+@media(max-width:620px){
+  .mobile-cta{grid-template-columns:repeat(2,1fr);bottom:calc(61px + env(safe-area-inset-bottom))}
+  .mobile-cta a:first-child{display:none}
+  body:has(.mobile-agendar){padding-bottom:calc(121px + env(safe-area-inset-bottom))}
+  .back-top{bottom:calc(121px + env(safe-area-inset-bottom))}
+  .welcome-pop{padding-bottom:calc(125px + env(safe-area-inset-bottom))}
+}

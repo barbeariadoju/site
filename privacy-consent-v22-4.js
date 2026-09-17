@@ -30,7 +30,12 @@
   banner.className='cookie-banner';
   banner.setAttribute('role','dialog');
   banner.setAttribute('aria-label','Preferências de privacidade');
-  banner.innerHTML=`<div><strong>Privacidade e cookies</strong><p>Usamos medição de audiência de forma agregada para melhorar o site. Você pode aceitar também os cookies de anúncios ou continuar apenas com os essenciais.</p><a href="privacidade.html">Ler a Política de Privacidade</a></div><div class="cookie-actions"><button type="button" data-cookie="essential">Somente essenciais</button><button class="is-primary" type="button" data-cookie="accepted">Aceitar</button></div>`;
+  // v29.204.0 — o texto era longo o bastante pra deixar o banner com 247px no
+  // celular, cobrindo por inteiro os dois CTAs do hero ("Agendar horário" e
+  // "Fale com o barbeiro") no primeiro carregamento. Encurtado preservando a
+  // nuance que importa (medição sempre ativa, a escolha é só sobre anúncios) —
+  // o detalhe completo continua na Política de Privacidade, linkada aqui.
+  banner.innerHTML=`<div><strong>Privacidade e cookies</strong><p>A medição de audiência é sempre ativa. Você decide sobre cookies de anúncios. <a href="privacidade.html">Política de Privacidade</a></p></div><div class="cookie-actions"><button type="button" data-cookie="essential">Somente essenciais</button><button class="is-primary" type="button" data-cookie="accepted">Aceitar</button></div>`;
   document.body.appendChild(banner);
   banner.querySelector('[data-cookie="essential"]').onclick=()=>update('essential');
   banner.querySelector('[data-cookie="accepted"]').onclick=()=>update('accepted');
