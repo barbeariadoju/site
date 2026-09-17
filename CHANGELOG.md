@@ -1,3 +1,26 @@
+## 29.201.0 — Auditoria de segurança externa (Manus) conferida no código e no banco: o que fechei, o que já estava certo e o que é decisão do Juliano (17/09, tarde)
+
+**Pedido do Juliano (17/09/2026, ~14h20):** "analise isto e tome as medidas necessárias", com o PDF *"Análise de Segurança — Barbearia do Ju"* (Manus, 17/09, revisão externa passiva, sem acesso a repositório nem banco). Veredito do relatório: nenhuma falha crítica na superfície pública; 5 achados, todos do tipo "confirme no backend". Conferi cada um de verdade (regra da casa: ler antes de afirmar que falta), e cruzei com o linter de segurança do próprio Supabase (`get_advisors`).
+
+**O que já estava certo (não mexi):** RLS ligada em TODAS as tabelas do schema público (zero sem RLS); chave `service_role` só em secrets de Edge Function e em variável de ambiente do teste ao vivo (nunca no HTML/JS); área administrativa protegida no servidor (policies com `is_admin()`, RPCs administrativas checam `is_admin()` por dentro, Edge Functions validam JWT + `is_admin`); JuIA com limite diário de mensagens (429) e telefone/estado tratados como entrada não confiável; HTTPS forçado pelo GitHub Pages.
+
+**Fechado agora (migration 162, no ar):**
+- **RPCs administrativas fora do cardápio anônimo:** `admin_create_booking`, `admin_register_walkin_visit`, `admin_reschedule_booking` e `generate_gift_code` não são mais executáveis pelo `anon` (já negavam por dentro; agora nem aparecem). Linter: de 27 pra 23 funções listadas — as 23 que ficam são por desenho (token do cliente, segredo da câmera, horários públicos do site, funções de gatilho que o PostgREST nem consegue chamar).
+- **`contact_messages`:** anon perdeu SELECT/UPDATE (herança de GRANT antigo; a RLS já bloqueava, mas privilégio sem uso é superfície à toa). INSERT do formulário continua.
+- **TRUNCATE revogado de anon/authenticated em todas as tabelas** (+ default privileges): a RLS não cobre TRUNCATE. Não era explorável pela API, mas custa zero tirar.
+- **Erro meu no meio, registrado como manda a casa:** revoguei `is_admin()` do anon "porque o linter pediu" — e `REVOKE ... FROM PUBLIC` derruba o grant implícito do `authenticated` junto. Por ~1 minuto o `authenticated` não podia executar `is_admin()` (o painel logado teria falhado). Conferi em seguida, devolvi os grants explícitos a `authenticated`/`service_role` e **mantive `is_admin()` pro anon de propósito**: 12 policies de RLS com papel PUBLIC (bookings, google_reviews, content_posts, finance_*…) chamam `is_admin()` no USING — sem EXECUTE, leitura anônima nessas tabelas viraria erro em vez de "zero linhas". Ela só devolve false sem sessão. Lição: revogar de PUBLIC exige re-conceder aos papéis que usam; conferir `has_function_privilege` logo depois.
+
+**Fechado agora (site, sem cache — é HTML):**
+- **supabase-js fixado** em `2.116.0` (a versão que o `@2` estava servindo hoje) com **Subresource Integrity** (`sha384-…`) e `crossorigin="anonymous"` nas 76 páginas que carregam o cliente. Uma versão nova ou um arquivo alterado no CDN deixa de entrar sozinho; atualizar passa a ser decisão com teste (trocar versão + hash nas 76 páginas por script).
+- **`/.well-known/security.txt`** (contato para quem achar problema, validade 1 ano) + `_config.yml` com `include: [.well-known]`, porque o Jekyll do GitHub Pages ignora pasta com ponto sem isso.
+
+**O que fica pro Juliano decidir (não é código):**
+1. **Cabeçalhos HTTP (HSTS, CSP, nosniff, Referrer-Policy, Permissions-Policy):** o GitHub Pages não deixa configurar cabeçalho. Só entram pondo o domínio atrás de um proxy/CDN (Cloudflare, plano grátis). É mudança de DNS, tem que ser decidida e feita com calma; até lá, o ganho real é pequeno (site estático, sem login no domínio público — o admin autentica no Supabase).
+2. **Proteção contra senha vazada (HaveIBeenPwned) no Supabase Auth está desligada:** liga no painel do Supabase → Authentication → Settings → Password security. Um clique, sem efeito colateral; eu não tenho como ligar por aqui.
+3. **`get_public_customer_summary(telefone)`:** a área do cliente do site devolve primeiro nome, pontos, último serviço e próximo horário só com o número de telefone — qualquer pessoa que saiba o número de um cliente consegue ver quando ele vai à barbearia. Não é bug de permissão, é desenho (conveniência sem senha). Alternativa: só mostrar depois de um código enviado pelo WhatsApp. Fica registrado pra ele escolher.
+
+Testes: `npm test` verde (153 unit + 51 e2e, com o Chromium validando o hash de integridade em todas as telas). Linter do Supabase rodado antes e depois. Sem função nova, sem cache.
+
 ## 29.200.0 — Sinal de química tem prazo de 1 hora; vencido, o horário é liberado sozinho (17/09, começo da tarde)
 
 **Regra do Juliano (17/09/2026, ~13h):** "até 1h pra fazer o sinal; se não fizer, libera o horário. Isto só pra serviços de química, que são mais caros e duradouros e ocupam muito tempo na agenda." Fecha a pendência registrada na v29.199.1: o pedido de sinal saía sem prazo, e o primeiro cancelamento por ele (Teddy) foi na mão, 25 minutos depois do pedido.
