@@ -737,3 +737,12 @@ html{color-scheme:dark}
 #fin-metric-expense{color:var(--grey-1)}
 /* Barra inferior: nome da tela atual no último botão (pode ser longo, ex.: "Funil de Reativação"). */
 .admin-mobile-nav a small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Aviso de modo sem internet (leitura da última versão guardada). */
+#bdj-offline{position:sticky;top:0;z-index:100000;padding:10px 16px calc(10px + 0px);padding-top:max(10px,env(safe-area-inset-top));background:#5a3a12;color:#fff4e0;font-weight:700;font-size:var(--t-sm);text-align:center;border-bottom:1px solid rgba(var(--gold2-rgb),.5)}
+/* Hoje no celular: 5 botões ocupavam ~230px antes do primeiro atendimento. Principal em cima,
+   Anterior / Seguinte / Atualizar numa linha só, Balcão embaixo. */
+@media (max-width:760px){
+  [data-admin-page="dashboard"] .admin-header-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-rows:auto!important;gap:6px!important}
+  [data-admin-page="dashboard"] .admin-header-actions .btn.primary,#today-balcao,#today-now{grid-column:1/-1}
+  #today-prev,#today-next,#today-refresh{min-height:44px;padding:0 6px!important;font-size:var(--t-sm)}
+}

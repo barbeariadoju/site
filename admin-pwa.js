@@ -21,6 +21,14 @@
     });
   }
 
+  // v29.205.7 — sem internet o painel mostra a última versão guardada no aparelho (sw.js); este
+  // aviso deixa claro que é leitura e que nada pode ser salvo até a conexão voltar.
+  // navigator.onLine mente (Wi-Fi conectado sem internet diz "online"): a prova é buscar um arquivo
+  // pequeno do servidor, ao abrir e a cada 30 s.
+  const mostraOffline=off=>{let el=document.getElementById('bdj-offline');if(!off){el?.remove();return}if(el)return;el=document.createElement('div');el.id='bdj-offline';el.setAttribute('role','status');el.textContent='Sem internet: mostrando os dados da última vez que o painel carregou. Nada pode ser salvo agora — volta sozinho quando a conexão voltar.';document.body.prepend(el)};
+  const testaConexao=()=>fetch('/admin-version.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;mostraOffline(false)}).catch(()=>mostraOffline(true));
+  window.addEventListener('offline',()=>mostraOffline(true));window.addEventListener('online',testaConexao);testaConexao();setInterval(testaConexao,30000);
+
   // Navegação inferior compacta para iPhone e Android.
   const app=document.getElementById('admin-app');
   if(app){
@@ -39,7 +47,7 @@
     const nav=document.createElement('nav');
     nav.className='admin-mobile-nav is-six';
     nav.setAttribute('aria-label','Navegação do painel');
-    nav.innerHTML=items.map(([key,url,icon,label])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><small>${label}</small></a>`).join('')+(()=>{const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:((window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[]).flatMap(g=>g[1]).find(x=>x[0]===current);/* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual ("Financeiro") em vez de "Mais" aceso — continua abrindo a lista de telas */return `<a href="#" data-more-open aria-label="Mais telas" class="${noMenu?'':'is-active'}"><span>☰</span><small>${atual?atual[3]:'Mais'}</small></a>`})();
+    nav.innerHTML=items.map(([key,url,icon,label])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><small>${label}</small></a>`).join('')+(()=>{const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:((window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[]).flatMap(g=>g[1]).find(x=>x[0]===current);/* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual ("Financeiro") em vez de "Mais" aceso — continua abrindo a lista de telas */const curto={financeiro:'Finanças',relatorios:'Números',espera:'Espera',fidelidade:'Pontos',vales:'Vales',leads:'Reativar',equipe:'Equipe',mensagens:'Recados',notificacoes:'Avisos',assistente:'IA',avaliacoes:'Google',conteudo:'Conteúdo'};/* nome curto: a célula da barra tem ~60px */return `<a href="#" data-more-open aria-label="Mais telas" class="${noMenu?'':'is-active'}"><span>☰</span><small>${atual?(curto[current]||atual[3]):'Mais'}</small></a>`})();
     document.body.appendChild(nav);
     const groups=(window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[];
     const sheet=document.createElement('div');

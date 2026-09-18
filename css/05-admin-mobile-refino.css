@@ -797,3 +797,40 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 
 /* O botão após a introdução herdava a cor de link do cartão (dourado sobre dourado, quase invisível). */
 .cta-intro .btn.primary{color:var(--ink)!important}
+/* Retrato do Sobre no celular: o recorte mostrava a faixa decorativa do banner no topo. */
+.blog-hero img[src*="juliano-retrato-sobre"]{object-position:50% 0}
+
+/* v29.205.7 — 5ª revisão cega do site */
+.cta-intro{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+.privacy-card .cta-intro a.cta-prova{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--muted)!important;font-weight:500;font-size:var(--t-sm);text-decoration:none}
+.privacy-card .cta-intro a.cta-prova span{color:var(--gold2);letter-spacing:.06em}
+.privacy-card .cta-intro a.cta-prova:hover{text-decoration:underline}
+/* Foto do corte: o recorte central cortava no nariz do barbeiro; mostra do rosto pra baixo. */
+.blog-hero img[src*="juliano-corte"]{object-position:50% 22%}
+/* "Tudo em um só lugar": ícone alinhado ao topo, junto do título. */
+#links .link-card .ico{align-self:start}
+
+/* v29.205.7 — 5ª revisão do agendamento */
+/* Data: "Terça-Feira, 22 De Setembro" (capitalize em cada palavra) -> só a primeira letra. */
+.booking-summary-date strong{text-transform:none!important}
+.booking-summary-date strong::first-letter{text-transform:uppercase}
+/* Dia sem horário na faixa. */
+.day-chip.is-full{opacity:.45;border-style:dashed}
+.day-chip.is-full strong{text-decoration:line-through}
+.day-chip em{font-style:normal;font-size:10px;line-height:1;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+@media (max-width:760px){
+  /* Barra de ações das etapas: "Voltar" e "Continuar" lado a lado (empilhados ocupavam ~17% da tela). */
+  .booking-actions-v14{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:center!important;gap:8px!important;padding:8px!important}
+  .booking-actions-v14 .booking-back-button{order:-1}
+  .booking-actions-v14 .booking-back-button{flex:0 0 auto;min-height:48px;padding:0 12px;margin:0!important}
+  .booking-actions-v14 .btn{width:100%!important;min-width:0!important;min-height:52px}
+  .booking-actions-v14>span:empty{display:none}
+  /* /agendar/: vão grande entre o link da JuIA e o primeiro serviço. */
+  .services-hero{padding-bottom:8px!important}
+  .services-hero+.service-section{padding-top:24px!important}
+}
+/* Páginas do cliente (Área do cliente, Meu agendamento, Reagendar) com o mesmo cabeçalho. */
+.client-hero h1,.customer-booking-hero h1,.rebooking-hero h1{font-family:Inter,InterFallback,system-ui,sans-serif;font-weight:800;font-size:clamp(2rem,6vw,2.8rem);line-height:1.1;letter-spacing:-.01em;text-transform:none}
+.customer-booking-hero,.rebooking-hero{text-align:center}
+.rebooking-page{padding-inline:max(16px,env(safe-area-inset-left))}
+.customer-booking-hero .back-link,.rebooking-hero .back-link,.client-back{display:inline-flex;margin-bottom:14px}

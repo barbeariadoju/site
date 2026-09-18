@@ -1,3 +1,45 @@
+## 29.205.7 — Quinta revisão cega: painel sem internet, agendamento e site (18/09)
+
+**Placar da 5ª rodada** (revisores novos, cegos; o do agendamento andou em produção até a revisão, sem confirmar nada):
+
+| Parte | 4ª rodada | 5ª rodada |
+|---|---|---|
+| Site | 32/40 | **33/40** |
+| Painel | 28/40 | **31/40** |
+| Agendamento do cliente | 26/40 | **31/40** |
+| App do painel | 6,5/10 | **7,5/10** |
+| App do site | 7/10 | **8/10** |
+
+Esta versão fecha o que a 5ª rodada apontou e é código.
+
+### App do painel: leitura sem internet (o P1 da rodada)
+- Antes, se a internet caía no meio do atendimento, **até a agenda já aberta** virava a página "sem conexão" — nenhuma tela do painel ficava guardada.
+- Agora (`sw.js`): cada tela do painel aberta com internet fica guardada no aparelho; as consultas de LEITURA ao Supabase feitas pelas telas do painel (só GET em `/rest/v1/`) vão pra rede primeiro e guardam a última resposta, num cache com nome fixo que sobrevive às trocas de versão; a biblioteca do Supabase (versão fixa + SRI) também fica guardada. Nada que grava passa por esse caminho.
+- Aviso no topo: "Sem internet: mostrando os dados da última vez que o painel carregou. Nada pode ser salvo agora". **`navigator.onLine` não serve** (Wi-Fi conectado sem internet diz "online", e o teste mostrou que ele nem muda): a prova é buscar `admin-version.json` ao abrir e a cada 30 s.
+- Conferido com o service worker ligado: abriu a Agenda com internet, cortou a rede, recarregou — abriu a Agenda (não a página offline) com o aviso; tela nunca aberta cai no "O painel está sem internet". Com internet, sem aviso.
+
+### Agendamento do cliente
+- **"Último horário depois do fechamento" não era defeito:** o horário pode começar no fechamento e terminar depois (regra da v29.167.0, migração 149). O texto "das 8h às 19h" fazia parecer contradição; ganhou a linha "O último horário pode começar no fechamento: o atendimento termina logo depois".
+- **Dias lotados marcados na faixa** ("lotado", riscado), por consulta leve em segundo plano — antes pareciam iguais aos outros.
+- **"Terça-Feira, 22 De Setembro" ainda aparecia:** a correção da 29.205.4 foi no texto, mas um `text-transform: capitalize` no CSS recapitalizava cada palavra. Agora só a primeira letra (`::first-letter`). Erro meu: dei como corrigido sem olhar a tela da revisão.
+- Barra de ações das etapas no celular com "Voltar" e "Continuar" lado a lado (empilhados, ocupavam ~17% da tela — ficaram visíveis depois que o `position: sticky` voltou a funcionar na 29.205.1).
+- `/agendar/horario/?servico=x` sempre leva ao catálogo com o serviço (antes, com pedido já montado, o parâmetro era ignorado em silêncio). Nome de uma letra ganhou aviso próprio. Área do cliente, Meu agendamento e Reagendar com o mesmo cabeçalho; Reagendar sem link com título coerente ("Reagendar horário") e link de volta.
+
+### Site
+- **Foto do ozônio no topo da Barboterapia estava borrada** (quadro de vídeo ampliado) e mostrava tomada e cabo. No topo da Barboterapia entrou a foto nítida da cadeira; o ozônio fica só na galeria da home (miniatura), num recorte novo sem a tomada.
+- Retrato do Sobre no celular: versão recortada sem a faixa decorativa do banner, ancorada no topo. Foto do corte (`juliano-corte`) mostrando o rosto, não o avental.
+- Durações que faltavam na lista de preços (Pigmentação de sobrancelha 30 min, Aparação corporal 70 min, Luzes 100 min — valores do catálogo do painel); breadcrumb em /servicos; "Ver catálogo" saiu do topo do próprio catálogo; 🔥 do selo "Mais vendido" saiu.
+- **Prova social nas 25 páginas de serviço**, ao lado do primeiro "Agendar": "★★★★★ Nota 5,0 no Google · mais de 100 avaliações", com link pras avaliações.
+
+### Painel
+Nome curto da tela atual na barra do celular ("Finanças", "Números", "Pontos"…, antes "Financ…"); um nome só pro atendimento sem hora ("🚶 Balcão (sem hora)" no Hoje); cabeçalho do Hoje no celular mais baixo (Anterior / Seguinte / Atualizar numa linha); subtítulo de Relatórios citando "dia".
+
+### Decidido NÃO fazer
+- Encurtar as perguntas frequentes da home (revisor do site): o bloco tem schema `FAQPage` — cortar pergunta visível exige mexer no schema e perde conteúdo que o Google usa.
+- Capturas de tela no manifesto: mostrariam preços, que mudam em 01/10.
+
+**Conferido:** régua 0 pendências (site e painel); fluxo clicado até a revisão em 390 com as funções que gravam bloqueadas; 153 unit + 51 e2e passando.
+
 ## 29.205.6 — Ícone novo dos apps: monograma JU (18/09)
 
 **Pedido do Juliano:** "cria pra mim o ícone". Três opções mostradas (pergaminho creme; placa creme sobre preto; preto com anel de poste); ele escolheu a **opção C, "porém o bigode embaixo do JU, não em cima"**.

@@ -1,8 +1,11 @@
-const CACHE = 'barbearia-os-v29-205-6';
+const CACHE = 'barbearia-os-v29-205-7';
 // v29.205.0 — sem rede, uma navegação que não está no cache cai numa página própria de
 // "sem conexão" (com telefone e endereço), e não mais na home pública — que era o que o
 // app do painel mostrava pro Juliano quando a internet caía no meio do atendimento.
 const OFFLINE = 'offline.html';
+// Dados do painel guardados pra leitura sem internet. Nome fixo: sobrevive às trocas de versão
+// (a versão nova do site não apaga a última agenda que o Juliano viu).
+const CACHE_DADOS = 'barbearia-os-dados-painel';
 const CORE = [
   './',
   'index.html',
@@ -38,7 +41,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE).map(key => caches.delete(key))
+      keys.filter(key => key !== CACHE && key !== CACHE_DADOS).map(key => caches.delete(key))
     )).then(() => self.clients.claim())
   );
 });
@@ -47,9 +50,46 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // v29.205.7 — leitura do painel sem internet: consultas GET do Supabase feitas por uma tela do
+  // painel vão pra rede primeiro e guardam a última resposta NO APARELHO; sem rede, a tela mostra
+  // a última versão (com aviso — admin-pwa.js). Nada que grava passa aqui (só GET em /rest/v1/).
+  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/v1/')) {
+    event.respondWith((async () => {
+      const cli = event.clientId ? await self.clients.get(event.clientId) : null;
+      const doPainel = cli && new URL(cli.url).pathname.startsWith('/admin');
+      if (!doPainel) return fetch(req);
+      try {
+        const r = await fetch(req);
+        if (r.ok) { const c = await caches.open(CACHE_DADOS); await c.put(req.url, r.clone()); }
+        return r;
+      } catch (e) {
+        const guardado = await caches.match(req.url, { cacheName: CACHE_DADOS });
+        if (guardado) return guardado;
+        throw e;
+      }
+    })());
+    return;
+  }
+  // Biblioteca do Supabase (jsdelivr, versão fixa + SRI): cache primeiro, pra o painel abrir sem internet.
+  if (url.hostname === 'cdn.jsdelivr.net' && url.pathname.includes('/@supabase/')) {
+    event.respondWith(caches.match(req).then(c => c || fetch(req).then(async r => { if (r.ok) { const k = await caches.open(CACHE_DADOS); await k.put(req, r.clone()); } return r; })));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   // HTML sempre tenta a rede primeiro. Cache só serve como contingência offline.
+  // v29.205.7 — as telas do painel ficam guardadas (sem o ?app=1 etc.) pra abrir sem internet.
+  if (req.mode === 'navigate' && url.pathname.startsWith('/admin')) {
+    event.respondWith(
+      fetch(req, { cache: 'no-store', redirect: 'follow' })
+        .then(async response => {
+          if (response.ok && !response.redirected) { const c = await caches.open(CACHE); await c.put(url.origin + url.pathname, response.clone()); }
+          return response;
+        })
+        .catch(async () => semRedirect((await caches.match(url.origin + url.pathname)) || (await caches.match(OFFLINE))))
+    );
+    return;
+  }
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req, { cache: 'no-store', redirect: 'follow' })
