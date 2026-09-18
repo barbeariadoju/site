@@ -2,12 +2,12 @@
 .schedule-warning{font-size:var(--t-md);line-height:1.55}
 .smart-products{margin-top:34px}
 .smart-product-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.smart-product-card{display:block;text-decoration:none;border:1px solid rgba(240,201,135,.22);background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh-2);transition:.25s ease}
+.smart-product-card{display:block;text-decoration:none;border:1px solid var(--line);background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh-2);transition:.25s ease}
 .smart-product-card strong{display:block;color:var(--gold2);font-size:var(--t-lg);margin-bottom:8px}
 .smart-product-card span{display:block;color:var(--muted);line-height:1.5;font-weight:700}
-.smart-product-card:hover{transform:translateY(-3px);border-color:rgba(240,201,135,.42);box-shadow:var(--sh-2)}
-.mini-suggest{border:1px solid rgba(240,201,135,.22);background:rgba(200,155,85,.08);border-radius:var(--r-sm);padding:10px 12px;color:var(--muted);font-size:var(--t-base);line-height:1.4;text-align:center;margin:8px 0 10px}.mini-suggest strong{color:var(--gold2)}
-.bottom-back-btn{position:fixed;left:18px;bottom:18px;z-index:78;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid rgba(240,201,135,.32);background:rgba(13,13,13,.92);color:var(--gold2);font-weight:900;border-radius:var(--r-pill);padding:13px 16px;box-shadow:var(--sh-2);backdrop-filter:blur(8px);transition:.25s ease}.bottom-back-btn:hover,.bottom-back-btn:focus-visible{transform:translateY(-2px);border-color:rgba(240,201,135,.55)}
+.smart-product-card:hover{transform:translateY(-3px);border-color:rgba(var(--gold2-rgb),.42);box-shadow:var(--sh-2)}
+.mini-suggest{border:1px solid var(--line);background:rgba(var(--gold-rgb),.08);border-radius:var(--r-sm);padding:10px 12px;color:var(--muted);font-size:var(--t-base);line-height:1.4;text-align:center;margin:8px 0 10px}.mini-suggest strong{color:var(--gold2)}
+.bottom-back-btn{position:fixed;left:18px;bottom:18px;z-index:78;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid var(--gold-a32);background:rgba(13,13,13,.92);color:var(--gold2);font-weight:900;border-radius:var(--r-pill);padding:13px 16px;box-shadow:var(--sh-2);backdrop-filter:blur(8px);transition:.25s ease}.bottom-back-btn:hover,.bottom-back-btn:focus-visible{transform:translateY(-2px);border-color:var(--gold-a55)}
 .cart-panel.active ~ .bottom-back-btn{opacity:.28;pointer-events:none}
 .cart-panel .send-cart:last-child{font-size:var(--t-lg);padding:15px 16px!important}
 @media(max-width:620px){.smart-product-grid{grid-template-columns:1fr}.bottom-back-btn{left:14px;bottom:calc(72px + env(safe-area-inset-bottom));font-size:var(--t-md);padding:12px 14px}.open-cart-btn.show + .bottom-back-btn{bottom:calc(82px + env(safe-area-inset-bottom))}.floating{display:none!important}}
@@ -156,7 +156,7 @@
   width:260px;
   height:260px;
   border-radius:var(--r-circle);
-  background:radial-gradient(circle,rgba(240,201,135,.17),transparent 68%);
+  background:radial-gradient(circle,rgba(var(--gold2-rgb),.17),transparent 68%);
   pointer-events:none;
 }
 .contact-intro:before{right:-110px;top:-110px}
@@ -176,8 +176,8 @@
   align-items:center;
   padding:13px 14px;
   border-radius:var(--r-md);
-  border:1px solid rgba(240,201,135,.17);
-  background:rgba(255,255,255,.025);
+  border:1px solid rgba(var(--gold2-rgb),.17);
+  background:rgba(var(--white-rgb),.025);
   color:var(--text);
   text-decoration:none;
 }
@@ -187,18 +187,18 @@
   width:48px;
   height:48px;
   border-radius:var(--r-sm);
-  background:rgba(200,155,85,.12);
-  border:1px solid rgba(240,201,135,.25);
+  background:rgba(var(--gold-rgb),.12);
+  border:1px solid rgba(var(--gold2-rgb),.25);
   font-size:var(--t-2xl);
 }
 .contact-channel strong{display:block;color:var(--gold2);font-size:var(--t-md)}
 .contact-channel small{display:block;color:var(--muted);font-size:var(--t-sm);line-height:1.35;overflow-wrap:anywhere}
-.contact-channel:hover{border-color:rgba(240,201,135,.45);background:rgba(200,155,85,.07)}
-.contact-hours{margin:18px 0 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);color:var(--muted);font-size:var(--t-base)}
+.contact-channel:hover{border-color:rgba(var(--gold2-rgb),.45);background:rgba(var(--gold-rgb),.07)}
+.contact-hours{margin:18px 0 0;padding-top:18px;border-top:1px solid rgba(var(--white-rgb),.07);color:var(--muted);font-size:var(--t-base)}
 .contact-hours strong{color:var(--gold2)}
 .premium-form{padding:34px;display:flex;flex-direction:column;justify-content:center}
-.form-heading{position:relative;z-index:1;display:flex;gap:13px;align-items:center;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
-.form-heading>span{display:grid;place-items:center;width:48px;height:48px;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;font-weight:900}
+.form-heading{position:relative;z-index:1;display:flex;gap:13px;align-items:center;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid rgba(var(--white-rgb),.07)}
+.form-heading>span{display:grid;place-items:center;width:48px;height:48px;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);font-weight:900}
 .form-heading strong{display:block;color:var(--text);font-size:var(--t-xl)}
 .form-heading small{display:block;color:var(--muted)}
 .premium-form label{position:relative;z-index:1;margin:0 0 7px;color:var(--gold2);font-size:var(--t-sm);font-weight:900;letter-spacing:.04em;text-transform:uppercase}
@@ -207,9 +207,9 @@
   position:relative;
   z-index:1;
   width:100%;
-  border:1px solid rgba(240,201,135,.2);
+  border:1px solid var(--gold-a20);
   border-radius:var(--r-sm);
-  background:#090909;
+  background:var(--surface-1);
   color:var(--text);
   font:inherit;
   padding:14px 15px;
@@ -219,7 +219,7 @@
 }
 .premium-form textarea{resize:vertical;min-height:132px}
 .premium-form input::placeholder,.premium-form textarea::placeholder{color:#7f776d}
-.premium-form input:focus,.premium-form textarea:focus{border-color:rgba(240,201,135,.65);box-shadow:var(--ring);background:#0c0c0c}
+.premium-form input:focus,.premium-form textarea:focus{border-color:rgba(var(--gold2-rgb),.65);box-shadow:var(--ring);background:var(--surface-2)}
 .premium-form .field-help{position:relative;z-index:1;margin:-8px 0 14px}
 .contact-submit{position:relative;z-index:1;width:100%;border-radius:var(--r-sm) !important;margin-top:2px;min-height:52px}
 @media(max-width:850px){
@@ -247,7 +247,7 @@
   max-width:320px !important;
   max-height:320px !important;
   border-radius:var(--r-md);
-  background:#fff;
+  background:var(--white);
   padding:8px;
   margin:8px 0 16px;
 }
@@ -264,8 +264,21 @@
    caminho único. NÃO existe AggregateRating no schema: a nota é do Google e
    autodeclarar violaria as diretrizes. */
 .reviews-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:18px}
-.review-card{background:linear-gradient(180deg,#161616,#0d0d0d);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;flex-direction:column;gap:10px}
+.review-card{background:linear-gradient(180deg,var(--panel2),var(--surface-3));border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;flex-direction:column;gap:10px}
 .review-card .review-stars{color:var(--gold2);letter-spacing:.08em;font-size:var(--t-lg)}
 .review-card blockquote{margin:0;color:var(--text);font-size:var(--t-md);line-height:1.55}
 .review-card figcaption{color:var(--muted);font-size:var(--t-base);font-weight:700}
-.reviews-note{margin-top:16px;color:var(--muted);font-size:var(--t-base);text-align:center}
+.reviews-note{margin-top:16px;color:var(--muted);font-size:var(--t-base);text-align:center}.reviews-note a{color:var(--gold2);font-weight:700;text-underline-offset:3px}
+
+/* v29.205.0 — alvos de toque de 44px no celular (padrão de acessibilidade para toque).
+   Medido em 390px: "Adicionar" do catálogo e dos produtos tinha 36-37px de altura, as
+   perguntas do FAQ 25px, os "← Voltar" 25px e o campo de telefone da Área do Cliente
+   27px. Só altura/área clicável muda; nenhum texto ou cor. */
+@media (max-width:760px),(pointer:coarse){
+  .cart-btn,.service-btn,.cart-clear,.quick-card a,.mobile-cta a,#duration-service-select,#client-phone{min-height:44px}
+  .back-link,.client-back,.vp-brand,.text-link{display:inline-flex;align-items:center;min-height:44px}
+  details>summary{padding-block:10px}
+}
+@media (max-width:760px),(pointer:coarse){.vp-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}}
+/* Campo com menos de 16px faz o iPhone dar zoom sozinho ao tocar. */
+@media (max-width:760px),(pointer:coarse){#duration-service-select{font-size:16px}}

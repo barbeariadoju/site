@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0b0b">
+<title>Sem conexão | Barbearia do Ju</title>
+<style>
+  :root{--bg:#080808;--panel:#141414;--text:#f5eee4;--muted:#bdb2a3;--gold:#c89b55;--gold2:#f0c987;--line:rgba(240,201,135,.22)}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  main{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
+  .card{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:center}
+  img{width:72px;height:72px;border-radius:16px}
+  h1{margin:18px 0 8px;font-size:1.5rem;line-height:1.2;font-weight:800;letter-spacing:-.01em}
+  p{margin:0 auto 12px;max-width:34em;color:var(--muted)}
+  button{min-height:48px;width:100%;margin:14px 0 4px;border:0;border-radius:999px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#16100a;font:800 1rem/1 inherit;cursor:pointer}
+  button:focus-visible,a:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+  .contato{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:6px}
+  .contato a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;color:var(--gold2);font-weight:700;text-decoration:none}
+  .estado{min-height:1.4em;font-size:.875rem}
+</style>
+</head>
+<body>
+<main>
+  <section class="card" aria-labelledby="titulo">
+    <img src="/assets/icon-192.png" alt="Barbearia do Ju" width="72" height="72">
+    <h1 id="titulo">Sem conexão com a internet</h1>
+    <p>Não foi possível carregar esta página agora. Assim que a conexão voltar, ela abre sozinha.</p>
+    <button type="button" id="tentar">Tentar de novo</button>
+    <p class="estado" id="estado" role="status" aria-live="polite"></p>
+    <div class="contato">
+      <p>Precisa falar com a barbearia enquanto isso?</p>
+      <a href="tel:+5511967073038">Ligar: (11) 96707-3038</a>
+      <a href="https://maps.google.com/?q=Rua+Dr.+Ant%C3%B4nio+da+Cruz,+482,+Bragan%C3%A7a+Paulista">Rua Dr. Antônio da Cruz, 482, Centro</a>
+    </div>
+  </section>
+</main>
+<script>
+(function () {
+  var estado = document.getElementById('estado');
+  function tentar() { estado.textContent = 'Verificando a conexão…'; location.reload(); }
+  document.getElementById('tentar').addEventListener('click', tentar);
+  window.addEventListener('online', tentar);
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "short_name": "Barbearia OS",
   "description": "Painel da Barbearia do Ju para agenda, notificações, modo atendimento, CRM, fidelidade e JuIA.",
   "start_url": "/admin.html?app=1",
-  "scope": "/",
+  "scope": "/admin",
   "id": "/admin.html",
   "display": "standalone",
   "display_override": [
@@ -23,16 +23,39 @@
       "src": "assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
+    {
+      "name": "Hoje",
+      "short_name": "Hoje",
+      "url": "/admin.html?app=1",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
     {
       "name": "Agenda",
       "short_name": "Agenda",
@@ -45,9 +68,9 @@
       ]
     },
     {
-      "name": "Modo Atendimento",
-      "short_name": "Atender",
-      "url": "/admin-atendimento.html?app=1",
+      "name": "Novo agendamento",
+      "short_name": "Agendar",
+      "url": "/admin-agendamento.html?app=1",
       "icons": [
         {
           "src": "assets/icon-192.png",
@@ -67,9 +90,9 @@
       ]
     },
     {
-      "name": "Novo agendamento",
-      "short_name": "Agendar",
-      "url": "/admin-agendamento.html?app=1",
+      "name": "Atendimento Balcão",
+      "short_name": "Balcão",
+      "url": "/admin-balcao.html?app=1",
       "icons": [
         {
           "src": "assets/icon-192.png",

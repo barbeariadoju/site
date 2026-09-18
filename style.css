@@ -4,10 +4,12 @@
    /style.css precisou mudar. Cada arquivo cobre um período de versões do
    site (nomes são só pra navegação, não são "temas" isolados - regras da
    mesma classe podem se repetir/sobrescrever entre arquivos, igual acontecia
-   dentro do arquivo único). Ordem importa: não reordenar os imports abaixo. */
-@import url('css/01-site-base.css?v=29.204.0');
-@import url('css/02-site-interactions.css?v=29.204.0');
-@import url('css/03-site-mobile-contato.css?v=29.161.0');
-@import url('css/04-agenda-admin-core.css?v=29.204.0');
-@import url('css/05-admin-mobile-refino.css?v=29.179.0');
-@import url('css/06-admin-reforma.css?v=29.195.0');
+   dentro do arquivo único). Ordem importa: não reordenar os imports abaixo.
+   O css/06 (só do painel) NÃO entra aqui desde a v29.205.0: provado por snapshot de estilo
+   calculado que não altera nada nas 66 páginas públicas, e eram 53 KB bloqueando a
+   renderização de todo visitante. As páginas admin*.html ligam o 06 direto. */
+@import url('css/01-site-base.css?v=29.205.0');
+@import url('css/02-site-interactions.css?v=29.205.0');
+@import url('css/03-site-mobile-contato.css?v=29.205.0');
+@import url('css/04-agenda-admin-core.css?v=29.205.0');
+@import url('css/05-admin-mobile-refino.css?v=29.205.0');

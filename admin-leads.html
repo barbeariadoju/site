@@ -1,21 +1,21 @@
-<!doctype html><html lang="pt-BR"><head><title>Funil de Reativação | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.204.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<!doctype html><html lang="pt-BR"><head><title>Funil de Reativação | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.205.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.205.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.0"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
 <style>
 .leads-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px;flex-wrap:wrap}
-.leads-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.leads-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:var(--t-base);padding:.4rem .9rem;cursor:pointer}
 .leads-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
 .leads-reasons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-.leads-reasons span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.78rem;color:#ccc}
+.leads-reasons span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:var(--t-xs);color:#ccc}
 .leads-reasons strong{color:var(--gold2)}
 .leads-campaign{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px;border:1px dashed var(--line);border-radius:14px;margin-bottom:18px;background:rgba(240,201,135,.03)}
 .leads-campaign input{flex:1;min-width:200px;padding:.5rem .7rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
 .leads-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;transition:border-color .18s}
 .leads-card:hover{border-color:rgba(240,201,135,.35)}
-.leads-heat{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.72rem;font-weight:700;white-space:nowrap}
+.leads-heat{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:var(--t-xs);font-weight:700;white-space:nowrap}
 .leads-heat[data-heat="quente"]{color:#f08a5d}
 .leads-heat[data-heat="morno"]{color:#f1d675}
 .leads-heat[data-heat="frio"]{color:#8fbfe0}
-.leads-meta{color:var(--muted);font-size:.82rem;margin:0 0 6px}
-.leads-reason-tag{color:#ccc;font-size:.82rem;font-style:italic}
+.leads-meta{color:var(--muted);font-size:var(--t-sm);margin:0 0 6px}
+.leads-reason-tag{color:#ccc;font-size:var(--t-sm);font-style:italic}
 @media(max-width:700px){.leads-campaign{flex-direction:column;align-items:stretch}}
 </style>
 </head><body data-admin-page="leads"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card" data-shell="login"></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar" data-shell="sidebar"></aside><main class="admin-content">
@@ -29,7 +29,7 @@
   <div class="leads-reasons" id="leads-reasons"></div>
 
   <div class="leads-campaign">
-    <label style="flex:0 0 auto;color:var(--muted);font-size:.85rem">Disparar campanha manual</label>
+    <label style="flex:0 0 auto;color:var(--muted);font-size:var(--t-base)">Disparar campanha manual</label>
     <input id="leads-campaign-filter" type="text" placeholder="Filtrar por serviço (opcional, ex: Barba na navalha com toalha quente)">
     <button id="leads-campaign-send" class="btn primary" type="button">Disparar</button>
     <span id="leads-campaign-result" class="field-help"></span>
@@ -46,4 +46,4 @@
 
 </main></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-leads-v28.js?v=29.177.0"></script><script src="admin-pwa.js?v=29.176.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-leads-v28.js?v=29.177.0"></script><script src="admin-pwa.js?v=29.205.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>

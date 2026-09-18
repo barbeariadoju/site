@@ -1,4 +1,4 @@
-.client-area-page{min-height:100vh;background:#090909;color:#f7f2e8}
+.client-area-page{min-height:100vh;background:var(--surface-1);color:var(--text)}
 .client-area-shell{width:min(980px,calc(100% - 28px));margin:auto;padding:28px 0 60px}
 .client-back{display:inline-flex;margin-bottom:22px;color:#d5b26b}
 .client-hero{text-align:center;max-width:720px;margin:0 auto 28px}
@@ -11,7 +11,7 @@
 .client-dashboard header{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .client-dashboard header button{background:none;border:0;color:#d5b26b;text-decoration:underline}
 .client-metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
-.client-metrics article,.client-next,.client-last{background:#111;border:1px solid #2b2b2b;border-radius:var(--r-md);padding:18px}
+.client-metrics article,.client-next,.client-last{background:var(--panel);border:1px solid #2b2b2b;border-radius:var(--r-md);padding:18px}
 .client-metrics strong{display:block;font-size:var(--t-5xl);margin:6px 0}
 .client-progress{height:9px;background:#292929;border-radius:var(--r-pill);overflow:hidden}
 .client-progress span{display:block;height:100%;background:linear-gradient(90deg,#c99a42,#f1d18b);width:0}
@@ -29,7 +29,7 @@ body.cart-open::before{
   position:fixed;
   inset:0;
   z-index:9990;
-  background:rgba(0,0,0,.72);
+  background:rgba(var(--black-rgb),.72);
   pointer-events:none;
 }
 body.cart-open .juia-launcher,
@@ -110,7 +110,7 @@ body.cart-open .back-top{
     height:5px;
     margin:-5px auto 13px;
     border-radius:var(--r-pill);
-    background:rgba(240,201,135,.42);
+    background:rgba(var(--gold2-rgb),.42);
   }
   .cart-head{
     position:sticky;
@@ -121,7 +121,7 @@ body.cart-open .back-top{
     background:rgba(11,11,11,.98);
   }
   .cart-head strong{font-size:var(--t-lg)}
-  .cart-head button{min-height:42px;padding:8px 14px}
+  .cart-head button{min-height:44px;padding:8px 14px}
   .cart-items{
     max-height:none !important;
     margin:10px 0 12px;
@@ -194,20 +194,20 @@ body.cart-open .back-top{
   box-shadow:var(--glow) !important;
 }
 .secondary-cart{
-  background:rgba(255,255,255,.045)!important;
+  background:rgba(var(--white-rgb),.045)!important;
   color:var(--gold2)!important;
-  border:1px solid rgba(240,201,135,.28)!important;
+  border:1px solid var(--gold-a28)!important;
   box-shadow:var(--sh-2) !important;
 }
 .product-suggest,.service-suggest{
   display:flex;align-items:center;justify-content:center;text-decoration:none;
-  background:rgba(200,155,85,.12)!important;color:var(--gold2)!important;
-  border:1px solid rgba(240,201,135,.24)!important;box-shadow:var(--sh-2) !important;
+  background:rgba(var(--gold-rgb),.12)!important;color:var(--gold2)!important;
+  border:1px solid rgba(var(--gold2-rgb),.24)!important;box-shadow:var(--sh-2) !important;
 }
 .cart-panel .send-cart{min-height:50px}
 .cart-panel .cart-row button{min-width:36px;min-height:36px}
 @media(max-width:700px){
-  .cart-head .cart-clear{min-height:40px!important;padding:8px 12px!important}
+  .cart-head .cart-clear{min-height:44px!important;padding:8px 12px!important}
   .cart-note{text-align:left;margin:7px 1px 5px}
   .cart-panel .send-cart{min-height:54px}
 }
@@ -218,7 +218,7 @@ body.cart-open .back-top{
   top:10px;
   z-index:40;
   padding:8px;
-  border:1px solid rgba(240,201,135,.18);
+  border:1px solid var(--gold-a18);
   border-radius:var(--r-md);
   background:rgba(9,9,9,.94);
   backdrop-filter:blur(14px);
@@ -238,14 +238,14 @@ body.cart-open .back-top{
   place-content:center;
   text-align:center;
   padding:24px;
-  border:1px dashed rgba(240,201,135,.28);
+  border:1px dashed var(--gold-a28);
   border-radius:var(--r-md);
   color:var(--muted);
 }
 .booking-empty-note strong{color:var(--text);font-size:var(--t-lg)}
 .booking-empty-note small{color:var(--muted);line-height:1.45}
 /* V28.8 — lista de espera / encaixe */
-.booking-waitlist-offer{margin-top:14px;padding:18px 20px;border:1px dashed rgba(240,201,135,.32);border-radius:var(--r-md);background:rgba(240,201,135,.04)}
+.booking-waitlist-offer{margin-top:14px;padding:18px 20px;border:1px dashed var(--gold-a32);border-radius:var(--r-md);background:rgba(var(--gold2-rgb),.04)}
 .booking-waitlist-offer strong{display:block;color:var(--text);font-size:var(--t-lg)}
 .booking-waitlist-offer>small{display:block;color:var(--muted);margin-top:4px}
 .booking-waitlist-offer form{margin-top:14px;display:grid;gap:2px}
@@ -286,7 +286,7 @@ body.cart-open .back-top{
     gap:10px;
     margin:24px -6px -6px;
     padding:10px;
-    border:1px solid rgba(240,201,135,.22);
+    border:1px solid var(--line);
     border-radius:var(--r-md);
     background:rgba(8,8,8,.97);
     box-shadow:var(--sh-2);
@@ -545,19 +545,19 @@ html,body{max-width:100%;overflow-x:hidden}
   .booking-step-panel[data-step="4"] .booking-summary-time strong{margin-left:0;max-width:100%;text-align:left}
 }
 /* V24.5.0 — Central de mensagens */
-.form-status[data-state="success"]{color:#7ee2aa}
-.form-status[data-state="error"]{color:#ff9b9b}
+.form-status[data-state="success"]{color:var(--ok)}
+.form-status[data-state="error"]{color:var(--danger)}
 .form-status[data-state="loading"]{color:var(--gold2)}
 .contact-submit:disabled{opacity:.65;cursor:wait}
 .messages-toolbar{display:grid;grid-template-columns:minmax(240px,1fr) 220px auto;gap:14px;align-items:end;margin-bottom:18px}
-.message-card{background:linear-gradient(145deg,#181818,#101010);border:1px solid rgba(255,255,255,.09);border-radius:var(--r-md);padding:20px;box-shadow:var(--sh-2)}
+.message-card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid rgba(var(--white-rgb),.09);border-radius:var(--r-md);padding:20px;box-shadow:var(--sh-2)}
 .message-card-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
-.message-card-head time{color:#888;font-size:var(--t-sm);white-space:nowrap}
-.status-new{background:rgba(240,201,135,.18);color:var(--gold2)}
+.message-card-head time{color:var(--grey-4);font-size:var(--t-sm);white-space:nowrap}
+.status-new{background:var(--gold-a18);color:var(--gold2)}
 .status-read{background:rgba(120,170,255,.14);color:#9bc0ff}
-.status-replied{background:rgba(90,210,150,.14);color:#7ee2aa}
-.status-archived{background:rgba(255,255,255,.08);color:#aaa}
-.message-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin:18px 0;padding:16px;border-radius:var(--r-sm);background:#0c0c0c;border:1px solid rgba(255,255,255,.06)}
+.status-replied{background:rgba(90,210,150,.14);color:var(--ok)}
+.status-archived{background:var(--edge);color:var(--grey-2)}
+.message-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin:18px 0;padding:16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid rgba(var(--white-rgb),.06)}
 .message-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .messages-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:760px){.messages-toolbar{grid-template-columns:1fr}.messages-metrics{grid-template-columns:repeat(2,1fr)}.message-card-head{display:grid}.message-card-head time{white-space:normal}.message-actions>*{flex:1;text-align:center;min-width:130px}}
@@ -567,13 +567,13 @@ html,body{max-width:100%;overflow-x:hidden}
 .booking-success-actions{display:grid;gap:.65rem;margin-top:1rem;justify-items:start}
 .booking-success-actions small{opacity:.78}
 /* v28.68.0 — oferta de Pix antecipado (aparece só após o agendamento confirmado) */
-.pix-offer{margin-top:1.4rem;padding:clamp(1rem,3.5vw,1.4rem);border:1px solid rgba(240,201,135,.32);border-radius:var(--r-sm);background:linear-gradient(180deg,rgba(240,201,135,.09),rgba(240,201,135,.03));display:grid;gap:.75rem;text-align:left}
-.pix-offer-title{font-size:var(--t-xl);color:var(--gold2,#f0c987)}
+.pix-offer{margin-top:1.4rem;padding:clamp(1rem,3.5vw,1.4rem);border:1px solid var(--gold-a32);border-radius:var(--r-sm);background:linear-gradient(180deg,rgba(var(--gold2-rgb),.09),rgba(var(--gold2-rgb),.03));display:grid;gap:.75rem;text-align:left}
+.pix-offer-title{font-size:var(--t-xl);color:var(--gold2,var(--gold2))}
 .pix-offer-lead{margin:0;line-height:1.55;opacity:.92}
-.pix-offer-total{font-size:var(--t-lg);padding:.5rem .8rem;border-radius:var(--r-xs);background:rgba(0,0,0,.25);justify-self:start}
+.pix-offer-total{font-size:var(--t-lg);padding:.5rem .8rem;border-radius:var(--r-xs);background:rgba(var(--black-rgb),.25);justify-self:start}
 .pix-keys{display:grid;gap:.55rem}
-.pix-key{display:grid;gap:.15rem;text-align:left;width:100%;padding:.7rem .9rem;border:1px dashed rgba(240,201,135,.45);border-radius:var(--r-xs);background:rgba(0,0,0,.22);color:inherit;font:inherit;cursor:pointer;transition:border-color .18s,background .18s}
-.pix-key:hover,.pix-key:focus-visible{border-color:var(--gold2,#f0c987);background:rgba(240,201,135,.1)}
+.pix-key{display:grid;gap:.15rem;text-align:left;width:100%;padding:.7rem .9rem;border:1px dashed rgba(var(--gold2-rgb),.45);border-radius:var(--r-xs);background:rgba(var(--black-rgb),.22);color:inherit;font:inherit;cursor:pointer;transition:border-color .18s,background .18s}
+.pix-key:hover,.pix-key:focus-visible{border-color:var(--gold2,var(--gold2));background:rgba(var(--gold2-rgb),.1)}
 .pix-key.is-copied{border-style:solid;border-color:#2fa05b;background:rgba(47,160,91,.14)}
 .pix-key span{font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.07em;opacity:.72}
 .pix-key b{font-size:var(--t-lg);overflow-wrap:anywhere}
@@ -594,29 +594,29 @@ html,body{max-width:100%;overflow-x:hidden}
 .status-cancelled{background:rgba(180,54,54,.12)}
 .status-cancelled>span{background:#b43636}
 .customer-booking-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1.5rem 0}
-.customer-booking-details>div,.customer-booking-address{padding:1rem;border:1px solid rgba(255,255,255,.1);border-radius:var(--r-sm)}
+.customer-booking-details>div,.customer-booking-address{padding:1rem;border:1px solid rgba(var(--white-rgb),.1);border-radius:var(--r-sm)}
 .customer-booking-address{display:grid;gap:.35rem}
 .customer-booking-address a{margin-top:.35rem}
 .customer-booking-actions,.customer-calendar-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.2rem}
 .danger-outline{border:1px solid #c95858!important;color:#ffd4d4!important;background:transparent!important}
-.customer-booking-message{padding:1rem;border-radius:var(--r-xs);background:rgba(255,255,255,.05)}
+.customer-booking-message{padding:1rem;border-radius:var(--r-xs);background:rgba(var(--white-rgb),.05)}
 #reschedule-panel{scroll-margin-top:1rem}
 #new-slots{margin:1rem 0}
 @media(max-width:640px){.customer-booking-page{padding:.8rem}.customer-booking-details{grid-template-columns:1fr}.customer-booking-actions,.customer-calendar-actions{display:grid}.customer-booking-actions .btn,.customer-calendar-actions .btn{width:100%;text-align:center}}
 /* V26.4 — refinamento responsivo e Central de Comunicação */
-.communication-tabs{display:flex;gap:8px;margin:0 0 18px;padding:5px;background:#101010;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-sm);width:max-content;max-width:100%}
-.communication-tabs button{border:0;background:transparent;color:#999;padding:10px 14px;border-radius:var(--r-xs);font:inherit;font-weight:800;cursor:pointer}
+.communication-tabs{display:flex;gap:8px;margin:0 0 18px;padding:5px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);width:max-content;max-width:100%}
+.communication-tabs button{border:0;background:transparent;color:var(--grey-3);padding:10px 14px;border-radius:var(--r-xs);font:inherit;font-weight:800;cursor:pointer}
 .email-log-card{padding:16px}
-.email-status-sent{background:rgba(90,210,150,.14);color:#7ee2aa}
-.email-status-delivered{background:rgba(90,210,150,.14);color:#7ee2aa}
-.email-status-failed{background:rgba(220,80,80,.14);color:#ff9b9b}
+.email-status-sent{background:rgba(90,210,150,.14);color:var(--ok)}
+.email-status-delivered{background:rgba(90,210,150,.14);color:var(--ok)}
+.email-status-failed{background:rgba(220,80,80,.14);color:var(--danger)}
 .email-status-sending,.email-status-pending{background:rgba(120,170,255,.14);color:#9bc0ff}
 .admin-booking-actions button,.admin-booking-actions a{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
 @media(max-width:760px){
   .admin-sidebar{position:sticky;top:0;padding:8px 10px env(safe-area-inset-bottom);backdrop-filter:blur(14px);background:rgba(10,10,10,.96)}
   .admin-brand{display:none}.admin-sidebar nav{gap:4px;scrollbar-width:none}.admin-sidebar nav::-webkit-scrollbar{display:none}.admin-sidebar nav a{font-size:var(--t-xs);border-radius:var(--r-xs);min-height:42px}.admin-sidebar nav a span{font-size:var(--t-lg)}
-  .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:clamp(1.65rem,8vw,2.25rem);line-height:1}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
-  .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:39px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
+  .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:var(--t-4xl);line-height:1.15}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
+  .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:44px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
   .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-booking-time strong{font-size:var(--t-2xl)}.admin-booking-time small{text-transform:uppercase;font-size:var(--t-xs)}.admin-booking-title{gap:6px}.admin-booking-title h3{font-size:var(--t-lg)}.admin-booking-main p{font-size:var(--t-base)}.admin-booking-main small{font-size:var(--t-xs);line-height:1.45}.admin-contact-link{overflow-wrap:anywhere}
   .admin-booking-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.admin-booking-actions>*{width:100%;min-width:0;padding:9px 7px!important}.admin-booking-actions .is-danger{grid-column:auto}
   .communication-tabs{width:100%;overflow:auto}.communication-tabs button{flex:1;white-space:nowrap;font-size:var(--t-xs)}.messages-metrics{gap:8px}.messages-metrics article{padding:12px}.message-card{padding:15px;border-radius:var(--r-sm)}.message-body{padding:13px;margin:14px 0}.message-actions{display:grid;grid-template-columns:1fr 1fr}.message-actions>*{min-width:0!important;width:100%}
@@ -624,18 +624,18 @@ html,body{max-width:100%;overflow-x:hidden}
 }
 @media(max-width:390px){.admin-booking-actions{grid-template-columns:1fr}.messages-metrics{grid-template-columns:1fr 1fr}.calendar-toolbar{grid-template-columns:38px 1fr 38px}.calendar-toolbar button{width:38px;height:38px}.admin-content{padding-left:9px;padding-right:9px}}
 /* V26.4 — refinamento responsivo e Central de Comunicação */
-.communication-tabs{display:flex;gap:8px;margin:0 0 18px;padding:5px;background:#101010;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-sm);width:max-content;max-width:100%}
-.communication-tabs button{border:0;background:transparent;color:#999;padding:10px 14px;border-radius:var(--r-xs);font:inherit;font-weight:800;cursor:pointer}
+.communication-tabs{display:flex;gap:8px;margin:0 0 18px;padding:5px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);width:max-content;max-width:100%}
+.communication-tabs button{border:0;background:transparent;color:var(--grey-3);padding:10px 14px;border-radius:var(--r-xs);font:inherit;font-weight:800;cursor:pointer}
 .email-log-card{padding:16px}
-.email-status-sent{background:rgba(90,210,150,.14);color:#7ee2aa}
-.email-status-failed{background:rgba(220,80,80,.14);color:#ff9b9b}
+.email-status-sent{background:rgba(90,210,150,.14);color:var(--ok)}
+.email-status-failed{background:rgba(220,80,80,.14);color:var(--danger)}
 .email-status-sending,.email-status-pending{background:rgba(120,170,255,.14);color:#9bc0ff}
 .admin-booking-actions button,.admin-booking-actions a{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
 @media(max-width:760px){
   .admin-sidebar{position:sticky;top:0;padding:8px 10px env(safe-area-inset-bottom);backdrop-filter:blur(14px);background:rgba(10,10,10,.96)}
   .admin-brand{display:none}.admin-sidebar nav{gap:4px;scrollbar-width:none}.admin-sidebar nav::-webkit-scrollbar{display:none}.admin-sidebar nav a{font-size:var(--t-xs);border-radius:var(--r-xs);min-height:42px}.admin-sidebar nav a span{font-size:var(--t-lg)}
-  .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:clamp(1.65rem,8vw,2.25rem);line-height:1}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
-  .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:39px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
+  .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:var(--t-4xl);line-height:1.15}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
+  .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:44px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
   .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-booking-time strong{font-size:var(--t-2xl)}.admin-booking-time small{text-transform:uppercase;font-size:var(--t-xs)}.admin-booking-title{gap:6px}.admin-booking-title h3{font-size:var(--t-lg)}.admin-booking-main p{font-size:var(--t-base)}.admin-booking-main small{font-size:var(--t-xs);line-height:1.45}.admin-contact-link{overflow-wrap:anywhere}
   .admin-booking-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.admin-booking-actions>*{width:100%;min-width:0;padding:9px 7px!important}.admin-booking-actions .is-danger{grid-column:auto}
   .communication-tabs{width:100%;overflow:auto}.communication-tabs button{flex:1;white-space:nowrap;font-size:var(--t-xs)}.messages-metrics{gap:8px}.messages-metrics article{padding:12px}.message-card{padding:15px;border-radius:var(--r-sm)}.message-body{padding:13px;margin:14px 0}.message-actions{display:grid;grid-template-columns:1fr 1fr}.message-actions>*{min-width:0!important;width:100%}
@@ -700,18 +700,18 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 .rebooking-context{display:grid;gap:5px;border-left:4px solid var(--gold)}
 .rebooking-context span{color:var(--gold);font-weight:800;text-transform:uppercase;font-size:var(--t-xs);letter-spacing:.12em}
 .rebooking-context strong{font-size:var(--t-xl)}
-.rebooking-context small{color:#aaa}
+.rebooking-context small{color:var(--grey-2)}
 .rebooking-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.rebooking-progress button{background:#171717;color:#aaa;border:1px solid #303030;border-radius:var(--r-sm);padding:12px 8px;font-weight:700}
+.rebooking-progress button{background:var(--panel2);color:var(--grey-2);border:1px solid #303030;border-radius:var(--r-sm);padding:12px 8px;font-weight:700}
 .rebooking-progress button span{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:var(--r-circle);background:#282828;margin-right:5px}
-.rebooking-progress button.is-active{color:#16100a;background:var(--gold);border-color:var(--gold)}
+.rebooking-progress button.is-active{color:var(--ink);background:var(--gold);border-color:var(--gold)}
 .rebooking-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
-.rebooking-option{display:flex;text-align:left;align-items:center;gap:12px;background:#101010;border:1px solid #303030;color:#fff;border-radius:var(--r-sm);padding:14px;min-height:74px}
+.rebooking-option{display:flex;text-align:left;align-items:center;gap:12px;background:var(--panel);border:1px solid #303030;color:var(--white);border-radius:var(--r-sm);padding:14px;min-height:74px}
 .rebooking-option span{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:var(--r-circle);background:#272727;color:#e5bd55;font-weight:900}
 .rebooking-option div{display:grid;gap:4px}
-.rebooking-option small{color:#aaa}
+.rebooking-option small{color:var(--grey-2)}
 .rebooking-option.is-selected{border-color:var(--gold);background:#1d190e}
-.rebooking-option.is-selected span{background:var(--gold);color:#16100a}
+.rebooking-option.is-selected span{background:var(--gold);color:var(--ink)}
 .rebooking-summary{position:sticky;top:18px}
 .rebooking-message{text-align:center;max-width:720px;margin:auto}
 .rebooking-message.is-error{border-color:#7e2d2d}
@@ -719,9 +719,9 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 .rebooking-success h2{font-size:var(--t-5xl);margin-top:0}
 .rebooking-success .btn{margin-top:14px}
 .rebooking-step h2{font-size:clamp(2rem,5vw,3.3rem);margin:.15em 0}
-.rebooking-step>p:not(.eyebrow){color:#aaa}
+.rebooking-step>p:not(.eyebrow){color:var(--grey-2)}
 .rebooking-summary .booking-summary-time strong,.rebooking-summary .booking-summary-date strong{overflow-wrap:anywhere}
-@media(max-width:800px){.rebooking-page{width:min(100% - 18px,680px);padding-top:20px}.rebooking-shell{display:block}.rebooking-summary{position:static;margin-top:14px}.rebooking-progress{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:#0b0b0b;padding:8px 0}.rebooking-progress button{font-size:0;padding:9px 4px}.rebooking-progress button span{font-size:14px;margin:0}.rebooking-options{grid-template-columns:1fr}.rebooking-option{min-height:66px}.rebooking-step,.rebooking-context,.rebooking-summary{padding:18px}.rebooking-hero h1{font-size:var(--t-5xl)}.rebooking-page input,.rebooking-page textarea{font-size:16px!important}}
+@media(max-width:800px){.rebooking-page{width:min(100% - 18px,680px);padding-top:20px}.rebooking-shell{display:block}.rebooking-summary{position:static;margin-top:14px}.rebooking-progress{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:var(--surface-2);padding:8px 0}.rebooking-progress button{font-size:0;padding:9px 4px}.rebooking-progress button span{font-size:14px;margin:0}.rebooking-options{grid-template-columns:1fr}.rebooking-option{min-height:66px}.rebooking-step,.rebooking-context,.rebooking-summary{padding:18px}.rebooking-hero h1{font-size:var(--t-5xl)}.rebooking-page input,.rebooking-page textarea{font-size:16px!important}}
 /* V27.1 CRM e experiência */
 /* V28.0.1 — navegação do catálogo */
 .products-nav{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-bottom:26px}
@@ -745,7 +745,7 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 .privacy-card figure.blog-photo img{width:100%;border-radius:var(--r-md);border:1px solid var(--line);display:block}
 .privacy-card figcaption{color:var(--muted);font-size:var(--t-sm);margin-top:8px;text-align:center}
 .blog-products-row{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}
-.blog-products-row figure{margin:0;width:140px;background:#fff;border-radius:var(--r-sm);border:1px solid var(--line);padding:12px;text-align:center}
+.blog-products-row figure{margin:0;width:140px;background:var(--white);border-radius:var(--r-sm);border:1px solid var(--line);padding:12px;text-align:center}
 .blog-products-row img{width:100%;height:auto;display:block;border-radius:var(--r-xs)}
 .blog-products-row figcaption{margin-top:8px;font-size:var(--t-xs);font-weight:800;color:#2c1e0f;text-align:center}
 @media(max-width:480px){.blog-products-row figure{width:104px}}

@@ -1,13 +1,13 @@
-<!doctype html><html lang="pt-BR"><head><title>Financeiro | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.204.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<!doctype html><html lang="pt-BR"><head><title>Financeiro | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.205.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.205.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.0"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
 <style>
-.admin-metrics strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:clamp(1.15rem,2.1vw,1.6rem)}
+.admin-metrics strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-4xl)}
 .fin-rangenav{display:flex;align-items:center;gap:.5rem;margin-bottom:16px}
-.fin-rangenav strong{min-width:10rem;text-align:center;font-size:.95rem;color:var(--text)}
-.fin-rangenav .btn{padding:.25rem .7rem;font-size:1.1rem;line-height:1}
+.fin-rangenav strong{min-width:10rem;text-align:center;font-size:var(--t-md);color:var(--text)}
+.fin-rangenav .btn{padding:.25rem .7rem;font-size:var(--t-xl);line-height:1}
 .fin-rangenav .btn[disabled]{opacity:.35;cursor:not-allowed}
 .fin-add{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);padding:14px;margin-bottom:18px}
 .fin-add-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.fin-add-grid label{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted)}
+.fin-add-grid label{display:flex;flex-direction:column;gap:4px;font-size:var(--t-xs);color:var(--muted)}
 .fin-add-grid input,.fin-add-grid select{padding:.5rem .6rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
 /* A janelinha do menu (popup) é pintada pelo sistema em BRANCO, mas as opções herdavam a
    cor creme do tema — creme no branco = ilegível (bug real visto pelo Juliano em 13/08).
@@ -16,7 +16,7 @@
 .fin-add-grid select optgroup{background:#fff;color:#8a6d3b;font-weight:700;font-style:normal}
 .fin-add-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .fin-breakeven{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:18px;background:rgba(240,201,135,.03)}
-.fin-breakeven p{margin:0;color:var(--muted);font-size:.92rem}
+.fin-breakeven p{margin:0;color:var(--muted);font-size:var(--t-md)}
 .fin-breakeven strong{color:var(--text)}
 .fin-breakeven.is-ok{border-color:rgba(139,163,104,.45);background:rgba(139,163,104,.08)}
 .fin-breakeven.is-ok strong{color:#a8c07f}
@@ -24,30 +24,30 @@
 .fin-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
 .fin-bar i.is-ok{background:linear-gradient(90deg,#6f8a4b,#a8c07f)}
 .fin-group-title{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
-.fin-group-title span{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.fin-group-title b{font-size:1rem;color:var(--text);font-variant-numeric:tabular-nums}
+.fin-group-title span{font-size:var(--t-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fin-group-title b{font-size:var(--t-lg);color:var(--text);font-variant-numeric:tabular-nums}
 .fin-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;background:rgba(240,201,135,.03);padding:11px 14px;margin-bottom:8px;transition:border-color .18s}
 .fin-row:hover{border-color:rgba(240,201,135,.35)}
-.fin-row .fin-day{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.6rem}
-.fin-row .fin-what strong{display:block;font-size:.95rem;font-weight:650}
-.fin-row .fin-what small{color:var(--muted);font-size:.8rem}
-.fin-row .fin-amount{font-variant-numeric:tabular-nums;font-weight:700;font-size:.98rem;white-space:nowrap}
-.fin-row .fin-del{appearance:none;border:1px solid var(--line);background:transparent;color:#e6a0a0;border-radius:9px;padding:.3rem .6rem;font:inherit;font-size:.8rem;cursor:pointer}
-.fin-tag{display:inline-block;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:1px 6px;margin-left:6px;color:var(--gold2)}
-.fin-empty{color:var(--muted);font-size:.9rem;padding:14px 0}
+.fin-row .fin-day{font-size:var(--t-xs);color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.6rem}
+.fin-row .fin-what strong{display:block;font-size:var(--t-md);font-weight:650}
+.fin-row .fin-what small{color:var(--muted);font-size:var(--t-sm)}
+.fin-row .fin-amount{font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--t-lg);white-space:nowrap}
+.fin-row .fin-del{appearance:none;border:1px solid var(--line);background:transparent;color:#e6a0a0;border-radius:9px;padding:.3rem .6rem;font:inherit;font-size:var(--t-sm);cursor:pointer}
+.fin-tag{display:inline-block;font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:1px 6px;margin-left:6px;color:var(--gold2)}
+.fin-empty{color:var(--muted);font-size:var(--t-base);padding:14px 0}
 .fin-fees{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:18px;background:rgba(240,201,135,.03)}
-.fin-fees h3{margin:0 0 12px;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fin-fees h3{margin:0 0 12px;font-size:var(--t-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .fin-fees-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:12px}
 .fin-fees-grid div{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.fin-fees-grid span{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
-.fin-fees-grid strong{font-size:1.15rem;font-variant-numeric:tabular-nums}
-.fin-fees table{width:100%;border-collapse:collapse;font-size:.88rem}
-.fin-fees th{text-align:left;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
+.fin-fees-grid span{display:block;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.fin-fees-grid strong{font-size:var(--t-2xl);font-variant-numeric:tabular-nums}
+.fin-fees table{width:100%;border-collapse:collapse;font-size:var(--t-base)}
+.fin-fees th{text-align:left;font-size:var(--t-xs);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 8px 6px 0;border-bottom:1px solid var(--line)}
 .fin-fees th.num,.fin-fees td.num{text-align:right;font-variant-numeric:tabular-nums;padding-right:0}
 .fin-fees td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);color:var(--muted)}
 .fin-fees tr:last-child td{border-bottom:0}
 .fin-fees td b{color:var(--text)}
-.fin-note{color:var(--muted);font-size:.84rem;margin:10px 0 0}
+.fin-note{color:var(--muted);font-size:var(--t-sm);margin:10px 0 0}
 @media(max-width:700px){.fin-row{grid-template-columns:1fr auto;row-gap:6px}.fin-row .fin-day{grid-column:1/-1}.fin-row .fin-del{grid-column:2}}
 </style>
 </head><body data-admin-page="financeiro"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card" data-shell="login"></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar" data-shell="sidebar"></aside><main class="admin-content">
@@ -68,11 +68,11 @@
       <label>Data<input id="fin-date" type="date"></label>
       <label>Categoria<select id="fin-category"></select></label>
       <label>Valor (R$)<input id="fin-amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label>
-      <label>Descrição <small>opcional</small><input id="fin-description" type="text" placeholder="Ex: conta de agosto"></label>
-      <label>Pagamento <small>opcional</small><select id="fin-payment"><option value="">—</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="credito">Crédito</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>
+      <label><span>Descrição <small>opcional</small></span><input id="fin-description" type="text" placeholder="Ex: conta de agosto"></label>
+      <label><span>Pagamento <small>opcional</small></span><select id="fin-payment"><option value="">—</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="credito">Crédito</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>
     </div>
     <div class="fin-add-actions">
-      <label class="espera-radio-inline" style="font-size:.82rem;color:var(--muted)"><input id="fin-recurring" type="checkbox"> Repete todo mês</label>
+      <label class="espera-radio-inline" style="font-size:var(--t-sm);color:var(--muted)"><input id="fin-recurring" type="checkbox"> Repete todo mês</label>
       <button id="fin-save" class="btn primary" type="button">Lançar</button>
       <button id="fin-repeat" class="btn ghost" type="button">Repetir fixos do mês passado</button>
       <span id="fin-message" class="field-help" style="margin:0"></span>
@@ -85,4 +85,4 @@
 
 </main></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-financeiro-v29.js?v=29.179.0"></script><script src="admin-pwa.js?v=29.176.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-financeiro-v29.js?v=29.179.0"></script><script src="admin-pwa.js?v=29.205.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>

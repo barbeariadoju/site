@@ -1,3 +1,73 @@
+## 29.205.0 — Nota máxima: site, painel e app no celular, com régua medida antes e depois (18/09)
+
+**Pedido do Juliano (17-18/09/2026):** "faz o que precisar pra tudo ficar com nota máxima", incluindo o app no celular. Confirmou os três nomes da lista de preços.
+
+**Como foi medido (e por que isso importa):** montei uma régua própria que roda LOCAL, antes de publicar, nas 14 páginas públicas e nas 17 telas do painel (o painel com o mock do Supabase: dados fictícios, sem login, sem tocar no banco), em 1440px, 390px e 320px. Ela mede contraste AA com a cor realmente pintada, texto < 12px, anel de foco, foco de checkbox customizado, alvo de toque < 44px, linha > 80 caracteres, rolagem lateral, campo < 16px (zoom do iPhone), controle escondido por corte, texto vazando da caixa e fonte de letreiro na interface. **A régua errou várias vezes e foi corrigida antes de eu acreditar nela** (ver "Os erros", abaixo) — a lição da 29.204.0 (o detector do impeccable mente) valeu pra minha própria ferramenta também.
+
+| | Antes | Depois |
+|---|---|---|
+| Site: pendências na régua | contraste 4, texto pequeno 11, alvos 98, linhas longas 24, zoom iOS 1 | **0 em todas** |
+| Painel: pendências na régua | contraste 12, texto pequeno 19, alvos 179, rolagem lateral 4, fonte de letreiro 34 | **0 em todas** |
+| Painel: tamanhos de fonte distintos | 38 | **10 — exatamente os 10 tokens da escala** |
+| Cores via token (CSS todo) | 38% | **87%** |
+| CLS da página de serviço | 0,145 | **0,000** |
+| LCP da home (4G lento, CPU 4×) | 4,04s | **~2,7s** |
+
+### Site público
+
+- **Bug no ar: três serviços sem nome na lista de preços.** `servicos.html` mostrava "$1$215 min" no lugar de Pezinho, Sobrancelha masculina e Freestyle — um `$1$2` de regex de edição em massa não substituído, que também comeu o `</a>` (e o link aberto contaminava as linhas vizinhas). Restaurado com os nomes confirmados pelo Juliano.
+- **Não existia regra base de link:** todo `<a>` sem classe caía no azul padrão do navegador sobre fundo quase preto (2,1:1). `a{color:var(--gold2)}` resolve a classe inteira do problema; `<small>` ganhou piso de 12px pelo mesmo motivo.
+- Todo tamanho de fonte abaixo de 12px zerado (JuIA, `/agendar/`, recibo, preços).
+- Alvos de toque de 44px no celular: "Adicionar" do catálogo e dos produtos (36px), perguntas do FAQ (25px), "← Voltar" (25px), campo de telefone da Área do Cliente (27px).
+- **Rótulos acima dos títulos (99):** 43 viraram **breadcrumb de verdade** ("Início › Serviços", "Início › Blog › Ciência da Barba"), 45 saíram (repetiam o título: "Barbearia do Ju • Bragança Paulista" sobre "Corte masculino em Bragança Paulista"), 7 foram integrados ao título onde ele ficava vago sem eles (ex.: "Bebidas frias para acompanhar seu atendimento."), e **4 ficaram de propósito**: as "Etapa 1…4" do reagendamento — são indicador de progresso, a sequência é informação.
+- **CLS 0,145 → 0 na página de serviço:** era a troca do Inter. O texto aparecia na fonte do sistema e refluía quando o Inter chegava (~2,8s em 4G), empurrando a página 50px. Medi as larguras reais (Inter é 6,1% mais largo que Arial no normal, ~3% no negrito) e criei `InterFallback` com `size-adjust` calibrado; inserido em todas as pilhas de fonte.
+- **Imagens:** logo da home em WebP (101 KB) era *maior* que o JPG e baixava a 1200px pra aparecer com 309px — agora `srcset` com 800px (59 KB) e pré-carregado (é o LCP). As 43 imagens principais de serviço/blog tinham `loading="lazy"`, o que **atrasa** justamente o LCP — viraram prioridade alta, com `srcset`. Foto do autor: 67 KB → 10 KB em 45 páginas, com largura/altura. Capa do vídeo da home carrega só quando ele chega perto da tela. Todas as variantes geradas pelo próprio Chromium (canvas → WebP), conferidas visualmente, a fachada partindo da versão já corrigida da placa.
+- **55 páginas carregavam a biblioteca do Supabase (55 KB) sem usar.** Provado duas vezes antes de remover: nenhum script dessas páginas referencia o identificador `supabase`, e em execução (biblioteca bloqueada + armadilha em `window.supabase`, usando chat e formulário) zero acessos e zero erros. Continua onde é usada: avaliação, meu-agendamento, reagendar, `/agendar/horario/` e o painel.
+- **O css/06 (53 KB, só do painel) bloqueava a renderização de todo visitante.** Provado por snapshot de estilo calculado que não altera nada nas 66 páginas públicas; saiu do `style.css` e as páginas `admin*.html` ligam direto.
+- `.reveal` agora parte de um estado **visível**: sem JavaScript tudo aparece; o script só esconde o que está abaixo da dobra. Antes, se o script falhasse, a página ficava em branco.
+- Catálogo da home em `defer` (o script do seletor de duração roda no `DOMContentLoaded`).
+
+### Painel
+
+- **Rolagem lateral no celular (Agenda +46px, Novo agendamento +30px):** o checkbox *escondido* do `.pretty-check` herdava `width:100%` e virava um elemento invisível de 390px. Corrigido — e o foco de teclado desses controles customizados passou pro quadrado visível (antes, quem navegava por Tab não via nada).
+- **Tipografia de ferramenta:** o título "Quinta-feira, 17 de setembro" saía em Bebas a 67px em duas linhas; títulos e números viraram Inter numa escala fixa. Havia `clamp()` com `!important` em regras antigas — corrigidos na origem. 107 tamanhos soltos encaixados no token mais próximo: **38 tamanhos → 10**.
+- Financeiro: as abas Dia/Semana/Mês eram espremidas até 100px ("Mês" sumia); indicadores numa grade de 6 colunas com 4 cartões ("-R$ 1.405,00" vazava do cartão); "opcional" desalinhava o formulário. Corrigidos.
+- Alvos de 44px em tudo que se toca no celular (card do dia, calendário, Balcão — campos de 21-24px —, setas de período); campos com 16px no celular (abaixo disso o iPhone dá zoom sozinho ao tocar); ação principal ocupando a linha inteira no cabeçalho.
+
+### O app no celular (PWA)
+
+- Ícones separados comum/recortável — o `any maskable` num arquivo só cortava as pontas dos postes no círculo do Android.
+- O app do painel tinha o **mesmo escopo `/`** do app do site; agora é `/admin`. Atalhos na ordem da barra inferior; "Modo Atendimento" (desativado) virou **Hoje**, e o **Balcão**, que faltava, entrou.
+- **Página offline própria** (com telefone e endereço clicáveis): antes, sem internet, o app do painel mostrava a home pública. O fallback do service worker também passou a aceitar resposta que veio de redirecionamento (o navegador recusava e a tela dava erro).
+- **A recarga disparada por service worker novo agora espera** se houver modal aberto ou alguém digitando — antes podia derrubar um "Concluir atendimento" preenchido. Mesma regra que o aviso de versão do painel já usava.
+
+### Cores
+
+334 cores literais viraram token de valor idêntico (prova: **zero diferença de cor** em 52 telas); 175 camadas translúcidas da marca passaram a derivar do token por canal (`rgba(var(--gold2-rgb),.45)` — idêntico ao bit, funciona em iPhone antigo); 67 cores quase-iguais (ex.: cinco pretos entre `#0a0a0a` e `#101010`) encaixadas no token mais próximo **só quando a diferença é imperceptível** — prova: maior ΔE 2,03 (limiar de percepção ~2,3). Dois casos que ficaram no limite (ΔE 2,49 e 3,18 na métrica mais rigorosa) foram revertidos ao valor original.
+
+### O que NÃO fiz, de propósito
+
+- **Pixels de rastreamento (GTM, GA4, Ads, Meta):** são ~1,2s do bloqueio de CPU medido no celular. Adiar o GTM até a primeira interação melhoraria a nota de performance, mas perderia as visitas que saem rápido — distorceria o Ads e o GA4, e este CHANGELOG já registrou o preço de mexer em rastreamento (145 cliques → 6 sessões). Decisão do Juliano, não minha.
+- **Rótulos do painel** ("Linha do dia", "Caixa do dia"): em ferramenta, nome de widget é familiaridade, não enfeite — e o visual do painel foi aprovado na reforma de 11/09.
+- **Hospedar as fontes no próprio site** (eliminaria a conexão com o Google Fonts): exige baixar os arquivos de fonte, e isso pede autorização explícita.
+- **Capturas de tela no manifesto** (instalação mais rica no Android): mostrariam preços, que mudam em 01/10.
+- As ~180 cores de efeito usadas uma vez só (paradas de gradiente, verde do WhatsApp): unificar mudaria cores visíveis sem ganho pro cliente.
+
+### Os erros desta versão, registrados de propósito
+
+Todos pegos **antes** de publicar, mas cada um teria virado número falso ou regressão:
+1. A régua procurava o fundo a partir do elemento **pai** — pulava o gradiente do próprio botão e acusou 165 falhas de contraste; o real era 8.
+2. `max-width:72ch` deu ~90 caracteres por linha: o `ch` mede o dígito 0, mais largo que a letra média. Trocado por `em`.
+3. Com `line-height: normal`, a régua subestimava as linhas e acusava parágrafo longo onde não havia.
+4. Largura mínima de 44px em todo botão do painel **cortou o domingo do calendário** em 320px e fez os rótulos da barra inferior se atropelarem — corrigidos.
+5. O novo `.reveal` chamava `getBoundingClientRect()` na carga e forçava layout síncrono da home inteira (TBT subiu); refeito com o próprio IntersectionObserver.
+6. O fechamento do script do seletor de duração ficou `}})` — a validação de sintaxe de todos os 127 scripts inline pegou.
+7. O comparador de cor, escrito via shell, teve as regex corrompidas e devolveu **NaN** — o "0 perceptíveis" dele não valia nada. Refeito, testado com casos conhecidos, e aí sim achou os 2 casos no limite que revertemos.
+
+**Cache:** tudo bumpado para 29.205.0 (81 `style.css`, 54 `juia-chat.css`, 70 manifestos, `script.js`, `admin-pwa.js`, agenda/core do painel, `@import` 01-05, preloads da home), **`ADMIN_VERSION`, `admin-version.json` e a versão do `admin-v15-4-core.js` juntos** (o loop de recarga de 30/08 foi exatamente os três dessincronizados). JSON-LD: 50 blocos válidos; 127 scripts inline com sintaxe OK.
+
+**Testes:** 153 unit + 51 e2e passando.
+
 ## 29.204.0 — Auditoria e critique do site (skill impeccable): CTA do celular desbloqueado, texto de consentimento legível, CSS duplicado na home e o cupom expirado do e-book (17/09, noite)
 
 **Pedido do Juliano (17/09/2026, noite):** instalar a skill `impeccable` (`npx impeccable install`), rodar `/impeccable audit` + `/impeccable critique` no site inteiro e corrigir tudo — inclusive os itens P2/P3 e o achado de conteúdo fora do escopo de design.

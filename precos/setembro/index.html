@@ -20,16 +20,16 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     background:var(--bg);color:var(--text);
-    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-family:Inter,InterFallback,system-ui,-apple-system,"Segoe UI",sans-serif;
     font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
     padding:0 20px 80px;
   }
   .wrap{max-width:640px;margin:0 auto}
   header{text-align:center;padding:44px 0 8px}
   header img.marca{width:min(520px,88vw);height:auto;margin-bottom:18px}
-  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
     color:var(--gold);margin-bottom:10px}
-  h1{font-family:"Bebas Neue",Inter,sans-serif;font-weight:400;
+  h1{font-family:"Bebas Neue",Inter,InterFallback,sans-serif;font-weight:400;
     font-size:clamp(34px,9vw,48px);line-height:1.02;letter-spacing:.02em;margin-bottom:12px}
   .sub{color:var(--muted);font-size:15.5px;max-width:44ch;margin:0 auto}
 
@@ -41,14 +41,14 @@
     font-weight:700;text-decoration:none}
   .aviso .link:hover{color:var(--gold-soft);text-decoration:underline}
 
-  h2{font-family:"Bebas Neue",Inter,sans-serif;font-weight:400;font-size:22px;
+  h2{font-family:"Bebas Neue",Inter,InterFallback,sans-serif;font-weight:400;font-size:22px;
     letter-spacing:.08em;color:var(--gold);margin:36px 0 4px;padding-bottom:8px;
     border-bottom:1px solid var(--rule)}
   .item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:baseline;
     padding:13px 0;border-bottom:1px solid var(--rule)}
   .item .nome{font-size:16px;font-weight:500;min-width:0;overflow-wrap:anywhere}
   .item .dur{display:block;font-size:13px;color:var(--faint);font-weight:400;margin-top:1px}
-  .item .valor{font-family:"Bebas Neue",Inter,sans-serif;font-size:26px;letter-spacing:.02em;
+  .item .valor{font-family:"Bebas Neue",Inter,InterFallback,sans-serif;font-size:26px;letter-spacing:.02em;
     font-variant-numeric:tabular-nums;white-space:nowrap}
   .item .valor small{font-size:15px;color:var(--muted);margin-right:2px}
 

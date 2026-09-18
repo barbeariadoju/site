@@ -8,10 +8,15 @@
   if('serviceWorker' in navigator){
     window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js?v=28.16.1',{updateViaCache:'none'}).catch(()=>{}));
     let bdjSwReloaded=false;
+    // v29.205.0 — service worker novo não recarrega o painel POR CIMA do atendimento: com um
+    // modal aberto (o Concluir com serviço e pagamento preenchidos) ou alguém digitando, a
+    // recarga espera. Mesma regra do aviso de versão nova do painel (admin-v15-4-core.js).
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(bdjSwReloaded) return;
       bdjSwReloaded=true;
-      window.location.reload();
+      const ocupado=()=>document.querySelector('.admin-modal:not([hidden]),.admin-dialog:not([hidden]),dialog[open]')||(document.activeElement&&document.activeElement.matches('input,textarea,select,[contenteditable]'));
+      const recarregar=()=>{ if(ocupado()){ setTimeout(recarregar,3000); return } window.location.reload(); };
+      recarregar();
     });
   }
 

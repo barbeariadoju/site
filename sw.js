@@ -1,17 +1,28 @@
-const CACHE = 'barbearia-os-v29-67-0';
-const OFFLINE = 'index.html';
+const CACHE = 'barbearia-os-v29-205-0';
+// v29.205.0 — sem rede, uma navegação que não está no cache cai numa página própria de
+// "sem conexão" (com telefone e endereço), e não mais na home pública — que era o que o
+// app do painel mostrava pro Juliano quando a internet caía no meio do atendimento.
+const OFFLINE = 'offline.html';
 const CORE = [
   './',
   'index.html',
+  'offline.html',
   '404.html',
   'manifest.webmanifest',
   'admin-manifest.webmanifest',
   'assets/apple-touch-icon-180.png',
   'assets/icon-192.png',
   'assets/icon-512.png',
+  'assets/icon-maskable-192.png',
+  'assets/icon-maskable-512.png',
   'assets/fachada.webp',
-  'assets/logo-topo-wide.webp'
+  'assets/logo-topo-wide.webp',
+  'assets/logo-topo-wide-800.webp'
 ];
+
+// Resposta que veio de um redirecionamento (ex.: /agendar -> /agendar/) não pode ser usada numa
+// navegação: o navegador recusa e a tela fica em erro. Refaz a resposta "limpa".
+const semRedirect = r => (r && r.redirected) ? new Response(r.body, { status: r.status, statusText: r.statusText, headers: r.headers }) : r;
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -43,7 +54,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(req, { cache: 'no-store', redirect: 'follow' })
         .then(response => response)
-        .catch(async () => (await caches.match(req)) || (await caches.match(OFFLINE)))
+        .catch(async () => semRedirect((await caches.match(req)) || (await caches.match(OFFLINE))))
     );
     return;
   }

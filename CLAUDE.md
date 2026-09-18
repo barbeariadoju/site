@@ -82,11 +82,29 @@ então o estrago de um deslize desse não se desfaz editando depois.
 
 **Cache.** Ao alterar qualquer `.js` ou `.css`, **bumpe o `?v=`** nas páginas que
 o carregam *e* no `style.css`. Já aconteceu de publicar código novo atrás de cache
-velho: o evento simplesmente não existia na página em produção.
+velho: o evento simplesmente não existia na página em produção. A home ainda tem
+`<link rel="preload">` das folhas 01-05: **o `?v=` delas tem que ser igual ao dos
+`@import` do `style.css`** (ficaram defasados até a 29.204.0 e a home baixava o CSS duas vezes).
+
+**CSS do painel (desde 29.205.0).** O `css/06-admin-reforma.css` **não** está no
+`style.css`: cada `admin*.html` liga ele direto, logo depois do `style.css`. Página nova
+do painel precisa dessa linha. Motivo: eram 53 KB bloqueando todo visitante do site, e
+foi provado por snapshot que não altera nada nas páginas públicas.
+
+**Fonte reserva calibrada.** Toda pilha de fonte com Inter tem `InterFallback` logo
+depois (`Inter,InterFallback,...`). É o que zera o CLS da troca de fonte (a página de
+serviço pulava 50px). Fonte nova ou pilha nova: manter o par.
+
+**Nada de rótulo decorativo acima de título.** Os 99 "eyebrows" do site viraram
+breadcrumb, sumiram ou foram integrados ao título (29.205.0). Não reintroduzir — só as
+"Etapa N" do reagendamento ficam (são progresso). Medida de leitura é em `em`
+(`max-width:34em`), nunca em `ch` (o `ch` mede o dígito 0 e dá ~90 caracteres por linha).
 
 **Service worker.** O `sw.js` recarrega a página no `controllerchange`. Qualquer
 coisa que leia parâmetro de URL precisa ser **idempotente** — o `?servico=`
-somava o serviço duas vezes (2× Barboterapia, R$ 80) até ganhar guarda.
+somava o serviço duas vezes (2× Barboterapia, R$ 80) até ganhar guarda. No painel
+(`admin-pwa.js`) essa recarga **espera** modal fechado e ninguém digitando (29.205.0) —
+não remover essa guarda. Sem rede, navegação fora do cache cai no `offline.html`.
 
 **Testes e2e.** Hook instalado via `page.evaluate()` morre nesse reload. Use
 `addInitScript` + `sessionStorage` para capturar o `dataLayer`.

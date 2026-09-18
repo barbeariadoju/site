@@ -1,21 +1,21 @@
-<!doctype html><html lang="pt-BR"><head><title>Vales-presente | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.204.0"><link rel="manifest" href="admin-manifest.webmanifest?v=28.16.1"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<!doctype html><html lang="pt-BR"><head><title>Vales-presente | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.205.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.205.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.0"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
 <style>
 .vales-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:18px;flex-wrap:wrap}
-.vales-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:.85rem;padding:.4rem .9rem;cursor:pointer}
+.vales-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:var(--t-base);padding:.4rem .9rem;cursor:pointer}
 .vales-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
 .vale-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;padding:14px 16px}
 .vale-card:hover{border-color:rgba(240,201,135,.35)}
 .vale-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.vale-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.05rem;font-weight:800;color:var(--gold2);letter-spacing:.06em}
-.vale-status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:.72rem;font-weight:700;white-space:nowrap}
+.vale-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--t-xl);font-weight:800;color:var(--gold2);letter-spacing:.06em}
+.vale-status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#121212;border:1px solid rgba(255,255,255,.08);font-size:var(--t-xs);font-weight:700;white-space:nowrap}
 .vale-status[data-status="pending_payment"]{color:#f1d675}
 .vale-status[data-status="active"]{color:#7ee2aa}
 .vale-status[data-status="used"]{color:#8fbfe0}
 .vale-status[data-status="expired"],.vale-status[data-status="cancelled"]{color:#888}
-.vale-meta{color:var(--muted);font-size:.85rem;margin:6px 0 0;line-height:1.6}
-.vale-items{color:var(--text);font-size:.9rem;margin:8px 0 0}
+.vale-meta{color:var(--muted);font-size:var(--t-base);margin:6px 0 0;line-height:1.6}
+.vale-items{color:var(--text);font-size:var(--t-base);margin:8px 0 0}
 .vale-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.vale-actions button,.vale-actions a{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:.82rem;font-weight:600;padding:.45rem .9rem;border-radius:10px;cursor:pointer;text-decoration:none}
+.vale-actions button,.vale-actions a{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:var(--t-sm);font-weight:600;padding:.45rem .9rem;border-radius:10px;cursor:pointer;text-decoration:none}
 .vale-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
 .vale-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
 .vale-actions button[disabled]{opacity:.4;cursor:not-allowed}
@@ -46,4 +46,4 @@
 
 </main></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-vales-v29.js?v=29.179.0"></script><script src="admin-pwa.js?v=29.176.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-vales-v29.js?v=29.179.0"></script><script src="admin-pwa.js?v=29.205.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
