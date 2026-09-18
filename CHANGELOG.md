@@ -1,3 +1,18 @@
+## 29.206.0 — Aviso de chegada com a rota do Google Maps, 30 min antes (18/09)
+
+**Dica do cliente Rafael**, repassada pelo Juliano no plano do dia: meia hora antes do horário, o cliente recebe no WhatsApp o link da barbearia no Google Maps.
+
+- Function nova `whatsapp-arrival-route`, cron `bdj-arrival-route` de 5 em 5 min (migração 165). Envia entre 25 e 35 min antes do início; `bookings.arrival_route_sent_at` garante um aviso só por agendamento (reservado antes de enviar; se a Evolution falhar, a marca é liberada e a rodada seguinte, ainda na janela, tenta de novo).
+- Texto e janela com fonte única em `supabase/functions/_shared/aviso-chegada.ts`, teste em `tests/unit/aviso-chegada.spec.js` (inclui a prova de que o cron de 5 min acerta a janela em qualquer minuto de horário). Sem emoji (passa pelo `semEmoji` na saída) e **sem pergunta**, então não disputa a fila de perguntas numeradas da JuIA.
+- Link: `maps.app.goo.gl/VJAfv4MJpd84tmDY7`, o mesmo do `hasMap` da home — abre a ficha "Barbearia do Ju" com o botão de rota, não uma busca por endereço. Junto vai o endereço e a Zona Azul.
+
+**Decidido contra o óbvio:**
+- **Horário das 8h00 não recebe o aviso.** Seria às 7h30, dentro do silêncio da JuIA. A exceção ao silêncio é só do comprovante e deve continuar estreita; o endereço já está na confirmação do agendamento.
+- **Quem marcou há menos de 30 min não recebe** (acabou de ver o endereço na confirmação; o encaixe de última hora não precisa de duas mensagens seguidas).
+- **Vai para todos, inclusive quem já é cliente.** É uma mensagem por visita e é a pedida; se os fixos reclamarem de repetição (caso Carlos, 04/08), o corte natural é mandar só pra quem tem até 2 visitas.
+
+Deploy com `--no-verify-jwt` (autenticação pelo `x-webhook-secret`, como as outras do WhatsApp). Smoke test logo após: sem segredo = 401; com segredo = 200, leu os 3 agendamentos do dia, nenhum na janela, nada enviado. Só depois disso o cron foi ligado.
+
 ## 29.205.7 — Quinta revisão cega: painel sem internet, agendamento e site (18/09)
 
 **Placar da 5ª rodada** (revisores novos, cegos; o do agendamento andou em produção até a revisão, sem confirmar nada):
