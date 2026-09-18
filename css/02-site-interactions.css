@@ -602,3 +602,33 @@ body:has(.page-bar) .floating,body:has(.page-bar [data-juia-open]) .juia-launche
   body.hero-cta-visivel .page-bar{transform:translateY(110%)}
 }
 @media (max-width:760px) and (prefers-reduced-motion:reduce){.page-bar{transition:none}}
+
+/* v29.205.1 (2ª revisão cega) — a barra não tinha menu: serviços, preços e dúvidas só se achavam
+   pelo rodapé ou voltando à home. */
+.page-bar-links{display:flex;gap:4px;margin-right:auto;margin-left:clamp(16px,3vw,40px)}
+.page-bar-link{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;color:var(--text);text-decoration:none;font:600 var(--t-base)/1 Inter,InterFallback,system-ui,sans-serif;border-radius:var(--r-pill)}
+.page-bar-link:hover{color:var(--gold2)}
+.page-bar-link[aria-current=page]{color:var(--gold2)}
+@media (max-width:980px){.page-bar-links{display:none}}
+/* A JuIA abre por botão da página ([data-juia-open]) onde ele existe; o flutuante saía por cima
+   do "Adicionar" em /agendar/. */
+body:has([data-juia-open]) .juia-launcher{display:none!important}
+.text-btn{background:none;border:0;padding:0 4px;min-height:44px;color:var(--gold2);font:600 var(--t-md)/1.3 Inter,InterFallback,system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.text-btn:focus-visible{outline:2px solid var(--gold2);outline-offset:3px;border-radius:4px}
+.agendar-juia{margin:6px 0 0;text-align:center}
+/* /agendar/ no celular: três botões empilhados + aviso empurravam o primeiro serviço pra baixo da
+   dobra. "Ver serviços" (a própria página) e o aviso saem no celular; os outros dois lado a lado. */
+@media (max-width:760px){
+  .services-hero #scroll-to-services,.services-hero .schedule-warning{display:none!important}
+  .services-hero .hero-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .services-hero .hero-actions .btn{width:100%;min-width:0;padding-inline:10px}
+}
+
+/* v29.205.1 — Rodapé das páginas de conteúdo: tinha só marca, slogan e 3 links; sem endereço,
+   horário nem telefone (que é o que quem lê um serviço procura antes de ir). */
+.site-footer{display:grid;gap:10px;justify-items:center}
+.site-footer p{margin:0;line-height:1.7}
+.site-footer p a{color:var(--text)}
+.site-footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:0 4px}
+.site-footer nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;color:var(--gold2);text-decoration:none;font-weight:600}
+.site-footer nav a:hover{text-decoration:underline}

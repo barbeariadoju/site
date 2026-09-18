@@ -113,7 +113,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     if(panel) panel.inert = !isOpen; // fechado, o painel saía da tela mas os botões seguiam no Tab
     markAdded();
     openBtn?.classList.toggle('show', qty > 0 && panelHidden);
-    if(openBtn) openBtn.textContent = `Ver meu carrinho (${qty})`;
+    if(openBtn) openBtn.textContent = `Ver meu pedido (${qty})`;
     if(scheduleBtn) scheduleBtn.disabled = serviceCount() === 0;
     save();
   }

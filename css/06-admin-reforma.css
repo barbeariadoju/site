@@ -622,3 +622,58 @@ html{color-scheme:dark}
 .admin-checkbox-row{display:grid!important;grid-template-columns:22px minmax(0,1fr);column-gap:10px!important;row-gap:2px!important;align-items:start}
 .admin-checkbox-row input{margin:1px 0 0}
 .admin-checkbox-row small{grid-column:2}
+/* Navegação de período (Relatórios, Financeiro, Espera): no celular a grade de 2 colunas do
+   cabeçalho transformava "‹" e "›" em pílulas largas e vazias, uma acima e outra abaixo do mês.
+   Agora é sempre ‹ Mês › numa linha, setas redondas de 44px. */
+:is(#rel-prev,#rel-next,#fin-prev,#fin-next,#espera-prev,#espera-next){flex:0 0 44px;width:44px;height:44px;padding:0!important;display:inline-grid;place-items:center;border-radius:50%}
+:is(.rel-monthnav,.fin-rangenav,.espera-rangenav) strong{flex:1 1 auto;text-align:center;white-space:nowrap}
+.admin-page-header .rel-monthnav{flex-wrap:nowrap;flex-shrink:0}
+@media (max-width:760px){
+  .rel-monthnav{display:grid!important;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;width:100%}
+  .rel-monthnav .rel-modes,.rel-monthnav .rel-day-picker{grid-column:1/-1;display:flex;margin:0}
+  .rel-monthnav .rel-modes button{flex:1;min-height:44px}
+  .rel-monthnav .rel-day-picker[hidden]{display:none}
+  .espera-rangenav{width:100%}
+}
+/* Salvar sempre à mão também no computador: o Balcão tem ~4.400px e o aviso de campo faltando
+   aparecia ao lado de um botão que estava fora da tela. */
+@media (min-width:761px){
+  .balcao-submit-row,.booking-submit-row{position:sticky;bottom:16px;z-index:30;display:flex;align-items:center;gap:16px;margin:20px -24px -24px;padding:14px 24px;background:rgba(var(--black-rgb),.92);border-top:1px solid var(--edge);border-radius:0 0 var(--r-lg) var(--r-lg);backdrop-filter:blur(10px)}
+  .balcao-submit-row #balcao-save{order:-1}
+  .balcao-submit-row .field-help,.booking-submit-row .field-help{margin:0}
+}
+@media (max-width:900px) and (min-width:761px){.balcao-submit-row,.booking-submit-row{margin:20px -18px -18px;padding-inline:18px}}
+/* Espera no celular: as 4 abas de status passavam da tela ("Cancela…" cortado). 2×2. */
+@media (max-width:760px){
+  .espera-tabs,.espera-modes{display:grid!important;grid-template-columns:1fr 1fr;width:100%;border-radius:var(--r-sm)!important}
+  .espera-tabs button,.espera-modes button{min-height:44px}
+}
+/* Calendário: legenda completa (antes explicava só Hoje e Selecionado) e, no celular, célula
+   mais alta e contagem menor — o número do dia ficava coberto pela contagem. */
+.calendar-legend{flex-wrap:wrap;row-gap:6px}
+.legend-count{display:inline-grid;place-items:center;min-width:18px;height:18px;margin-right:5px;border-radius:var(--r-pill);background:#2b2b2b;color:var(--gold2);font-size:var(--t-xs);font-weight:800}
+@media (max-width:760px){
+  .calendar-day{min-height:54px!important;padding:5px 6px}
+  .calendar-day small{min-width:17px;height:17px;padding:0 4px;font-size:var(--t-xs);bottom:3px;right:3px}
+  .day-flag{bottom:4px;left:4px}
+}
+/* Hoje no computador: 5 botões quebravam num bloco torto ao lado do título, que ia pra duas
+   linhas. Título em cima, ações numa linha com a principal primeiro; indicadores ocupam a largura
+   (sem os cartões de câmera/alarme vazios sobrava um buraco à direita). */
+@media (min-width:761px){
+  [data-admin-page="dashboard"] .admin-page-header{flex-direction:column;align-items:stretch;gap:16px}
+  [data-admin-page="dashboard"] .admin-header-actions{display:flex;flex-wrap:wrap;gap:10px}
+  [data-admin-page="dashboard"] .admin-header-actions .btn.primary{order:-1}
+  [data-admin-page="dashboard"] .admin-metrics.is-primary{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+/* Título de seção com busca ao lado (Fidelidade e outras): no celular o campo espremia o título
+   em três linhas. A busca desce e ocupa a largura. */
+@media (max-width:760px){
+  .admin-section-title{flex-wrap:wrap}
+  .admin-section-title>input{flex:1 1 100%}
+  /* Clientes: os três "aniversariantes" (0, 0, 0) ocupavam a primeira tela inteira antes da lista. */
+  .crm-birthday-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+  .crm-birthday-grid>article:not(:last-child){padding:10px 12px!important;min-height:0!important}
+  .crm-birthday-grid>article:not(:last-child) strong{font-size:var(--t-2xl)!important;margin:2px 0 0!important}
+  .crm-birthday-grid>article:not(:last-child) span{font-size:var(--t-xs)!important}
+}

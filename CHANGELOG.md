@@ -1,3 +1,38 @@
+## 29.205.2 — Segunda revisão cega: uma afirmação de preço falsa e o que ainda atrapalhava (18/09)
+
+**Contexto:** depois da 29.205.1, duas revisões cegas NOVAS (outros revisores, mais rigorosos, mesmo método: heurísticas de Nielsen, 0-4 cada, prints de produção no site e do painel com o mock). Notas: **site 26/40, painel 27/40**. Não é regressão — os revisores anteriores davam 30 e 28 para uma versão pior; estes acharam coisas que os outros não viram. O que segue fecha o que eles acharam e que é código.
+
+### Site
+
+- **Afirmação de preço FALSA em 4 páginas.** "O combo Corte + Barba Express (R$ 65,00) sai mais econômico que os dois separados" — Corte R$ 40 + Barba Express R$ 25 = R$ 65. O mesmo em Corte + Barba na navalha (R$ 80 = 40 + 40), inclusive no JSON-LD de perguntas frequentes (o que o Google lê). Todo combo custa exatamente a soma. A vantagem real, que agora está escrita: **um horário só e 15 minutos a menos de cadeira** (60 min em vez de 75; 70 em vez de 85). Conferido: a JuIA e os scripts não repetem a afirmação.
+- **O popup de boas-vindas saiu.** Aparecia depois da rolagem cobrindo ~40% da tela do celular em cima do texto do Juliano, com texto genérico e um "Agendar agora" que repete a barra fixa. O evento `popup_boas_vindas_exibido` do GA4 deixa de existir; o teste e2e do popup virou teste de "rolou, o agendar vem da barra, sem camada por cima".
+- **/agendar/:** o botão flutuante da JuIA cobria o "Adicionar" do serviço "Mais procurado" no desktop. A JuIA virou um link no topo ("Em dúvida sobre qual serviço? Pergunte à JuIA") e o flutuante some onde a página tem botão próprio. No celular, "Ver serviços" (a própria página) e o aviso "Agenda própria" saem; o primeiro serviço sobe pra primeira tela. "Ver meu carrinho" → "Ver meu pedido" (é atendimento, não compra).
+- **/produtos.html:** o "← Voltar aos serviços" flutuante cobria cartões de produto; a barra fixa já leva pro agendar.
+- **A barra ganhou menu no desktop:** "Serviços e preços" e "Dúvidas" (antes só se achavam pelo rodapé ou voltando à home).
+- **Rodapé das 49 páginas de conteúdo:** tinha marca, slogan e 3 links. Agora endereço (link pro Maps), horário real (terça a sexta 8h-19h, sábado 8h-15h, igual ao schema), WhatsApp e 6 links com alvo de 44px.
+- **Textos alternativos que descreviam o que a foto não mostra:** a mesma foto de corte aparecia como "Barba Express sendo feita", "Pigmentação de barba sendo aplicada", "Acabamento de sobrancelha"… (9 páginas). Agora descrevem o que está na foto.
+- Blog: 5 cartões com "1." a "5." no título, sem série nenhuma — saiu a numeração.
+
+### Painel
+
+- **Relatórios:** no celular, "‹" e "›" eram duas pílulas largas e vazias, uma acima e outra abaixo do mês; agora ‹ Mês › numa linha (mesma regra pra Financeiro e Espera). No desktop, 8 indicadores em 7 colunas quebravam "R$ 175,/00" no meio — agora 4+4, sem quebra de número. "Setembro De 2026" → "Setembro de 2026" (era `text-transform:capitalize` no CSS da página).
+- **Balcão no computador:** o botão Registrar ficava no fim de ~4.400px e o aviso de campo faltando aparecia fora da tela. A barra de salvar agora gruda embaixo também no desktop.
+- **Calendário:** a contagem cobria o número do dia no celular (célula mais alta, contagem menor) e a legenda passou a explicar tudo (atendimentos, não atende, bloqueado, bloqueio parcial).
+- **Hoje no computador:** título em cima e ações numa linha só (antes 5 botões num bloco torto quebravam o título em duas linhas); indicadores ocupam a largura.
+- **Novo agendamento** abria com 08:00 preenchido às 11h30 (horário já passado). Agora vem vazio e o salvar pede o horário.
+- Espera: as 4 abas passavam da tela no celular ("Cancela…"); 2×2. Fidelidade: a busca espremia o título em 3 linhas. Clientes: os 3 contadores de aniversário (0, 0, 0) viraram uma linha compacta no celular.
+
+### O que NÃO foi feito, e por quê
+
+- **Fotos:** a mesma foto de corte aparece em ~20 páginas de serviço, inclusive barba e sobrancelha. Não existe foto de barba no repositório e **nunca geramos o Juliano com IA** — precisa de foto real (dá pra tirar no próprio atendimento, sem rosto de cliente). Observação: `assets/ambiente-corte*` tem a marca ✦ do Gemini no canto inferior direito.
+- **Texto do hero da home** (preço + garantia na primeira dobra): decisão de SEO/conversão registrada neste CHANGELOG; mantido.
+- **Bebas nos títulos de home, /agendar/, produtos e blog; Inter nas páginas de leitura:** é o sistema (letreiro na vitrine, texto no conteúdo), não inconsistência.
+- **Busca de serviços no Balcão** (P1 do revisor do painel): mudança de fluxo que merece conversa com o Juliano antes — hoje ele marca por categoria.
+
+### Conferido
+
+Régua: **0 pendências** no site e no painel (1440/390/320). 153 unit + 51 e2e passando. Um e2e (`routes.spec` › `/agendar/horario/` direto) falhou em 3 execuções completas com `browser.newContext: Target … closed` — o navegador do teste caindo ao abrir contexto, não asserção; passa sozinho, passa o arquivo inteiro e passou na 4ª execução completa. Registrado como instável; se voltar, investigar memória do Chromium no fim da suíte.
+
 ## 29.205.1 — Revisão cega depois da 29.205.0: o que a régua não mede (18/09)
 
 **Por que existe esta versão:** depois de publicar a 29.205.0, pedi duas revisões **às cegas** (sem contar o que eu tinha feito), uma do site e uma do painel, olhando as telas como cliente e como o Juliano no meio do atendimento. Notas: **site 30/40, painel 28/40**. A régua mecânica estava zerada; o que sobrou era de fluxo e hierarquia, que régua nenhuma pega. Esta versão fecha o que elas apontaram.

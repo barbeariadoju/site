@@ -150,12 +150,16 @@ test.describe('popup de boas-vindas', () => {
     await cta.click({ trial: true });
   });
 
-  test('aparece depois de rolar além do hero', async ({ page }) => {
+  // v29.205.1: o popup saiu. Ele só repetia "Agendar agora" e cobria o conteúdo; quem rola além
+  // do hero agora tem a barra fixa de agendar (.page-bar), sem camada por cima do texto.
+  test('saiu: depois de rolar, o agendar vem da barra fixa, sem popup', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
-    await expect(page.locator('#welcome-pop')).not.toHaveClass(/open/);
+    await expect(page.locator('#welcome-pop')).toHaveCount(0);
 
     await page.locator('#duvidas-frequentes').scrollIntoViewIfNeeded();
-    await expect(page.locator('#welcome-pop')).toHaveClass(/open/);
+    const cta = page.locator('.page-bar .page-bar-cta');
+    await expect(cta).toBeVisible();
+    await cta.click({ trial: true });
   });
 });
