@@ -1,3 +1,14 @@
+## 29.206.1 — Produtos de volta no "Concluir" pela tela Hoje (18/09)
+
+**Relato do Juliano, com cliente na cadeira:** "to concluindo um serviço, sumiu a parte que eu incluía produtos, preciso incluir Monster na comanda".
+
+- **Causa:** a tela **Hoje** () nunca carregou o catálogo de produtos (); a Agenda carrega. O modal de Concluir é o mesmo nas duas, mas pelo Hoje a lista de "Produtos vendidos" (em "Mais opções") saía **vazia**. Não foi regressão desta semana — a linha nunca existiu no  desde a reforma de 11/09 —, só apareceu agora porque o Juliano concluiu pelo Hoje e precisava de produto.
+- **Correção:** o  passa a carregar o catálogo, como a Agenda. Reproduzido antes (Hoje: 0 produtos; Agenda: 26) e conferido depois (Hoje: 26), no mock do painel.
+- Versão do painel sobe junto (, , ): o painel aberto no celular recarrega sozinho assim que ninguém estiver digitando.
+- Numerada 29.206.1 porque outra sessão publicou a 29.206.0 (aviso de chegada com rota) enquanto isto era corrigido.
+
+**Testes:** 160 unit + 51 e2e passando.
+
 ## 29.206.0 — Aviso de chegada com a rota do Google Maps, 30 min antes (18/09)
 
 **Dica do cliente Rafael**, repassada pelo Juliano no plano do dia: meia hora antes do horário, o cliente recebe no WhatsApp o link da barbearia no Google Maps.
