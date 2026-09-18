@@ -1,3 +1,17 @@
+## 29.205.6 — Ícone novo dos apps: monograma JU (18/09)
+
+**Pedido do Juliano:** "cria pra mim o ícone". Três opções mostradas (pergaminho creme; placa creme sobre preto; preto com anel de poste); ele escolheu a **opção C, "porém o bigode embaixo do JU, não em cima"**.
+
+- **O que era:** o logo largo (faixa + postes) espremido num quadrado — ilegível na tela do celular (as duas revisões cegas de app apontaram).
+- **O que é:** fundo preto do site, anel listrado vermelho/branco/azul de poste de barbeiro, "JU" em Bebas Neue dourado (o mesmo dourado do site) e o bigode da marca embaixo. Todo o conteúdo fica dentro da zona segura do ícone recortável do Android (raio 193 de 205), então nada é cortado no círculo.
+- Gerado pelo Chrome a partir de SVG (com checagem de que a fonte carregou antes de fotografar) em 192, 512, recortável 192/512 e 180 (iPhone). Mesmos nomes de arquivo, então também vira o logo pequeno da barra lateral do painel, da Área do cliente e da página offline (conferido por print: legível).
+- Cache: `?v=2` nos ícones dos dois manifestos, no ícone do iPhone e no favicon; manifestos com versão nova; service worker novo. **Quem já instalou o app:** no Android o ícone troca sozinho em alguns dias (o Chrome relê o manifesto); **no iPhone o ícone só muda removendo o app da tela inicial e adicionando de novo** (o iOS não atualiza ícone de app já instalado).
+
+### Correção de registro
+Na 29.205.4 escrevi que o ícone do iPhone em `/agendar/` "apontava pra um arquivo inexistente". **Estava errado:** essas páginas têm `<base href="/">`, e o caminho relativo funcionava. A padronização (caminho absoluto, 180px) continua valendo, mas o motivo que registrei não era real.
+
+**Conferido:** 153 unit + 51 e2e passando.
+
 ## 29.205.5 — Fotos reais no lugar de imagem com IA e placa errada; foto certa do condicionador (18/09)
 
 **Pedido do Juliano:** "pode baixar" (foto do condicionador no site do fabricante) e "veja na nossa biblioteca se você acha alguma coisa que dê pra aproveitar".
