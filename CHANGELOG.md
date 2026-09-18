@@ -1,3 +1,24 @@
+## 29.205.5 — Fotos reais no lugar de imagem com IA e placa errada; foto certa do condicionador (18/09)
+
+**Pedido do Juliano:** "pode baixar" (foto do condicionador no site do fabricante) e "veja na nossa biblioteca se você acha alguma coisa que dê pra aproveitar".
+
+- **Condicionador para Barba mostrava o frasco do shampoo.** Foto oficial baixada do site da Shark Barber (sharkbarber.com.br, página do produto, com autorização do Juliano), conferida (rótulo "Condicionador para Barba 240 ml"), convertida pra WebP 600×600 como as outras. Arquivo novo `condicionador-barba-v2.webp` pra não ficar preso em cache; trocado nas 4 páginas.
+- **Duas imagens do site tinham problema e saíram de TODAS as páginas (22 topos + galeria da home):**
+  - `ambiente-corte` — tem a marca ✦ do Gemini no canto (foi tratada por IA).
+  - `montagem-ambiente` — cartaz com ✦ **e com a placa física de horário à vista, com o horário errado** (8h30–18h / 8h30–14h). O CLAUDE.md proíbe mostrar essa placa sem retoque. Estava no topo de 8 páginas de química e produtos.
+- **O que entrou, tudo real da biblioteca, conferido quadro a quadro:**
+  - Barboterapia (página e artigo): quadro do vídeo do ozônio de 22/08 — o vaporizador soltando vapor sobre a toalha, rosto do cliente coberto.
+  - Degradê, pezinho, artigo de fade: o low fade real (sem rosto). Corte social: o clássico real. Artigo de tendências: o mullet real.
+  - Barba na navalha, combos, depilações, aparação, química, produtos: as fotos do salão vazio feitas pro Google em 16/09 (já passaram pelo crivo: sem cliente, sem placa).
+  - Textos alternativos descrevem o que está na foto.
+- **O que NÃO foi usado, de propósito:** a pasta `assets/fundos/` (toalha e navalha, frascos, tesoura) e o vídeo da toalha quente de 18/09 são **gerados por IA** — servem pra peça de marca, não como foto de serviço. A "simulação antes e depois" também é IA.
+- **Erro meu da 29.205.4, pego no print:** o botão "Agendar este serviço" logo após a introdução herdava a cor de link do cartão — texto dourado sobre botão dourado, quase invisível. A régua não pegou porque pula fundos em gradiente. Corrigido nas 25 páginas (texto escuro, igual aos outros botões).
+- Ferramenta: todas as imagens geradas pelo próprio Chrome (quadro de vídeo → canvas → WebP/JPG), recorte 4:3 sem distorção, 800px + tamanho cheio.
+
+**Ainda sem foto real:** barba (Express/navalha), sobrancelha, pigmentação, raspar a cabeça. Precisa de foto do atendimento, sem rosto de cliente.
+
+**Conferido:** nenhuma imagem quebrada nas páginas trocadas; régua 0 pendências; 153 unit + 51 e2e passando.
+
 ## 29.205.4 — Quarta revisão cega: agendamento do cliente, app do celular, site e painel (18/09)
 
 **Pedido do Juliano:** "e agora como ficamos site, admin, app, parte que os clientes fazem seus agendamentos? tudo 10 de 10?" — e depois "arruma tudo pra ficar 10 de 10".

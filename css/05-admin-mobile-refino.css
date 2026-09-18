@@ -794,3 +794,6 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
   /* Hero da home: a placa de horário da foto aparecia através do texto. Película mais escura. */
   .hero-overlay{background:linear-gradient(180deg,rgba(var(--black-rgb),.62),rgba(var(--black-rgb),.72) 45%,rgba(var(--black-rgb),.9))!important}
 }
+
+/* O botão após a introdução herdava a cor de link do cartão (dourado sobre dourado, quase invisível). */
+.cta-intro .btn.primary{color:var(--ink)!important}
