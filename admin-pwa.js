@@ -14,7 +14,8 @@
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(bdjSwReloaded) return;
       bdjSwReloaded=true;
-      const ocupado=()=>document.querySelector('.admin-modal:not([hidden]),.admin-dialog:not([hidden]),dialog[open]')||(document.activeElement&&document.activeElement.matches('input,textarea,select,[contenteditable]'));
+      const preenchido=()=>[...document.querySelectorAll('#balcao-name,#balcao-phone,#booking-name,#booking-phone,input[name="balcao-service"]:checked,#booking-services input:checked')].some(el=>el.type==='checkbox'?el.checked:String(el.value||'').trim()!==''&&!el.disabled);
+      const ocupado=()=>document.querySelector('.admin-modal:not([hidden]),.admin-dialog:not([hidden]),dialog[open]')||(document.activeElement&&document.activeElement.matches('input,textarea,select,[contenteditable]'))||preenchido();
       const recarregar=()=>{ if(ocupado()){ setTimeout(recarregar,3000); return } window.location.reload(); };
       recarregar();
     });
@@ -38,7 +39,7 @@
     const nav=document.createElement('nav');
     nav.className='admin-mobile-nav is-six';
     nav.setAttribute('aria-label','Navegação do painel');
-    nav.innerHTML=items.map(([key,url,icon,label])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><small>${label}</small></a>`).join('')+`<a href="#" data-more-open class="${items.some(i=>i[0]===current)?'':'is-active'}"><span>☰</span><small>Mais</small></a>`;
+    nav.innerHTML=items.map(([key,url,icon,label])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><small>${label}</small></a>`).join('')+(()=>{const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:((window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[]).flatMap(g=>g[1]).find(x=>x[0]===current);/* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual ("Financeiro") em vez de "Mais" aceso — continua abrindo a lista de telas */return `<a href="#" data-more-open aria-label="Mais telas" class="${noMenu?'':'is-active'}"><span>☰</span><small>${atual?atual[3]:'Mais'}</small></a>`})();
     document.body.appendChild(nav);
     const groups=(window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[];
     const sheet=document.createElement('div');
@@ -58,7 +59,7 @@
     const box=document.createElement('div');
     box.className='admin-install-tip';
     const android=type==='android';
-    box.innerHTML=`<button type="button" class="admin-install-close" aria-label="Fechar">×</button><img src="assets/icon-192.png" alt=""><div><strong>Instale o Barbearia Admin</strong><span>${android?'Use como aplicativo no celular da barbearia e abra o WhatsApp Business direto pelo painel.':'Toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.'}</span>${android?'<button type="button" class="admin-install-action">Instalar aplicativo</button>':''}</div>`;
+    box.innerHTML=`<button type="button" class="admin-install-close" aria-label="Fechar">×</button><img src="assets/icon-192.png" alt=""><div><strong>Instale o Barbearia OS</strong><span>${android?'Use como aplicativo no celular da barbearia e abra o WhatsApp Business direto pelo painel.':'Toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.'}</span>${android?'<button type="button" class="admin-install-action">Instalar aplicativo</button>':''}</div>`;
     box.querySelector('.admin-install-close').onclick=()=>{dismissKey();box.remove()};
     const action=box.querySelector('.admin-install-action');
     if(action){

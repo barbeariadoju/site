@@ -152,7 +152,7 @@
     $('rel-avg').textContent = money(avg);
     $('rel-avg-customer').textContent = money(avgPerCustomer);
     $('rel-customers').textContent = phones.size;
-    $('rel-services-customer').textContent = servicesPerCustomer.toFixed(1);
+    $('rel-services-customer').textContent = servicesPerCustomer.toFixed(1).replace('.', ',');
     $('rel-satisfaction').textContent = satRate === null ? '—' : pct(satRate);
     $('rel-noshows').textContent = noShows.length;
 

@@ -41,7 +41,7 @@
     const completedServiceCount=completed.reduce((a,x)=>a+String(x.service_name||'').split('+').map(s=>s.trim()).filter(Boolean).length,0);
     const completedDistinctClients=new Set(completed.map(x=>phoneKey(x.customer_phone)).filter(Boolean)).size;
     setText('metric-ticket-medio',completed.length?money(completedRevenue/completed.length):money(0));
-    setText('metric-servicos-cliente',completedDistinctClients?(completedServiceCount/completedDistinctClients).toFixed(1):'0');
+    setText('metric-servicos-cliente',completedDistinctClients?(completedServiceCount/completedDistinctClients).toFixed(1).replace('.',','):'0');
     // v29.43.8 (pedido do Juliano, 18/08): quantos SERVIÇOS foram feitos hoje (corte + barba conta 2), além do número de atendimentos.
     setText('metric-servicos-hoje',String(completedServiceCount));
     // v29.46.0 (19/08): card "Cadeira (câmera)" — sessões contadas pela câmera (pessoa na cadeira

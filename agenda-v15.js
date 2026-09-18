@@ -82,21 +82,26 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     if(products.length)html+=`<p class="eyebrow summary-subtitle">Produtos separados</p><ul class="agenda-summary-services">${products.map(p=>`<li><span>${p.name}</span><b>${money(p.price)}</b></li>`).join('')}</ul>`;
     html+=`<div class="booking-summary-total"><span>Total estimado</span><strong>${money(t.servicePrice+t.productPrice)}</strong></div><p class="booking-summary-duration">Atendimento: <strong>aproximadamente ${fmtDuration(t.duration)}</strong></p>`;
     if(t.newTable)html+=`<p class="booking-summary-duration">Valores da tabela que vale a partir de ${new Date(vigencia+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long'})}.</p>`;
-    const d=$('agenda-date').value;if(d)html+=`<div class="booking-summary-date"><span>Data</span><strong>${new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</strong></div>`;
+    const d=$('agenda-date').value;if(d)html+=`<div class="booking-summary-date"><span>Data</span><strong>${new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'}).replace(/^./,c=>c.toUpperCase())}</strong></div>`;
     if(selectedTime)html+=`<div class="booking-summary-time"><span>Horário</span><strong>${selectedTime} às ${addMinutes(selectedTime,t.duration)}</strong></div>`;
     $('agenda-summary').innerHTML=html;$('review-summary').innerHTML=html;
-    $('review-client-note').textContent=[$('agenda-name').value,$('agenda-phone').value,$('agenda-email').value].filter(Boolean).join(' · ');
+    $('review-client-note').textContent=[$('agenda-name').value,fmtTel($('agenda-phone').value),$('agenda-email').value].filter(Boolean).join(' · ');
     updateButtons();
   }
   function validPhone(){return $('agenda-phone').value.replace(/\D/g,'').length>=10}
+  function fmtTel(v){const p=String(v||'').replace(/\D/g,'');return p.length===11?`(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`:p.length===10?`(${p.slice(0,2)}) ${p.slice(2,6)}-${p.slice(6)}`:v}
+  // v29.205.4 — validação que explica: cada campo com problema recebe o motivo embaixo.
+  function avisoCampo(id,texto){const el=$(id);if(!el)return;const eid='erro-'+id;let aviso=document.getElementById(eid);if(!texto){el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');aviso?.remove();return}if(!aviso){aviso=document.createElement('small');aviso.id=eid;aviso.className='agenda-field-error';el.insertAdjacentElement('afterend',aviso)}aviso.textContent=texto;el.setAttribute('aria-invalid','true');el.setAttribute('aria-describedby',eid)}
+  function validarDados(){const nome=$('agenda-name').value.trim(),dig=$('agenda-phone').value.replace(/\D/g,''),mail=$('agenda-email').value.trim();const erros=[['agenda-name',nome.length<2?'Digite seu nome.':''],['agenda-phone',!dig?'Digite seu WhatsApp com DDD.':dig.length<10?'Número incompleto: são 11 dígitos com o DDD, ex.: (11) 91234-5678.':''],['agenda-email',mail&&!$('agenda-email').checkValidity()?'E-mail incompleto — confira o @ e o domínio, ou deixe em branco.':'']];erros.forEach(([id,t])=>avisoCampo(id,t));const primeiro=erros.find(e=>e[1]);if(primeiro){$(primeiro[0]).focus();return false}return true}
   function updateButtons(){
     document.querySelector('[data-next-step="3"]').disabled=!selectedTime;
-    document.querySelector('[data-next-step="4"]').disabled=!($('agenda-name').value.trim().length>=2&&validPhone()&&(!$('agenda-email').value||$('agenda-email').checkValidity()));
+    document.querySelector('[data-next-step="4"]').disabled=false;
     $('agenda-submit').disabled=!(configured&&services.length&&selectedTime&&$('agenda-name').value.trim().length>=2&&validPhone());
   }
   async function go(n){
     if(n===2&&!services.length)return;
     if(n===3&&!selectedTime)return;
+    if(n===4&&!validarDados())return;
     step=n;
     const panels=[...document.querySelectorAll('[data-step]')];
     panels.forEach(x=>x.hidden=Number(x.dataset.step)!==n);
@@ -171,7 +176,11 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     const box=$('agenda-waitlist-offer');
     box.innerHTML=`<strong>Prontinho! Você está na lista para ${prettyDate(waitlistOfferDate)}.</strong><small>Se abrir uma vaga, chamamos você no WhatsApp.</small>`;
   }
+  // v29.205.4 — faixa com os próximos 7 dias abertos (antes só o calendário nativo: ver outros dias
+  // exigia abrir o seletor). O campo de data continua ali pra datas mais longe.
+  function renderDayStrip(){const box=$("agenda-day-strip");if(!box)return;const sel=$("agenda-date").value;const dias=[];let d=firstEligibleDate();for(let i=0;dias.length<7&&i<30;i++){if(isOpenDay(d))dias.push(d);d=addDaysISO(d,1)}box.innerHTML=dias.map(x=>{const dt=new Date(x+"T12:00:00");const sem=dt.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","");return `<button type="button" class="day-chip${x===sel?" is-selected":""}" data-day="${x}" aria-pressed="${x===sel}" aria-label="${dt.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}"><small>${sem}</small><strong>${dt.getDate()}</strong></button>`}).join("")}
   async function loadSlots(options={}){
+    renderDayStrip();
     const requestId=++slotsRequestId;
     selectedTime='';let date=$('agenda-date').value,box=$('agenda-slots');box.innerHTML='<div class="booking-slots-loading">Consultando os melhores horários…</div>';
     const requestedDate=date;
@@ -379,7 +388,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     const prod=e.target.closest('[data-product]');if(prod){const p=productCatalog.find(x=>x.name===prod.dataset.product);const i=products.findIndex(x=>x.name===p.name);if(i>=0)products.splice(i,1);else{products.push({name:p.name,price:p.price});fire('product_added_booking',{item_name:p.name,value:p.price})}renderProducts();updateSummary();saveState();return}
   });
   document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));document.querySelectorAll('[data-progress-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.progressStep);if(n<=step)go(n)});
-  $('agenda-date').onchange=()=>loadSlots({autoAdvance:true,reason:'manual'});['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=updateSummary);$('agenda-submit').onclick=submit;
+  {const _carregar=loadSlots;loadSlots=async(o)=>{const r=await _carregar(o);renderDayStrip();return r};}/* a faixa acompanha a data final (o carregamento pode pular pro próximo dia com horário) */$('agenda-date').onchange=()=>loadSlots({autoAdvance:true,reason:'manual'});document.getElementById('agenda-day-strip')?.addEventListener('click',e=>{const c=e.target.closest('[data-day]');if(!c)return;$('agenda-date').value=c.dataset.day;loadSlots({autoAdvance:false,reason:'manual'})});['agenda-name','agenda-phone','agenda-email','agenda-notes'].forEach(id=>$(id).oninput=()=>{if($(id).getAttribute('aria-invalid'))avisoCampo(id,'');updateSummary()});$('agenda-submit').onclick=submit;
   $('waitlist-open-form')?.addEventListener('click',()=>{$('agenda-waitlist-form').hidden=false;$('waitlist-name')?.focus()});
   $('waitlist-submit')?.addEventListener('click',submitWaitlist);
   const now=spNow();$('agenda-date').min=`${now.year}-${now.month}-${now.day}`;

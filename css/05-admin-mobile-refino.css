@@ -771,3 +771,26 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 /* v29.205.3 — "Ver meu pedido" vira barra de largura total na borda (ver css/02); estas
    regras vencem os !important antigos que a deixavam flutuando a 12px das bordas. */
 .open-cart-btn{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;border-radius:0!important}
+
+/* v29.205.4 — nomes das etapas também no celular (vence o display:none!important antigo acima). */
+@media (max-width:760px){.booking-progress{grid-template-columns:repeat(4,minmax(0,1fr))!important}.booking-progress-item{flex-direction:column;gap:3px!important;min-height:56px!important;padding:6px 2px!important}.booking-progress-item small{display:block!important;font-size:var(--t-xs);line-height:1.1;text-align:center;white-space:nowrap}}
+
+/* Pedido: três botões dourados iguais; o próximo passo real era o último. Agora ele vem
+   primeiro e é o único cheio; os outros dois viram contorno. */
+.cart-panel.service-cart.active{display:flex!important;flex-direction:column}
+.service-cart .cart-primary-action{order:1}.service-cart .cart-head,.service-cart .cart-items,.service-cart .cart-total,.service-cart .cart-note{order:0}
+.cart-panel.service-cart .send-cart.secondary-cart,.cart-panel.service-cart .send-cart.product-suggest{order:2;background:transparent!important;color:var(--gold2)!important;border:1px solid rgba(var(--gold2-rgb),.45)!important;box-shadow:none!important}
+
+/* v29.205.4 — 4ª revisão cega do site */
+/* Botão de agendar logo depois da introdução nas páginas de serviço. */
+.cta-intro{margin:6px 0 22px}
+/* Área do cliente: o campo de WhatsApp era branco, fora do visual do site. */
+.client-login-card input{width:100%;box-sizing:border-box;min-height:52px;padding:12px 16px;border:1px solid rgba(var(--white-rgb),.14);border-radius:var(--r-sm);background:var(--surface-4);color:var(--white);font:inherit;font-size:max(16px,var(--t-xl))}
+.client-login-card input:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.products-hero .breadcrumb,.blog-hero-head .breadcrumb{justify-content:center}
+@media (max-width:760px){
+  /* O "voltar ao topo" cobria os controles do vídeo; no celular o Menu da barra já leva a qualquer lugar. */
+  .back-top{display:none!important}
+  /* Hero da home: a placa de horário da foto aparecia através do texto. Película mais escura. */
+  .hero-overlay{background:linear-gradient(180deg,rgba(var(--black-rgb),.62),rgba(var(--black-rgb),.72) 45%,rgba(var(--black-rgb),.9))!important}
+}

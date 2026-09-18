@@ -670,3 +670,28 @@ body:has(.open-cart-btn.show) .floating{display:none}
 .privacy-card details>p{margin:0 0 14px}
 .article-meta{color:var(--muted);font-size:var(--t-sm)}
 @media (prefers-reduced-motion:reduce){.privacy-card details>summary::after{transition:none}}
+
+/* v29.205.4 — fluxo de agendamento (revisão cega 26/40) */
+/* Etapa 3: o motivo aparece embaixo do campo. */
+.agenda-field-error{display:block;margin-top:6px;color:#ff8f8f;font-weight:700;font-size:var(--t-sm);line-height:1.35}
+.booking-field-v14 input[aria-invalid="true"]{border-color:var(--danger)!important;box-shadow:0 0 0 1px var(--danger)!important}
+/* Etapas com nome também no celular (antes só 1-2-3-4): número em cima, nome embaixo. */
+@media (max-width:760px){
+  .booking-progress{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .booking-progress-item{flex-direction:column;gap:3px!important;min-height:56px!important;padding:6px 2px!important}
+  .booking-progress-item small{display:block!important;font-size:var(--t-xs);line-height:1.1;text-align:center;white-space:nowrap}
+  /* Na tela de data e horário a aba da JuIA cobria a borda dos cartões. */
+  body:has(.booking-progress) .juia-launcher{display:none!important}
+}
+/* Mensagem de link inválido: saídas lado a lado. */
+.rebooking-error-actions,.customer-dead-end-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.rebooking-shell[hidden],.rebooking-message[hidden]{display:none!important}
+/* Faixa de dias do agendamento */
+.day-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:0 0 14px}
+.day-chip{display:grid;justify-items:center;gap:2px;min-height:56px;padding:6px 0;border:1px solid var(--edge-2);border-radius:var(--r-sm);background:var(--surface-3);color:var(--text);font:inherit;cursor:pointer}
+.day-chip small{font-size:var(--t-xs);color:var(--muted);text-transform:capitalize}
+.day-chip strong{font-size:var(--t-xl)}
+.day-chip:hover{border-color:rgba(var(--gold2-rgb),.5)}
+.day-chip.is-selected{background:linear-gradient(135deg,var(--gold),var(--gold2));border-color:transparent;color:var(--ink)}
+.day-chip.is-selected small{color:var(--ink)}
+.day-chip:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}

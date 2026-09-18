@@ -55,6 +55,15 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     localStorage.setItem(serviceStorageKey, servicesValue);
     sessionStorage.setItem(productStorageKey, productsValue);
     localStorage.setItem(productStorageKey, productsValue);
+    // v29.205.4 — o pedido fica sempre gravado no formato que /agendar/horario/ lê. Assim "Ir direto à
+    // agenda" (link comum) leva os serviços junto; antes só o botão Continuar gravava e o cliente
+    // chegava em "Nenhum serviço selecionado" depois de ter escolhido.
+    const agenda = [];
+    selectedServices.forEach(item => { for(let i=0; i<Number(item.qty || 1); i++) agenda.push({name:item.name, price:Number(item.price || 0), duration:Number(item.duration || parseDuration(item.time))}); });
+    const agendaProd = [];
+    selectedProducts.forEach(item => { for(let i=0; i<Number(item.qty || 1); i++) agendaProd.push({name:item.name, price:Number(item.price || 0)}); });
+    if(agenda.length){ sessionStorage.setItem(agendaServicesKey, JSON.stringify(agenda)); sessionStorage.setItem(agendaProductsKey, JSON.stringify(agendaProd)); }
+    else { sessionStorage.removeItem(agendaServicesKey); sessionStorage.removeItem(agendaProductsKey); }
   }
 
   function serviceCount(){

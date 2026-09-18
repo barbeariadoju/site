@@ -1,3 +1,49 @@
+## 29.205.4 — Quarta revisão cega: agendamento do cliente, app do celular, site e painel (18/09)
+
+**Pedido do Juliano:** "e agora como ficamos site, admin, app, parte que os clientes fazem seus agendamentos? tudo 10 de 10?" — e depois "arruma tudo pra ficar 10 de 10".
+
+Pela primeira vez o **fluxo de agendamento do cliente** e os **dois apps (PWA)** foram avaliados separadamente. Três revisores cegos, em paralelo. O revisor do agendamento andou pelo fluxo em PRODUÇÃO até a revisão, **sem confirmar nada** (e com as funções que gravam bloqueadas por segurança).
+
+| Parte | Nota da revisão |
+|---|---|
+| Site | 32/40 |
+| Painel | 28/40 · app do painel 6,5/10 |
+| Agendamento do cliente | **26/40** · app do site 7/10 |
+
+### Agendamento do cliente — três falhas que ninguém tinha visto
+
+- **"Ir direto à agenda" perdia o pedido.** O cliente escolhia "Corte de cabelo", tocava em "Ir direto à agenda" e caía em "Nenhum serviço selecionado". Só o botão "Continuar" do pedido gravava os serviços. Primeira tentativa de correção (interceptar o clique) **não funcionou**: outro script da página interrompe o clique antes do listener do carrinho — o teste pegou. Solução final, mais robusta: o pedido fica **sempre** gravado no formato que `/agendar/horario/` lê, a cada mudança; qualquer caminho até lá leva os serviços. Conferido clicando.
+- **Etapa "Seus dados" sem explicação.** "Revisar agendamento" ficava apagado sem dizer o que faltava. Agora o botão fica ativo e, ao tocar, cada campo com problema mostra o motivo embaixo ("Digite seu nome.", "Número incompleto: são 11 dígitos com o DDD…", "E-mail incompleto…"), com borda vermelha e foco no primeiro. O valor do campo de telefone continua como a pessoa digitou (o GTM lê `#agenda-phone` na conversão — CLAUDE.md, seção 5); a formatação "(11) 90000-0000" é só na tela de revisão.
+- **Reagendar sem link mostrava "Edge Function returned a non-2xx status code"**, e ao mesmo tempo a tela do fluxo ("Agendamento cancelado", etapas, botão ativo) — de novo `display` vencendo o atributo `hidden`. Agora: mensagem humana ("Este endereço só funciona pelo link que enviamos no seu WhatsApp…"), botões "Agendar um novo horário" e "Falar pelo WhatsApp", e erro técnico nunca chega ao cliente. "Meu agendamento" sem link também ganhou saídas (Área do cliente, Agendar, WhatsApp).
+- **Faixa com os próximos 7 dias abertos** na etapa de horário (antes só o calendário nativo; ver outro dia exigia abrir o seletor). Acompanha a data real — o carregamento pode pular pro próximo dia com horário, e a faixa marca o dia certo (o primeiro teste mostrou "Sex 18" marcado com os horários de sábado; corrigido).
+- Nomes das etapas também no celular (antes só 1-2-3-4); pedido com hierarquia (Continuar cheio e primeiro, os outros em contorno); "Sábado, 19 De Setembro" → "de"; link feito à mão `/agendar/horario/?servico=x` cai no catálogo com o serviço; emojis de enfeite fora; Área do cliente e Meu agendamento com a fonte do site e campo escuro (o campo de WhatsApp era branco).
+
+### Apps (PWA)
+
+- **iPhone: faltava `viewport-fit=cover` nas 18 telas do painel.** Com barra de status `black-translucent`, sem isso o `env(safe-area-inset-*)` vale 0 e as compensações de entalhe e barra inferior do app instalado não funcionam. **Precisa de conferência no iPhone do Juliano** (não há como emular o modo instalado do iOS aqui).
+- **Sem internet, o app do painel mostrava a página do cliente** ("ligue pra barbearia") pro próprio barbeiro. Em `/admin*` a página offline agora diz que o painel está sem conexão e volta sozinho.
+- A recarga por versão nova também espera formulário **preenchido e não salvo** (Balcão / Novo agendamento com o foco fora do campo), não só modal aberto ou campo focado.
+- Um nome só: "Barbearia OS" (era "Barbearia Admin" no iOS). Na barra inferior, fora dos 5 atalhos, o último botão mostra o nome da tela atual em vez de "Mais".
+- Site: ícone do iPhone de 180px com caminho absoluto em 57 páginas — **em `/agendar/` e `/agendar/horario/` o caminho relativo apontava pra um arquivo inexistente**; meta tags de app no iOS; `reagendar.html` sem manifesto.
+
+### Site
+
+- Navegação igual em todas as páginas: breadcrumb no blog, produtos e Sobre (antes "← Voltar ao site", "Voltar aos serviços / Ir para o início", ou nada).
+- **Botão "Agendar este serviço" logo após a introdução** nas 25 páginas de serviço (o primeiro dentro do texto vinha depois de ~2.000px), com o mesmo link de serviço pré-selecionado.
+- Celular: o "voltar ao topo" saiu (cobria os controles do vídeo); película mais escura no hero (a placa de horário da foto aparecia através do texto); título de cartão com "em Bragança Paulista" quebrando em 2 linhas.
+
+### Painel
+
+Campo com erro com borda vermelha também no Balcão; busca e lista primeiro em Clientes também no computador; grade de 3 indicadores sem cartão órfão no celular; fim da página nunca embaixo da barra inferior; indicadores repetidos no Hoje (celular) escondidos; "2.0" → "2,0"; nome antes do "Faltam 3" na Fidelidade; despesas fora do dourado da receita.
+
+### Pendências que não são código
+
+- **Foto do Condicionador para Barba é a do Shampoo** (`assets/produtos/condicionador-barba.webp` tem "SHAMPOO PARA BARBA" no rótulo). Precisa da foto certa — do Juliano, ou baixada do fabricante com autorização.
+- Fotos por serviço (barba, sobrancelha…), ícone do app legível em tela inicial (hoje é o logo largo espremido) — dependem de imagem real.
+- Agenda do dia disponível sem internet (leitura) no app do painel: recurso novo, não correção.
+
+**Conferido:** régua 0 pendências (site e painel, 1440/390/320); fluxo clicado do catálogo até a revisão em 390 e 1440 com as funções que gravam bloqueadas; 153 unit + 51 e2e passando.
+
 ## 29.205.3 — Terceira revisão cega: site 31/40, painel 31/40, e o que eles ainda viram (18/09)
 
 **Placar das revisões cegas até aqui** (revisores novos a cada rodada, prints reais, heurísticas de Nielsen 0-4):

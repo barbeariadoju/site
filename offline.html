@@ -40,6 +40,12 @@
 <script>
 (function () {
   var estado = document.getElementById('estado');
+  if (/^\/admin/.test(location.pathname)) {
+    document.title = 'Sem conexão | Barbearia OS';
+    document.getElementById('titulo').textContent = 'O painel está sem internet';
+    document.querySelector('.card > p').textContent = 'A agenda, o caixa e os clientes vêm do servidor, então o painel precisa de conexão. Assim que a internet voltar, esta tela recarrega sozinha — nada que já foi salvo se perde.';
+    var c = document.querySelector('.contato'); if (c) c.hidden = true;
+  }
   function tentar() { estado.textContent = 'Verificando a conexão…'; location.reload(); }
   document.getElementById('tentar').addEventListener('click', tentar);
   window.addEventListener('online', tentar);
