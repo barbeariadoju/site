@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><title>Financeiro | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.205.2"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.205.2"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.0"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
+<!doctype html><html lang="pt-BR"><head><title>Financeiro | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.205.3"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.205.3"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.0"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
 <style>
 .admin-metrics strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:var(--t-4xl)}
 .fin-rangenav{display:flex;align-items:center;gap:.5rem;margin-bottom:16px}
@@ -7,8 +7,9 @@
 .fin-rangenav .btn[disabled]{opacity:.35;cursor:not-allowed}
 .fin-add{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);padding:14px;margin-bottom:18px}
 .fin-add-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.fin-add-grid label{display:flex;flex-direction:column;gap:4px;font-size:var(--t-xs);color:var(--muted)}
-.fin-add-grid input,.fin-add-grid select{padding:.5rem .6rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
+.fin-add-grid label{display:grid;grid-template-rows:auto 1fr;align-content:start;gap:6px;font-size:var(--t-sm);font-weight:700;color:var(--text)}
+.fin-add-grid label>span{display:block;line-height:1.2}.fin-add-grid label small{font-weight:400;color:var(--muted)}
+.fin-add-grid input,.fin-add-grid select{min-height:44px;padding:10px 12px;border-radius:var(--r-sm);border:1px solid rgba(var(--white-rgb),.13);background:var(--surface-4);color:var(--white);font:inherit;font-size:var(--t-base)}
 /* A janelinha do menu (popup) é pintada pelo sistema em BRANCO, mas as opções herdavam a
    cor creme do tema — creme no branco = ilegível (bug real visto pelo Juliano em 13/08).
    Cores explícitas: fundo branco + texto escuro dentro do popup, grupos em destaque. */
@@ -68,7 +69,7 @@
       <label>Data<input id="fin-date" type="date"></label>
       <label>Categoria<select id="fin-category"></select></label>
       <label>Valor (R$)<input id="fin-amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label>
-      <label><span>Descrição <small>opcional</small></span><input id="fin-description" type="text" placeholder="Ex: conta de agosto"></label>
+      <label><span>Descrição <small>opcional</small></span><input id="fin-description" type="text" placeholder="Ex.: luz"></label>
       <label><span>Pagamento <small>opcional</small></span><select id="fin-payment"><option value="">—</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="credito">Crédito</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>
     </div>
     <div class="fin-add-actions">
@@ -85,4 +86,4 @@
 
 </main></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-financeiro-v29.js?v=29.205.2"></script><script src="admin-pwa.js?v=29.205.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.179.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-financeiro-v29.js?v=29.205.3"></script><script src="admin-pwa.js?v=29.205.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>

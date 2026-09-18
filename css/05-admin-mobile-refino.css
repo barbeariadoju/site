@@ -767,3 +767,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
    rolagem e desliga TODO position:sticky (barra de agendar, botão Salvar do painel). clip
    corta a sobra lateral do mesmo jeito sem criar contêiner. Navegador sem clip fica no hidden. */
 @supports (overflow:clip){html,body{overflow-x:clip}}
+
+/* v29.205.3 — "Ver meu pedido" vira barra de largura total na borda (ver css/02); estas
+   regras vencem os !important antigos que a deixavam flutuando a 12px das bordas. */
+.open-cart-btn{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;border-radius:0!important}

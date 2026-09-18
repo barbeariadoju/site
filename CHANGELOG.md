@@ -1,3 +1,42 @@
+## 29.205.3 — Terceira revisão cega: site 31/40, painel 31/40, e o que eles ainda viram (18/09)
+
+**Placar das revisões cegas até aqui** (revisores novos a cada rodada, prints reais, heurísticas de Nielsen 0-4):
+
+| Rodada | Site | Painel |
+|---|---|---|
+| 1ª (antes da 29.205.1) | 30 | 28 |
+| 2ª (29.205.1, revisores mais rigorosos) | 26 | 27 |
+| 3ª (29.205.2) | **31** | **31** |
+
+Esta versão fecha o que a 3ª rodada apontou e é código.
+
+### Site
+
+- **"Ver meu pedido" cobria o "✓ Adicionado" que o cliente acabou de tocar** (celular) e o meio das linhas (desktop). Era uma pílula flutuando no meio da lista; virou barra de largura total colada na borda, com espaço reservado no fim da página, e depois de "Adicionar" a página sobe o suficiente pra o botão tocado continuar à vista (medido: o botão fica acima da barra em 1440 e 390).
+- **Menu no celular.** A barra de baixo não tinha como chegar ao início, aos preços ou às dúvidas. "Menu" abre a lista (Início, Serviços e preços, Dúvidas, Blog, WhatsApp) — `<details>`, funciona sem JavaScript. No desktop entrou "Blog".
+- **Home de 18 para 16 blocos, na ordem de quem está decidindo:** os serviços subiram pra logo depois do "Olá, eu sou Juliano"; o "Tudo em um só lugar" (Minha área, Já estou na barbearia, Salvar contato — coisa de quem já é cliente) desceu pra perto do contato; "Serviços e produtos" (repetia "Conheça cada serviço") saiu; as avaliações apareciam 3 vezes — o bloco "O que nossos clientes dizem" foi fundido com a grade de avaliações. A faixa do topo trocou "Avaliar no Google" (pedir avaliação a quem nunca veio) por "Ler avaliações". Nenhum texto único perdido: conferido que os blocos removidos não levavam conteúdo fora da `<section>`, JSON-LD válido, e o link pra produtos continua no "Tudo em um só lugar".
+- **/agendar/:** o topo ficou com "Ir direto à agenda" e o link da JuIA. "Ver serviços" apontava pra própria página; "Ver produtos" tirava a pessoa do fluxo de agendamento (o produto já é oferecido na etapa do horário). O WhatsApp flutuante verde-vivo ganhou o visual do site e some quando a barra do pedido aparece.
+- Barba Express: o texto de abertura agora diz "feita só na máquina" (regra do CLAUDE.md: toda oferta de barba sai com esse resumo; estava só no FAQ e na meta description).
+- Perguntas frequentes das páginas de conteúdo com "+" (antes, triângulo padrão do navegador); "Publicado em 16 de agosto • Revisado em 16 de agosto" virou uma data só quando são iguais; ícones próprios no "Tudo em um só lugar" (a sacola e a pessoa se repetiam em 6 cartões).
+
+### Painel
+
+- **Calendário no computador:** a contagem ainda cobria o número (a célula quadrada tinha ~45px). Mesma solução do celular.
+- **Clientes no celular:** "Próximos aniversários" estava espremido em 1/3 da largura; agora linha inteira.
+- **Hoje no celular:** os 4 números principais voltaram pro topo numa faixa compacta (a revisão anterior pediu a linha do dia primeiro; esta reclamou dos números lá no fim — a faixa atende as duas: números no topo, linha do dia ainda na primeira tela). Em tela ≤360px, 2×2 (a régua pegou "Concluídos" vazando em 320px).
+- **Balcão:** o aviso de campo faltando aparece embaixo do próprio campo (e não se repete na barra); anel de foco vermelho no campo com erro.
+- **Mesma ordem de recorte em todo o painel:** Dia / Semana / Mês (Relatórios estava Mês / Semana / Dia, o contrário do Financeiro).
+- Fidelidade mostrava o telefone cru ("5511987654321") — agora "(11) 98765-4321" como no CRM; busca com largura de busca no desktop.
+- Barra de salvar mais baixa no celular e no tom do cartão; formulário de despesa do Financeiro alinhado e com campos do tamanho do resto do painel; placeholders que cortavam no celular encurtados; "Linha do dia" sem 500px vazios embaixo; "Sem hora marcada" com destaque sobre "Dia anterior/seguinte".
+
+### Não feito
+
+- Fotos por serviço (mesma pendência da 29.205.2 — precisa de foto real).
+- Imagem/data nos cartões do blog: exigiria foto por artigo.
+- Menu fechar ao tocar fora: o `<details>` fecha tocando em "Menu" de novo; não justificou JavaScript novo em 52 páginas.
+
+**Conferido:** régua 0 pendências (site e painel, 1440/390/320); 153 unit + 51 e2e passando.
+
 ## 29.205.2 — Segunda revisão cega: uma afirmação de preço falsa e o que ainda atrapalhava (18/09)
 
 **Contexto:** depois da 29.205.1, duas revisões cegas NOVAS (outros revisores, mais rigorosos, mesmo método: heurísticas de Nielsen, 0-4 cada, prints de produção no site e do painel com o mock). Notas: **site 26/40, painel 27/40**. Não é regressão — os revisores anteriores davam 30 e 28 para uma versão pior; estes acharam coisas que os outros não viram. O que segue fecha o que eles acharam e que é código.

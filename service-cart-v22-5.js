@@ -173,6 +173,8 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     fire('service_selected', {item_name:name, value:price});
     feedback(button);
     render();
+    // v29.205.3 — se a barra 'Ver meu pedido' (que acabou de aparecer) cobrir o botão tocado, sobe a página o suficiente pra ele continuar à vista.
+    requestAnimationFrame(() => { const r = button.getBoundingClientRect(); const lim = window.innerHeight - 90; if (r.bottom > lim) window.scrollBy({ top: r.bottom - lim, behavior: 'smooth' }); });
   }
 
   function showCart(){

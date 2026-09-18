@@ -677,3 +677,35 @@ html{color-scheme:dark}
   .crm-birthday-grid>article:not(:last-child) strong{font-size:var(--t-2xl)!important;margin:2px 0 0!important}
   .crm-birthday-grid>article:not(:last-child) span{font-size:var(--t-xs)!important}
 }
+/* ===== v29.205.3 — terceira revisão cega do painel (31/40) ===== */
+/* Calendário no computador: a célula quadrada (~45px) deixava a contagem em cima do número.
+   Mesma solução do celular: altura mínima e contagem menor, embaixo à direita. */
+.calendar-day{aspect-ratio:auto;min-height:54px}
+.calendar-day small{min-width:17px;height:17px;padding:0 4px;font-size:var(--t-xs);bottom:3px;right:3px}
+/* Erro de campo no Balcão: aviso embaixo do campo e anel vermelho mesmo com o foco nele. */
+.field-error{display:block;margin-top:6px;color:var(--danger);font-weight:700;font-size:var(--t-sm)}
+:where([data-admin-page]) :where(input,select,textarea)[aria-invalid=true]:focus-visible{outline-color:var(--danger)}
+/* Hoje no computador: a "Linha do dia" esticava até a altura da coluna da direita (500px vazios);
+   "Sem hora marcada" pesava igual a "Dia anterior". */
+.admin-home-grid{align-items:start}
+#today-balcao{border-color:var(--gold);color:var(--gold2)}
+@media (min-width:761px){#today-prev,#today-next,#today-refresh{padding-inline:14px;font-size:var(--t-sm)}}
+/* Busca ao lado do título (Fidelidade): largura de busca, não de meia tela. */
+@media (min-width:761px){.admin-section-title>input{max-width:300px}}
+@media (max-width:760px){
+  /* Clientes: "Próximos aniversários" ficava espremido numa coluna de 1/3. */
+  .crm-birthday-grid>article:last-child{grid-column:1/-1}
+  /* Barra de salvar mais baixa (o formulário ficava com pouco espaço visível) e no tom do cartão. */
+  .balcao-submit-row,.booking-submit-row{padding:8px 14px;gap:4px;background:rgba(22,22,22,.96)}
+  .balcao-submit-row #balcao-save,.booking-submit-row .btn{min-height:48px}
+  /* Hoje: os 4 números principais voltam pro topo, numa faixa compacta de 4 — a linha do dia
+     continua na primeira tela logo abaixo. */
+  [data-admin-page="dashboard"] .admin-content>.admin-metrics.is-primary{order:1;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr) minmax(0,1fr)!important;gap:6px!important;margin-bottom:14px}
+  [data-admin-page="dashboard"] .admin-content>.admin-home-grid{order:2}
+  [data-admin-page="dashboard"] .admin-metrics.is-primary article{padding:8px 8px 9px!important;min-height:0!important}
+  [data-admin-page="dashboard"] .admin-metrics.is-primary article span{font-size:var(--t-xs)!important}
+  [data-admin-page="dashboard"] .admin-metrics.is-primary article strong{font-size:var(--t-lg)!important;margin:2px 0 0!important;white-space:nowrap}
+  [data-admin-page="dashboard"] .admin-metrics.is-primary article small{display:none}
+}
+/* Em celular bem estreito (≤360px) a faixa de 4 não cabe ("Concluídos" vazava): 2×2. */
+@media (max-width:360px){[data-admin-page="dashboard"] .admin-content>.admin-metrics.is-primary{grid-template-columns:repeat(2,minmax(0,1fr))!important}}

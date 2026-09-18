@@ -620,7 +620,7 @@ body:has([data-juia-open]) .juia-launcher{display:none!important}
    dobra. "Ver serviços" (a própria página) e o aviso saem no celular; os outros dois lado a lado. */
 @media (max-width:760px){
   .services-hero #scroll-to-services,.services-hero .schedule-warning{display:none!important}
-  .services-hero .hero-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .services-hero .hero-actions{display:grid!important;grid-template-columns:1fr;gap:8px}
   .services-hero .hero-actions .btn{width:100%;min-width:0;padding-inline:10px}
 }
 
@@ -632,3 +632,41 @@ body:has([data-juia-open]) .juia-launcher{display:none!important}
 .site-footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:0 4px}
 .site-footer nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;color:var(--gold2);text-decoration:none;font-weight:600}
 .site-footer nav a:hover{text-decoration:underline}
+
+/* v29.205.3 — Menu no celular: a barra de baixo só tinha WhatsApp/JuIA/Agendar e, fora da home,
+   não havia como chegar ao início, aos preços ou às dúvidas. "Menu" abre uma lista acima da
+   barra (<details>, funciona sem JavaScript); o WhatsApp mora dentro dele no celular. */
+.page-bar-menu{display:none;position:relative}
+.page-bar-menu summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:1px solid var(--edge-2);border-radius:var(--r-pill);color:var(--text);font:700 var(--t-sm)/1 Inter,InterFallback,system-ui,sans-serif;cursor:pointer}
+.page-bar-menu summary::-webkit-details-marker{display:none}
+.page-bar-menu[open] summary{border-color:rgba(var(--gold2-rgb),.6);color:var(--gold2)}
+.page-bar-menu nav{position:absolute;left:0;bottom:calc(100% + 10px);display:grid;min-width:220px;padding:6px;background:var(--surface-3);border:1px solid var(--edge-2);border-radius:var(--r-md);box-shadow:0 18px 40px rgba(var(--black-rgb),.6)}
+.page-bar-menu nav a{display:flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--r-sm);color:var(--text);text-decoration:none;font-weight:600}
+.page-bar-menu nav a:hover,.page-bar-menu nav a[aria-current=page]{background:rgba(var(--gold2-rgb),.1);color:var(--gold2)}
+@media (max-width:760px){
+  .page-bar-menu{display:block}
+  .page-bar-actions>.page-bar-alt[href^="https://wa.me"]{display:none}
+  .page-bar-actions{grid-template-columns:auto auto minmax(0,1fr)}
+}
+
+/* v29.205.3 — "Ver meu pedido" era uma pílula flutuando no meio da lista: cobria o "✓ Adicionado"
+   recém-tocado (celular) e o meio das linhas (desktop). Virou barra de largura total colada na
+   borda de baixo, com espaço reservado no fim da página — nada da lista fica embaixo dela. */
+.open-cart-btn{left:0;right:0;bottom:0;width:100%!important;border-radius:0;transform:translateY(100%);padding:16px 20px calc(16px + env(safe-area-inset-bottom));font-size:var(--t-lg);box-shadow:0 -10px 30px rgba(var(--black-rgb),.5)}
+.open-cart-btn.show{transform:none}
+.open-cart-btn:hover,.open-cart-btn.show:hover,.open-cart-btn.show:focus-visible{transform:none}
+body:has(.open-cart-btn.show){padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+body:has(.open-cart-btn.show) .floating{display:none}
+/* WhatsApp flutuante de /agendar/: o verde vivo destoava do resto do site. */
+.floating{background:var(--surface-3)!important;color:var(--text)!important;border:1px solid rgba(var(--gold2-rgb),.45)!important;box-shadow:0 12px 30px rgba(var(--black-rgb),.5)!important}
+
+/* v29.205.3 — Perguntas frequentes das páginas de conteúdo: triângulo padrão do navegador, sem
+   acabamento. Mesmo "+" da seção de dúvidas da home, com alvo de 44px. */
+.privacy-card details{border-bottom:1px solid var(--edge)}
+.privacy-card details>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:44px;padding:12px 0;font-weight:700;color:var(--text);cursor:pointer}
+.privacy-card details>summary::-webkit-details-marker{display:none}
+.privacy-card details>summary::after{content:'+';flex:0 0 auto;color:var(--gold2);font-size:var(--t-2xl);line-height:1;transition:transform .2s}
+.privacy-card details[open]>summary::after{transform:rotate(45deg)}
+.privacy-card details>p{margin:0 0 14px}
+.article-meta{color:var(--muted);font-size:var(--t-sm)}
+@media (prefers-reduced-motion:reduce){.privacy-card details>summary::after{transition:none}}
