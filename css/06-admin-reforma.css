@@ -567,3 +567,58 @@ html.admin-loading body:after{content:'Carregando…';position:fixed;inset:0;z-i
   .admin-mobile-nav a{padding-inline:0}
   .admin-mobile-nav a small{font-weight:700;letter-spacing:-.02em}
 }
+
+/* ===== v29.205.1 — achados da revisão cega do painel (28/40) ===== */
+html{color-scheme:dark}
+/* Campo sem classe no painel (Balcão: pagamento, caixinha, "Como foi feito", fidelidade, nº da
+   visita) caía no controle cinza-claro do sistema, 21px de altura, no meio de um formulário
+   escuro. Base de especificidade ZERO: qualquer regra existente continua vencendo. */
+:where([data-admin-page]) :where(input:not([type=checkbox],[type=radio],[type=hidden],[type=range],[type=file]),select,textarea){box-sizing:border-box;width:100%;min-height:44px;border:1px solid rgba(var(--white-rgb),.13);border-radius:var(--r-sm);background:var(--surface-4);color:var(--white);padding:12px 14px;font:inherit}
+:where([data-admin-page]) :where(input,select,textarea):focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+:where([data-admin-page]) :where(input,select,textarea)[aria-invalid=true]{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+[data-admin-page="balcao"] .admin-surface>label{display:grid;gap:8px;margin:14px 0;font-weight:700;color:var(--text)}
+[data-admin-page="balcao"] .admin-surface>label small{font-weight:400;color:var(--muted)}
+.field-help.is-error{color:var(--danger);font-weight:700}
+/* Menu lateral: com a lista inteira, os últimos itens ficavam abaixo da tela e não rolavam. */
+@media (min-width:761px){.admin-sidebar{overflow-y:auto;overscroll-behavior:contain}}
+/* Financeiro: prejuízo pintado de dourado igual à receita. */
+.admin-metrics strong.is-negative{color:var(--danger)}
+/* Cartão sem dados (câmera/alarme) marcado hidden: o display:grid dos cartões vencia o atributo. */
+.admin-metrics>article[hidden]{display:none!important}
+/* Calendário: número no canto, marca embaixo à esquerda, contagem embaixo à direita e maior —
+   antes a bandeira e a contagem disputavam o topo com o número. */
+.calendar-toolbar h2{text-transform:none}
+.calendar-day{place-content:start;justify-items:start;padding:6px 7px}
+.day-flag{top:auto;bottom:5px;left:6px}
+.calendar-day small{top:auto;bottom:4px;right:5px;min-width:20px;height:20px;padding:0 5px;font-size:var(--t-sm);font-weight:800}
+/* Setas de período (Financeiro, Relatórios, Espera) com alvo de 44px. */
+:is(#fin-prev,#fin-next,#rel-prev,#rel-next,#espera-prev,#espera-next){min-width:44px;min-height:44px}
+@media (max-width:760px){
+  .admin-header-actions{grid-auto-rows:1fr}
+  /* Hoje: no celular a linha do dia vem antes dos indicadores — é o que se olha entre um
+     cliente e outro. */
+  [data-admin-page="dashboard"] .admin-content{display:flex;flex-direction:column}
+  [data-admin-page="dashboard"] .admin-content>.admin-page-header{order:0}
+  [data-admin-page="dashboard"] .admin-content>.admin-home-grid{order:1;margin-bottom:18px}
+  [data-admin-page="dashboard"] .admin-content>.admin-metrics.is-primary{order:2}
+  [data-admin-page="dashboard"] .admin-content>.admin-metrics.is-compact{order:3}
+  /* Clientes: a busca primeiro; aniversários e a nota automática depois. */
+  [data-admin-page="clientes"] .admin-content{display:flex;flex-direction:column}
+  [data-admin-page="clientes"] .admin-content>.crm-toolbar{order:-1}
+  .crm-toolbar{grid-template-columns:minmax(0,1fr);gap:12px}
+  .crm-toolbar>*{width:100%;min-width:0}
+  .crm-search-count{display:flex;align-items:baseline;gap:8px}
+  .crm-search-count strong{display:inline;font-size:var(--t-2xl)}
+  [data-admin-page="clientes"] .admin-content>.admin-page-header{order:-2}
+  /* Salvar sempre à mão: o botão ficava 5.000px abaixo do começo do formulário. */
+  .balcao-submit-row,.booking-submit-row{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom));z-index:30;display:grid;gap:8px;margin:14px -14px -14px;padding:12px 14px;background:rgba(var(--black-rgb),.92);border-top:1px solid var(--edge);border-radius:0 0 var(--r-sm) var(--r-sm);backdrop-filter:blur(10px)}
+  .balcao-submit-row #balcao-save,.booking-submit-row .btn{width:100%}
+  .balcao-submit-row .field-help:empty,.booking-submit-row .field-help:empty{display:none}
+  .is-embed .balcao-submit-row,.is-embed .booking-submit-row{bottom:calc(12px + env(safe-area-inset-bottom))}
+}
+/* Linha de checkbox: em flex, o texto e a explicação (<small>) viravam duas colunas estreitas
+   ("Permitir fora do / horário de / funcionamento" ao lado do small). Grade: caixa | texto,
+   a explicação embaixo do texto. */
+.admin-checkbox-row{display:grid!important;grid-template-columns:22px minmax(0,1fr);column-gap:10px!important;row-gap:2px!important;align-items:start}
+.admin-checkbox-row input{margin:1px 0 0}
+.admin-checkbox-row small{grid-column:2}

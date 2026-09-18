@@ -348,7 +348,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .author-box p{margin:0 0 6px;font-size:var(--t-md)}
 .author-box a{font-size:var(--t-base)}
 .article-dates{color:#8f8f8f;font-size:var(--t-sm);margin:-.4em 0 1.2em}
-.practice-note,.pharma-note{margin:1.2em 0;padding:14px 16px;border-radius:var(--r-sm);border-left:3px solid}
+.practice-note,.pharma-note{margin:1.2em 0;padding:14px 16px;border-radius:var(--r-sm);border:1px solid}
 .practice-note p,.pharma-note p{margin:0;color:#d4d4d4}
 .practice-note{background:rgba(var(--gold2-rgb),.06);border-color:var(--gold3)}
 .practice-note strong{color:var(--gold3)}
@@ -356,7 +356,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .pharma-note strong{color:#9cc0e6}
 .sources-list{font-size:var(--t-base);color:var(--grey-2)}
 .sources-list li{margin-bottom:4px}
-.warning-note{margin:1.2em 0;padding:14px 16px;border-radius:var(--r-sm);border-left:3px solid #d87a5a;background:rgba(216,122,90,.08)}
+.warning-note{margin:1.2em 0;padding:14px 16px;border-radius:var(--r-sm);border:1px solid #d87a5a;background:rgba(216,122,90,.08)}
 .warning-note p{margin:0;color:#d4d4d4}
 .warning-note strong{color:#e3987a}
 .series-nav{margin:1.5em 0;padding:16px 18px;border-radius:var(--r-sm);border:1px solid var(--gold-a28);background:rgba(var(--white-rgb),.03)}

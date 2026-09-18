@@ -1,3 +1,39 @@
+## 29.205.1 — Revisão cega depois da 29.205.0: o que a régua não mede (18/09)
+
+**Por que existe esta versão:** depois de publicar a 29.205.0, pedi duas revisões **às cegas** (sem contar o que eu tinha feito), uma do site e uma do painel, olhando as telas como cliente e como o Juliano no meio do atendimento. Notas: **site 30/40, painel 28/40**. A régua mecânica estava zerada; o que sobrou era de fluxo e hierarquia, que régua nenhuma pega. Esta versão fecha o que elas apontaram.
+
+### Painel
+
+- **O botão Salvar não grudava em lugar nenhum.** Causa: `overflow-x:hidden` no `html` e no `body` transforma o `body` em contêiner de rolagem e desliga **todo** `position:sticky` do site e do painel. Trocado por `overflow-x:clip` (corta igual, sem criar contêiner; navegador antigo fica no `hidden`). Com isso, no celular, "Registrar atendimento" (Balcão) e "Criar agendamento" ficam sempre à mão acima da barra inferior — antes ficavam 5.000px abaixo do começo do formulário.
+- **Balcão: erro de validação não levava a lugar nenhum.** "Informe o nome do cliente." aparecia em cinza ao lado do botão, longe do campo. Agora o aviso sai em vermelho junto do botão, a tela rola até o campo que falta, foca e marca (`aria-invalid`); a marca some quando o campo é preenchido.
+- **Balcão: pagamento, caixinha, "Como foi feito", fidelidade e nº da visita** eram controles cinza-claro do sistema, 21px de altura, no meio do formulário escuro. Base de campo do painel com especificidade **zero** (`:where`) — nenhuma regra existente muda.
+- **Hoje, no celular:** a linha do dia vem antes dos indicadores (é o que se olha entre um cliente e outro), e os cartões **Cadeira (câmera)** e **Alarme** somem quando não há dado, em vez de ocupar a primeira tela com "–". O atributo `hidden` perdia pro `display:grid` do cartão; corrigido.
+- **Financeiro:** lucro e resultado negativos em vermelho (antes em dourado, igual à receita).
+- **Calendário:** "Setembro De 2026" → "Setembro de 2026"; número no canto, marca embaixo à esquerda, contagem embaixo à direita e maior.
+- **Clientes:** busca primeiro no celular, ocupando a largura toda; o título interno "V27.1 • Experiência automática ativa" virou "Pesquisa de satisfação automática".
+- Menu lateral com rolagem (os últimos itens ficavam fora da tela), setas de período com 44px, `color-scheme: dark` (calendário e seletores nativos escuros), linhas de checkbox em grade (o texto quebrava em duas colunas estreitas).
+
+### Site
+
+- **Botão de agendar persistente em todas as 52 páginas públicas** (`.page-bar`). Fora da home, "Agendar" só existia no fim do texto. Desktop: faixa fixa no topo com a marca, WhatsApp, JuIA e Agendar. Celular: barra embaixo, na zona do polegar. Nas páginas de serviço o botão já leva o serviço pré-selecionado (`?servico=`, o mesmo link do fim da página). Na home do celular a barra só entra quando os botões do hero saem da tela — senão seriam dois "Agendar horário" empilhados.
+- **A JuIA deixou de cobrir o conteúdo:** a aba lateral fixa no celular (em cima de texto e do "Adicionar") e o botão flutuante no desktop viraram o botão "JuIA" da barra. O WhatsApp flutuante também.
+- A home tinha **duas barras fixas** no celular (a dourada e a de WhatsApp/Rota); ficou uma.
+- **"Adicionar" em /agendar/** fica marcado "✓ Adicionado" enquanto o serviço está no pedido (antes voltava a "Adicionar" em 0,8s e não sobrava sinal). O carrinho fechado fica `inert` (os botões dele seguiam no Tab).
+- Hero da home em notebook 1366×768: logo e título dimensionados pela altura da tela; os dois botões voltaram pra primeira dobra.
+- Home: "Conforto" e "Ajuste sem custo" apareciam duas vezes (no bloco de visita e em "Informações rápidas") — ficou uma de cada; o último ícone-emoji de cartão saiu.
+- /agendar/ no celular: o "← Voltar ao site" fixo no rodapé saiu (repetia o link do topo e disputava o polegar com o carrinho).
+- "Separemos para você" → "Separamos para você" (/agendar/horario/).
+
+### Conferido antes de publicar
+
+- Régua: **0 pendências** no site (10 critérios) e no painel (11), em 1440/390/320. Pegou um erro meu desta versão: o parágrafo da Área do Cliente que eu alonguei na 29.205.0 passava de 80 caracteres por linha — corrigido.
+- Fluxos clicados no navegador com o mock do painel: erro do Balcão foca o campo certo; JuIA abre pela barra no desktop e no celular; "Adicionar" marca e o carrinho fecha inerte; barra fixa depois de rolar; zero rolagem lateral.
+- `clique_agendamento` continua medindo: a barra é link pra `/agendar/`, e o evento registra `posicao_cta: barra-agendar`.
+
+**Cache:** 29.205.1 em `style.css` (82), `@import` e preloads de 01-05, css/06 (17), `juia-chat.js` (55), `script.js`, `service-cart-v22-5.js`, scripts do painel tocados, service worker; **`ADMIN_VERSION`, `admin-version.json` e o `?v=` do `admin-v15-4-core.js` juntos.**
+
+**Testes:** 153 unit + 51 e2e passando.
+
 ## 29.205.0 — Nota máxima: site, painel e app no celular, com régua medida antes e depois (18/09)
 
 **Pedido do Juliano (17-18/09/2026):** "faz o que precisar pra tudo ficar com nota máxima", incluindo o app no celular. Confirmou os três nomes da lista de preços.

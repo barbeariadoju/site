@@ -241,9 +241,9 @@
     $('fin-metric-revenue-detail').textContent = `${t.count} atendimento${t.count === 1 ? '' : 's'} concluído${t.count === 1 ? '' : 's'}${extraBits.length ? ' · ' + extraBits.join(' · ') : ''}`;
     $('fin-metric-expense').textContent = money(t.expenses);
     $('fin-metric-expense-detail').textContent = `${money(t.fixo)} fixos · ${money(t.variavel)} variáveis`;
-    $('fin-metric-profit').textContent = money(t.profit);
+    $('fin-metric-profit').textContent = money(t.profit); document.getElementById('fin-metric-profit').classList.toggle('is-negative', t.profit < 0);
     $('fin-metric-profit-detail').textContent = t.profit >= 0 ? 'antes da sua retirada' : 'prejuízo no mês';
-    $('fin-metric-net').textContent = money(t.net);
+    $('fin-metric-net').textContent = money(t.net); document.getElementById('fin-metric-net').classList.toggle('is-negative', t.net < 0);
     $('fin-metric-net-detail').textContent = t.retirada > 0 ? `você retirou ${money(t.retirada)}` : 'nenhuma retirada lançada';
 
     renderBreakEven(t);

@@ -110,17 +110,30 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     panel?.classList.toggle('active', isOpen);
     document.body.classList.toggle('cart-open', isOpen);
     panel?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    if(panel) panel.inert = !isOpen; // fechado, o painel saía da tela mas os botões seguiam no Tab
+    markAdded();
     openBtn?.classList.toggle('show', qty > 0 && panelHidden);
     if(openBtn) openBtn.textContent = `Ver meu carrinho (${qty})`;
     if(scheduleBtn) scheduleBtn.disabled = serviceCount() === 0;
     save();
   }
 
+  // v29.205.1 — o estado "adicionado" agora fica no botão enquanto o serviço está no pedido
+  // (render marca todos); aqui só o pulso do clique. Antes o texto voltava a "Adicionar" em 0,8s
+  // e, com o carrinho recolhido, não sobrava sinal nenhum de que o clique tinha funcionado.
   function feedback(button){
-    const original = button.textContent;
-    button.textContent = 'Adicionado ✓';
-    button.disabled = true;
-    setTimeout(() => { button.textContent = original; button.disabled = false; }, 800);
+    button.classList.add('just-added');
+    setTimeout(() => button.classList.remove('just-added'), 600);
+  }
+
+  function markAdded(){
+    document.querySelectorAll('.service-btn').forEach(b => {
+      if(!b.dataset.label) b.dataset.label = b.textContent;
+      const on = selectedServices.has(b.dataset.name || '');
+      b.classList.toggle('is-added', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.textContent = on ? '✓ Adicionado' : b.dataset.label;
+    });
   }
 
   // Aviso curto na tela (troca/recusa da regra das famílias). Estilo inline de propósito:

@@ -540,23 +540,65 @@ footer a:hover,
 .hero-ctas .hero-btn-ghost{background:rgba(22,16,10,.38);color:var(--gold);border:1px solid rgba(var(--gold-rgb),.55);box-shadow:none}
 .hero-ctas .hero-btn-ghost:hover{background:rgba(var(--gold-rgb),.14);box-shadow:none}
 
-/* v29.24.0 - CTA fixo de agendamento no celular (padrao de conversao dos benchmarks) */
-.mobile-agendar{display:none}
-@media(max-width:620px){
-  .mobile-agendar{position:fixed;left:0;right:0;bottom:0;z-index:80;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);font-weight:900;font-size:var(--t-lg);text-decoration:none;box-shadow:var(--sh-2)}
-  body:has(.mobile-agendar){padding-bottom:64px}
+/* v29.205.1 — Barra de agendar persistente (.page-bar), em todas as 52 páginas públicas.
+   Substitui a .mobile-agendar + .mobile-cta da home (duas barras fixas empilhadas) e a aba
+   lateral da JuIA no celular, que cobria texto e o botão "Adicionar". Antes, fora da home,
+   o botão de agendar só existia no fim do texto: quem lia um artigo inteiro no celular
+   precisava rolar até o final pra agendar.
+   Desktop: faixa fixa no topo (marca à esquerda, ações à direita).
+   Celular: barra fixa embaixo, na zona do polegar: Agendar ocupa o espaço, WhatsApp e JuIA
+   ao lado. A JuIA abre pelo [data-juia-open] (juia-chat.js). */
+body:has(.page-bar){--bar-h:0px}
+.page-bar{position:sticky;top:0;z-index:90;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px clamp(16px,4vw,40px);background:rgba(var(--black-rgb),.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--edge)}
+.page-bar-brand{font-family:'Bebas Neue',Impact,sans-serif;font-size:var(--t-3xl);letter-spacing:.04em;color:var(--white);text-decoration:none;line-height:1;min-height:44px;display:inline-flex;align-items:center}
+.page-bar-actions{display:flex;align-items:center;gap:8px}
+.page-bar-alt,.page-bar-cta{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:var(--r-pill);font:700 var(--t-base)/1 Inter,InterFallback,system-ui,sans-serif;text-decoration:none;cursor:pointer;white-space:nowrap}
+.page-bar-alt{background:transparent;color:var(--text);border:1px solid var(--edge-2)}
+.page-bar-alt:hover{border-color:rgba(var(--gold2-rgb),.55);color:var(--gold2)}
+.page-bar-cta{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border:0;font-weight:800}
+.page-bar :focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+/* Na home o hero ocupa a tela toda: a faixa fica por cima dele, sem empurrar. */
+body:has(.hero) .page-bar{position:fixed;left:0;right:0}
+/* O WhatsApp flutuante e a aba da JuIA viraram botões da barra. */
+body:has(.page-bar) .floating,body:has(.page-bar [data-juia-open]) .juia-launcher{display:none!important}
+@media(max-width:760px){
+  body:has(.page-bar){--bar-h:calc(68px + env(safe-area-inset-bottom));padding-bottom:var(--bar-h)}
+  .page-bar,body:has(.hero) .page-bar{position:fixed;top:auto;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-bottom:0;border-top:1px solid var(--edge);background:rgba(var(--black-rgb),.94)}
+  .page-bar-brand{display:none}
+  .page-bar-actions{flex:1;display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:8px}
+  .page-bar-actions:not(:has([data-juia-open])){grid-template-columns:auto minmax(0,1fr)}
+  .page-bar-alt{padding:0 14px;font-size:var(--t-sm)}
+  .page-bar-cta{font-size:var(--t-lg);min-height:48px}
+  body:has(.page-bar) .back-top{bottom:calc(var(--bar-h) + 12px)}
+  body:has(.page-bar) .welcome-pop{padding-bottom:calc(var(--bar-h) + 12px)}
+  body:has(.page-bar) .bottom-back-btn{bottom:calc(var(--bar-h) + 10px)}
+  body:has(.page-bar) .open-cart-btn{bottom:calc(var(--bar-h) + 10px)}
+  body.juia-open .page-bar,body.cart-open .page-bar{display:none}
 }
 
-/* v29.204.0 — abaixo de 620px as DUAS barras fixas ficavam na tela ao mesmo
-   tempo: a .mobile-cta (3 botões, bottom:10px, entra em 850px) e esta barra
-   dourada (bottom:0, entra em 620px). Sobrepunham 43px uma na outra e
-   mostravam "Agendar" duas vezes, em dois estilos. Agora a barra dourada é o
-   CTA primário e a .mobile-cta perde o botão duplicado, virando só os dois
-   atalhos secundários (WhatsApp e Rota), empilhada acima sem encostar. */
-@media(max-width:620px){
-  .mobile-cta{grid-template-columns:repeat(2,1fr);bottom:calc(61px + env(safe-area-inset-bottom))}
-  .mobile-cta a:first-child{display:none}
-  body:has(.mobile-agendar){padding-bottom:calc(121px + env(safe-area-inset-bottom))}
-  .back-top{bottom:calc(121px + env(safe-area-inset-bottom))}
-  .welcome-pop{padding-bottom:calc(125px + env(safe-area-inset-bottom))}
+/* v29.205.1 — "Adicionar" do catálogo de /agendar/: o botão fica marcado enquanto o serviço está
+   no pedido (antes voltava a "Adicionar" em 0,8s e não sobrava sinal do clique). */
+.service-btn.is-added{background:rgba(var(--gold2-rgb),.1)!important;color:var(--gold2)!important;border:1px solid rgba(var(--gold2-rgb),.6)!important;box-shadow:none!important}
+.service-btn.just-added{animation:bdj-added .6s ease-out}
+@keyframes bdj-added{0%{transform:scale(1)}35%{transform:scale(.94)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.service-btn.just-added{animation:none}}
+
+/* v29.205.1 — Hero da home em notebook (1366×768): com a faixa fixa no topo, o logo encostava
+   nela e os botões do hero caíam abaixo da dobra. Espaço pra faixa e, em tela baixa, logo e
+   título dimensionados pela ALTURA da tela. */
+@media (min-width:761px){
+  body:has(.page-bar) .hero-content{padding-top:calc(65px + 24px)}
 }
+@media (min-width:761px) and (max-height:900px){
+  .hero .logo-frame{padding:10px 18px}
+  .hero .logo{width:auto;max-width:100%;max-height:22vh;margin-inline:auto}
+  .hero h1{font-size:clamp(2.4rem,8.5vh,4.6rem)}
+  .hero .subtitle{margin-block:10px}
+}
+/* Celular, home: enquanto os botões do hero estão na tela, a barra de baixo repetiria o mesmo
+   "Agendar horário" logo abaixo deles. Ela entra quando o hero sai (script.js marca o body). */
+@media (max-width:760px){
+  .page-bar{transition:transform .25s ease-out}
+  body.hero-cta-visivel .page-bar{transform:translateY(110%)}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){.page-bar{transition:none}}

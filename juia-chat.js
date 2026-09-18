@@ -18,3 +18,5 @@
   document.querySelector('.juia-form').onsubmit=e=>{e.preventDefault();send()};
   document.querySelectorAll('.juia-chip').forEach(b=>b.onclick=()=>send(b.textContent));
 })();
+// v29.205.1 — botões da barra de agendar (.page-bar) abrem a JuIA pelo mesmo caminho do launcher.
+document.addEventListener('click',e=>{if(e.target.closest('[data-juia-open]'))document.querySelector('.juia-launcher')?.click();});

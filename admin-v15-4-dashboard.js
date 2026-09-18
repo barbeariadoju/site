@@ -48,7 +48,7 @@
     // por 6+ min) x atendimentos concluídos no sistema. Divergência = atendimento não registrado
     // (ou sessão falsa) → pintar de alerta. Heartbeat > 15 min sem sinal = contador parado.
     if($('metric-cadeira')){sb.rpc('chair_day_summary').then(({data,error})=>{
-      if(error||!data){setText('metric-cadeira','–');setText('metric-cadeira-sub','sem dados');return}
+      if(error||!data){setText('metric-cadeira','–');setText('metric-cadeira-sub','sem dados');const c0=$('metric-cadeira-card');if(c0)c0.hidden=true;return}
       const cam=Number(data.chair_sessions||0),aberta=Number(data.chair_open||0),reg=Number(data.bookings_completed||0);
       const seen=data.camera_last_seen?new Date(data.camera_last_seen):null,minAgo=seen?Math.round((Date.now()-seen.getTime())/60000):null;
       setText('metric-cadeira',String(cam)+(aberta?' +1 na cadeira':''));
@@ -59,7 +59,7 @@
     // v29.48.0 (19/08): card "Alarme" — central(is) EKASA via Tuya Cloud (tuya-watch, 10 min). Mostra modo
     // (armado/casa/desarmado), online, e alertas abertos (offline, sensor sem prova de vida, bateria, disparo).
     if($('metric-alarme')){sb.rpc('alarm_summary').then(({data,error})=>{
-      if(error||!data||!Array.isArray(data.hubs)||!data.hubs.length){setText('metric-alarme','–');setText('metric-alarme-sub',error?'sem dados':'nenhuma central vinculada');return}
+      if(error||!data||!Array.isArray(data.hubs)||!data.hubs.length){setText('metric-alarme','–');setText('metric-alarme-sub',error?'sem dados':'nenhuma central vinculada');const a0=$('metric-alarme-card');if(a0)a0.hidden=true;return}
       const hubs=data.hubs,alerts=Array.isArray(data.open_alerts)?data.open_alerts:[];
       const modeLabel=m=>({armado:'Armado 🔒',casa:'Modo Casa 🏠',desarmado:'Desarmado 🔓'})[m]||(m||'?');
       const main=hubs.length===1?modeLabel(hubs[0].mode):hubs.map(h=>`${h.name}: ${modeLabel(h.mode)}`).join(' · ');

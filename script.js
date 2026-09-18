@@ -74,4 +74,7 @@ document.querySelectorAll('a, button, .link-card, .product-card, .product-photo,
 
 // clique_agendamento vive em funnel-events-v29.js, carregado em todas as
 // páginas públicas. Aqui só rodaria em 3 delas.
-
+// v29.205.1 — barra de agendar (.page-bar) some no celular enquanto os botões do hero estão
+// na tela: seriam dois "Agendar horário" um em cima do outro. Sem IntersectionObserver, a
+// barra simplesmente fica sempre visível.
+(()=>{const cta=document.querySelector('.hero-ctas');if(!cta||!document.querySelector('.page-bar')||!('IntersectionObserver' in window))return;new IntersectionObserver(es=>{es.forEach(e=>document.body.classList.toggle('hero-cta-visivel',e.isIntersecting))}).observe(cta)})();

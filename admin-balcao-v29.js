@@ -209,6 +209,9 @@
 
   async function saveWalkin() {
     const msg = $('balcao-message');
+    // v29.205.1 — o erro leva ao campo: rola até ele, foca e marca (antes o aviso aparecia em cinza
+    // ao lado do botão, a milhares de pixels do campo que faltava, e nada acontecia na tela).
+    const falhar = (el, texto) => { msg.textContent = texto; msg.classList.add('is-error'); msg.setAttribute('role', 'alert'); if (!el) return; el.setAttribute('aria-invalid', 'true'); (el.closest('label') || el.closest('.admin-surface') || el).scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => { try { el.focus({ preventScroll: true }); } catch (_) {} }, 350); const limpa = () => el.removeAttribute('aria-invalid'); el.addEventListener('input', limpa, { once: true }); el.addEventListener('change', limpa, { once: true }); };
     const name = $('balcao-name').value.trim();
     const phone = $('balcao-phone').value.trim();
     const phoneDigits = phone.replace(/\D/g, '');
@@ -218,17 +221,17 @@
     const time = $('balcao-time').value;
     const payment = $('balcao-payment').value;
 
-    if (!name) { msg.textContent = 'Informe o nome do cliente.'; return; }
-    if (phoneDigits.length < 10) { msg.textContent = 'Informe um telefone válido, com DDD.'; return; }
+    if (!name) { falhar($('balcao-name'), 'Informe o nome do cliente.'); return; }
+    if (phoneDigits.length < 10) { falhar($('balcao-phone'), 'Informe um telefone válido, com DDD.'); return; }
     // v29.80.0 (pedido do Juliano, 27/08): venda SÓ de produto agora é permitida — o
     // registro entra como "Venda de produtos" (serviço R$0/0min, canal balcão) e o
     // comprovante mostra apenas as linhas de produto.
-    if (!services.length && !products.length) { msg.textContent = 'Selecione ao menos um serviço ou produto.'; return; }
-    if (!date || !time) { msg.textContent = 'Informe a data e o horário aproximado.'; return; }
-    if (!payment) { msg.textContent = 'Selecione a forma de pagamento.'; return; }
+    if (!services.length && !products.length) { falhar(document.querySelector('input[name="balcao-service"]'), 'Selecione ao menos um serviço ou produto.'); return; }
+    if (!date || !time) { falhar(!date ? $('balcao-date') : $('balcao-time'), 'Informe a data e o horário aproximado.'); return; }
+    if (!payment) { falhar($('balcao-payment'), 'Selecione a forma de pagamento.'); return; }
 
     const saveBtn = $('balcao-save');
-    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; msg.textContent = 'Salvando...';
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; msg.classList.remove('is-error'); msg.removeAttribute('role'); msg.textContent = 'Salvando...';
     try {
       const { data, error } = await sb.rpc('admin_register_walkin_visit', {
         p_customer_name: name,
