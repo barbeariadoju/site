@@ -533,7 +533,7 @@ Deno.serve(async (request: Request) => {
       })
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null
-      await admin.from('whatsapp_messages').insert({ phone: to, direction: 'out', body, sent_by: 'bot', evolution_message_id: sentMessageId })
+      await admin.from('whatsapp_messages').insert({ phone: to, direction: 'out', body: semEmoji(body), sent_by: 'bot', evolution_message_id: sentMessageId })
       return sendResponse.ok
     }
 
@@ -670,6 +670,10 @@ Deno.serve(async (request: Request) => {
             if (ehSinal && sinalReserva === 0) await admin.from('bookings').update({ prepay_amount: valorPix }).eq('id', b.id).is('prepay_amount', null)
             const totalFmt = valorPix.toFixed(2).replace('.', ',')
             const restanteFmt = Math.max(0, total - valorPix).toFixed(2).replace('.', ',')
+            // v29.212.0 — caso Marcelo (09/09/2026, 17h33): mandou um segundo comprovante, de R$ 35 (o balm),
+            // e ouviu "vou conferir o Pix de R$ 25,00" — o valor ESPERADO do atendimento, não o que ele
+            // pagou. Pro cliente vale o valor lido no comprovante; a diferença vai pro Juliano no push.
+            const valorAoClienteFmt = valorLidoNum > 0 ? valorLidoNum.toFixed(2).replace('.', ',') : totalFmt
             const divergencia = valorLido && valorLido.replace(/\./g, '') !== totalFmt.replace(/\./g, '')
               ? `\n⚠️ O comprovante mostra R$ ${valorLido}, e o valor esperado é R$ ${totalFmt}${ehSinal ? ' (sinal)' : ''}.`
               : ''
@@ -680,10 +684,10 @@ Deno.serve(async (request: Request) => {
             // entendido nada do que aconteceu.
             const jaAtendido = String(b.status) === 'completed'
             await sendWhatsapp(phone, jaAtendido
-              ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
+              ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
               : ehSinal
-                ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} (sinal) e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado; o restante, R$ ${restanteFmt}, você acerta no dia.`
-                : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${totalFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
+                ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} (sinal) e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado; o restante, R$ ${restanteFmt}, você acerta no dia.`
+                : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
               body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${totalFmt}${ehSinal ? ` (sinal; restante R$ ${restanteFmt} no dia)` : ''} · ${quando}${jaAtendido ? ' (já atendido)' : ''}\n${b.service_name}${divergencia}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
@@ -2288,7 +2292,7 @@ Deno.serve(async (request: Request) => {
           await admin.from('whatsapp_messages').insert({
             phone,
             direction: 'out',
-            body: reply,
+            body: semEmoji(reply),
             sent_by: 'bot',
             evolution_message_id: sentMessageId,
           })

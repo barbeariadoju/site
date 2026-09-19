@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -27,7 +28,7 @@ const canonicalPhone = (value = '') => {
   return ''
 }
 
-const firstName = (value: string) => String(value || 'você').trim().split(/\s+/)[0] || 'você'
+const firstName = (value: string) => primeiroNome(value, 'você')
 const ddmm = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
 // v29.10.0 — avisa o cliente por WhatsApp assim que ele completa 10 pontos de fidelidade
@@ -94,7 +95,7 @@ Deno.serve(async (request: Request) => {
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null
 
-      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
       await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
       await admin.from('loyalty_rewards').update({ notified_at: new Date().toISOString() }).eq('id', c.reward_id)
       sent++

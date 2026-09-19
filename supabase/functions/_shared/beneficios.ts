@@ -1,3 +1,4 @@
+import { primeiroNome as primeiroNomeBase } from './primeiro-nome.ts'
 // v29.209.0 — Presente de aniversário e programa de indicação (Juliano, 19/09/2026).
 // Fonte única dos textos que o cliente recebe; teste em tests/unit/beneficios.spec.js.
 // Regras completas e públicas em /beneficios.html — é o que protege a casa: prazo, condição
@@ -12,12 +13,7 @@ export const linkIndicacao = (codigo: string) => `${AGENDAR_URL}?indicacao=${enc
 
 // Tratamento no cadastro ("Sr Magno", "Dr. Paulo") não é nome: pula e usa o seguinte
 // (caso real no primeiro teste, 19/09/2026: saía "Olá, Sr.").
-const TRATAMENTO = /^(sr|sra|srta|dr|dra|seu|dona|prof|profa)\.?$/i
-export const primeiroNome = (nome: unknown) => {
-  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean)
-  const n = partes.find((p) => !TRATAMENTO.test(p)) || ''
-  return n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : ''
-}
+export const primeiroNome = (nome: unknown) => primeiroNomeBase(nome, '')
 const ola = (nome: unknown) => { const n = primeiroNome(nome); return n ? `Olá, ${n}.` : 'Olá.' }
 
 // 'YYYY-MM-DD' → 'dd/mm'

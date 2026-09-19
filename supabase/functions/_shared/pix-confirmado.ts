@@ -1,3 +1,4 @@
+import { primeiroNome as primeiroNomeBase } from './primeiro-nome.ts'
 // v29.163.0 — Mensagem de "Pix confirmado" no TEMPO CERTO (caso Marcelo, 09/09/2026).
 //
 // O Marcelo tinha horário às 17h00, declarou o Pix às 17h33 (já na cadeira) e o Juliano só
@@ -37,10 +38,7 @@ export type DadosPixConfirmado = {
 export const money = (v: unknown) =>
   Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-const primeiroNome = (nome: unknown) => {
-  const bruto = String(nome || '').trim().split(/\s+/)[0] || 'Tudo certo'
-  return bruto.charAt(0).toLocaleUpperCase('pt-BR') + bruto.slice(1)
-}
+const primeiroNome = (nome: unknown) => primeiroNomeBase(nome, 'Tudo certo')
 
 /** 'YYYY-MM-DD HH:MM' do agendamento, comparável por string com agoraSP. */
 const inicioAgendamento = (d: Pick<DadosPixConfirmado, 'bookingDate' | 'startTime'>) =>

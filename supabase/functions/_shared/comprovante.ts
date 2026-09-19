@@ -1,3 +1,4 @@
+import { primeiroNome as primeiroNomeBase } from './primeiro-nome.ts'
 // v29.121.0 — Cupom não fiscal do atendimento (pedido do Juliano, 03/09/2026).
 //
 // Origem: o Wellington questionou os valores DEPOIS de sair da cadeira (02/09/2026). O
@@ -75,10 +76,7 @@ export type DadosComprovante = {
  * e quem assina o WhatsApp é o Juliano. Corrigido na EXIBIÇÃO, não no cadastro: o que o cliente
  * digitou continua guardado como veio.
  */
-export const primeiroNome = (nome: unknown, padrao = 'Cliente') => {
-  const bruto = String(nome || '').trim().split(/\s+/)[0] || padrao
-  return bruto.charAt(0).toLocaleUpperCase('pt-BR') + bruto.slice(1)
-}
+export const primeiroNome = (nome: unknown, padrao = 'Cliente') => primeiroNomeBase(nome, padrao)
 
 export const money = (v: unknown) =>
   Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })

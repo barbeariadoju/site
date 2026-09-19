@@ -109,7 +109,7 @@ Deno.serve(async (request: Request) => {
       if (sent) {
         const sendData = await response.json().catch(() => ({}))
         const sentMessageId = String(sendData?.key?.id || '') || null
-        await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+        await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
         await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
       } else {
         sendError = `Falha no envio (${response.status}).`

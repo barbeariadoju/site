@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 // v29.200.0 — Prazo do SINAL (regra do Juliano, 17/09/2026): "até 1h pra fazer o sinal; se não
 // fizer, libera o horário. Isto só pra serviços de química, que são mais caros, duradouros e
@@ -34,7 +35,7 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
-const firstName = (value: unknown) => String(value || '').trim().split(/\s+/)[0] || ''
+const firstName = (value: unknown) => primeiroNome(value, '')
 const money = (v: unknown) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 Deno.serve(async (request: Request) => {
@@ -65,7 +66,7 @@ Deno.serve(async (request: Request) => {
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null
-    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(textBody), sent_by: 'bot', evolution_message_id: sentMessageId })
     return sendResponse.ok
   }
 

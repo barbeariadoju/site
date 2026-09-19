@@ -53,6 +53,15 @@ técnico", e todo tema de saúde termina com encaminhamento ao dermatologista.
   **Rode sempre antes de publicar.**
 - ⚠️ **Nunca** rode `npm run test:e2e:live` — grava no Supabase de produção. Desde
   03/09/2026 isso é regra no `.claude/settings.json`, não só aviso escrito.
+- **Simulador da JuIA** (desde 29.212.0): `deno run --allow-env --allow-read --config
+  tests/juia-sim/deno.json tests/juia-sim/rodar.ts` roda o `ju-ia-site` inteiro com banco e
+  modelo dublês (nada sai do computador). Mexeu na JuIA → roda antes de publicar, e caso novo
+  vira cenário lá. Não está no `npm test` porque precisa do Deno.
+- **Análise de erros da JuIA** (skill `error-analysis`, linha de base de 19/09 no CHANGELOG
+  29.212.0): antes de contar um erro, confira se ele já não foi corrigido depois daquela
+  conversa — o `ju-ia-site` cita o caso no comentário da correção. E `whatsapp_messages.body`
+  só grava o texto sem emoji a partir de 19/09/2026; antes disso, emoji no banco não quer dizer
+  que o cliente recebeu emoji.
 
 Identificadores: GTM `GTM-T9KR76KB` · GA4 `G-4XZTP0550B` (propriedade `545112517`)
 · Supabase project `rpkqluaxhqsxnewunhfm`.

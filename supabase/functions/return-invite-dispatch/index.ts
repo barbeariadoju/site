@@ -90,7 +90,7 @@ Deno.serve(async(req:Request)=>{
     })
     if(!sendResponse.ok)throw new Error(`Evolution ${sendResponse.status}`)
     const sendData=await sendResponse.json().catch(()=>({}))
-    await admin.from('whatsapp_messages').insert({phone,direction:'out',body:waText,sent_by:'bot',evolution_message_id:String(sendData?.key?.id||'')||null})
+    await admin.from('whatsapp_messages').insert({phone,direction:'out',body:semEmoji(waText),sent_by:'bot',evolution_message_id:String(sendData?.key?.id||'')||null})
     await admin.from('whatsapp_conversations').upsert({phone,human_takeover:false,last_message_at:nowIso,updated_at:nowIso},{onConflict:'phone'})
   }
 

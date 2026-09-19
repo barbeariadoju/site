@@ -1,3 +1,4 @@
+import { primeiroNome as primeiroNomeBase } from './primeiro-nome.ts'
 // v29.206.0 — aviso de chegada com a rota do Google Maps, ~30 min antes do horário
 // (dica do cliente Rafael, repassada pelo Juliano em 18/09/2026). Fonte única do texto e da
 // janela de envio; teste em tests/unit/aviso-chegada.spec.js.
@@ -17,7 +18,7 @@ export const JANELA_MAX = 35
 // Quem marcou há menos disso acabou de receber a confirmação com o endereço: não repete.
 export const CRIADO_HA_MIN = 30
 
-export const primeiroNome = (nome: unknown) => String(nome || '').trim().split(/\s+/)[0] || ''
+export const primeiroNome = (nome: unknown) => primeiroNomeBase(nome, '')
 
 export const montarAvisoChegada = (p: { nome?: string | null; horario: string }) => {
   const nome = primeiroNome(p.nome)

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -27,7 +28,7 @@ const canonicalPhone = (value = '') => {
   return ''
 }
 
-const firstName = (value: string) => String(value || 'tudo bem').trim().split(/\s+/)[0] || 'tudo bem'
+const firstName = (value: string) => primeiroNome(value, 'tudo bem')
 
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
@@ -122,7 +123,7 @@ Deno.serve(async (request: Request) => {
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null
 
-      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
       await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
       await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'reactivation', channel: 'whatsapp', details: { last_visit: c.last_visit, days_since: c.days_since } })
       await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', c.customer_id)

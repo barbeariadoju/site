@@ -247,7 +247,7 @@ Deno.serve(async (request: Request) => {
         const data = await response.json().catch(() => ({}))
         if (response.ok) {
           const sentMessageId = String(data?.key?.id || '') || null
-          await admin.from('whatsapp_messages').insert({ phone: waPhone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+          await admin.from('whatsapp_messages').insert({ phone: waPhone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
           await admin.from('whatsapp_conversations').upsert({ phone: waPhone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
         }
         return { ok: response.ok, status: response.status, data }

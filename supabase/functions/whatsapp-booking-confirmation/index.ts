@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -20,7 +21,7 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
-const firstName = (value: any) => String(value || '').trim().split(/\s+/)[0] || ''
+const firstName = (value: any) => primeiroNome(value, '')
 
 // v28.32.0: confirmação de presença automática (pedido do Juliano, 31/07/2026 à noite).
 // Duas janelas: pede confirmação REQUEST_WINDOW_MINUTES antes do horário; se não confirmar
@@ -77,7 +78,7 @@ Deno.serve(async (request: Request) => {
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null
-    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(textBody), sent_by: 'bot', evolution_message_id: sentMessageId })
   }
 
   const notifyJuliano = async (title: string, body: string, tag: string) => {

@@ -1,3 +1,63 @@
+## 29.212.0 — JuIA: análise de erros das conversas reais, 16 correções, prompt reorganizado e simulador (19/09)
+
+**Pedido do Juliano:** "procure skills que nos ajude a melhorar a juia" → "roda ai" (análise de erros) → "pode aplicar todas as melhorias como você achar melhor só não deixe nada pendente para depois".
+
+**Skills instaladas (global, fora do repo):** pacote de avaliação de IA do Hamel Husain (`error-analysis`, `generate-synthetic-data`, `write-judge-prompt`, `validate-evaluator`, `eval-audit`, `build-review-interface`, `evaluate-rag`) e `prompt-engineering-patterns`. Nenhuma skill de Evolution API valia: a mais instalada foi apagada pelo autor, a outra é texto genérico sem manutenção.
+
+**A análise (método da `error-analysis`):** 132 conversas de WhatsApp de 05 a 19/09 (conversa = telefone × dia com mensagem do cliente e da JuIA), 121 avaliadas (o número do Juliano fica fora), lidas uma a uma por 3 agentes, só com SELECT. Primeira contagem: 53 com erro real (44%), em 9 categorias: horário/dia pedido ignorado, serviço trocado sem pedido, frase lida como outra coisa, automação fora de hora, trava/pergunta sem resposta, "me avisa/me chama depois" sem suporte, identidade, química sem sinal e fato falso sobre o Juliano.
+
+**Erro meu na medição, corrigido antes de mexer em código:**
+- (1) Dois agentes contaram emoji como erro em ~35 conversas. Não era: `whatsapp_messages.body` gravava o texto ANTES do `semEmoji()`, e o cliente recebia sem emoji.
+- (2) Ao ler o `ju-ia-site` inteiro, vi que a maior parte das 53 já tinha sido corrigida DURANTE a janela analisada (29.180 a 29.208, com o mesmo caso citado no comentário do código). O lote de 11 a 15/09 estava 100% corrigido.
+- Os 44% são a foto do período, não o estado de hoje. Os erros que continuavam abertos no código eram estes 16.
+
+**Correções (casos reais, nomes só nos comentários):**
+- **Dia trocado virava reserva** (Tiago, 18/09): "Segunda às 18h?" → "Reservado! terça 18:00". O dia que o cliente ESCREVEU agora vence o que o modelo devolveu. Dia fechado nunca vira reserva direta: a resposta diz que segunda não abre e oferece terça como pergunta.
+- **"Antes das 11h" lido como pedido das 11h** (18/09): virou teto de início, e o próximo dia oferecido respeita o mesmo teto. "Até as X" também.
+- **"Tem que ser depois das 18h" repetia 17:15** (17/09): sem nada depois do piso no dia, a JuIA oferece o próximo dia com horário depois do piso.
+- **Serviço do histórico reservado sem confirmar** (18/09): a pergunta "reservo X, como da última vez?" morria quando o cliente mudava de assunto, e o "sim" seguinte reservava a barba de R$ 50 (ele fez a de R$ 40). A marca de "assumido" só cai quando ele nomeia o serviço.
+- **"Avisar" seco dava "me embolei"** (18/09): com a oferta de lista de espera aberta, a palavra solta aceita.
+- **"Estou na rua de baixo" → "quer que eu cancele o outro?"** (18/09): aviso de chegada pro horário de hoje responde "te espero" e limpa a conversa velha do dia. A pergunta de conflito só sai quando a mensagem atual fala de agenda.
+- **"Falo direto com o Juliano?" → "sou assistente virtual"** (17/09): virou pedido de gente (handoff), inclusive "queria falar com ele" depois de a JuIA citar o Juliano.
+- **"Meu amigo!" lido como nome** (17/09): o vocativo que sobra da saudação tirada sai. A saudação aceita dois vocativos ("boa tarde meu amigo / Ju").
+- **"Obrigada"** (17/09): quem assina o WhatsApp é o Juliano. A fala sai no masculino, inclusive o texto fixo da fidelidade.
+- **"Vou registrar para avaliação do Juliano" sem registrar nada** (17/09): resposta que promete levar o recado agora manda push pro Juliano com a mensagem do cliente.
+- **"Você faz pintura?" entrava na reserva** (16/09, R$ 140 / 145 min): serviço citado só dentro de uma pergunta de existência, e não pedido em outro trecho, não entra. Sinônimos por serviço ("pintura" → Pigmentação Capilar) em `_shared/leitura-cliente.ts`.
+- **"Reservado! Sr, na quinta"** (16/09): nove cópias de "primeira palavra do nome" viraram uma só (`_shared/primeiro-nome.ts`). Ela pula tratamento (Sr, Dr, Dona…), normaliza nome em maiúscula e tem padrão por mensagem.
+- **"Tenho exame de sangue 8:30" + "conseguimos marcar mais tarde?" → "quer mesmo cancelar?" duas vezes** (10/09): quando é o MODELO que lê cancelamento (e não o cliente que pede), a JuIA pergunta "1 — Remarcar / 2 — Cancelar". "Mais tarde", "outro horário" e "passar pra sexta" de quem tem horário são remarcação.
+- **Corte do namorado no nome da namorada** (11/09): horário pra outra pessoa pede o nome de quem vai ser atendido. Aquela reserva não usa os pontos nem o prêmio de fidelidade do dono do telefone.
+- **"Me chama daqui 14 dias" fora do convite de retorno** (08/09): vira lembrete na mesma fila do convite (`return_invites` 'deferred', o `return-invite-dispatch` manda no dia). Sem atendimento anterior, o Juliano recebe o pedido por push.
+- **Segundo comprovante de R$ 35 respondido com "Pix de R$ 25"** (09/09): o cliente ouve o valor LIDO no comprovante. A diferença com o esperado continua no push.
+
+**Registro sem emoji:** as 16 funções que mandam WhatsApp passaram a gravar em `whatsapp_messages` o texto que saiu de fato (depois do `semEmoji`). Emoji no banco agora quer dizer emoji no celular do cliente.
+
+**Prompt reorganizado** (skill `prompt-engineering-patterns`): era um parágrafo único de ~31 mil caracteres com 25 remendos "caso real, fulano". Virou 14 seções com título e uma regra por linha, com as regras que nunca quebram no topo. Ficou com ~17 mil caracteres, cerca de metade do custo por mensagem. As histórias continuam nos comentários do código.
+- **Conferência:** as 77 regras antigas, uma a uma, estão nas seções novas.
+  - QUEM VOCÊ É: identidade, honestidade quando perguntam se é IA, pedido do Juliano = handoff.
+  - REGRAS QUE NUNCA QUEBRAM: emoji, invenção, horário antes do sistema, ação que só o sistema faz, "já tem agendamento", famílias, Barba Express, desconto, tolerância, data de sistema, linguagem interna.
+  - COMO ESCREVER: idioma, tamanho, cortesia, sem saudação, nome, repetição, avançar, "deixa eu conferir".
+  - SERVIÇOS: resumo das barbas, barboterapia genérica, mesma família, pezinho, combo falso, barba já reservada, visagismo, argumento de venda, oferta após informação, grupo, raspar/infantil, histórico, valor ≠ escolha.
+  - AGENDA: funcionamento, dia fechado, fora do horário, piso/teto, quais dias, quais horários, dois horários, duas datas, pedido reduzido, horário sem serviço, fechamento excepcional.
+  - CANCELAR/REMARCAR/TROCAR.
+  - CONVERSA: saudação isolada, "tudo bem?", saudação incomum, retomada, reação curta, despedida, chegada/atraso, lembrete, outra pessoa, handoff.
+  - ABERTURA: WhatsApp e site.
+  - PAGAMENTO: parcelamento, as duas chaves Pix, nunca confirmar pagamento.
+  - A CASA: endereço, Instagram, cortesias, garantia, reajuste, reação ao preço, fidelidade, repetir e recomendar.
+  - CONTATO COMERCIAL e prospecção.
+  - DADOS, CAMPANHA e FORMATO JSON.
+- **Achado na conferência:** a regra do reajuste de 01/10 só entrava no prompt quando havia campanha ativa. Agora vale sempre.
+
+**Simulador da JuIA** (`tests/juia-sim/`): roda o `ju-ia-site` inteiro no computador. O banco é trocado por um dublê e o modelo por respostas roteirizadas: nada vai pra produção, WhatsApp ou OpenAI. São 17 cenários: os 14 casos acima e 3 de regressão (reserva normal, saudação, cancelamento explícito). O simulador pegou dois defeitos de acabamento antes de publicar: "Reservado! na terça" (a frase ficava minúscula depois de tirar o nome, defeito antigo) e os pontos da dona do telefone aparecendo na reserva do namorado.
+- Rodar (precisa do Deno): `deno run --allow-env --allow-read --config tests/juia-sim/deno.json tests/juia-sim/rodar.ts`; com `SIM_VER=1` imprime cada resposta.
+
+**Decidido contra a recomendação óbvia:**
+- Não montei o "juiz automático" (LLM-as-judge) agora. A skill manda consertar primeiro o que tem conserto direto, e juiz só pro que sobrar e se repetir. Cada rodada dele custa API da OpenAI. Fica pra depois da remedição.
+- A suspeita "JuIA oferece 19h de terça" não é erro: é a regra da 29.167.0 (início até o fechamento, término até 60 min depois).
+
+**Medir:** repetir a mesma contagem (mesma definição de conversa, mesmas categorias) em ~03/10, só com conversas a partir de hoje, e comparar categoria por categoria.
+
+**Testes:** 221 unit (31 novos em `leitura-cliente.spec.js`) + 52 e2e + 33 verificações do simulador. `deno check` sem erro nas 18 functions publicadas; de quebra, corrigido um aviso de tipo antigo (`sAdd` possivelmente indefinido) no `ju-ia-site`.
+
 ## 29.211.0 — Reajuste de 01/10 pronto: o site estático vira sozinho à meia-noite (19/09)
 
 **Pedido do Juliano:** "pode deixar tudo pronto do reajuste, mas só pode aparecer pros clientes a partir do dia 01/10, e pros agendamentos, mesmo que realizados antes, com data do serviço a partir de 01/10 considerar já os novos preços".

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 // v28.34.0 — item 0(c) do funil de reativação avançado: disparo MANUAL (sob demanda,
 // nunca automático) de uma mensagem de reengajamento pra leads antigos de
@@ -33,7 +34,7 @@ const fetchWithTimeout = async (url: string | URL, init: RequestInit, timeoutMs 
   }
 }
 
-const firstName = (value: any) => String(value || '').trim().split(/\s+/)[0] || ''
+const firstName = (value: any) => primeiroNome(value, '')
 
 const MIN_AGE_MS = 2 * 24 * 60 * 60 * 1000 // "interesse antigo": pelo menos 2 dias de silêncio
 const RESEND_GUARD_MS = 24 * 60 * 60 * 1000 // não repete campanha no mesmo lead em menos de 24h
@@ -78,7 +79,7 @@ Deno.serve(async (request: Request) => {
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null
-    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(textBody), sent_by: 'bot', evolution_message_id: sentMessageId })
   }
 
   // v28.48.6: comparação de telefone via phone_match_key (RPC lead_booking_exists,

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -82,7 +83,6 @@ async function ultimaMensagem(admin: any, phone: string): Promise<Ultima | null>
   return { pendente: true, body: String(last.body || ''), minutos, nossa: false }
 }
 
-const primeiroNome = (s: unknown) => String(s || '').trim().split(/\s+/)[0] || ''
 
 Deno.serve(async (request: Request) => {
   const expected = Deno.env.get('WHATSAPP_WEBHOOK_SECRET')?.trim() || ''

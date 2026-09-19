@@ -19,6 +19,7 @@
 // (migration 110) garante que nunca sai em domingo, feriado ou sábado à tarde.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -29,7 +30,7 @@ const toWhatsNumber = (phone: string) => {
   if (d.length === 10 || d.length === 11) return `55${d}`
   return d
 }
-const firstName = (v: string) => String(v || '').trim().split(/\s+/)[0] || ''
+const firstName = (v: string) => primeiroNome(v, '')
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok')

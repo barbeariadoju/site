@@ -83,7 +83,7 @@ Deno.serve(async (request: Request) => {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(`Evolution ${response.status}`)
-      await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: String(data?.key?.id || '') || null })
+      await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: String(data?.key?.id || '') || null })
       results.push({ booking_id: b.id, ok: true, minutos })
     } catch (sendError) {
       // Libera a marca: a próxima rodada (5 min) ainda está dentro da janela e tenta de novo.

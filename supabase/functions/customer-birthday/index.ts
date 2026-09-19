@@ -90,7 +90,7 @@ Deno.serve(async (request: Request) => {
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null
 
-      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
+      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
       await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
       await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'birthday', channel: 'whatsapp', details: { presente_ate: String(validoAte) } })
       await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', c.customer_id)

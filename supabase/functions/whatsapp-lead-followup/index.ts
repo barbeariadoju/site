@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { primeiroNome } from '../_shared/primeiro-nome.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -26,7 +27,7 @@ const formatDateBR = (value: any) => {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
 }
-const firstName = (value: any) => String(value || '').trim().split(/\s+/)[0] || ''
+const firstName = (value: any) => primeiroNome(value, '')
 
 // v28.31.0: dois estágios de follow-up pra lead que sumiu sem agendar (pedido do
 // Juliano, 31/07/2026) — nudge 1 depois de 2h de silêncio, pesquisa de motivo no dia
@@ -83,7 +84,7 @@ Deno.serve(async (request: Request) => {
     })
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null
-    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: textBody, sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(textBody), sent_by: 'bot', evolution_message_id: sentMessageId })
   }
 
   // Um cliente que já foi cuidado (booking real criado depois da conversa abandonada, ou
