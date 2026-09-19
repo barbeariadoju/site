@@ -140,7 +140,7 @@ const VOZ_CLIENTE = `VOCABULÁRIO: escreva com as palavras que os clientes REAIS
 // qualidade em vez de estratégia. O modelo pode desobedecer uma instrução de estilo; não
 // pode desobedecer um filtro. Se a legenda cair em clichê de cartão ou virar lista de
 // objetos, ela é descartada e outra é pedida.
-const CLICHE_VAZIO = /que a semana comece leve|disposi[çc][ãa]o renovada|novos? recome[çc]os?|energias? renovadas?|recarregar as energias|momentos? especiais|o visual em dia|sua melhor vers[ãa]o|aproveite o dia em fam[íi]lia|dia de descanso e renova[çc][ãa]o|desejamos a todos/i
+const CLICHE_VAZIO = /que a semana comece leve|disposi[çc][ãa]o renovada|novos? recome[çc]os?|energias? renovadas?|recarregar as energias|momentos? especiais|o visual em dia|sua melhor vers[ãa]o|aproveite o dia em fam[íi]lia|dia de descanso e renova[çc][ãa]o|desejamos a todos|foco,? for[çc]a e f[ée]|bora vencer|segunda [ée] dia de vencer|semana nova,? visual novo/i
 // v29.74.0 — clichê INSTITUCIONAL de dia útil (26/08/2026): três dias seguidos de rascunho
 // reprovado no crivo com a mesma voz de agência ("Seu visual merece o cuidado e a precisão",
 // "experiência premium", "acabamento impecável"). São frases que serviriam pra qualquer
@@ -670,34 +670,36 @@ A CONVERSA DA CADEIRA NÃO É ASSUNTO PÚBLICO (ordem do Juliano em 10/09/2026, 
       // Emoção não mora no conceito, mora na CENA CONCRETA — o cheiro do almoço, a mesa cheia,
       // o barulho da casa. Agora cada ângulo entrega cenas específicas, exemplos de tom e uma
       // lista explícita de clichês proibidos.
+      // v29.214.0 — DOMINGO É DIA DE BOA SEMANA (Juliano, 19/09/2026: "de domingo sempre buscar
+      // mensagens de boa semana, de motivação, coisas positivas"). Dos 5 domingos anteriores, 4
+      // foram reprovados: os ângulos pediam memória, história da cadeira e gratidão pelo passado,
+      // e o modelo escorregava pra nostalgia ("recebi tantos clientes"), despedida e intimidade
+      // ("você fingiu que estava tudo bem"). Agora os quatro ângulos olham PRA FRENTE: todo
+      // domingo termina desejando uma boa semana, e a motivação vem de uma verdade do ofício ou
+      // de um desejo concreto, nunca de afirmar como está a vida de quem lê (NAO_INVASIVO segue).
       const anguloDomingo = [
-        // v29.100.0 — ângulo reescrito. O texto anterior mandava "reconheça o que ninguém viu"
-        // e dava um exemplo em segunda pessoa afirmando a vida do leitor; o modelo escalou pra
-        // "você fingiu que estava tudo bem" e o Juliano reprovou (30/08). Agora o mesmo tema —
-        // descanso merecido — é dito do lado de cá da cadeira, sem afirmar nada sobre quem lê.
-        'O DOMINGO VISTO DA BARBEARIA FECHADA. Fale do descanso a partir do que o JULIANO vê e vive, nunca do que o leitor estaria sentindo. Ele também trabalhou a semana e hoje parou: a porta fechada, a cadeira vazia, o silêncio da sala que passou a semana cheia. A partir daí, um desejo simples e aberto de bom domingo. É PROIBIDO afirmar o que o leitor viveu ou sentiu na semana. ATENÇÃO — ERRO REAL DE 06/09/2026, REPROVADO PELO JULIANO: o texto saiu com TOM DE DESPEDIDA, como se a barbearia tivesse fechado as portas de vez ("a cadeira onde recebi tantos clientes queridos descansa em silêncio", "sou grato por cada pessoa que passou por aqui e confiou em minhas mãos"). Domingo é FOLGA DE ROTINA, não encerramento. É PROIBIDO: verbo no passado que soe balanço final ou adeus ("recebi", "passou por aqui", "confiou em minhas mãos"), agradecimento de despedida, tom de luto, saudade ou nostalgia pesada, e qualquer frase que um leitor distraído possa entender como "a barbearia fechou". OBRIGATÓRIO: deixar claro, sem soar aviso burocrático, que é o descanso normal de todo domingo e que a casa reabre — uma marca de rotina ("todo domingo", "como todo domingo", "a semana que vem tem mais") mais o fechamento "até terça". Exemplo do nível esperado: "A porta fica fechada hoje. / A cadeira que não parou a semana inteira está quieta desde ontem. / Todo mundo precisa de um dia assim — eu também. / Bom domingo. Terça a gente se vê."',
-        'UMA HISTÓRIA DA CADEIRA. Conte uma micro-história verdadeira do tipo que acontece numa barbearia de bairro: o pai que trouxe o filho pro primeiro corte, o rapaz que se arrumou pra entrevista, o noivo na véspera, o senhor que vem toda semana mais pela conversa. Duas ou três frases, com um detalhe humano que faça o leitor ver a cena. Exemplo do nível esperado: "Semana passada um pai trouxe o filho pro primeiro corte. / O menino chorou. O pai segurou a mão dele. / No fim, os dois se olharam no espelho e riram. / É por causa desses cinco minutos que eu abro todo dia. Bom domingo."',
-        'GRATIDÃO DE QUEM COMEÇOU DO ZERO. Fale do que é ver a cadeira ocupada por gente que confia no seu trabalho, sem drama e sem se gabar. NUNCA cite data, mês, ano ou tempo de casa ("em março", "abrimos há 5 meses", "no começo do ano") — a emoção mora na memória da cadeira vazia, não no calendário, e datar o começo entrega ao cliente novo que a casa é recente. Use memória sem data: "lembro do silêncio dessa cadeira", "no começo", "quando tudo era só uma cadeira e uma ideia". Exemplo do nível esperado: "Eu ainda lembro do silêncio dessa cadeira. / Dias inteiros esperando alguém sentar. / Hoje eu perco a conta das histórias que passam por ela toda semana. / Não é sobre cabelo. É sobre confiança. Obrigado por isso."',
-        'FÉ, PAZ E O QUE SE OUVE NA CADEIRA. Domingo de igreja, de família reunida, de silêncio bom. Pode partir do que as pessoas contam enquanto cortam: quem vai casar, quem vai ser pai, quem conseguiu o emprego, quem está passando por dificuldade. Deseje paz com respeito — sem pregar, sem versículo, acolhendo quem crê e quem não crê. Exemplo do nível esperado: "Tem gente que senta aqui e conta que vai casar. Outro que vai ser pai. / Um que finalmente conseguiu o emprego. / Essa cadeira já ouviu mais oração do que muita gente imagina. / Que o seu domingo seja de paz."',
+        'UMA LIÇÃO DA CADEIRA PRA SEMANA INTEIRA. Pegue uma verdade simples do ofício (corte bom se faz uma passada de cada vez; o acabamento é onde se vê o capricho; a navalha pede mão firme e calma; ninguém vê o pezinho, mas todo mundo nota quando está bem feito) e vire ela em ânimo pra semana que começa. Exemplo do nível esperado: "Corte bom não sai de uma vez só: é uma passada de cada vez. / Semana boa também. / Que a sua comece firme e termine com orgulho do que você fez. / Bom domingo e boa semana. Terça a gente se vê."',
+        'DESEJOS CONCRETOS DE BOA SEMANA. Em vez de "boa semana" genérico, deseje duas ou três coisas pequenas e reais que qualquer pessoa gostaria de ter na semana (o trânsito colaborando, uma notícia boa no meio da semana, o almoço sem pressa com quem gosta, uma vitória pequena pra comemorar na sexta). Positivo, leve, sem presumir nada da vida de quem lê. Exemplo do nível esperado: "Que a sua semana tenha o trânsito colaborando, / uma notícia boa lá pela quarta / e uma vitória pequena pra comemorar na sexta. / Bom domingo. A gente se vê a partir de terça."',
+        'ÂNIMO DE QUEM ESTÁ PRONTO PRA SEMANA. O Juliano descansando hoje e animado pra recomeçar na terça: as ferramentas prontas, a vontade de fazer bem feito de novo. A energia dele contagia quem lê, e o texto fecha desejando uma semana boa pra todo mundo. Sem tom de despedida e sem balanço do passado. Exemplo do nível esperado: "Hoje a cadeira descansa. / Terça ela volta a trabalhar, e eu volto com vontade de fazer cada corte melhor que o último. / Que a sua semana venha com essa mesma vontade. / Bom domingo e boa semana."',
+        'FÉ, ESPERANÇA E FORÇA PRA SEMANA. Domingo de fé e de família: deseje paz, força e boas notícias pra semana que começa, com respeito, acolhendo quem crê e quem não crê, sem pregar e sem versículo. Exemplo do nível esperado: "Domingo é dia de agradecer e de pedir. / Eu peço uma semana boa pra cada pessoa que passa por essa cadeira: saúde, paz em casa e trabalho que dê orgulho. / Bom domingo e uma ótima semana pra vocês."',
       ][(semanaDoMes - 1) % 4]
 
-      contextFact = `Tema de hoje: DOMINGO, na voz do JULIANO — o dono da Barbearia do Ju, barbeiro e farmacêutico de formação, em Bragança Paulista, que atende sozinho, um cliente por vez. IMPORTANTE: nunca revele há quanto tempo a barbearia existe, nem cite mês/ano de abertura — isso não acrescenta emoção e sinaliza casa recente para quem ainda não é cliente. Ângulo desta semana — ${anguloDomingo}
+      contextFact = `Tema de hoje: DOMINGO, na voz do JULIANO — o dono da Barbearia do Ju, barbeiro e farmacêutico de formação, em Bragança Paulista. É o post MAIS IMPORTANTE da semana: mensagem POSITIVA, de ânimo e de BOA SEMANA. IMPORTANTE: nunca revele há quanto tempo a barbearia existe, nem cite mês/ano de abertura. Ângulo desta semana — ${anguloDomingo}
 
-A REGRA QUE MAIS IMPORTA: o texto tem que EMOCIONAR. O leitor precisa sentir alguma coisa — reconhecimento, gratidão, saudade, orgulho, acolhimento. Se ele lê e não sente nada, o texto falhou e você tem que reescrever antes de entregar.
+A REGRA QUE MAIS IMPORTA: quem lê tem que terminar o texto com vontade de começar bem a semana. Tom de esperança, alegria e ânimo — nunca de saudade, cansaço, peso ou despedida.
 
-COMO SE CONSEGUE ISSO (e como se perde):
-• Fale de GENTE, nunca de móveis. Café, sofá, televisão e almoço são cenário — cenário não emociona. Pessoa emociona: o pai, o filho, o cliente cansado, o noivo, o senhor de toda semana, VOCÊ que lê.
-• Escreva em PRIMEIRA PESSOA DO SINGULAR (eu, o Juliano). Nada de "nós da Barbearia do Ju" — voz de empresa não toca ninguém.
-• Traga uma VERDADE que a pessoa reconheça em si, ou uma MICRO-HISTÓRIA com um detalhe específico (o menino que chorou, a mão que segurou).
-• Use CONTRASTE: a semana inteira correndo / hoje não. A cadeira vazia em março / cheia hoje.
-• DÊ algo (reconhecimento, agradecimento sincero), nunca peça nada.
-• Frases curtas, uma por linha, com respiro. 3 a 5 linhas no total.
+COMO SE CONSEGUE ISSO:
+• TODO domingo termina desejando BOA SEMANA (pode ser "boa semana", "ótima semana", "que a sua semana seja…"), junto com o bom domingo e/ou "até terça".
+• A motivação vem de um DESEJO ("que a sua semana…") ou de uma VERDADE DO OFÍCIO que vale pra vida ("corte bom é uma passada de cada vez"). Nunca de afirmar como foi ou como está a vida de quem lê.
+• Escreva em PRIMEIRA PESSOA DO SINGULAR (eu, o Juliano). Nada de "nós da Barbearia do Ju".
+• Uma imagem CONCRETA vale mais que dez adjetivos. Frases curtas, uma por linha, 3 a 5 linhas.
 
 PROIBIDO — se aparecer, reescreva do zero:
-• Repetir "domingo" mais de duas vezes, ou terminar com "hoje ainda é domingo" / "bom domingo" quando o texto inteiro já é sobre isso (fica repetitivo e vazio).
-• Enumerar objetos ("café, jogo na TV e o sofá") — isso é encher linguiça, não é conteúdo.
-• Clichê de cartão: "que a semana comece leve", "disposição renovada", "novos recomeços", "energias renovadas", "recarregar as energias", "momentos especiais", "o visual em dia", "sua melhor versão", "aproveite o dia em família".
-• Qualquer frase que serviria igual para uma loja de colchões, uma pizzaria ou um banco. Se serve pra qualquer negócio, não serve pra este.
+• Tom de nostalgia, luto, despedida ou balanço final ("recebi tantos clientes", "passou por aqui", "confiou em minhas mãos", "lembro do silêncio dessa cadeira").
+• Afirmar o que o leitor sentiu ou viveu ("você está cansado", "a semana te consumiu", "você fingiu que estava tudo bem").
+• Frase de coach ou de cartão vazio: "foco, força e fé", "bora vencer", "você consegue", "energias renovadas", "recarregar as energias", "sua melhor versão", "novos recomeços", "gratidão" solto, "o visual em dia", "momentos especiais".
+• Enumerar objetos ("café, jogo na TV e o sofá") e repetir "domingo" mais de duas vezes.
+• Qualquer frase que serviria igual pra uma loja de colchões ou um banco: se serve pra qualquer negócio, não serve pra este.
 
 ${NO_HARD_SELL}`
       context = { tipo: 'domingo', angulo: semanaDoMes, dia: todaySP }
@@ -706,14 +708,18 @@ ${NO_HARD_SELL}`
       // pessoas decidem "essa semana eu me arrumo". O post não pode vender horário (não tem
       // atendimento hoje), mas planta a semente: terça a agenda abre.
       const semanaDoMes = Math.ceil(Number(todaySP.slice(-2)) / 7)
+      // v29.214.0 — segunda também é post-chave (Juliano, 19/09/2026). Das 4 segundas anteriores, 2
+      // foram reprovadas: vendiam ("agende pelo link", "a experiência da Barbearia do Ju") num dia
+      // de porta fechada e soavam como coach ("segunda pede presença"). Agora: ânimo de começo de
+      // semana ancorado no ofício, positivo, e o convite fica no máximo em "a partir de terça".
       const anguloSegunda = [
-        'SEMANA NOVA: começar a semana com o visual em dia muda a postura, a confiança e o jeito de entrar numa reunião. Fale disso sem clichê de coach.',
-        'PLANEJAMENTO: quem se organiza no começo da semana não corre no fim. Uma provocação leve para já deixar o cuidado marcado na semana.',
-        'AUTOESTIMA MASCULINA: cuidar da própria imagem não é vaidade, é respeito por si — tom direto, adulto, sem piegas.',
-        'BASTIDOR: segunda é o dia de afiar as ferramentas, organizar a casa e preparar a semana. Mostre o cuidado que existe antes do cliente sentar na cadeira.',
+        'O PRIMEIRO PASSO DA SEMANA. Toda segunda o Juliano afia a navalha e arruma a bancada antes de qualquer coisa: a semana boa começa pelo primeiro passo bem dado. Vire isso em ânimo pra quem lê, como desejo.',
+        'CONSTÂNCIA. Barba bonita e corte que dura não vêm de um dia: vêm do cuidado pequeno repetido toda semana. Fale da força das coisas pequenas feitas sempre, e deseje uma semana de passos firmes.',
+        'RESPEITO POR SI. Cuidar da própria imagem não é vaidade, é um jeito de se respeitar. Tom adulto, direto, positivo, sem piegas, fechando com um desejo de boa semana.',
+        'A CASA SE PREPARANDO. Segunda é dia de deixar tudo pronto: ferramentas limpas, bancada no lugar, agenda da semana organizada. Mostre essa preparação com energia de quem gosta do que faz, e deseje uma semana boa pra quem lê.',
       ][(semanaDoMes - 1) % 4]
 
-      contextFact = `Tema de hoje: SEGUNDA-FEIRA na voz da Barbearia do Ju. Ângulo desta semana — ${anguloSegunda} Escreva curto (2 a 4 linhas), com energia de começo de semana, sem clichê motivacional batido. Hoje a barbearia está FECHADA: é PROIBIDO falar de agenda de hoje, horário livre, encaixe ou vaga. Pode terminar com um convite leve para a semana ("a semana começa amanhã por aqui", "te esperamos a partir de terça").`
+      contextFact = `Tema de hoje: SEGUNDA-FEIRA na voz do JULIANO (primeira pessoa). É um dos posts mais importantes da semana: ÂNIMO DE COMEÇO DE SEMANA, positivo e motivador. Ângulo desta semana — ${anguloSegunda} Escreva curto (2 a 4 linhas), com energia boa e uma imagem concreta do ofício. A motivação vem de desejo ("que a sua semana…") ou de verdade do ofício, nunca de afirmar como está a vida de quem lê. PROIBIDO frase de coach ou de cartão: "segunda é dia de vencer", "bora", "foco, força e fé", "você consegue", "sua melhor versão", "energias renovadas", "semana nova, visual novo". Hoje a barbearia está FECHADA: é PROIBIDO vender (nada de "agende agora", "garanta seu horário", "a experiência da Barbearia do Ju"), falar de agenda de hoje, horário livre, encaixe ou vaga. No máximo um fecho leve: "a partir de terça a gente se vê", "terça a cadeira volta a trabalhar".`
       context = { tipo: 'segunda', angulo: semanaDoMes, dia: todaySP }
     } else if (dowSP === 2) {
       // v29.193.0 — TERÇA É O DIA DA MANHÃ DE MEIO DE SEMANA (pedido do Juliano, 16/09/2026).
@@ -812,16 +818,16 @@ ${NAO_INVASIVO}`
       // Fallback de domingo: sem venda, sem agenda — só o recado do dia. Também rotaciona,
       // pra que uma falha de IA em dois domingos seguidos não repita a mesma frase.
       domingo: [
-        '🙏 Bom domingo! Que hoje seja de descanso, mesa cheia e tempo com quem a gente ama. até terça 💈',
-        '🙏 Domingo é dia de agradecer. Obrigado por cada visita e cada confiança desta semana. Bom descanso a todos! 💈',
-        '☀️ Domingo, primeiro dia da semana — página em branco. Que a sua comece leve e com o pé direito. Até logo mais! 💈',
-        '🙏 Que seu domingo seja de paz, fé e família. A gente se vê na semana! 💈',
+        '💈 Corte bom não sai de uma vez só: é uma passada de cada vez. Semana boa também. Que a sua comece firme e termine com orgulho do que você fez. Bom domingo e boa semana. Até terça!',
+        '☀️ Que a sua semana tenha o trânsito colaborando, uma notícia boa lá pela quarta e uma vitória pequena pra comemorar na sexta. Bom domingo! Até terça 💈',
+        '💈 Hoje a cadeira descansa. Terça ela volta a trabalhar, e eu volto com vontade de fazer cada corte melhor que o último. Que a sua semana venha com essa mesma vontade. Bom domingo!',
+        '🙏 Domingo é dia de agradecer e de pedir. Peço uma semana boa pra cada pessoa que passa por essa cadeira: saúde, paz em casa e trabalho que dê orgulho. Bom domingo e ótima semana!',
       ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
       segunda: [
-        '💈 Semana nova começando. Que tal encarar ela com o visual em dia? A gente te espera a partir de terça.',
-        '📅 Segunda é dia de organizar a semana — deixe o seu horário garantido antes que ela encha. Abrimos terça!',
-        '✂️ Cuidar da própria imagem não é vaidade, é respeito por si mesmo. Semana nova, visual novo.',
-        '💈 Hoje é dia de afiar as ferramentas e deixar tudo pronto pra você. Te esperamos a partir de terça!',
+        '💈 Toda segunda eu começo afiando a navalha. Semana boa começa pelo primeiro passo bem dado. Que o seu seja firme. A partir de terça a gente se vê!',
+        '✂️ Barba bonita não vem de um dia: vem do cuidado pequeno repetido toda semana. Que a sua semana seja de passos pequenos e firmes. Terça a cadeira volta a trabalhar.',
+        '💈 Cuidar da própria imagem não é vaidade, é um jeito de se respeitar. Uma ótima semana pra você! A partir de terça a gente se vê.',
+        '✂️ Segunda por aqui é dia de deixar tudo pronto: ferramentas limpas, bancada no lugar. Que a sua semana comece com a casa em ordem também. Até terça!',
       ][((Math.ceil(Number(todaySP.slice(-2)) / 7)) - 1) % 4],
       // v29.193.0 — fallback da manhã de meio de semana: exclusividade, nunca vacância (passa
       // pelo SCARCITY_VIOLATION de propósito: nada de "livre", "vaga", "sem fila", "tranquila").

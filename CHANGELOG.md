@@ -1,3 +1,16 @@
+## 29.214.0 — Domingo é dia de boa semana; segunda com ânimo e sem vender (19/09)
+
+**Pedido do Juliano:** "os posts de domingo e segunda, estes são super importantes; de domingo sempre buscar mensagens de boa semana, de motivação, coisas positivas".
+
+**Os números:** dos 5 domingos anteriores, 4 foram reprovados; das 4 segundas, 2. Os ângulos de domingo pediam memória ("lembro do silêncio dessa cadeira"), história da cadeira e gratidão pelo passado, e o modelo escorregava para nostalgia, tom de despedida e intimidade. As segundas vendiam ("agende pelo link", "a experiência da Barbearia do Ju") num dia de porta fechada e soavam como coach.
+
+- **Domingo (`content-generate-daily`, ramo `dowSP === 0`):** quatro ângulos novos, todos olhando para a frente e **terminando em boa semana**: uma lição da cadeira para a semana ("corte bom é uma passada de cada vez; semana boa também"), desejos concretos de boa semana, o ânimo de quem está pronto para recomeçar na terça, e fé e esperança para a semana. Proibidos: nostalgia, despedida, balanço do passado, peso, afirmar a vida de quem lê (a regra `NAO_INVASIVO` de 30/08 continua), venda, frase de coach. Textos de reserva reescritos no mesmo tom.
+- **Segunda (`dowSP === 1`):** ânimo de começo de semana ancorado no ofício (o primeiro passo, a constância do cuidado pequeno, o respeito por si, a casa se preparando), em primeira pessoa, sem vender. No máximo "a partir de terça a gente se vê".
+- `CLICHE_VAZIO` ganhou as frases de coach ("foco, força e fé", "bora vencer", "segunda é dia de vencer", "semana nova, visual novo"), para a proibição não ficar só no pedido. Conferido que "que a sua semana seja…" passa e que nenhum texto de reserva bate na trava.
+- **Crivo das 8h05 passa a rodar todo dia** (antes era de terça a sábado, e justamente os dois posts mais importantes ficavam sem revisão). Depende do computador ligado: se estiver desligado no domingo, o crivo não roda e o post segue como o gerador fez.
+
+**Primeiro domingo novo:** 20/09. Deploy com `verify_jwt=false` como antes; smoke 401 sem segredo.
+
 ## 29.213.0 — Central de Conteúdo: calendário com educativo e humor, fim da muleta do café (19/09)
 
 **Pedido do Juliano:** "minha grande preocupação com postagens repetitivas sempre falando de café e outras coisas repetidas, gostaria de mais posts educativos e especialmente de humor".
