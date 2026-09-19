@@ -1,4 +1,4 @@
-const CACHE = 'barbearia-os-v29-206-1';
+const CACHE = 'barbearia-os-v29-210-1';
 // v29.205.0 — sem rede, uma navegação que não está no cache cai numa página própria de
 // "sem conexão" (com telefone e endereço), e não mais na home pública — que era o que o
 // app do painel mostrava pro Juliano quando a internet caía no meio do atendimento.

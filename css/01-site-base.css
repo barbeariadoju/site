@@ -154,7 +154,9 @@
 }
 .video-notes strong{display:block;color:var(--gold2);font-size:var(--t-md);margin-bottom:3px;}
 .video-notes span{display:block;color:var(--muted);font-size:var(--t-md);line-height:1.38;}
-.video-wrap video{height:100%;min-height:430px;object-fit:cover;}
+/* contain:size: o cartaz é retrato (760x1013) e, sem isso, a altura dele esticava a linha
+   e abria um vão preto entre o texto e os cartões. Quem manda na altura é o texto. */
+.video-wrap video{height:100%;min-height:430px;object-fit:cover;object-position:50% 10%;contain:size;}
 .product-card{
   grid-template-columns:190px 1fr !important;
   gap:22px !important;
@@ -175,7 +177,7 @@
   .video-wrap{grid-template-columns:1fr !important;}
   .video-copy{display:block !important;}
   .video-notes{margin-top:20px;}
-  .video-wrap video{height:auto;min-height:0;}
+  .video-wrap video{height:auto;min-height:0;aspect-ratio:4/3;contain:none;}
   .product-card{grid-template-columns:148px 1fr !important;gap:16px !important;}
   .product-card img{width:148px !important;height:148px !important;}
 }

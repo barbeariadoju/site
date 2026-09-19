@@ -1,3 +1,12 @@
+## 29.210.1 — Fim do vão preto na seção "Veja o espaço" (19/09)
+
+**Pedido do Juliano:** "esta parte preta do meu site me incomoda", com print da coluna de texto da seção do vídeo na home: título em cima, cartões embaixo e um buraco preto de ~330px no meio.
+
+- **Causa, não conteúdo faltando.** O cartaz do vídeo (`assets/fachada-poster.webp`) é uma foto em pé (760x1013), e o vídeo é deitado (1024x576). Antes de tocar, o `<video>` assume o tamanho do cartaz: na largura da coluna ele pedia 816px de altura, a linha da grade esticava junto e a coluna de texto (com `justify-content:space-between`) empurrava os cartões para o fundo. Medido em 1366px: a seção tinha 814px de altura; agora tem 488px, e texto e vídeo começam e terminam na mesma linha.
+- **Correção** (`css/01-site-base.css`): `contain:size` no vídeo do computador, para o cartaz não mandar mais na altura. Quem manda é o texto, e o vídeo acompanha (piso de 430px, como antes). Enquadramento do cartaz em `50% 10%`, para a placa "Barbearia do Ju" aparecer inteira. No celular, o vídeo ganhou proporção fixa 4:3: antes aparecia em pé (~525px) e encolhia para ~220px ao dar play.
+- **Decidido contra a recomendação óbvia:** não coloquei nada para preencher o vão (foto, quarto cartão, texto a mais). Encher um espaço que só existia por causa de um defeito deixaria a seção mais longa e com mais texto do que precisa, e o defeito continuaria lá.
+- Cache: `style.css?v=` e `01-site-base.css?v=` em 29.210.1 nas 81 páginas, e o cache do `sw.js` também.
+
 ## 29.210.0 — Retorno marcado na cadeira, produto para casa à vista no Concluir e checagem de admin nas 4 functions que faltavam (19/09)
 
 **Pedido do Juliano:** "melhora o que você achar melhor da forma que você achar melhor", depois da análise da manhã com as skills novas.
