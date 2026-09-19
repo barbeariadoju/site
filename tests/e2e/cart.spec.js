@@ -1,4 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { valor } from './_precos.js';
+
+// v29.211.0: preço pela data (reajuste de 01/10/2026), não escrito à mão.
+const CORTE = valor('Corte de cabelo');
+const NAVALHA = valor('Barba na navalha com toalha quente');
+const OZONIO = valor('Barboterapia com vaporizador de ozônio');
 
 test.describe('carrinho de serviços', () => {
   test('adicionar serviço atualiza total e leva pra /agendar/horario/ com o serviço certo', async ({ page }) => {
@@ -12,14 +18,14 @@ test.describe('carrinho de serviços', () => {
     // "Ver meu carrinho" precisa ser clicado antes de qualquer botão de dentro dele.
     await page.locator('#open-service-cart').click();
 
-    await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+    await expect(page.locator('#service-total')).toHaveText(CORTE);
     await expect(page.locator('#service-items')).toContainText('Corte de cabelo');
 
     await page.locator('#send-services').click();
     await page.waitForURL(/\/agendar\/horario\/?$/);
 
     await expect(page.getByText('Corte de cabelo').first()).toBeVisible();
-    await expect(page.getByText('R$ 40,00').first()).toBeVisible();
+    await expect(page.getByText(CORTE).first()).toBeVisible();
   });
 
   test('remover serviço zera o carrinho', async ({ page }) => {
@@ -29,7 +35,7 @@ test.describe('carrinho de serviços', () => {
     const card = page.locator('.service-card', { hasText: 'Corte de cabelo' }).first();
     await card.getByRole('button', { name: 'Adicionar' }).click();
     await page.locator('#open-service-cart').click();
-    await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+    await expect(page.locator('#service-total')).toHaveText(CORTE);
 
     await page.getByRole('button', { name: 'Limpar todos os serviços' }).click();
     await expect(page.locator('#service-total')).toHaveText('R$ 0,00');
@@ -42,7 +48,7 @@ test.describe('pré-seleção por ?servico=', () => {
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
     await expect(page.locator('#service-items')).toContainText('Barba na navalha com toalha quente');
-    await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+    await expect(page.locator('#service-total')).toHaveText(NAVALHA);
   });
 
   test('slug com acento e pontuação casa mesmo assim', async ({ page }) => {
@@ -51,7 +57,7 @@ test.describe('pré-seleção por ?servico=', () => {
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
     await expect(page.locator('#service-items')).toContainText('ozônio');
-    await expect(page.locator('#service-total')).toHaveText('R$ 50,00');
+    await expect(page.locator('#service-total')).toHaveText(OZONIO);
   });
 
   test('slug inexistente não quebra a página nem adiciona nada', async ({ page }) => {
@@ -68,8 +74,8 @@ test('recarregar com ?servico= não duplica o serviço no carrinho', async ({ pa
   // persiste em storage: sem guarda, a segunda carga somava de novo.
   await page.goto('/agendar/?servico=barba-na-navalha-com-toalha-quente');
   await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
-  await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+  await expect(page.locator('#service-total')).toHaveText(NAVALHA);
 
   await page.reload();
-  await expect(page.locator('#service-total')).toHaveText('R$ 40,00');
+  await expect(page.locator('#service-total')).toHaveText(NAVALHA);
 });

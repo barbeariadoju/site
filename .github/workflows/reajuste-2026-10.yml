@@ -1,0 +1,95 @@
+# v29.211.0 — Virada do site estático para a tabela de 1º de outubro de 2026.
+# Roda scripts/reajuste-2026-10/aplicar.mjs na madrugada de 01/10 (horário de Brasília = UTC-3),
+# publica no main e confere no ar. O banco, a JuIA e o catálogo JS já viram sozinhos; isto é só
+# o texto fixo das páginas. Várias tentativas porque o agendador do GitHub atrasa ou pula
+# execução em horário cheio; depois da primeira que der certo, as outras não fazem nada
+# (existe scripts/reajuste-2026-10/APLICADO). O script recusa rodar antes de 01/10 00:00.
+# Falhou? O GitHub manda e-mail para o dono do repositório; a execução manual fica em
+# Actions → "Reajuste 01/10/2026" → Run workflow.
+name: Reajuste 01/10/2026 (site estático)
+
+on:
+  schedule:
+    - cron: '2 3 1 10 *'   # 00:02
+    - cron: '20 3 1 10 *'  # 00:20
+    - cron: '45 3 1 10 *'  # 00:45
+    - cron: '30 4 1 10 *'  # 01:30
+    - cron: '0 6 1 10 *'   # 03:00
+    - cron: '0 9 1 10 *'   # 06:00
+    - cron: '0 10 1 10 *'  # 07:00
+  workflow_dispatch:
+  # Envio que mexe no plano ou nas páginas: só CONFERE (nada é trocado nem publicado). Prova a automação
+  # antes da virada e acusa trecho que deixou de existir no site.
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/reajuste-2026-10/**'
+      - '.github/workflows/reajuste-2026-10.yml'
+      - '*.html'
+      - 'agendar/**'
+      - 'precos/**'
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: reajuste-2026-10
+  cancel-in-progress: false
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Já foi aplicado?
+        id: ja
+        run: |
+          if [ -f scripts/reajuste-2026-10/APLICADO ]; then echo "sim=1" >> "$GITHUB_OUTPUT"; cat scripts/reajuste-2026-10/APLICADO; fi
+
+      - name: Conferir o plano (sem gravar)
+        if: steps.ja.outputs.sim != '1'
+        run: node scripts/reajuste-2026-10/aplicar.mjs --conferir
+
+      - name: Aplicar a tabela nova nas páginas
+        if: steps.ja.outputs.sim != '1' && github.event_name != 'push'
+        run: node scripts/reajuste-2026-10/aplicar.mjs --aplicar
+
+      - name: Publicar no main
+        if: steps.ja.outputs.sim != '1' && github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Tabela de preços de 01/10/2026 no site (virada automática, scripts/reajuste-2026-10)"
+          git push origin HEAD:main
+
+      - name: Pedir build do GitHub Pages
+        if: steps.ja.outputs.sim != '1' && github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -o /dev/null -w "pages build: %{http_code}\n" -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true
+
+      - name: Conferir no ar (até 15 min)
+        if: steps.ja.outputs.sim != '1' && github.event_name != 'push'
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS "https://www.barbeariadoju.com.br/servico-corte-masculino.html?v=$RANDOM$i" | grep -q '"price":"50.00"'; then
+              echo "No ar: Corte de cabelo a R\$ 50,00."; exit 0
+            fi
+            sleep 20
+          done
+          echo "O commit foi publicado, mas o site ainda mostra a tabela antiga depois de 15 min." >&2
+          exit 1

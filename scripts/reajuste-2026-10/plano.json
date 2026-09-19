@@ -1,0 +1,1590 @@
+[
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Corte + Lavagem\" data-price=\"50.00\"",
+  "para": "R$ 60</strong></div><button class=\"service-btn\" data-name=\"Corte + Lavagem\" data-price=\"60.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Corte de cabelo\" data-price=\"40.00\"",
+  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Corte de cabelo\" data-price=\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Corte de cabelo infantil\" data-price=\"40.00\"",
+  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Corte de cabelo infantil\" data-price=\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Raspar a cabeça\" data-price=\"40.00\"",
+  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Raspar a cabeça\" data-price=\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Barboterapia com vaporizador de ozônio\" data-price=\"50.00\"",
+  "para": "R$ 60</strong></div><button class=\"service-btn\" data-name=\"Barboterapia com vaporizador de ozônio\" data-price=\"60.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Barba na navalha com toalha quente\" data-price=\"40.00\"",
+  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Barba na navalha com toalha quente\" data-price=\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 25</strong></div><button class=\"service-btn\" data-name=\"Barba Express\" data-price=\"25.00\"",
+  "para": "R$ 35</strong></div><button class=\"service-btn\" data-name=\"Barba Express\" data-price=\"35.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 80</strong></div><button class=\"service-btn\" data-name=\"Corte + Barba na navalha com toalha quente\" data-price=\"80.00\"",
+  "para": "R$ 95</strong></div><button class=\"service-btn\" data-name=\"Corte + Barba na navalha com toalha quente\" data-price=\"95.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 65</strong></div><button class=\"service-btn\" data-name=\"Corte + Barba Express\" data-price=\"65.00\"",
+  "para": "R$ 80</strong></div><button class=\"service-btn\" data-name=\"Corte + Barba Express\" data-price=\"80.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 15</strong></div><button class=\"service-btn\" data-name=\"Pezinho (acabamento)\" data-price=\"15.00\"",
+  "para": "R$ 20</strong></div><button class=\"service-btn\" data-name=\"Pezinho (acabamento)\" data-price=\"20.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 15</strong></div><button class=\"service-btn\" data-name=\"Sobrancelha Masculina\" data-price=\"15.00\"",
+  "para": "R$ 20</strong></div><button class=\"service-btn\" data-name=\"Sobrancelha Masculina\" data-price=\"20.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 25</strong></div><button class=\"service-btn\" data-name=\"Depilação nasal (cera quente)\" data-price=\"25.00\"",
+  "para": "R$ 30</strong></div><button class=\"service-btn\" data-name=\"Depilação nasal (cera quente)\" data-price=\"30.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 25</strong></div><button class=\"service-btn\" data-name=\"Depilação orelhas\" data-price=\"25.00\"",
+  "para": "R$ 30</strong></div><button class=\"service-btn\" data-name=\"Depilação orelhas\" data-price=\"30.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Hidratação / Reconstrução Capilar\" data-price=\"40.00\"",
+  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Hidratação / Reconstrução Capilar\" data-price=\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 35</strong></div><button class=\"service-btn\" data-name=\"Pigmentação de Barba\" data-price=\"35.00\"",
+  "para": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Pigmentação de Barba\" data-price=\"40.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 20</strong></div><button class=\"service-btn\" data-name=\"Pigmentação de Sobrancelha\" data-price=\"20.00\"",
+  "para": "R$ 25</strong></div><button class=\"service-btn\" data-name=\"Pigmentação de Sobrancelha\" data-price=\"25.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "R$ 120</strong></div><button class=\"service-btn\" data-name=\"Aparação Corporal Masculina\" data-price=\"120.00\"",
+  "para": "R$ 150</strong></div><button class=\"service-btn\" data-name=\"Aparação Corporal Masculina\" data-price=\"150.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-fade-baixo-ou-alto.html",
+  "de": " Corte de cabelo é o mesmo (R$ 40,00",
+  "para": " Corte de cabelo é o mesmo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-pigmentacao-barba-como-funciona.html",
+  "de": "rbearia do Ju custa <strong>R$ 35,00",
+  "para": "rbearia do Ju custa <strong>R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-pigmentacao-barba-como-funciona.html",
+  "de": "alha com toalha quente</a> (R$ 40,00",
+  "para": "alha com toalha quente</a> (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-pigmentacao-barba-como-funciona.html",
+  "de": "alha com toalha quente</a> (R$ 80,00",
+  "para": "alha com toalha quente</a> (R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "Não necessariamente — o combo Corte + Barba Express custa R$ 65,00, o mesmo total dos dois serviços separados, mas já reserva o tempo correto na agenda.",
+  "para": "Não. O combo Corte + Barba Express custa R$ 80,00, R$ 5,00 a menos que os dois serviços separados (R$ 85,00), e já reserva o tempo correto na agenda.",
+  "n": 2
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "Por exemplo: Corte de cabelo (R$ 40,00) + Barba Express (R$ 25,00) separados somam R$ 65,00 — exatamente o preço do combo, mas o combo já reserva o tempo certo na agenda, sem risco de atraso.",
+  "para": "Por exemplo: Corte de cabelo (R$ 50,00) + Barba Express (R$ 35,00) separados somam R$ 85,00; o combo sai por R$ 80,00 e ainda reserva o tempo certo na agenda, sem risco de atraso.",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "t\":\"O Corte de cabelo custa R$ 40,00",
+  "para": "t\":\"O Corte de cabelo custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "ta, o Corte de cabelo custa R$ 40,00",
+  "para": "ta, o Corte de cabelo custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": ">\n<ul><li>Corte de cabelo — R$ 40,00",
+  "para": ">\n<ul><li>Corte de cabelo — R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": ")</li><li>Corte + Lavagem — R$ 50,00",
+  "para": ")</li><li>Corte + Lavagem — R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "in)</li><li>Barba Express — R$ 25,00",
+  "para": "in)</li><li>Barba Express — R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "<li>Corte + Barba Express — R$ 65,00",
+  "para": "<li>Corte + Barba Express — R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "navalha com toalha quente — R$ 40,00",
+  "para": "navalha com toalha quente — R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "navalha com toalha quente — R$ 80,00",
+  "para": "navalha com toalha quente — R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "<li>Sobrancelha Masculina — R$ 15,00",
+  "para": "<li>Sobrancelha Masculina — R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "ia é Corte + Barba Express (R$ 65,00",
+  "para": "ia é Corte + Barba Express (R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "><p>O Corte de cabelo custa R$ 40,00",
+  "para": "><p>O Corte de cabelo custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "alha quente, gel e navalha. R$ 40,00",
+  "para": "alha quente, gel e navalha. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "ônio</a> — a mais completa. R$ 50,00",
+  "para": "ônio</a> — a mais completa. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "nhamento rápido na máquina. R$ 25,00",
+  "para": "nhamento rápido na máquina. R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "duz o contraste das falhas. R$ 35,00",
+  "para": "duz o contraste das falhas. R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "lha com toalha quente</a> — R$ 80,00",
+  "para": "lha com toalha quente</a> — R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "u</title>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 40",
+  "para": "u</title>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": ", barba na navalha com toalha quente R$ 40",
+  "para": ", barba na navalha com toalha quente R$ 50",
+  "n": 4
+ },
+ {
+  "arquivo": "index.html",
+  "de": "erty=\"og:title\"/>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 40",
+  "para": "erty=\"og:title\"/>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "\"twitter:title\"/>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 40",
+  "para": "\"twitter:title\"/>\n<meta content=\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "iption\":\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 40",
+  "para": "iption\":\"Barbearia no Centro de Bragança Paulista, com hora marcada e atendimento individual. Corte R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "\":{\"@type\":\"Answer\",\"text\":\"R$ 40,00",
+  "para": "\":{\"@type\":\"Answer\",\"text\":\"R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "Sim. O corte infantil custa R$ 40,00",
+  "para": "Sim. O corte infantil custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "ss=\"subtitle\"><strong>Corte R$ 40",
+  "para": "ss=\"subtitle\"><strong>Corte R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": " Barba na navalha com toalha quente R$ 40",
+  "para": " Barba na navalha com toalha quente R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "a navalha com toalha quente R$ 80",
+  "para": "a navalha com toalha quente R$ 95",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "ada, ajuste em até 7 dias — R$ 40,00",
+  "para": "ada, ajuste em até 7 dias — R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "cluída no Corte de cabelo — R$ 40,00",
+  "para": "cluída no Corte de cabelo — R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "m paciência para crianças — R$ 40,00",
+  "para": "m paciência para crianças — R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "s específicos — a partir de R$ 40,00",
+  "para": "s específicos — a partir de R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "o da barba, só na máquina — R$ 25,00",
+  "para": "o da barba, só na máquina — R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "cabamento limpo e natural — R$ 15,00",
+  "para": "cabamento limpo e natural — R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "elo masculino?</summary>\n<p>R$ 40,00",
+  "para": "elo masculino?</summary>\n<p>R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "index.html",
+  "de": "l\">corte infantil</a> custa R$ 40,00",
+  "para": "l\">corte infantil</a> custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "\":{\"@type\":\"Answer\",\"text\":\"R$ 40,00",
+  "para": "\":{\"@type\":\"Answer\",\"text\":\"R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "er\",\"text\":\"Corte de cabelo R$ 40, Corte + Lavagem R$ 50, Corte + Barba Express R$ 65",
+  "para": "er\",\"text\":\"Corte de cabelo R$ 50, Corte + Lavagem R$ 60, Corte + Barba Express R$ 80",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": ", Corte + Barba na navalha com toalha quente R$ 80",
+  "para": ", Corte + Barba na navalha com toalha quente R$ 95",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": ", Barba na navalha com toalha quente R$ 40",
+  "para": ", Barba na navalha com toalha quente R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "a com vaporizador de ozônio R$ 50, Barba Express R$ 25, Pigmentação de Barba R$ 35, Sobrancelha Masculina R$ 15",
+  "para": "a com vaporizador de ozônio R$ 60, Barba Express R$ 35, Pigmentação de Barba R$ 40, Sobrancelha Masculina R$ 20",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": " Pigmentação de Sobrancelha R$ 20, Pezinho R$ 15",
+  "para": " Pigmentação de Sobrancelha R$ 25, Pezinho R$ 20",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "tyle R$ 15, Depilação nasal R$ 25, Depilação de orelhas R$ 25, Corte infantil R$ 40, Raspar a cabeça R$ 40",
+  "para": "tyle R$ 15, Depilação nasal R$ 30, Depilação de orelhas R$ 30, Corte infantil R$ 50, Raspar a cabeça R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "70, Hidratação/Reconstrução R$ 40",
+  "para": "70, Hidratação/Reconstrução R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "to R$ 50, Aparação Corporal R$ 120",
+  "para": "to R$ 50, Aparação Corporal R$ 150",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "Sim. O corte infantil custa R$ 40,00",
+  "para": "Sim. O corte infantil custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "r\",\"text\":\"A Barba Express (R$ 25",
+  "para": "r\",\"text\":\"A Barba Express (R$ 35",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": " navalha com toalha quente (R$ 40",
+  "para": " navalha com toalha quente (R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "adê está incluso no serviço de Corte de cabelo, por R$ 40,00",
+  "para": "adê está incluso no serviço de Corte de cabelo, por R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "arbearia do Ju?</summary><p>R$ 40,00",
+  "para": "arbearia do Ju?</summary><p>R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "/summary><p>Corte de cabelo R$ 40 · Corte + Lavagem R$ 50 · Corte + Barba Express R$ 65",
+  "para": "/summary><p>Corte de cabelo R$ 50 · Corte + Lavagem R$ 60 · Corte + Barba Express R$ 80",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": " · Corte + Barba na navalha com toalha quente R$ 80",
+  "para": " · Corte + Barba na navalha com toalha quente R$ 95",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "a navalha com toalha quente R$ 40 · Barboterapia com ozônio R$ 50 · Barba Express R$ 25 · Pigmentação de Barba R$ 35 · Sobrancelha Masculina R$ 15",
+  "para": "a navalha com toalha quente R$ 50 · Barboterapia com ozônio R$ 60 · Barba Express R$ 35 · Pigmentação de Barba R$ 40 · Sobrancelha Masculina R$ 20",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": " Pigmentação de Sobrancelha R$ 20 · Pezinho R$ 15",
+  "para": " Pigmentação de Sobrancelha R$ 25 · Pezinho R$ 20",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "yle R$ 15 · Depilação nasal R$ 25 · Depilação de orelhas R$ 25 · Corte infantil R$ 40 · Raspar a cabeça R$ 40",
+  "para": "yle R$ 15 · Depilação nasal R$ 30 · Depilação de orelhas R$ 30 · Corte infantil R$ 50 · Raspar a cabeça R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "0 · Hidratação/Reconstrução R$ 40",
+  "para": "0 · Hidratação/Reconstrução R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "o R$ 50 · Aparação Corporal R$ 120",
+  "para": "o R$ 50 · Aparação Corporal R$ 150",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "ss.html\">Barba Express</a> (R$ 25",
+  "para": "ss.html\">Barba Express</a> (R$ 35",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "alha com toalha quente</a> (R$ 40",
+  "para": "alha com toalha quente</a> (R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "/a> está incluso no serviço de Corte de cabelo, por R$ 40,00",
+  "para": "/a> está incluso no serviço de Corte de cabelo, por R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "l\">corte infantil</a> custa R$ 40,00",
+  "para": "l\">corte infantil</a> custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "tle>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 120,00",
+  "para": "tle>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "\"og:title\"/>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 120,00",
+  "para": "\"og:title\"/>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "ter:title\"/>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 120,00",
+  "para": "ter:title\"/>\n<meta content=\"Aparação corporal masculina na Barbearia do Ju. R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "n\":\"Aparação corporal masculina na Barbearia do Ju. R$ 120,00",
+  "para": "n\":\"Aparação corporal masculina na Barbearia do Ju. R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"120.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"150.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 120,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "na na Barbearia do Ju custa R$ 120,00",
+  "para": "na na Barbearia do Ju custa R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "/summary><p>O serviço custa R$ 120,00",
+  "para": "/summary><p>O serviço custa R$ 150,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "o combo Corte + Barba Express (R$ 65,00) custa o mesmo que os dois separados, mas é um horário só e leva cerca de 60 minutos",
+  "para": "o combo Corte + Barba Express (R$ 80,00) custa R$ 5,00 a menos que os dois separados, é um horário só e leva cerca de 60 minutos",
+  "n": 2
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "por R$ 65,00: o mesmo valor dos dois serviços separados, num horário só",
+  "para": "por R$ 80,00: R$ 5,00 a menos que os dois serviços separados, num horário só",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "</title>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 25,00",
+  "para": "</title>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "rty=\"og:title\"/>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 25,00",
+  "para": "rty=\"og:title\"/>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "twitter:title\"/>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 25,00",
+  "para": "twitter:title\"/>\n<meta content=\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "ption\":\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 25,00",
+  "para": "ption\":\"Barba Express na Barbearia do Ju: alinhamento rápido da barba, feito só na máquina. R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"25.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"35.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "ext\":\"A Barba Express custa R$ 25,00",
+  "para": "ext\":\"A Barba Express custa R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "1>\n<p>A Barba Express custa R$ 25,00",
+  "para": "1>\n<p>A Barba Express custa R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": " navalha com toalha quente (R$ 40,00",
+  "para": " navalha com toalha quente (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "ry><p>A Barba Express custa R$ 25,00",
+  "para": "ry><p>A Barba Express custa R$ 35,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "itle>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 40",
+  "para": "itle>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": ". Também com vaporizador de ozônio (Barboterapia), R$ 50",
+  "para": ". Também com vaporizador de ozônio (Barboterapia), R$ 60",
+  "n": 3
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "=\"og:title\"/>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 40",
+  "para": "=\"og:title\"/>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "tter:title\"/>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 40",
+  "para": "tter:title\"/>\n<meta content=\"Barba na navalha com toalha quente na Barbearia do Ju: esfoliação e óleos específicos, R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "liação e óleos específicos. R$ 40",
+  "para": "liação e óleos específicos. R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "\"A Barba na navalha com toalha quente custa R$ 40,00",
+  "para": "\"A Barba na navalha com toalha quente custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": " (40 minutos). A Barboterapia, nossa versão com vaporizador de ozônio, custa R$ 50,00",
+  "para": " (40 minutos). A Barboterapia, nossa versão com vaporizador de ozônio, custa R$ 60,00",
+  "n": 2
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "ível na Barbearia do Ju por R$ 40,00",
+  "para": "ível na Barbearia do Ju por R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": " vaporizador de ozônio, por R$ 50,00",
+  "para": " vaporizador de ozônio, por R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "<p>O vaporizador de ozônio (R$ 50,00",
+  "para": "<p>O vaporizador de ozônio (R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": ">A Barba na navalha com toalha quente custa R$ 40,00",
+  "para": ">A Barba na navalha com toalha quente custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "title>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 50,00",
+  "para": "title>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "y=\"og:title\"/>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 50,00",
+  "para": "y=\"og:title\"/>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "itter:title\"/>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 50,00",
+  "para": "itter:title\"/>\n<meta content=\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "ion\":\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 50,00",
+  "para": "ion\":\"Barboterapia com vaporizador de ozônio na Barbearia do Ju, para um cuidado mais completo da pele sob a barba. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"60.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 50,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "aporizador de ozônio) custa R$ 50,00",
+  "para": "aporizador de ozônio) custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": " navalha com toalha quente (R$ 40,00",
+  "para": " navalha com toalha quente (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "/summary><p>O serviço custa R$ 50,00",
+  "para": "/summary><p>O serviço custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "t\":\"O degradê está incluso no serviço de Corte de cabelo, que custa R$ 40,00",
+  "para": "t\":\"O degradê está incluso no serviço de Corte de cabelo, que custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "serviço de Corte de cabelo (R$ 40,00",
+  "para": "serviço de Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "rba (Corte + Barba Express, R$ 65,00",
+  "para": "rba (Corte + Barba Express, R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "><p>O degradê está incluso no serviço de Corte de cabelo, que custa R$ 40,00",
+  "para": "><p>O degradê está incluso no serviço de Corte de cabelo, que custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "title>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 40,00",
+  "para": "title>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "y=\"og:title\"/>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 40,00",
+  "para": "y=\"og:title\"/>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "itter:title\"/>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 40,00",
+  "para": "itter:title\"/>\n<meta content=\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "ion\":\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 40,00",
+  "para": "ion\":\"Corte de cabelo infantil na Barbearia do Ju, com paciência e cuidado. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "\":\"O corte de cabelo infantil custa R$ 40,00",
+  "para": "\":\"O corte de cabelo infantil custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "il na Barbearia do Ju custa R$ 40,00",
+  "para": "il na Barbearia do Ju custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "<p>O corte de cabelo infantil custa R$ 40,00",
+  "para": "<p>O corte de cabelo infantil custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "O preço é o mesmo: R$ 65,00 no combo, igual a R$ 40,00 (corte) + R$ 25,00 (barba express). A vantagem é de tempo: um horário só, com cerca de 60 minutos em vez de 75.",
+  "para": "Sim: R$ 80,00 no combo, contra R$ 85,00 separados (R$ 50,00 do corte + R$ 35,00 da barba express). E é um horário só, com cerca de 60 minutos em vez de 75.",
+  "n": 2
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "custa R$ 65,00 e leva aproximadamente 60 minutos — o mesmo valor do Corte de cabelo (R$ 40,00) e da Barba Express (R$ 25,00) separados, num horário só",
+  "para": "custa R$ 80,00 e leva aproximadamente 60 minutos — R$ 5,00 a menos que o Corte de cabelo (R$ 50,00) e a Barba Express (R$ 35,00) separados, num horário só",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "e>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 65,00",
+  "para": "e>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "g:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 65,00",
+  "para": "g:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "r:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 65,00",
+  "para": "r:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": ":\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 65,00",
+  "para": ":\"Combo Corte de cabelo + Barba Express na Barbearia do Ju. R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"65.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"80.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "swer\",\"text\":\"O combo custa R$ 65,00",
+  "para": "swer\",\"text\":\"O combo custa R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": " navalha com toalha quente (R$ 80,00",
+  "para": " navalha com toalha quente (R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "?</summary><p>O combo custa R$ 65,00",
+  "para": "?</summary><p>O combo custa R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "O preço é o mesmo: R$ 80,00 no combo, igual a R$ 40,00 (corte) + R$ 40,00 (barba na navalha com toalha quente). A vantagem é de tempo: um horário só, com cerca de 70 minutos em vez de 85.",
+  "para": "Sim: R$ 95,00 no combo, contra R$ 100,00 separados (R$ 50,00 do corte + R$ 50,00 da barba na navalha com toalha quente). E é um horário só, com cerca de 70 minutos em vez de 85.",
+  "n": 2
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "itle>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 80,00",
+  "para": "itle>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "=\"og:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 80,00",
+  "para": "=\"og:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "tter:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 80,00",
+  "para": "tter:title\"/>\n<meta content=\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "on\":\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 80,00",
+  "para": "on\":\"Combo Corte de cabelo + Barba na navalha com toalha quente na Barbearia do Ju. R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"80.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"95.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "swer\",\"text\":\"O combo custa R$ 80,00",
+  "para": "swer\",\"text\":\"O combo custa R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "te na Barbearia do Ju custa R$ 80,00",
+  "para": "te na Barbearia do Ju custa R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "e 1h10 — o Corte de cabelo (R$ 40,00",
+  "para": "e 1h10 — o Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": " navalha com toalha quente (R$ 40,00",
+  "para": " navalha com toalha quente (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "?</summary><p>O combo custa R$ 80,00",
+  "para": "?</summary><p>O combo custa R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "le>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 50,00",
+  "para": "le>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "og:title\"/>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 50,00",
+  "para": "og:title\"/>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "er:title\"/>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 50,00",
+  "para": "er:title\"/>\n<meta content=\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "\":\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 50,00",
+  "para": "\":\"Combo Corte de cabelo + Lavagem profissional na Barbearia do Ju. R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"60.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "swer\",\"text\":\"O combo custa R$ 50,00",
+  "para": "swer\",\"text\":\"O combo custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "\"text\":\"Não, é uma opção — se preferir, pode escolher só o Corte de cabelo (R$ 40,00",
+  "para": "\"text\":\"Não, é uma opção — se preferir, pode escolher só o Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "em na Barbearia do Ju custa R$ 50,00",
+  "para": "em na Barbearia do Ju custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "inutos — o Corte de cabelo (R$ 40,00",
+  "para": "inutos — o Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "?</summary><p>O combo custa R$ 50,00",
+  "para": "?</summary><p>O combo custa R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "mary><p>Não, é uma opção — se preferir, pode escolher só o Corte de cabelo (R$ 40,00",
+  "para": "mary><p>Não, é uma opção — se preferir, pode escolher só o Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "itle>Corte Masculino em Bragança Paulista — R$ 40",
+  "para": "itle>Corte Masculino em Bragança Paulista — R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "/title>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 40,00",
+  "para": "/title>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "me\"/>\n<meta content=\"Corte Masculino em Bragança Paulista — R$ 40",
+  "para": "me\"/>\n<meta content=\"Corte Masculino em Bragança Paulista — R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "ty=\"og:title\"/>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 40,00",
+  "para": "ty=\"og:title\"/>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "rd\"/>\n<meta content=\"Corte Masculino em Bragança Paulista — R$ 40",
+  "para": "rd\"/>\n<meta content=\"Corte Masculino em Bragança Paulista — R$ 50",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "witter:title\"/>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 40,00",
+  "para": "witter:title\"/>\n<meta content=\"Corte de cabelo masculino no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "a do Ju, no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 40,00",
+  "para": "a do Ju, no Centro de Bragança Paulista, com hora marcada e atendimento individual. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "e de cabelo masculino custa R$ 40,00",
+  "para": "e de cabelo masculino custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "s tempo. Entre um corte e outro, o pezinho (R$ 15,00",
+  "para": "s tempo. Entre um corte e outro, o pezinho (R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "rbearia do Ju custa <strong>R$ 40,00",
+  "para": "rbearia do Ju custa <strong>R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "no corte</h2>\n<p>O valor de R$ 40,00",
+  "para": "no corte</h2>\n<p>O valor de R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "l\">Corte + Lavagem</a>, por R$ 50,00",
+  "para": "l\">Corte + Lavagem</a>, por R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "dos abaixo custam os mesmos R$ 40,00",
+  "para": "dos abaixo custam os mesmos R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "html\">Corte + Lavagem</a> — R$ 50,00",
+  "para": "html\">Corte + Lavagem</a> — R$ 60,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "-pezinho.html\">pezinho</a> (R$ 15,00",
+  "para": "-pezinho.html\">pezinho</a> (R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": ">Corte + Barba Express</a> (R$ 65,00",
+  "para": ">Corte + Barba Express</a> (R$ 80,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "alha com toalha quente</a> (R$ 80,00",
+  "para": "alha com toalha quente</a> (R$ 95,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "rbearia do Ju o corte custa R$ 40,00",
+  "para": "rbearia do Ju o corte custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": " estilo. Entre um corte e outro, o pezinho (R$ 15,00",
+  "para": " estilo. Entre um corte e outro, o pezinho (R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "title>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 40,00",
+  "para": "title>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "y=\"og:title\"/>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 40,00",
+  "para": "y=\"og:title\"/>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "itter:title\"/>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 40,00",
+  "para": "itter:title\"/>\n<meta content=\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "ion\":\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 40,00",
+  "para": "ion\":\"Corte social masculino na Barbearia do Ju: acabamento clássico para o dia a dia e o trabalho. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "text\":\"O corte social está incluso no serviço de Corte de cabelo, que custa R$ 40,00",
+  "para": "text\":\"O corte social está incluso no serviço de Corte de cabelo, que custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "serviço de Corte de cabelo (R$ 40,00",
+  "para": "serviço de Corte de cabelo (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "ary><p>O corte social está incluso no serviço de Corte de cabelo, que custa R$ 40,00",
+  "para": "ary><p>O corte social está incluso no serviço de Corte de cabelo, que custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "</title>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "</title>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "rty=\"og:title\"/>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "rty=\"og:title\"/>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "twitter:title\"/>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "twitter:title\"/>\n<meta content=\"Depilação nasal com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "ption\":\"Depilação nasal com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "ption\":\"Depilação nasal com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"25.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"30.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 25,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "te na Barbearia do Ju custa R$ 25,00",
+  "para": "te na Barbearia do Ju custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "/summary><p>O serviço custa R$ 25,00",
+  "para": "/summary><p>O serviço custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "le>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "le>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "og:title\"/>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "og:title\"/>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "er:title\"/>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "er:title\"/>\n<meta content=\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "\":\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 25,00",
+  "para": "\":\"Depilação de orelhas com cera quente na Barbearia do Ju. R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"25.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"30.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 25,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "as na Barbearia do Ju custa R$ 25,00",
+  "para": "as na Barbearia do Ju custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "/summary><p>O serviço custa R$ 25,00",
+  "para": "/summary><p>O serviço custa R$ 30,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "u</title>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 40,00",
+  "para": "u</title>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "erty=\"og:title\"/>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 40,00",
+  "para": "erty=\"og:title\"/>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "\"twitter:title\"/>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 40,00",
+  "para": "\"twitter:title\"/>\n<meta content=\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "iption\":\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 40,00",
+  "para": "iption\":\"Hidratação e reconstrução capilar na Barbearia do Ju para cabelo ressecado ou pós-química. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 40,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "ar na Barbearia do Ju custa R$ 40,00",
+  "para": "ar na Barbearia do Ju custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "/summary><p>O serviço custa R$ 40,00",
+  "para": "/summary><p>O serviço custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-luzes-masculinas.html",
+  "de": "ção / Reconstrução Capilar (R$ 40,00",
+  "para": "ção / Reconstrução Capilar (R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "title>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 15,00",
+  "para": "title>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "y=\"og:title\"/>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 15,00",
+  "para": "y=\"og:title\"/>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "itter:title\"/>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 15,00",
+  "para": "itter:title\"/>\n<meta content=\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "ion\":\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 15,00",
+  "para": "ion\":\"Pezinho de acabamento na Barbearia do Ju para manter o corte em dia entre uma visita e outra. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"15.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"20.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "er\",\"text\":\"O pezinho custa R$ 15,00",
+  "para": "er\",\"text\":\"O pezinho custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "o) na Barbearia do Ju custa R$ 15,00",
+  "para": "o) na Barbearia do Ju custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "/summary><p>O pezinho custa R$ 15,00",
+  "para": "/summary><p>O pezinho custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "itle>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 35,00",
+  "para": "itle>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "=\"og:title\"/>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 35,00",
+  "para": "=\"og:title\"/>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "tter:title\"/>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 35,00",
+  "para": "tter:title\"/>\n<meta content=\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "on\":\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 35,00",
+  "para": "on\":\"Pigmentação de barba na Barbearia do Ju para preencher falhas. R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"35.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 35,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "ba na Barbearia do Ju custa R$ 35,00",
+  "para": "ba na Barbearia do Ju custa R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "/summary><p>O serviço custa R$ 35,00",
+  "para": "/summary><p>O serviço custa R$ 40,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "itle>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 20,00",
+  "para": "itle>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "=\"og:title\"/>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 20,00",
+  "para": "=\"og:title\"/>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "tter:title\"/>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 20,00",
+  "para": "tter:title\"/>\n<meta content=\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "on\":\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 20,00",
+  "para": "on\":\"Pigmentação de sobrancelha masculina na Barbearia do Ju para preencher falhas. R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"20.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"25.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 20,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "na na Barbearia do Ju custa R$ 20,00",
+  "para": "na na Barbearia do Ju custa R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "ign (Sobrancelha Masculina, R$ 15,00",
+  "para": "ign (Sobrancelha Masculina, R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "/summary><p>O serviço custa R$ 20,00",
+  "para": "/summary><p>O serviço custa R$ 25,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "e>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
+  "para": "e>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "g:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
+  "para": "g:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "r:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
+  "para": "r:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": ":\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
+  "para": ":\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 40,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "ça na Barbearia do Ju custa R$ 40,00",
+  "para": "ça na Barbearia do Ju custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "/summary><p>O serviço custa R$ 40,00",
+  "para": "/summary><p>O serviço custa R$ 50,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "title>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 15,00",
+  "para": "title>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "y=\"og:title\"/>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 15,00",
+  "para": "y=\"og:title\"/>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "itter:title\"/>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 15,00",
+  "para": "itter:title\"/>\n<meta content=\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "ion\":\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 15,00",
+  "para": "ion\":\"Sobrancelha masculina na Barbearia do Ju: acabamento limpo e natural. R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"15.00\"",
+  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"20.00\"",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "er\",\"text\":\"O serviço custa R$ 15,00",
+  "para": "er\",\"text\":\"O serviço custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "na na Barbearia do Ju custa R$ 15,00",
+  "para": "na na Barbearia do Ju custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "/summary><p>O serviço custa R$ 15,00",
+  "para": "/summary><p>O serviço custa R$ 20,00",
+  "n": 1
+ },
+ {
+  "arquivo": "precos/index.html",
+  "de": "content=\"Tabela de preços da Barbearia do Ju, em Bragança Paulista, válida a partir de 1º de outubro de 2026. Cortes, barba, acabamentos e tratamentos.\"",
+  "para": "content=\"Tabela de preços da Barbearia do Ju, em Bragança Paulista. Cortes, barba, acabamentos e tratamentos.\"",
+  "n": 1
+ },
+ {
+  "arquivo": "precos/index.html",
+  "de": "content=\"Valores a partir de 1º de outubro de 2026. Hora marcada, um cliente por vez, no Centro de Bragança Paulista.\"",
+  "para": "content=\"Hora marcada, um cliente por vez, no Centro de Bragança Paulista.\"",
+  "n": 1
+ },
+ {
+  "arquivo": "precos/index.html",
+  "de": "  <div class=\"aviso\">\n    <p><strong>Estes valores passam a valer em 1º de outubro de 2026.</strong></p>\n    <p>Vale o preço da data do atendimento: até 30 de setembro, os preços atuais; a partir de 1º de outubro, esta tabela, mesmo que o horário tenha sido marcado antes.</p>\n    <a class=\"link\" href=\"/precos/setembro/\">Ver os preços que valem até 30/09 →</a>\n  </div>\n\n",
+  "para": "",
+  "n": 1
+ },
+ {
+  "arquivo": "precos/setembro/index.html",
+  "conteudo": "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"utf-8\">\n<title>Tabela de preços | Barbearia do Ju</title>\n<meta name=\"robots\" content=\"noindex,follow\">\n<link rel=\"canonical\" href=\"https://www.barbeariadoju.com.br/precos/\">\n<meta http-equiv=\"refresh\" content=\"0; url=/precos/\">\n</head>\n<body>\n<p><a href=\"/precos/\">Ver a tabela de preços</a></p>\n</body>\n</html>\n"
+ }
+]

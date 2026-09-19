@@ -1,3 +1,23 @@
+## 29.211.0 — Reajuste de 01/10 pronto: o site estático vira sozinho à meia-noite (19/09)
+
+**Pedido do Juliano:** "pode deixar tudo pronto do reajuste, mas só pode aparecer pros clientes a partir do dia 01/10, e pros agendamentos, mesmo que realizados antes, com data do serviço a partir de 01/10 considerar já os novos preços".
+
+**O que já estava pronto e foi conferido hoje (não mexi):** o banco (18 linhas em `service_price_changes`, cron `bdj-aplicar-reajuste-agendado` às 00:05 de 01/10; o gatilho `trg_bookings_preco_vigente` grava a tabela da DATA do atendimento em quem marca antes, inclusive combinações como "Corte + Sobrancelha", e `reprice_future_bookings` reprecifica na virada quem marcou antes); a JuIA e a oferta de retorno (preço da data, v29.154.0/v29.155.0); o `/agendar/` (mostra o preço da data escolhida, v29.154.0); o `services-catalog-v7.js` (vira sozinho por `priceFrom`, v29.127.0). Sobrava o texto fixo das páginas.
+
+- **Virada automática do texto das páginas** (`scripts/reajuste-2026-10/`): `plano.json` com 265 trechos exatos (274 ocorrências em 29 arquivos: descrições, JSON-LD `Offer`, FAQ, blog de preços, cartões e `data-price` do `/agendar/`), aplicados por `aplicar.mjs` **tudo ou nada**, com JSON-LD validado depois. Roda pela automação do GitHub (`.github/workflows/reajuste-2026-10.yml`) às 00:02 de 01/10, com tentativas até as 7h (o agendador do GitHub atrasa), publica no main, pede o build do Pages e confere no ar. O script **recusa** rodar antes de 01/10 00:00 de Brasília.
+  - A lista foi gerada por classificação serviço + valor (o serviço citado mais perto de cada preço, e o valor tem que bater com o preço antigo daquele serviço) e revisada trecho a trecho. Trocar número às cegas erraria: "R$ 25" é Barba Express (→35) e depilação (→30); "R$ 50" é Corte + Lavagem (→60), Barboterapia com ozônio (→60) e química que não muda. Química, Luzes, Platinado, Alisamento, Pigmentação Capilar, Reconstrução pós-alisamento e Freestyle não sobem; conferido que nenhuma página deles foi tocada além da citação da Hidratação.
+  - **Frases reescritas, não só números:** 4 páginas diziam que o combo "custa o mesmo que os dois separados". Com a tabela nova deixa de ser verdade (e fica melhor para o cliente): Corte + Barba Express R$ 80 contra R$ 85 separados; Corte + Barboterapia R$ 95 contra R$ 100.
+  - `/precos/` perde o aviso "passam a valer em 1º de outubro" e `/precos/setembro/` vira redirecionamento para `/precos/`.
+  - **Já hoje, na `/precos/`** (que já mostra a tabela nova, é o destino do QR code da plaquinha): a frase "até 30/09 os preços atuais continuam valendo, inclusive para quem já tem horário marcado" dava a entender que horário marcado antes ficava com o preço velho. Virou "vale o preço da data do atendimento", igual à plaquinha impressa.
+- **Travas contra o plano envelhecer até lá:** `tests/unit/reajuste-2026-10.spec.js` falha se qualquer trecho deixar de existir no site (é o `npm test` de toda sessão) e só aceita pares da tabela aprovada; a automação do GitHub também roda em modo "só conferir" a cada envio que mexe em página, e manda e-mail se quebrar.
+- **Testes e2e sem preço escrito à mão** (`tests/e2e/_precos.js`): `cart.spec` e `booking-review.spec` tinham "R$ 40,00" fixo e quebrariam na virada. O `booking-review` marca para daqui a 5 dias, então **a partir de 26/09 já cairia em outubro** e quebraria antes da hora. Agora o valor esperado vem do catálogo, pela data do atendimento.
+
+**Erro pego no ensaio, antes de publicar:** a primeira versão do aplicador pulava em silêncio 12 trocas da lista de preços do FAQ ("Corte R$ 40, Corte + Lavagem R$ 50…"), porque o trecho de uma troca se sobrepunha ao da seguinte e, depois da primeira, a segunda não existia mais. O gerador passou a juntar trocas vizinhas num trecho só, e o aplicador confere de novo a contagem na hora de trocar (teste novo para esse caso). É a armadilha da seção 4 do CLAUDE.md: script que imprime "ok" sem ter feito.
+
+**Ensaio completo numa cópia:** plano aplicado, varredura de sobras (nenhum preço antigo restante), pares de troca conferidos, JSON-LD válido em todas as páginas, e a suíte e2e inteira (52) passando com a vigência antecipada para simular outubro.
+
+**Testes:** 190 unit + 52 e2e.
+
 ## 29.210.1 — Fim do vão preto na seção "Veja o espaço" (19/09)
 
 **Pedido do Juliano:** "esta parte preta do meu site me incomoda", com print da coluna de texto da seção do vídeo na home: título em cima, cartões embaixo e um buraco preto de ~330px no meio.

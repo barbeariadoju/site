@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { valor } from './_precos.js';
 
 // Percorre o fluxo completo de agendamento até a tela de revisão (Etapa 4),
 // mas NUNCA clica em "Confirmar agendamento" — não grava nada no Supabase.
@@ -33,7 +34,9 @@ test('preenche o fluxo até a revisão sem confirmar', async ({ page }) => {
   await page.locator('[data-next-step="4"]').click();
 
   await expect(page.locator('#review-summary')).toContainText('Corte de cabelo');
-  await expect(page.locator('#review-summary')).toContainText('R$ 40,00');
+  // v29.211.0: o resumo mostra o preço da DATA escolhida (reajuste de 01/10/2026)
+  const dia = await page.locator('#agenda-date').inputValue();
+  await expect(page.locator('#review-summary')).toContainText(valor('Corte de cabelo', dia));
   await expect(page.locator('#review-client-note')).toContainText('TESTE Playwright (ignorar)');
   await expect(page.locator('#review-client-note')).toContainText('5599900011234');
   await expect(page.locator('#agenda-submit')).toBeEnabled();
