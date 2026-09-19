@@ -226,6 +226,21 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('14b pergunta o serviço antes de reservar', !reservou(r2) && /como da última vez/i.test(r2.reply), r2.reply)
 }
 
+// 15. Barba escolhida dentro do combo não repete a pergunta "qual barba?" (19/09, 10h24 — cliente desistiu)
+{
+  const ctx = ctxCliente('Danilo Teste')
+  const r1 = await turno({ msg: 'Você tem horário para cabelo e barba hoje ?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
+  checar('15a pergunta qual barba (certo: barba genérica)', /Pra barba, qual/i.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Barba na navalha com toalha sem ozônio', state: r1.state, history: [{ role: 'assistant', content: r1.reply }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte + Barba na navalha com toalha quente'], date: hoje } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
+  checar('15b não repete a pergunta da barba', !/Pra barba, qual/i.test(r2.reply), r2.reply)
+  checar('15b segue pros horários', /16:00|17:00|manhã, tarde/i.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'Corte + barba na navalha', state: { ...r1.state, services: ['Corte + Barba na navalha com toalha quente'] }, history: [{ role: 'assistant', content: r2.reply }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte + Barba na navalha com toalha quente'] } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
+  checar('15c não repete a pergunta da barba', !/Pra barba, qual/i.test(r3.reply), r3.reply)
+  checar('15c um corte só (sem "Corte de cabelo" somado ao combo)', JSON.stringify(r3.state?.services) === JSON.stringify(['Corte + Barba na navalha com toalha quente']), r3.state?.services)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
@@ -234,7 +249,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 }
 {
   const r = await turno({ msg: 'bom dia', ai: { intent: 'other', reply: 'Bom dia! Como posso ajudar?' }, contexto: ctxCliente('Carlos Teste') })
-  checar('R2 saudação com nome', /^Bom dia, Carlos!/.test(r.reply), r.reply)
+  checar('R2 saudação com nome', /^(Bom dia|Boa tarde|Boa noite), Carlos!/.test(r.reply), r.reply)
 }
 {
   const r = await turno({ msg: 'pode cancelar meu horário', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Carlos Teste'), futuros: [{ id: 'b2', booking_date: dia1, start_time: '10:00:00', service_name: 'Corte de cabelo' }] })

@@ -439,6 +439,10 @@ const ehBarbaExpress=(name:string)=>normalize(name).includes('express')
 const comboSignal=/\+| e |combo/i
 const findService=(name:string)=>{
  const n=normalize(name)
+ // v29.212.1 — texto vazio casava com TODOS os serviços (''.includes) e devolvia o de nome mais curto,
+ // "Luzes": cliente com visitas mas sem last_services no contexto recebia "Luzes" como serviço de sempre
+ // (achado pelo simulador, reproduzindo o caso Danilo). Nome vazio não é serviço nenhum.
+ if(!n.trim())return undefined
  const exact=services.find(s=>normalize(s.name)===n)
  if(exact)return exact
  const candidates=services.filter(s=>normalize(s.name).includes(n)||n.includes(normalize(s.name)))
@@ -536,6 +540,14 @@ function findServicesLoose(text:string){
  const n=normalize(text)
  const exact=services.find(s=>normalize(s.name)===n)
  if(exact)return [exact]
+ // v29.212.1 (caso Danilo): "Corte + barba na navalha" é o COMBO "Corte + Barba na navalha com toalha
+ // quente" escrito pela metade — picar no "+" dava "Corte de cabelo" + barba. Frase com "+" que é o
+ // começo de um combo do catálogo vale o combo inteiro.
+ if(/\+/.test(text)&&n.replace(/[^a-z]/g,'').length>=8){
+  const inicio=n.trim().replace(/\s+/g,' ')
+  const comboInteiro=services.find(s=>/\+/.test(s.name)&&normalize(s.name).replace(/\s+/g,' ').startsWith(inicio))
+  if(comboInteiro)return [comboInteiro]
+ }
  const found:any[]=[]
  String(text).split(/,|\+|\/| e | ou /i).map(t=>t.trim()).filter(t=>t.length>=4).forEach(token=>{
   const svc=findService(token)
@@ -1532,13 +1544,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // pergunta de explicação ("qual a diferença entre...") também caía aqui. Serviço específico
  // com "barba" no nome — Pigmentação de Barba, Corte + Barba Express — não é pedido genérico.
  const barbaServicoEspecifico=findServicesLoose(message).some((x:any)=>normalize(x.name).includes('barba')&&x.category!=='barba')
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
+ // v29.212.1 — caso Danilo (19/09/2026, 10h24): pediu "cabelo e barba", respondeu "barba na navalha com
+ // toalha sem ozônio", o sistema anotou o COMBO (categoria 'combo', não 'barba') e a palavra "barba" na
+ // resposta reabriu a mesma pergunta — duas vezes, com a lista das três barbas. Ele desistiu. Barba já
+ // escolhida inclui a que vem dentro do combo; e resposta que já nomeia a barba não é pergunta genérica.
+ const barbaJaEscolhida=chosen.some((s:any)=>s.category==='barba'||familiesOfService(String(s.name)).has('barba'))
+ const nomeiaBarba=/navalha|toalha|ozon|express|maquina|barboterapia/.test(normalizedQuestion)
+ const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!barbaJaEscolhida&&!nomeiaBarba&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
  // v29.104.0 (pedido do Juliano, 01/09/2026): "barboterapia" sozinha, sem dizer se é com
  // ozônio, ficava ambígua entre as duas variantes de navalha/toalha quente (R$ 40 sem
  // ozônio, R$ 50 com ozônio) — o find* casava pelo nome mais curto e escolhia a de R$ 40
  // em silêncio. Mesmo padrão do bareBarbaAsk (não adivinha, pergunta), mas encurtado pra
  // 2 opções: quem diz "barboterapia" já descartou a Barba Express.
- const bareBarboterapiaAsk=/\bbarboterapia\b/i.test(message)&&!/ozon/i.test(message)&&!barbaNegated&&!barbaProduto&&!chosen.some((s:any)=>s.category==='barba')&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
+ const bareBarboterapiaAsk=/\bbarboterapia\b/i.test(message)&&!/ozon/i.test(message)&&!barbaNegated&&!barbaProduto&&!barbaJaEscolhida&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
  // v28.30.5 — pedido do Juliano (31/07/2026): "cabelo" solto ("eu queria cabelo", "CABELO!")
  // não era entendido — a JuIA respondia com pergunta genérica ou a lista de mais procurados.
  // Igual ao padrão da barba: confirma o serviço óbvio ("seria um Corte de cabelo?") em vez
@@ -1564,6 +1582,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const newOnes=loose.filter((s:any)=>!soPerguntou(s.name)&&!chosen.some((c:any)=>c.name===s.name||normalize(c.name).includes(normalize(s.name)))&&!(bareBarbaAsk&&s.category==='barba')&&!(bareBarboterapiaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
   if(newOnes.length){
    chosen.push(...newOnes)
+   // v29.212.1 (caso Danilo): "Corte + barba na navalha" somou "Corte de cabelo" ao combo que já tinha
+   // corte. A regra das famílias rodou lá em cima, antes deste acréscimo — roda de novo aqui.
+   const famLoose=normalizeServiceFamilies(chosen.map((c:any)=>({name:c.name,price:Number(c.price||0)})))
+   if(famLoose.removed.length)chosen=famLoose.items.map((x:any)=>findService(x.name)).filter(Boolean)
    next.services=chosen.map((s:any)=>s.name)
   }
   if(bareBarbaAsk){

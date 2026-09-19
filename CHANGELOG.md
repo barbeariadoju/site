@@ -34,6 +34,16 @@
 
 **Testes:** 232 unit (11 novos) + 52 e2e.
 
+## 29.212.1 — JuIA repetia "qual barba?" pra quem já tinha escolhido a barba (19/09)
+
+**Caso reportado pelo Juliano (print, 19/09, 10h22–10h26):** o cliente pediu "cabelo e barba", a JuIA perguntou qual barba (certo). Ele respondeu "barba na navalha com toalha sem ozônio" e recebeu a MESMA lista das três barbas. Respondeu "Corte + barba na navalha" e levou a lista pela terceira vez, com "Anotado: Corte de cabelo no lugar de…" e um segundo corte somado. Ele não agendou, e às 12h30 a cobrança automática ainda falou em "Corte + Barba na navalha + Corte de cabelo". Aconteceu antes da 29.212.0 entrar no ar, mas o defeito continuava no código.
+
+- **Causa 1:** a pergunta "qual barba?" só era pulada quando já havia um serviço da categoria `barba`. A resposta dele virou o COMBO "Corte + Barba na navalha com toalha quente" (categoria `combo`), e a palavra "barba" reabria a pergunta. Agora a barba dentro do combo conta como escolhida (famílias de `_shared/service-rules.ts`). Resposta que já nomeia a barba (navalha, toalha, ozônio, express, máquina) também não é pedido genérico.
+- **Causa 2:** "Corte + barba na navalha" era picado no "+", e o "Corte" solto virava "Corte de cabelo" somado ao combo. A regra das famílias tinha rodado antes desse acréscimo. Agora frase com "+" que é o começo de um combo do catálogo vale o combo inteiro, e a regra das famílias roda de novo depois dos serviços achados na frase.
+- **Achado de brinde pelo simulador:** `findService('')` casava com todos os serviços e devolvia o de nome mais curto, "Luzes". Cliente com visitas mas sem `last_services` no contexto receberia "Luzes" como serviço de sempre. Nome vazio agora não é serviço.
+
+**Simulador:** cenário 15 com as três mensagens reais dele (38 verificações, todas ok).
+
 ## 29.212.0 — JuIA: análise de erros das conversas reais, 16 correções, prompt reorganizado e simulador (19/09)
 
 **Pedido do Juliano:** "procure skills que nos ajude a melhorar a juia" → "roda ai" (análise de erros) → "pode aplicar todas as melhorias como você achar melhor só não deixe nada pendente para depois".
