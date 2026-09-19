@@ -1,3 +1,26 @@
+## 29.212.0 — Central de Conteúdo: calendário com educativo e humor, fim da muleta do café (19/09)
+
+**Pedido do Juliano:** "minha grande preocupação com postagens repetitivas sempre falando de café e outras coisas repetidas, gostaria de mais posts educativos e especialmente de humor".
+
+**O que os números mostraram (30 dias, 117 posts da IA):** 64 eram "campanha", 8 educativos, 8 de humor; "café" em 25 legendas, "um cliente por vez" em 21; 53 reprovados no crivo. **Causa:** a "campanha ativa" do `marketing_memory` é uma ficha genérica de ganchos da marca, ligada desde 04/08 sem data para acabar, e com ela ativa todo dia de quarta a sábado caía no mesmo ramo (a rotação de temas nunca rodava, já anotado na v29.88.0). E a instrução de estilo (`VOZ_CONCRETA`) dava como exemplo justamente "o café servido na chegada", "um cliente por vez" e o espelho, que o modelo tomava como pauta. Os posts variados de humor e educativo que saíram em setembro eram as peças feitas à mão do plano de 30 dias, não o gerador.
+
+- **Calendário novo de quarta a sábado** (`_shared/pautas.ts`, testes em `tests/unit/pautas.spec.js`): quarta EDUCATIVO, quinta HUMOR, sexta marca (campanha/rotação como antes), sábado alterna humor e educativo. Domingo, segunda e terça não mudam. Num mês, 12 dos 16 dias de quarta a sábado viram educativo ou humor.
+- **Bancos de pautas com rodízio:** 16 educativas (mitos como "raspar engrossa o pelo", "arrancar fio branco faz nascer dois", "vapor abre os poros"; pelo encravado, óleo x balm, caspa x couro seco, por que perguntamos o histórico antes da química, sol na nuca recém-cortada…) e 13 de humor (o "só dá uma aparada" que vira "pode subir mais", "tira só um dedinho", o nariz que coça com as mãos debaixo da capa, o cabelo no formato do boné, a primeira toalha quente…). A próxima pauta é a nunca usada ou a usada há mais tempo (`context.pauta`), e cada uma tem texto de reserva escrito à mão.
+  - Educativo: fato estabelecido, sem número, estudo, marca ou dose (citação só se levantada na fonte, regra da casa); assunto de saúde termina no dermatologista.
+  - Humor, com os princípios da skill `joke-engineering` traduzidos para legenda curta: detalhe específico, quebra na última frase, nada de explicar a piada. O alvo é o ofício ou o próprio barbeiro, **nunca o cliente**: proibido aparência (calvície, peso, idade), política, religião, time, duplo sentido e conversa da cadeira.
+  - Educativo e humor **não vendem** (a instrução vale acima do "venda a experiência" dos prompts de plataforma).
+- **Ganchos gastos, com trava:** café, "um cliente por vez"/"sem plateia", hora marcada/horário respeitado, "sem pressa"/"sem atropelo", espelho e ambiente climatizado saem **no máximo 1 dia por semana**. Entram no prompt como proibidos e na checagem `temaRepetido`, que refaz a legenda. Antes, "cliente" e "marcada" estavam na lista de ruído da trava de repetição, então os dois ganchos mais repetidos nunca eram pegos.
+- `VOZ_CONCRETA` e o tema da terça trocaram os exemplos por outros fatos do ofício (navalha no contorno, gel transparente que deixa ver a linha, tesoura no volume de cima, anotação do corte anterior, pezinho por último). Textos de reserva de campanha e experiência sem café. A arte ganhou tema próprio para educativo e humor (objetos, sem pessoas), e o café saiu da arte da terça e do padrão.
+- Crivo das 8h05 (fora do repo) conhece o calendário: não reprova educativo e humor por "não vender", reprova humor que mira o cliente e educativo com número ou sem dermatologista, e confere os ganchos da semana.
+
+**Erro pego pelo teste antes do deploy:** a regex do café usava ``, que no JavaScript não reconhece o "é" como letra; "café " não tinha fronteira e passava direto. Justamente a palavra que motivou tudo. Trocado por limites com `\p{L}`.
+
+**Não mexi:** a ficha "campanha ativa" continua (sexta usa, e ela tem revisão marcada para 30/09); nenhuma skill nova precisou ser instalada — `joke-engineering`, `content-strategy` e `social` já estavam aqui.
+
+**Ainda não visto ao vivo:** o gerador roda uma vez por dia e o de hoje já saiu. Primeiro educativo na quarta 23/09, primeiro humor na quinta 24/09, os dois pelo crivo. Deploy `content-generate-daily` com `verify_jwt=false` como antes; smoke 401 sem segredo.
+
+**Testes:** 232 unit (11 novos) + 52 e2e.
+
 ## 29.212.0 — JuIA: análise de erros das conversas reais, 16 correções, prompt reorganizado e simulador (19/09)
 
 **Pedido do Juliano:** "procure skills que nos ajude a melhorar a juia" → "roda ai" (análise de erros) → "pode aplicar todas as melhorias como você achar melhor só não deixe nada pendente para depois".
