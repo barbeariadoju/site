@@ -157,6 +157,8 @@ Deno.serve(async(req:Request)=>{
         produtos:produtosBrutos.map((p:Record<string,unknown>)=>({nome:String(p?.name||'Produto'),valor:Number(p?.price||0)})),
         descontoFidelidade:Number(booking?.loyalty_discount||0),
         desconto:Number(booking?.discount_amount||0),
+        // v29.209.0 — presente de aniversário / indicação saem com o nome no cupom.
+        descontoMotivo:String(booking?.discount_reason||''),
         // v29.138.0 — qual serviço foi o prêmio (combo com só um serviço de graça).
         fidelidadeServico:String(booking?.loyalty_free_service||''),
         caixinha:Number(booking?.tip_amount||0),

@@ -47,7 +47,7 @@
         : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
       : '';
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
-    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">⚠ Número sem WhatsApp: confira antes, pode ser trote</small>':''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${benefitChipsHtml(x)}${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">⚠ Número sem WhatsApp: confira antes, pode ser trote</small>':''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){return bookingCardHtml(x,bookingActionsHtml(x))}
   // v29.175.0: as ações viraram função própria — a tela Hoje coloca a pergunta "já cortou aqui antes?" (do antigo Modo Atendimento) na frente das mesmas ações.
@@ -302,6 +302,19 @@
   // telefone, o botão "Concluir ✓" ficava três telas abaixo. Agora: serviço + forma de pagamento em
   // cima, e o resto (produtos, desconto, caixinha, cortesia, fidelidade, avaliação) dentro de "Mais
   // opções", que já abre sozinho no desktop e sempre que o cliente comprou produto no agendamento.
+  // v29.209.0 — presente de aniversário e indicação. Benefício disponível e dentro do prazo
+  // para o telefone deste agendamento (mesma chave DDD+8 do phone_match_key do banco).
+  const BENEFIT_LABEL={aniversario:'Presente de aniversário: sobrancelha por conta da casa',indicacao_indicado:'Indicação: R$ 10 no 1º atendimento (terça a quinta)',indicacao_indicador:'Crédito por indicar: R$ 10'};
+  function benefitsForBooking(x){
+    const key=phoneKey(x?.customer_phone||'');if(!key)return [];
+    const hoje=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+    return (typeof customerBenefits!=='undefined'?customerBenefits:[]).filter(b=>b.phone_mkey===key&&b.status==='available'&&String(b.valid_until)>=hoje);
+  }
+  const ddmmBenefit=iso=>{const [,m,d]=String(iso||'').split('-');return d&&m?`${d}/${m}`:''};
+  function benefitChipsHtml(x){
+    if(!x||x.status==='completed'||x.status==='cancelled')return '';
+    return benefitsForBooking(x).map(b=>`<small class="admin-beneficio" title="Aplicar no Concluir (botão no topo do desconto). Regras em /beneficios.html">${esc(BENEFIT_LABEL[b.kind]||'Benefício')} · até ${ddmmBenefit(b.valid_until)}</small>`).join('');
+  }
   function choosePaymentMethod(booking={}){
     return new Promise(resolve=>{
       ensureModalStyles();
@@ -380,6 +393,33 @@
       const discountReasonInput=modal.querySelector('[data-discount-reason]');
       let selectedDiscountPct=0;
       discountInput.value='';discountReasonInput.value='';
+      // v29.209.0 — benefício do cliente em um clique: preenche o desconto manual com o motivo
+      // que o gatilho do banco reconhece ("Presente de aniversário" / "Indicação: …") e que dá a
+      // baixa sozinho ao concluir. Um benefício por atendimento: aplicar outro substitui.
+      let benefitSlot=modal.querySelector('[data-benefit-slot]');
+      if(!benefitSlot){benefitSlot=document.createElement('div');benefitSlot.setAttribute('data-benefit-slot','');benefitSlot.className='admin-beneficio-slot';discountQuick.parentElement.insertAdjacentElement('beforebegin',benefitSlot)}
+      const beneficios=benefitsForBooking(booking);
+      const dowBooking=booking.booking_date?new Date(`${booking.booking_date}T12:00:00-03:00`).getDay():-1;
+      benefitSlot.innerHTML=beneficios.map(b=>{
+        const foraDoDia=Array.isArray(b.weekdays)&&b.weekdays.length&&!b.weekdays.includes(dowBooking);
+        return `<button type="button" class="btn ghost admin-beneficio-btn" data-benefit-id="${esc(b.id)}" ${foraDoDia?'disabled':''}>Aplicar: ${esc(BENEFIT_LABEL[b.kind]||'benefício')}</button>${foraDoDia?'<small class="admin-beneficio-nota">Vale só de terça a quinta — este atendimento é em outro dia.</small>':`<small class="admin-beneficio-nota">Válido até ${ddmmBenefit(b.valid_until)}.</small>`}`;
+      }).join('');
+      benefitSlot.hidden=!beneficios.length;
+      benefitSlot.onclick=e=>{
+        const btn=e.target.closest('[data-benefit-id]');if(!btn||btn.disabled)return;
+        const b=beneficios.find(z=>z.id===btn.dataset.benefitId);if(!b)return;
+        const extras=modal.querySelector('[data-fold-extras]');if(extras)extras.open=true;
+        let valor=Number(b.amount||0),motivo='';
+        if(b.kind==='aniversario'){
+          const cb=modal.querySelector(`[data-service-name="${CSS.escape(b.service_name||'Sobrancelha Masculina')}"]`);
+          if(!cb){alert('A sobrancelha não está no catálogo do Concluir.');return}
+          if(!cb.checked){cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}))}
+          valor=Number(cb.dataset.servicePrice||0);motivo='Presente de aniversário';
+        }else motivo=b.kind==='indicacao_indicado'?'Indicação: 1º atendimento':'Indicação: crédito por indicar';
+        discountInput.value=String(valor);discountInput.dispatchEvent(new Event('input',{bubbles:true}));
+        discountReasonInput.value=motivo;
+        benefitSlot.querySelectorAll('[data-benefit-id]').forEach(z=>z.classList.toggle('is-selected',z===btn));
+      };
       discountQuick.querySelectorAll('[data-discount-pct]').forEach(b=>b.classList.remove('is-selected'));
       const readDiscount=max=>{const v=Number(String(discountInput.value||'').replace(',','.'));return Math.min(Math.max(0,Number.isFinite(v)?v:0),Math.max(0,max))};
       const onDiscountQuick=e=>{

@@ -96,6 +96,17 @@ describe('montarCupom', () => {
     expect(cupom).toContain('*Total: R$ 4,00*');
   });
 
+  it('presente de aniversário e indicação saem com o nome; outro motivo continua escondido', () => {
+    const aniv = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Sobrancelha Masculina', servicoValor: 55, desconto: 15, descontoMotivo: '20% · Presente de aniversário' }));
+    expect(aniv).toContain('Presente de aniversário: -R$ 15,00');
+    expect(aniv).toContain('*Total: R$ 40,00*');
+    const ind = norm(montarCupom({ ...base, servicoValor: 40, desconto: 10, descontoMotivo: 'Indicação: 1º atendimento' }));
+    expect(ind).toContain('Desconto de indicação: -R$ 10,00');
+    const outro = norm(montarCupom({ ...base, servicoValor: 40, desconto: 20, descontoMotivo: 'corte rápido, volta toda semana' }));
+    expect(outro).toContain('Desconto: -R$ 20,00');
+    expect(outro).not.toContain('corte rápido');
+  });
+
   it('desconto integral diz que não há nada a pagar', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 40, desconto: 40, pagamentoServico: '' }));
     expect(cupom).toContain('*Total: R$ 0,00*');

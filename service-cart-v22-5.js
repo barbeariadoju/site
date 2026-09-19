@@ -296,7 +296,17 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   continueBtn?.addEventListener('click', () => { panelHidden = true; render(); });
   openBtn?.addEventListener('click', showCart);
   scheduleBtn?.addEventListener('click', prepareAgenda);
+  // v29.209.0 — ?indicacao=CODIGO (link pessoal do programa de indicação). Guarda por 30 dias
+  // pra sobreviver à troca de página (/agendar/ → /agendar/horario/) e a uma visita que não
+  // agenda na hora. Idempotente: gravar de novo o mesmo código não muda nada (reload do SW).
+  function applyIndicacaoParam(){
+    const codigo = (new URLSearchParams(location.search).get('indicacao') || '').trim().toUpperCase();
+    if(!/^[A-Z0-9]{4,10}$/.test(codigo)) return;
+    try { localStorage.setItem('bdj_indicacao_v1', JSON.stringify({ codigo, exp: Date.now() + 30 * 86400000 })); } catch(e) {}
+  }
+
   applyRepeatParam();
   applyServicoParam();
+  applyIndicacaoParam();
   render();
 })();

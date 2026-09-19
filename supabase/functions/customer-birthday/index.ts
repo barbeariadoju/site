@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { textoAniversario } from '../_shared/beneficios.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -26,8 +27,6 @@ const canonicalPhone = (value = '') => {
   if (digits.length === 10 || digits.length === 11) return `55${digits}`
   return ''
 }
-
-const firstName = (value: string) => String(value || 'você').trim().split(/\s+/)[0] || 'você'
 
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
@@ -74,7 +73,13 @@ Deno.serve(async (request: Request) => {
   let failed = 0
   for (const c of candidates) {
     const phone = canonicalPhone(c.phone)
-    const text = `Parabéns, ${firstName(c.name)}! 🎉🎂 A Barbearia do Ju deseja um feliz aniversário pra você! Pra comemorar, preparamos um presente especial: no seu atendimento de aniversário, um serviço extra é por nossa conta! 🎁 Vem renovar o visual e comemorar com a gente — é só me chamar aqui que eu já agendo pra você. 😊`
+    // v29.209.0 — o presente passou a existir de verdade (customer_benefits): sobrancelha por
+    // conta da casa junto com um serviço pago, até 30 dias depois do aniversário. Antes a
+    // mensagem prometia "um serviço extra" sem dizer qual nem até quando, e nada no painel
+    // lembrava. Sem o registro, não promete nada: o presente só é anunciado se existe.
+    const { data: validoAte, error: grantError } = await admin.rpc('grant_birthday_benefit', { p_customer_id: c.customer_id })
+    if (grantError || !validoAte) { failed++; console.error('[customer-birthday] presente não registrado', c.customer_id, grantError); continue }
+    const text = textoAniversario({ nome: c.name, validoAte: String(validoAte) })
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
@@ -87,8 +92,9 @@ Deno.serve(async (request: Request) => {
 
       await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: text, sent_by: 'bot', evolution_message_id: sentMessageId })
       await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
-      await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'birthday', channel: 'whatsapp', details: {} })
+      await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'birthday', channel: 'whatsapp', details: { presente_ate: String(validoAte) } })
       await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', c.customer_id)
+      await admin.from('customer_benefits').update({ notified_at: new Date().toISOString() }).eq('kind', 'aniversario').eq('customer_id', c.customer_id).is('notified_at', null)
       sent++
     } catch (sendError) {
       failed++

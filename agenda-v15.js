@@ -358,14 +358,18 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
       bindPixOffer(bookingCode,managementToken,valor);
     };
   }
+  // v29.209.0 — programa de indicação: código guardado pelo /agendar/?indicacao= (service-cart).
+  const indicacao=(()=>{try{const x=JSON.parse(localStorage.getItem('bdj_indicacao_v1')||'null');return x&&x.codigo&&x.exp>Date.now()?x.codigo:''}catch(e){return ''}})();
+  if(indicacao){const alvo=$('agenda-submit');if(alvo&&!document.getElementById('agenda-indicacao-nota')){const p=document.createElement('p');p.id='agenda-indicacao-nota';p.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid rgba(212,175,55,.35);font-size:.92em;line-height:1.45';p.innerHTML='Você chegou por indicação: se for o seu primeiro atendimento na Barbearia do Ju, ganha <strong>R$ 10 de desconto</strong> em um horário de terça a quinta. <a href="/beneficios.html" target="_blank" rel="noopener">Regras</a>';alvo.insertAdjacentElement('beforebegin',p)}}
   async function submit(){
     const t=total(), names=services.map(s=>s.name), email=$('agenda-email').value.trim()||null;
     $('agenda-submit').disabled=true;$('agenda-submit').textContent='Confirmando...';
-    const {data:result,error}=await sb.functions.invoke('create-public-booking',{body:{customer_name:$('agenda-name').value.trim(),customer_phone:$('agenda-phone').value.replace(/\D/g,''),customer_email:email,birth_date:$('agenda-birth')?.value||null,service_name:names.join(' + '),service_price:t.servicePrice,duration_minutes:t.duration,booking_date:$('agenda-date').value,start_time:selectedTime,notes:$('agenda-notes').value.trim()||null,selected_products:products}});
+    const {data:result,error}=await sb.functions.invoke('create-public-booking',{body:{customer_name:$('agenda-name').value.trim(),customer_phone:$('agenda-phone').value.replace(/\D/g,''),customer_email:email,birth_date:$('agenda-birth')?.value||null,service_name:names.join(' + '),service_price:t.servicePrice,duration_minutes:t.duration,booking_date:$('agenda-date').value,start_time:selectedTime,notes:$('agenda-notes').value.trim()||null,selected_products:products,referral_code:indicacao||null}});
     const bookingError=error?.message||result?.error||'';
     if(error||!result?.ok){alert(bookingError.includes('indisponível')||bookingError.includes('bloqueado')||bookingError.includes('antecedência')?bookingError:'Não foi possível agendar. Tente novamente.');$('agenda-submit').textContent='Confirmar agendamento';$('agenda-submit').disabled=false;await loadSlots();return}
     fire('booking_confirmed',{services:names.join(' | '),value:t.servicePrice+t.productPrice,products:products.map(p=>p.name).join(' | ')});
     sessionStorage.removeItem('bdj_selected_services_v15');sessionStorage.removeItem('bdj_selected_products_v15');
+    if(indicacao){try{localStorage.removeItem('bdj_indicacao_v1')}catch(e){}}
     const manageUrl=result.manage_url||'';
     // v28.68.0 — Pix antecipado (Fase 1). Aparece SÓ depois do horário confirmado: pedir
     // pagamento antes de garantir a vaga derrubaria agendamento. O apelo é TEMPO, não

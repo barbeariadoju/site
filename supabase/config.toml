@@ -170,3 +170,6 @@ verify_jwt = true
 
 [functions.backup-weekly]
 verify_jwt = false
+
+[functions.benefits-dispatch]
+verify_jwt = false

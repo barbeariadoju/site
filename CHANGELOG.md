@@ -1,3 +1,21 @@
+## 29.209.0 — Presente de aniversário com regra, programa de indicação no ar, crivo sem travar e robôs de IA liberados (19/09)
+
+**Decisões do Juliano no plano do dia:** "crivo das 8:05 eu te dou autonomia"; presente de aniversário "estruture de forma que fique profissional e nos proteja e também garanta que o cliente goze de seu benefício"; convite de retorno "12 dias é melhor, média de retorno 15d"; "sábado sempre lota, quarta e quinta são dias ruins"; indicação "estruture e coloque pra rodar"; Cloudflare "libera desde que não nos deixe vulneráveis"; pedido de avaliação "deixa como está".
+
+- **Benefícios com fonte única** (migrações 168/169, tabela `customer_benefits`, regulamento público em `/beneficios.html`, textos em `_shared/beneficios.ts` com teste):
+  - **Aniversário:** a mensagem prometia "um serviço extra por nossa conta" sem dizer qual nem até quando, e nada lembrava o Juliano. Agora é **sobrancelha por conta da casa junto com um serviço pago, até 30 dias depois do aniversário, 1 por ano**. A `customer-birthday` só anuncia o presente depois de registrá-lo (`grant_birthday_benefit`). Lembrete 7 dias antes de vencer, pulado se o cliente já tem horário marcado dentro do prazo.
+  - **Indicação:** link pessoal `/agendar/?indicacao=JUxxxx` (guardado 30 dias no navegador, idempotente). `register_referral` confere código, autoindicação (telefone ou e-mail), quem já foi atendido e quem já foi indicado. Indicado: **R$ 10 no 1º atendimento, só terça a quinta** (os dias fracos). Quem indicou: **R$ 10 no próximo atendimento, só quando o indicado conclui e paga** (não vale cortesia), até 3 por mês. Convite enviado uma vez na vida a quem tem 2+ atendimentos, 2 a 6 dias depois do último (antes do convite de retorno do dia 12), até 10 por dia.
+  - **Painel:** o cartão mostra o benefício disponível; o Concluir ganhou o botão "Aplicar", que preenche o desconto manual com o motivo que o gatilho `benefits_on_booking_completed` reconhece e dá a baixa sozinho. Indicado fora de terça a quinta: botão desativado com o motivo. No Balcão não há desconto, então o benefício só é aplicado pelo Concluir.
+  - **Comprovante:** "Presente de aniversário" e "Desconto de indicação" saem com o nome; qualquer outro motivo de desconto continua anotação interna.
+  - **JuIA:** sabe dos benefícios ativos do cliente (mesma regra de privacidade dos pontos) e só informa, nunca muda o valor do agendamento.
+  - Rotina diária `benefits-dispatch` (cron `bdj-benefits-dispatch`, 10h05 terça a sábado, fora do silêncio): vence, avisa crédito de indicação, lembra aniversário, convida.
+  - **Por que desconto em R$ na indicação e não serviço grátis:** é o que o Concluir já sabe aplicar e o comprovante já sabe mostrar (v29.162.0), sem mexer na fidelidade, que tem regra própria de ponto por serviço e baixa automática. Por que terça a quinta: a quarta está em 32% de ocupação e o sábado lota.
+- **Crivo das 8h05 não trava mais:** travou hoje às 8h04 pedindo permissão para baixar a arte, e ninguém revisou nada. Os três formatos de download que ele usa foram liberados no `.claude/settings.json` (só leitura, só do Supabase Storage e do site), e a instrução da rotina agora manda usar exatamente esses formatos, e desistir do passo em vez de ficar parado.
+- **Cloudflare, robôs de IA:** a política "Training" estava em Disallow, o que barrava GPTBot, ClaudeBot e (pelo robots.txt) o Google-Extended do Gemini. Virou Allow, e os coletores em massa foram bloqueados um a um (Bytespider, CCBot, Amazonbot, Meta-ExternalAgent). WAF, DDoS e Bot Fight não mudam; bot falso continua barrado pela verificação de assinatura do Cloudflare.
+- Política de privacidade menciona o registro do código de indicação.
+
+**Testes:** 175 unit + 51 e2e passando. Regras do banco testadas numa transação desfeita: indicação válida, autoindicação, indicado repetido, baixa no Concluir, crédito do indicador, presente 1 por ano e baixa com o "20% ·" na frente do motivo.
+
 ## 29.208.0 — Revisão geral com as skills novas: Central, anti-trote, gerador e textos do WhatsApp (19/09)
 
 **Pedido do Juliano no plano do dia:** "dá pra fazer alguma melhoria em nossos sistemas? revisão geral" → "faz todas". Quatro análises em paralelo (voz do cliente nas avaliações, textos fixos do WhatsApp, retenção/indicação, busca por IA) + as falhas vistas no próprio dia.

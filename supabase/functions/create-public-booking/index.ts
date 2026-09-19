@@ -99,6 +99,19 @@ Deno.serve(async(req:Request)=>{
       }catch(birthError){console.error('[create-public-booking] birthday',birthError)}
     }
 
+    // v29.209.0 — programa de indicação: quem chega por /agendar/?indicacao=CODIGO traz o código
+    // até aqui. register_referral confere (código existe, não é autoindicação, a pessoa nunca foi
+    // atendida, não foi indicada antes) e cria o benefício do indicado. Nunca derruba o agendamento.
+    let referral=''
+    const referralCode=String(body.referral_code||'').trim().toUpperCase()
+    if(/^[A-Z0-9]{4,10}$/.test(referralCode)){
+      try{
+        const {data:ref,error:refError}=await admin.rpc('register_referral',{p_booking_id:id,p_code:referralCode})
+        if(refError)console.error('[create-public-booking] indicacao',refError)
+        referral=String(ref||'')
+      }catch(refErr){console.error('[create-public-booking] indicacao exception',refErr)}
+    }
+
     let push={sent:0,failed:0}
     if(pushSecret){
       try{
@@ -135,6 +148,7 @@ Deno.serve(async(req:Request)=>{
       email,
       booking_code:record.booking_code,
       management_token:managementToken,
+      referral,
       manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record.booking_code)}&token=${encodeURIComponent(managementToken)}`
     })
   }catch(error){

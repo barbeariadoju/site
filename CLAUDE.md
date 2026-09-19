@@ -78,7 +78,7 @@ então o estrago de um deslize desse não se desfaz editando depois.
 
 ## 4. Armadilhas que já custaram retrabalho
 
-**Cloudflare na frente (desde 17/09/2026).** O DNS e o proxy do domínio estão no Cloudflare (conta do Juliano, plano Free): HSTS 6 meses, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options e TLS 1.2 vêm de lá, não do repo. CSS/JS ficam até ~10 min na borda (HTML e JSON não são cacheados) — o `?v=` novo é o que garante versão nova; pra forçar, Caching → Configuration → Purge Everything no painel. "Always Use HTTPS" fica DESLIGADO (o GitHub Pages já redireciona; ligar nos dois dá loop). A CSP (Content-Security-Policy) TAMBÉM vem do Cloudflare (v29.203.1): scripts, conexões e iframes só de uma lista fechada (site, jsdelivr, GTM, GA, Google Ads, Meta, Supabase, Google Fonts). **Serviço externo novo no site ou no admin (pixel, embed, CDN, API chamada do navegador) entra na CSP no Cloudflare ANTES de ir pro ar**, senão o navegador bloqueia em silêncio — foi assim que a conversão do Google Ads quase morreu em 17/09. Conferir com um ouvinte de securitypolicyviolation no console da página em produção.
+**Cloudflare na frente (desde 17/09/2026).** O DNS e o proxy do domínio estão no Cloudflare (conta do Juliano, plano Free): HSTS 6 meses, nosniff, Referrer-Policy, Permissions-Policy, X-Frame-Options e TLS 1.2 vêm de lá, não do repo. CSS/JS ficam até ~10 min na borda (HTML e JSON não são cacheados) — o `?v=` novo é o que garante versão nova; pra forçar, Caching → Configuration → Purge Everything no painel. Robôs de IA (19/09/2026, pedido do Juliano: aparecer no ChatGPT/Claude/Gemini): em AI Crawl Control a política "Training" está em Allow, e ficam bloqueados um a um só os coletores em massa (Bytespider, CCBot, Amazonbot, Meta-ExternalAgent); GPTBot, ClaudeBot, Claude-User e Google-Extended liberados. Isso não mexe em WAF, DDoS nem Bot Fight. "Always Use HTTPS" fica DESLIGADO (o GitHub Pages já redireciona; ligar nos dois dá loop). A CSP (Content-Security-Policy) TAMBÉM vem do Cloudflare (v29.203.1): scripts, conexões e iframes só de uma lista fechada (site, jsdelivr, GTM, GA, Google Ads, Meta, Supabase, Google Fonts). **Serviço externo novo no site ou no admin (pixel, embed, CDN, API chamada do navegador) entra na CSP no Cloudflare ANTES de ir pro ar**, senão o navegador bloqueia em silêncio — foi assim que a conversão do Google Ads quase morreu em 17/09. Conferir com um ouvinte de securitypolicyviolation no console da página em produção.
 
 **Cache.** Ao alterar qualquer `.js` ou `.css`, **bumpe o `?v=`** nas páginas que
 o carregam *e* no `style.css`. Já aconteceu de publicar código novo atrás de cache
@@ -179,6 +179,19 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   **motivo da cortesia nunca vai pro cliente** — aquele campo é anotação interna.
 - **`admin-version.json` e a constante `ADMIN_VERSION` são separados de propósito**
   da versão do site. É o que decide o reload do painel aberto durante atendimento.
+- **Presente de aniversário e indicação têm regra escrita e fonte única** (Juliano, 19/09/2026,
+  v29.209.0): tabela `customer_benefits`, textos em `supabase/functions/_shared/beneficios.ts`
+  (teste `tests/unit/beneficios.spec.js`), regulamento público em `/beneficios.html`. Aniversário =
+  sobrancelha por conta da casa junto com serviço pago, 30 dias, 1 por ano. Indicação = R$ 10 no
+  1º atendimento do indicado (só terça a quinta) e R$ 10 para quem indicou quando o indicado
+  conclui e paga; até 3 créditos/mês. Aplicação no Concluir pelo desconto manual com motivo
+  "Presente de aniversário" / "Indicação: …" — o gatilho `benefits_on_booking_completed` dá a
+  baixa por esse texto: **não renomear esses motivos**. Mudou regra → muda o regulamento junto.
+- **Convite de retorno sai no dia 12 do corte (5 da barba)** — decisão do Juliano em 19/09/2026
+  (média real de retorno ~15 dias). Não "corrigir" para 30 dias; os 30 dias são da reativação.
+- **Pedido de avaliação no Google só para quem respondeu "satisfeito" fica como está** —
+  decisão do Juliano em 19/09/2026, ciente de que a diretriz do Google proíbe filtrar. Não
+  reabrir como pendência.
 - **O GTM lê `#agenda-email` e `#agenda-phone` na hora do `booking_confirmed`** (conversões
   otimizadas do Google Ads, configuradas pelo suporte do Google em 16/09/2026: duas variáveis
   de JavaScript personalizado + "dados fornecidos pelo usuário" na tag de conversão). Isso

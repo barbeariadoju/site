@@ -733,6 +733,18 @@ Deno.serve(async req=>{
   // confirmado explicitamente (ver bloco de confirmação no intent 'book' mais abaixo).
   const {data:upcoming}=await supabase.rpc('phone_upcoming_bookings',{p_phone:knownPhone})
   upcomingBookings=Array.isArray(upcoming)?upcoming:[]
+  // v29.209.0 — presente de aniversário e indicação (customer_benefits). Entra no contexto do
+  // cliente, então vale a mesma regra de privacidade dos pontos/prêmios (phoneTrustNote). Quem
+  // aplica é o Juliano no Concluir: a JuIA só informa, nunca muda o valor do agendamento.
+  try{
+   const dg=knownPhone.replace(/\D/g,'').replace(/^55/,'')
+   const mkey=dg.length>=10?dg.slice(0,2)+dg.slice(-8):''
+   if(mkey){
+    const {data:bens}=await supabase.from('customer_benefits').select('kind,valid_until,weekdays').eq('phone_mkey',mkey).eq('status','available').gte('valid_until',today())
+    const rot:Record<string,string>={aniversario:'Presente de aniversário: sobrancelha por conta da casa, junto com um corte ou uma barba pagos',indicacao_indicado:'Indicação: R$ 10 de desconto no primeiro atendimento, só de terça a quinta',indicacao_indicador:'Crédito por ter indicado um amigo: R$ 10 de desconto no próximo atendimento'}
+    if(Array.isArray(bens)&&bens.length)(context as any).beneficios_ativos=bens.map((b:any)=>({beneficio:rot[b.kind]||b.kind,valido_ate:formatDateBR(b.valid_until),como_usar:'fica no cadastro e o Juliano aplica no dia do atendimento; não altera o valor que você informa no agendamento; regras em https://www.barbeariadoju.com.br/beneficios.html'}))
+   }
+  }catch(e){console.error('[ju-ia-site] beneficios',e)}
  }
  // v28.31.1: dias com "Fechar o dia inteiro" marcado no admin (ex.: viagem, folga) —
  // pedido do Juliano depois de um caso real (Lucas, 31/07/2026): perguntou se a

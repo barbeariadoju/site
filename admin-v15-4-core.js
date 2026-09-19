@@ -27,7 +27,7 @@
   const page = document.body.dataset.adminPage || 'dashboard';
   const $ = (id) => document.getElementById(id);
   const sb = (cfg.supabaseUrl && cfg.supabaseAnonKey) ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
-  let session=null, allBookings=[], customerProfiles=[], experienceRequests=[], customers=[], loyaltyAccounts=[], loyaltyRewards=[];
+  let session=null, allBookings=[], customerProfiles=[], experienceRequests=[], customers=[], loyaltyAccounts=[], loyaltyRewards=[], customerBenefits=[];
   let selectedDate=isoLocal(new Date()), calendarMonth=new Date(); calendarMonth.setDate(1);
   let monthBlocks=[];
   function isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -150,7 +150,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.208.0'
+  const ADMIN_VERSION='29.209.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
@@ -192,19 +192,22 @@
     // v29.188.0 — fidelidade junto (caso Juliano Prando, 15/09/2026): o card da Agenda/Hoje e o
     // Concluir precisam saber se o cliente tem prêmio pra usar. Duas tabelas pequenas; erro
     // aqui nunca derruba a tela — só some o selo.
-    const [{data:b,error:be},{data:p,error:pe},{data:e,error:ee},{data:la},{data:lr}]=await Promise.all([
+    const [{data:b,error:be},{data:p,error:pe},{data:e,error:ee},{data:la},{data:lr},{data:cb}]=await Promise.all([
       // v29.84.0: payments embutido pra Agenda mostrar COMO o cliente pagou online
       // (Pix/débito/crédito) — pedido do Juliano ao ver "Pago online (PagBank)" sem o meio.
       sb.from('bookings').select('*, payments(method,status)').order('booking_date',{ascending:false}).order('start_time',{ascending:false}).limit(3000),
       sb.from('customer_profiles').select('*').order('name',{ascending:true}),
       sb.from('experience_requests').select('id,customer_id,booking_id,status,feedback,created_at,answered_at').order('created_at',{ascending:false}).limit(3000),
       sb.from('loyalty_accounts').select('customer_id,points,rewards_available,lifetime_points'),
-      sb.from('loyalty_rewards').select('customer_id,status,expires_at').in('status',['available','reserved'])
+      sb.from('loyalty_rewards').select('customer_id,status,expires_at').in('status',['available','reserved']),
+      // v29.209.0 — presente de aniversário e indicação (customer_benefits): o card e o Concluir
+      // mostram o benefício pra ele não passar batido. Erro aqui só some o aviso.
+      sb.from('customer_benefits').select('id,kind,phone_mkey,amount,service_name,weekdays,valid_until,status,meta').eq('status','available')
     ]);
     if(be){console.error(be);allBookings=[]}else allBookings=b||[];
     if(pe){console.error(pe);customerProfiles=[]}else customerProfiles=p||[];
     if(ee){console.warn('Experience requests indisponível:',ee.message);experienceRequests=[]}else experienceRequests=e||[];
-    loyaltyAccounts=Array.isArray(la)?la:[];loyaltyRewards=Array.isArray(lr)?lr:[];
+    loyaltyAccounts=Array.isArray(la)?la:[];loyaltyRewards=Array.isArray(lr)?lr:[];customerBenefits=Array.isArray(cb)?cb:[];
 
     // Garante que clientes vindos somente de agendamentos também tenham perfil no CRM.
     // v29.198.0 — caso Maurício Amorin (17/09/2026): desde a v29.98.0 este passo era um upsert

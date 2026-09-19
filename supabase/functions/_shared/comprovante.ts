@@ -46,6 +46,12 @@ export type DadosComprovante = {
    * service_price + discount_amount), e esta linha mostra o abatimento — conta aberta.
    */
   desconto?: number
+  /**
+   * v29.209.0 — motivo do desconto manual. Só dois motivos saem no cupom, porque são
+   * benefícios que o cliente conhece (regras públicas em /beneficios.html): "Presente de
+   * aniversário" e "Indicação…". Qualquer outro motivo continua anotação interna.
+   */
+  descontoMotivo?: string
   caixinha: number
   cortesia: boolean
   cortesiaMotivo: string
@@ -144,6 +150,14 @@ export const ehVendaSoDeProduto = (d: Pick<DadosComprovante, 'servicoValor' | 'p
   Number(d.servicoValor || 0) <= 0 && Array.isArray(d.produtos) && d.produtos.length > 0
 
 /** O cupom em si, sem saudação e sem a pesquisa — é o que o teste unitário verifica. */
+// "20% · Presente de aniversário" → o % do atalho do Concluir vem na frente e não entra na conta.
+export const rotuloDesconto = (motivo?: string) => {
+  const m = String(motivo || '').replace(/^\s*\d+%\s*·\s*/, '').trim()
+  if (/^presente de anivers/i.test(m)) return 'Presente de aniversário'
+  if (/^indica/i.test(m)) return 'Desconto de indicação'
+  return 'Desconto'
+}
+
 export const montarCupom = (d: DadosComprovante) => {
   const produtos = agruparProdutos(Array.isArray(d.produtos) ? d.produtos : [])
   const servicoValor = Number(d.servicoValor || 0)
@@ -189,8 +203,9 @@ export const montarCupom = (d: DadosComprovante) => {
     const qual = String(d.fidelidadeServico || '').trim()
     totais.push(`Prêmio do cartão fidelidade${qual ? ` (${qual})` : ''}: -${money(desconto)}`)
   }
-  // O motivo do desconto NÃO sai: é anotação interna, como o da cortesia.
-  if (descontoManual > 0) totais.push(`Desconto: -${money(descontoManual)}`)
+  // O motivo do desconto NÃO sai: é anotação interna, como o da cortesia. Exceção (v29.209.0):
+  // presente de aniversário e indicação saem com o nome, porque são benefícios do cliente.
+  if (descontoManual > 0) totais.push(`${rotuloDesconto(d.descontoMotivo)}: -${money(descontoManual)}`)
   if (d.cortesia) totais.push(`Cortesia (por conta da casa): -${money(bruto)}`)
   totais.push(`*Total: ${money(total)}*`)
 
