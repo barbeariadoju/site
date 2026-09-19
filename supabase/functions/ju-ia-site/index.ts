@@ -439,7 +439,7 @@ const ehBarbaExpress=(name:string)=>normalize(name).includes('express')
 const comboSignal=/\+| e |combo/i
 const findService=(name:string)=>{
  const n=normalize(name)
- // v29.212.1 — texto vazio casava com TODOS os serviços (''.includes) e devolvia o de nome mais curto,
+ // v29.214.1 — texto vazio casava com TODOS os serviços (''.includes) e devolvia o de nome mais curto,
  // "Luzes": cliente com visitas mas sem last_services no contexto recebia "Luzes" como serviço de sempre
  // (achado pelo simulador, reproduzindo o caso Danilo). Nome vazio não é serviço nenhum.
  if(!n.trim())return undefined
@@ -540,7 +540,7 @@ function findServicesLoose(text:string){
  const n=normalize(text)
  const exact=services.find(s=>normalize(s.name)===n)
  if(exact)return [exact]
- // v29.212.1 (caso Danilo): "Corte + barba na navalha" é o COMBO "Corte + Barba na navalha com toalha
+ // v29.214.1 (caso Danilo): "Corte + barba na navalha" é o COMBO "Corte + Barba na navalha com toalha
  // quente" escrito pela metade — picar no "+" dava "Corte de cabelo" + barba. Frase com "+" que é o
  // começo de um combo do catálogo vale o combo inteiro.
  if(/\+/.test(text)&&n.replace(/[^a-z]/g,'').length>=8){
@@ -1544,7 +1544,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // pergunta de explicação ("qual a diferença entre...") também caía aqui. Serviço específico
  // com "barba" no nome — Pigmentação de Barba, Corte + Barba Express — não é pedido genérico.
  const barbaServicoEspecifico=findServicesLoose(message).some((x:any)=>normalize(x.name).includes('barba')&&x.category!=='barba')
- // v29.212.1 — caso Danilo (19/09/2026, 10h24): pediu "cabelo e barba", respondeu "barba na navalha com
+ // v29.214.1 — caso Danilo (19/09/2026, 10h24): pediu "cabelo e barba", respondeu "barba na navalha com
  // toalha sem ozônio", o sistema anotou o COMBO (categoria 'combo', não 'barba') e a palavra "barba" na
  // resposta reabriu a mesma pergunta — duas vezes, com a lista das três barbas. Ele desistiu. Barba já
  // escolhida inclui a que vem dentro do combo; e resposta que já nomeia a barba não é pergunta genérica.
@@ -1582,7 +1582,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const newOnes=loose.filter((s:any)=>!soPerguntou(s.name)&&!chosen.some((c:any)=>c.name===s.name||normalize(c.name).includes(normalize(s.name)))&&!(bareBarbaAsk&&s.category==='barba')&&!(bareBarboterapiaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
   if(newOnes.length){
    chosen.push(...newOnes)
-   // v29.212.1 (caso Danilo): "Corte + barba na navalha" somou "Corte de cabelo" ao combo que já tinha
+   // v29.214.1 (caso Danilo): "Corte + barba na navalha" somou "Corte de cabelo" ao combo que já tinha
    // corte. A regra das famílias rodou lá em cima, antes deste acréscimo — roda de novo aqui.
    const famLoose=normalizeServiceFamilies(chosen.map((c:any)=>({name:c.name,price:Number(c.price||0)})))
    if(famLoose.removed.length)chosen=famLoose.items.map((x:any)=>findService(x.name)).filter(Boolean)
