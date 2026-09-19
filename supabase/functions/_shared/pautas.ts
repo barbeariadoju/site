@@ -1,4 +1,4 @@
-// v29.212.0 — PAUTAS DA CENTRAL DE CONTEÚDO: educativo e humor com rodízio, e ganchos gastos.
+// v29.213.0 — PAUTAS DA CENTRAL DE CONTEÚDO: educativo e humor com rodízio, e ganchos gastos.
 //
 // O que os números mostraram (30 dias até 19/09/2026, 117 posts da IA): 64 eram "campanha",
 // só 8 educativos e 8 de humor, "café" em 25 legendas e "um cliente por vez" em 21, e 53

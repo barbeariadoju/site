@@ -3,7 +3,7 @@ import {
   tipoDoDia, PAUTAS_EDUCATIVAS, PAUTAS_HUMOR, escolherPauta, ganchosGastos, ganchosUsados, GANCHOS_DE_MARCA,
 } from '../../supabase/functions/_shared/pautas.ts';
 
-// v29.212.0 — Central de Conteúdo: menos repetição, mais educativo e humor (pedido de 19/09/2026).
+// v29.213.0 — Central de Conteúdo: menos repetição, mais educativo e humor (pedido de 19/09/2026).
 // Cópia da trava de vacância do content-generate-daily (SCARCITY_VIOLATION): nenhum texto de
 // reserva pode anunciar agenda vazia.
 const VACANCIA = /hor[áa]ri?os?\s+(livres?|dispon[íi]ve|em aberto|vagos?|sobrando)|agenda[^.!?\n]{0,20}\b(livre|vazia|aberta|tranquila|folgada|sem movimento)|\bvagas?\b|sem\s+fila|\bjanela\b|\bencaixe\b|promo[cç][aã]o|desconto/i;

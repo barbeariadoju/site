@@ -248,7 +248,7 @@ function themeTextFor(context: Record<string, unknown>, campanha = ''): string {
       return `destaque para o serviço "${context.servico}" — sugerir a atmosfera desse tipo de atendimento sem escrever nome/preço na imagem.`
     case 'campanha':
       return `clima da campanha ativa da barbearia (${campanha.slice(0, 200)}) — transmitir o clima em imagem, sem escrever nenhum texto.`
-    // v29.212.0 — educativo e humor: a arte ilustra o assunto do dia com objetos, sem pessoas.
+    // v29.213.0 — educativo e humor: a arte ilustra o assunto do dia com objetos, sem pessoas.
     case 'educativo':
       return `natureza-morta de barbearia que ilustre este assunto: ${String(context.assunto || '').slice(0, 160)} — ferramentas ou produtos ligados a ele, em close, sem pessoas, sem rótulo legível e sem texto na imagem.`
     case 'humor':
@@ -529,7 +529,7 @@ Deno.serve(async (request: Request) => {
       .eq('status', 'agendado')
       .gte('scheduled_for', startOfTodayISO)
       .lte('scheduled_for', fimDeHojeISO)
-    // v29.212.0 — GANCHOS GASTOS: café, "um cliente por vez", hora marcada, sem pressa, espelho,
+    // v29.213.0 — GANCHOS GASTOS: café, "um cliente por vez", hora marcada, sem pressa, espelho,
     // climatizado. Em 30 dias até 19/09 o café saiu em 25 legendas e "um cliente por vez" em 21:
     // o RUIDO_TEMA abaixo ignora "cliente" e "marcada" (aparecem em tudo), então a trava de
     // repetição nunca pegava esses dois. Regra nova: cada gancho sai no máximo 1 dia por semana.
@@ -644,7 +644,7 @@ A CONVERSA DA CADEIRA NÃO É ASSUNTO PÚBLICO (ordem do Juliano em 10/09/2026, 
     // Mandar o cliente na segunda é mandá-lo bater na porta fechada e gerar falsa expectativa.
     const NO_HARD_SELL = 'Hoje é DOMINGO e a barbearia está FECHADA — e segue fechada na segunda. É PROIBIDO: falar de agenda, horário, preço, promoção, ou usar CTA de venda ("agende agora", "corra", "últimas vagas"). ATENÇÃO AO DIA DE REABERTURA: a barbearia reabre na TERÇA-FEIRA. Nunca escreva "até segunda", "nos vemos segunda" nem nada que sugira atendimento na segunda — isso cria falsa expectativa e manda o cliente numa porta fechada. Se quiser fechar com assinatura leve, use "até terça 💈" ou simplesmente "bom domingo 💈". O post é sobre a PESSOA, não sobre o serviço.'
 
-    // v29.212.0 — calendário de quarta a sábado (regra em _shared/pautas.ts). A pauta só existe
+    // v29.213.0 — calendário de quarta a sábado (regra em _shared/pautas.ts). A pauta só existe
     // se o banco tiver uma; sem ela (nunca deve acontecer), o dia cai no ramo antigo.
     const tipoDia = tipoDoDia(dowSP, Math.ceil(Number(todaySP.slice(-2)) / 7))
     let pautaHoje: { id: string; tema: string; fallback: string } | null = null
@@ -738,7 +738,7 @@ ${NO_HARD_SELL}`
       contextFact = `Tema de hoje (sai toda terça, uma vez por semana): A MANHÃ DE MEIO DE SEMANA na Barbearia do Ju — terça, quarta e quinta de manhã, o horário em que a casa é mais de quem escolhe o próprio horário. Público desta semana — ${anguloManha} ENQUADRAMENTO OBRIGATÓRIO: exclusividade e ritmo da casa naquela hora, com um fato concreto (a rua ainda acordando, a luz da manhã entrando pela vitrine, o Juliano abrindo o dia, a primeira navalha da manhã, atendimento sem espera). É o horário de quem PODE escolher — e o convite é escolher a manhã de terça, quarta ou quinta. Fale em terceira pessoa ("tem gente que faz o próprio horário", "quem tem a manhã livre") — nunca afirme nada sobre a rotina de quem lê. É PROIBIDO, e derruba o texto inteiro: qualquer palavra ou ideia de agenda vazia — "horário livre", "horário disponível", "vaga", "janela", "encaixe", "movimento", "sem fila", "agenda tranquila", "barbearia tranquila/vazia/calma" (isso diz que ninguém vem), "aproveite", "promoção", "desconto". Não diga que quarta ou quinta é mais vazia; diga que a manhã de meio de semana é o melhor horário de quem tem a manhã livre. Termine com o convite direto de marcar a manhã de terça, quarta ou quinta. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
       context = { tipo: 'manha_meio_semana', angulo: semanaDoMes, dia: todaySP }
     } else if (tipoHoje === 'educativo' || tipoHoje === 'humor') {
-      // v29.212.0 — pedido do Juliano (19/09/2026): menos post de "experiência", mais educativo e
+      // v29.213.0 — pedido do Juliano (19/09/2026): menos post de "experiência", mais educativo e
       // humor. Quarta educativo, quinta humor, sábado alterna; a pauta vem do banco com rodízio.
       contextFact = `Tema de hoje (${tipoHoje === 'educativo' ? 'post EDUCATIVO' : 'post de HUMOR'}): ${pautaHoje!.tema}
 
@@ -804,7 +804,7 @@ ${NAO_INVASIVO}`
       reta_final: '🔥 A agenda de hoje está quase fechando! Garanta um dos últimos horários do dia.',
       campanha: '💈 Corte e barba feitos com atenção a cada detalhe, do jeito que você pediu. Agende seu horário na Barbearia do Ju.',
       experiencia: '💈 O acabamento fica por último e é onde se vê o capricho: pezinho, contorno e o volume de cima no lugar. Agende seu horário na Barbearia do Ju.',
-      // v29.212.0 — educativo e humor: o texto de reserva vem da própria pauta (_shared/pautas.ts).
+      // v29.213.0 — educativo e humor: o texto de reserva vem da própria pauta (_shared/pautas.ts).
       educativo: pautaHoje?.fallback || '',
       humor: pautaHoje?.fallback || '',
       fidelidade: '🎁 Cartão fidelidade Barbearia do Ju: a cada 10 cortes, 1 é por nossa conta — e todo corte conta automaticamente. Agende o seu!',
