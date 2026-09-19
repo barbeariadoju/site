@@ -52,6 +52,9 @@ Deno.serve(async (request: Request) => {
     })
     const { data: authData, error: authError } = await authClient.auth.getUser()
     if (authError || !authData.user) return json({ error: 'Sessão administrativa inválida ou expirada.' }, 401)
+    // v29.210.0 — sessão válida não basta: tem que ser admin (pendência da auditoria de 17/09).
+    const { data: isAdmin } = await authClient.rpc('is_admin')
+    if (isAdmin !== true) return json({ error: 'Acesso não autorizado.' }, 403)
 
     let body: Record<string, unknown>
     try {

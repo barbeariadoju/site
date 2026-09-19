@@ -45,6 +45,9 @@ Deno.serve(async (req) => {
   const authClient=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authHeader}}})
   const {data:{user},error:userError}=await authClient.auth.getUser()
   if (userError || !user) return json({error:'Sessão inválida.'},401)
+  // v29.210.0 — sessão válida não basta: tem que ser admin (pendência da auditoria de 17/09).
+  const {data:isAdmin}=await authClient.rpc('is_admin')
+  if (isAdmin!==true) return json({error:'Acesso não autorizado.'},403)
 
   const body=await req.json().catch(()=>({}))
   const openaiKey=Deno.env.get('OPENAI_API_KEY')

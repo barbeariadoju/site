@@ -38,7 +38,8 @@ Deno.serve(async(req:Request)=>{
     const authorization=req.headers.get('Authorization')||''
     const client=createClient(url,anon,{global:{headers:{Authorization:authorization}}})
     const {data:{user}}=await client.auth.getUser()
-    isAdmin=Boolean(user)
+    // v29.210.0 — sessão válida não basta: tem que ser admin (pendência da auditoria de 17/09).
+    if(user){const {data:ok}=await client.rpc('is_admin');isAdmin=ok===true}
   }
   if(!isWebhook&&!isAdmin)return json({error:'Não autorizado.'},401)
 

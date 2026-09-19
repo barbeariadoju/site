@@ -335,6 +335,30 @@
       const stylePrefill=(typeof styleTextFor==='function')?styleTextFor(booking.customer_phone):'';
       styleInput.value=stylePrefill;
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
+      // v29.210.0 — produto para casa à vista. Só 13% dos atendimentos de 60 dias levaram produto,
+      // e a lista ficava dentro de "Mais opções" (fechada no celular), no meio das bebidas. Agora,
+      // logo abaixo do pagamento, até 3 produtos ligados ao serviço (campo `for` do catálogo,
+      // o mesmo que o site usa no agendamento). Um toque marca a mesma caixinha da lista completa,
+      // então total, pagamento e baixa seguem o caminho de sempre. É lembrete pra ele oferecer,
+      // não venda automática: nada vai pro cliente.
+      {
+        let sugSlot=modal.querySelector('[data-suggest-slot]');
+        if(!sugSlot){sugSlot=document.createElement('div');sugSlot.setAttribute('data-suggest-slot','');modal.querySelector('[data-payment-slot]').insertAdjacentElement('afterend',sugSlot)}
+        const nomeServ=String(booking.service_name||'').toLowerCase();
+        // Fora da sugestão: produto de condição (anticaspa) — é indicação dele ao ver o couro cabeludo,
+        // não oferta pra todo corte. Continua na lista completa. Ordem: maior valor primeiro (acabamento).
+        const sugeridos=productCatalog.filter(p=>!/anticaspa/i.test(p.name)&&(p.for||[]).some(k=>nomeServ.includes(String(k).toLowerCase()))).sort((a,b)=>Number(b.price)-Number(a.price)).slice(0,3);
+        sugSlot.hidden=!sugeridos.length;
+        sugSlot.innerHTML=sugeridos.length?`<h3 class="checkout-h3">Produto para casa? <small class="field-help is-light">ofereça se fizer sentido</small></h3><div class="payment-method-grid">${sugeridos.map(p=>`<button type="button" data-suggest-product="${esc(p.name)}">${esc(p.name)} · ${money(p.price)}</button>`).join('')}</div>`:'';
+        const syncSug=()=>sugSlot.querySelectorAll('[data-suggest-product]').forEach(btn=>{const cb=[...modal.querySelectorAll('[data-products-slot] [data-product-name]')].find(i=>i.dataset.productName===btn.dataset.suggestProduct);btn.classList.toggle('is-selected',Boolean(cb?.checked))});
+        syncSug();
+        sugSlot.onclick=e=>{
+          const btn=e.target.closest('[data-suggest-product]');if(!btn)return;
+          const cb=[...modal.querySelectorAll('[data-products-slot] [data-product-name]')].find(i=>i.dataset.productName===btn.dataset.suggestProduct);if(!cb)return;
+          cb.checked=!cb.checked;cb.dispatchEvent(new Event('change',{bubbles:true}));syncSug();
+        };
+        modal.querySelector('[data-products-slot]').onchange=syncSug;
+      }
       // v29.49.0 — caso Frei Bartolomeu (19/08): pagou adiantado no Pix (confirmado), e o modal
       // de conclusão ainda perguntava a forma de pagamento. Pix antecipado confirmado = pré-seleciona
       // Pix e avisa; dá pra trocar se por acaso o registro estiver errado.
@@ -779,8 +803,54 @@ ${data?.email?.error||'Verifique os registros da função.'}`);
       // v29.12.0: o texto antigo dizia "em aproximadamente 2 horas" e que sem e-mail não
       // haveria pesquisa — as duas coisas ficaram falsas: a pesquisa sai pelo WhatsApp e
       // agora é disparada na hora da conclusão (o cron de 15 min virou só rede de segurança).
-      if(status==='completed'&&booking){alert('Atendimento concluído. A pesquisa de satisfação já foi disparada pelo WhatsApp do cliente.')}
+      if(status==='completed'&&booking){if(button&&button.isConnected){button.disabled=false;button.textContent=oldText}await offerReturnInChair(id,completionCourtesy)}
     }finally{if(button&&button.isConnected){button.disabled=false;button.textContent=oldText}}
+  }
+  // v29.210.0 — Retorno marcado NA CADEIRA. Depois do Concluir, em vez do alerta seco, o painel
+  // mostra até 3 opções reais de terça a quinta perto do retorno típico do cliente (regra em
+  // assets/js/retorno-cadeira.js, a mesma da JuIA). O Juliano pergunta ali mesmo, com o cliente
+  // ainda sentado, e um toque reserva. Motivo: 53% marcam no mesmo dia e quarta/quinta são os
+  // dias fracos; a oferta pelo WhatsApp (v29.193.0) chega depois que o cliente já foi embora.
+  // Não oferece quando: atendimento não é de hoje, cortesia, cliente já tem horário futuro,
+  // telefone inválido. Se já marcou aqui, a oferta do WhatsApp se cala sozinha (horário futuro).
+  // Qualquer falha cai no aviso antigo: nunca atrapalha o Concluir, que já foi gravado.
+  async function offerReturnInChair(id,courtesy){
+    const avisoPesquisa='A pesquisa de satisfação já foi disparada pelo WhatsApp do cliente.';
+    const b=allBookings.find(x=>x.id===id),hoje=isoLocal(new Date());
+    const key=phoneKey(b?.customer_phone||'');
+    const temFuturo=b&&allBookings.some(x=>x.id!==id&&['pending','confirmed'].includes(x.status)&&x.booking_date>=hoje&&phoneKey(x.customer_phone||'')===key);
+    if(!b||courtesy||b.booking_date!==hoje||key.length<10||temFuturo||!b.service_name||!(Number(b.duration_minutes)>0)){
+      alert(`Atendimento concluído. ${avisoPesquisa}${temFuturo?' Ele já tem o próximo horário marcado.':''}`);return;
+    }
+    let opcoes=[],R=null;
+    try{
+      R=await import('./assets/js/retorno-cadeira.js?v=29.210.0');
+      const datas=allBookings.filter(x=>x.status==='completed'&&phoneKey(x.customer_phone||'')===key).map(x=>x.booking_date);
+      const cand=R.candidatosRetorno(b.booking_date,R.retornoTipicoDias(R.cadenciaDias(datas),b.service_name),hoje).slice(0,6);
+      const slotsPorDia={};
+      await Promise.all(cand.map(async d=>{const {data}=await sb.rpc('get_available_slots_excluding',{p_date:d,p_duration_minutes:Number(b.duration_minutes),p_exclude_booking_id:null});slotsPorDia[d]=(data||[]).map(r=>String(r.slot_time||'').slice(0,5)).filter(Boolean)}));
+      opcoes=R.opcoesRetorno(cand,slotsPorDia,b.start_time);
+    }catch(err){console.warn('retorno na cadeira',err)}
+    if(!opcoes.length){alert(`Atendimento concluído. ${avisoPesquisa}`);return}
+    const primeiro=String(b.customer_name||'').trim().split(/\s+/)[0]||'O cliente';
+    const escolha=await new Promise(resolve=>{
+      const wrap=document.createElement('div');wrap.className='admin-modal admin-dialog';
+      wrap.innerHTML=`<div class="admin-modal-backdrop" data-rc-cancel></div><section class="admin-modal-card admin-dialog-card" role="dialog" aria-modal="true" aria-labelledby="rc-title"><h2 id="rc-title">Concluído ✓ Já deixa o retorno marcado?</h2><p class="admin-dialog-text">${esc(primeiro)} já quer deixar o próximo marcado? Opções de terça a quinta, perto do retorno de costume, para ${esc(b.service_name)}:</p><div class="payment-method-grid rc-opcoes">${opcoes.map((o,i)=>`<button type="button" data-rc-pick="${i}">${esc(R.rotuloOpcao(o))}</button>`).join('')}<button type="button" data-rc-outro>Outro dia ou horário</button></div><p class="field-help">${esc(avisoPesquisa)} Se marcar aqui, a JuIA não oferece retorno de novo.</p><div class="admin-modal-actions"><button type="button" data-rc-cancel>Agora não</button></div></section>`;
+      document.body.appendChild(wrap);
+      const finish=v=>{document.removeEventListener('keydown',onKey,true);wrap.remove();resolve(v)};
+      const onKey=e=>{if(e.key==='Escape'){e.preventDefault();finish(null)}};
+      wrap.querySelectorAll('[data-rc-cancel]').forEach(x=>x.onclick=()=>finish(null));
+      wrap.querySelectorAll('[data-rc-pick]').forEach(x=>x.onclick=()=>finish(opcoes[Number(x.dataset.rcPick)]));
+      wrap.querySelector('[data-rc-outro]').onclick=()=>finish('outro');
+      document.addEventListener('keydown',onKey,true);
+      wrap.querySelector('[data-rc-pick]').focus();
+    });
+    if(!escolha)return;
+    if(escolha==='outro'){prefillReturnStorage(b);location.href='admin-agendamento.html?modo=retorno';return}
+    const {error}=await sb.rpc('admin_create_booking',{p_customer_name:b.customer_name,p_customer_phone:b.customer_phone,p_service_name:b.service_name,p_service_price:Number(b.service_price||0),p_duration_minutes:Number(b.duration_minutes),p_booking_date:escolha.date,p_start_time:escolha.time,p_notes:'Retorno marcado na cadeira',p_allow_outside_hours:false,p_allow_overlap:false});
+    if(error){alert(`O retorno NÃO foi marcado: ${friendlyDb(error.message)}. Use "Novo retorno" no cartão dele.`);return}
+    await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
+    BDJ_UX.toast(`Retorno marcado: ${R.rotuloOpcao(escolha)}. A confirmação sai sozinha na véspera.`,'success',6000);
   }
   async function loadBlocks(){const box=$('agenda-block-list'),{data,error}=await sb.from('schedule_blocks').select('*').eq('block_date',selectedDate).order('start_time',{ascending:true,nullsFirst:true});if(error){box.innerHTML=`<div class="admin-empty">${esc(error.message)}</div>`;return}box.innerHTML=(data||[]).length?data.map(x=>`<div class="admin-block-row"><div><strong>${x.all_day?'Dia inteiro':`${x.start_time.slice(0,5)}–${x.end_time.slice(0,5)}`}</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></div><button data-delete-block="${x.id}">Liberar</button></div>`).join(''):'<div class="admin-empty">Nenhum bloqueio nesta data.</div>';box.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock))}
   // v28.31.1: bloqueio em INTERVALO de dias (pedido do Juliano, 31/07/2026, depois de uma

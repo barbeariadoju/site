@@ -78,6 +78,11 @@ Deno.serve(async (request: Request) => {
         authError: authError?.message || null,
       })
     }
+    // v29.210.0 — sessão válida não basta: tem que ser admin (pendência da auditoria de 17/09).
+    const { data: isAdmin } = await authClient.rpc('is_admin')
+    if (isAdmin !== true) {
+      return fail('auth_not_admin', 'Acesso não autorizado.', 403, { requestId })
+    }
 
     let body: Record<string, unknown>
     try {
