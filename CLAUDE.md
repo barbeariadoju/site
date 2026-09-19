@@ -169,6 +169,11 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   é o que evita a dúvida do dia seguinte (caso Wellington, 02/09). A exceção é estreita e
   deve continuar assim: só a chamada da conclusão (`immediate:true`), só aquele `booking_id`,
   só atendimento do dia, nunca de madrugada, e o cron segue respeitando o silêncio inteiro.
+- **O aviso de chegada (rota do Maps, 30 min antes) FURA o silêncio das 8h** (regra do Juliano,
+  19/09/2026, v29.207.0): horário das 8h00 recebe às 7h30, porque o horário foi o cliente quem
+  escolheu. Exceção estreita: só a `whatsapp-arrival-route`, só na janela de 25-35 min do próprio
+  agendamento, piso 7h e teto 20h (`horaPermitida` em `_shared/aviso-chegada.ts`). Não estender
+  a lembrete, aniversário, reativação nem marketing — esses seguem o `juia_quiet_now()`.
 - **O cupom não fiscal tem fonte única:** `supabase/functions/_shared/comprovante.ts`, com
   teste em `tests/unit/comprovante.spec.js`. Não reescrever o texto dentro da function. E o
   **motivo da cortesia nunca vai pro cliente** — aquele campo é anotação interna.
