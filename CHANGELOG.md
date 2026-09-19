@@ -1,3 +1,12 @@
+## 29.207.0 — Aviso de chegada sai antes das 8h quando o horário é das 8h (19/09)
+
+**Pedido do Juliano no plano do dia:** o Luiz estava marcado às 8h00 de hoje e não recebeu a rota do Maps; deveria ter recebido às 7h30.
+
+- **Causa:** na 29.206.0 o cron `bdj-arrival-route` só rodava fora do silêncio da JuIA (`juia_quiet_now()`, que começa às 8h). Eu tinha registrado isso como "consequência aceita"; o Juliano não aceitou, e com razão: o horário foi o próprio cliente quem escolheu.
+- **Correção:** o aviso de chegada deixa de obedecer ao `juia_quiet_now()`. Cron passa a rodar das 7h às 19h59 (Brasília) — migração 166 —, e a function tem a mesma guarda (`horaPermitida` em `_shared/aviso-chegada.ts`, piso 7h, teto 20h, com teste).
+- **Exceção estreita, igual à do comprovante:** só este aviso, só dentro da janela de 25-35 min antes do próprio agendamento, nunca de madrugada. Lembrete de 24h, aniversário, reativação e marketing continuam presos ao silêncio das 8h.
+- Efeito colateral consciente: domingo/feriado deixam de bloquear este aviso. Só sai se houver agendamento no dia — e aí o cliente precisa da rota do mesmo jeito.
+
 ## 29.206.1 — Produtos de volta no "Concluir" pela tela Hoje (18/09)
 
 **Relato do Juliano, com cliente na cadeira:** "to concluindo um serviço, sumiu a parte que eu incluía produtos, preciso incluir Monster na comanda".

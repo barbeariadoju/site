@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montarAvisoChegada, minutosAte, dentroDaJanela, MAPS_URL } from '../../supabase/functions/_shared/aviso-chegada.ts';
+import { montarAvisoChegada, minutosAte, dentroDaJanela, horaPermitida, MAPS_URL } from '../../supabase/functions/_shared/aviso-chegada.ts';
 
 // v29.206.0 — aviso de chegada com a rota do Maps ~30 min antes (dica do cliente Rafael).
 
@@ -52,5 +52,17 @@ describe('janela de envio', () => {
       }
       expect(rodadas.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('horário permitido (v29.207.0: fura o silêncio das 8h)', () => {
+  it('horário das 8h00 recebe o aviso às 7h30', () => {
+    expect(horaPermitida(7)).toBe(true);
+    expect(dentroDaJanela(minutosAte('2026-09-19T07:30', '2026-09-19T08:00'))).toBe(true);
+  });
+
+  it('nunca de madrugada nem depois das 20h', () => {
+    for (const h of [0, 3, 5, 6, 20, 21, 23]) expect(horaPermitida(h)).toBe(false);
+    for (let h = 7; h < 20; h++) expect(horaPermitida(h)).toBe(true);
   });
 });

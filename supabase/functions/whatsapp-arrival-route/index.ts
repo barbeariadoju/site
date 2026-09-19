@@ -1,11 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
-import { montarAvisoChegada, minutosAte, dentroDaJanela, CRIADO_HA_MIN } from '../_shared/aviso-chegada.ts'
+import { montarAvisoChegada, minutosAte, dentroDaJanela, horaPermitida, CRIADO_HA_MIN } from '../_shared/aviso-chegada.ts'
 
 // v29.206.0 — aviso de chegada com a rota do Google Maps ~30 min antes do horário (dica do
-// cliente Rafael, 18/09/2026). Cron bdj-arrival-route a cada 5 min, só dentro da janela de
-// contato (public.juia_quiet_now(), migração 165). Consequência aceita: horário das 8h00 não
-// recebe o aviso, porque 7h30 é silêncio — a exceção das 20h é só do comprovante e fica estreita.
+// cliente Rafael, 18/09/2026). Cron bdj-arrival-route a cada 5 min, das 7h às 20h.
+// v29.207.0 (19/09/2026): deixou de obedecer ao juia_quiet_now() — horário das 8h00 recebe o
+// aviso às 7h30 (regra do Juliano). Exceção estreita, igual à do comprovante: só este aviso,
+// só na janela de 30 min do próprio agendamento, piso 7h e teto 20h (horaPermitida).
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -35,10 +36,10 @@ Deno.serve(async (request: Request) => {
   const expected = Deno.env.get('WHATSAPP_WEBHOOK_SECRET')?.trim() || ''
   if (!expected || request.headers.get('x-webhook-secret') !== expected) return json({ error: 'Não autorizado.' }, 401)
 
-  // Rede de segurança para disparo manual; a janela completa fica no agendador.
+  // Piso 7h / teto 20h. O silêncio da JuIA (8h) NÃO vale aqui: o horário é do próprio cliente.
   const agora = agoraSP()
   const hora = Number(agora.slice(11, 13))
-  if (hora >= 20 || hora < 8) return json({ ok: true, quiet_hours: true })
+  if (!horaPermitida(hora)) return json({ ok: true, quiet_hours: true })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } })

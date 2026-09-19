@@ -40,3 +40,12 @@ export const minutosAte = (agoraLocal: string, inicioLocal: string) =>
   (Date.parse(`${inicioLocal.slice(0, 16)}:00Z`) - Date.parse(`${agoraLocal.slice(0, 16)}:00Z`)) / 60000
 
 export const dentroDaJanela = (minutos: number) => minutos >= JANELA_MIN && minutos <= JANELA_MAX
+
+// v29.207.0 — o aviso de chegada FURA o silêncio da manhã (regra do Juliano, 19/09/2026): quem
+// marcou às 8h00 recebe às 7h30, porque o horário foi o cliente quem escolheu e a mensagem só
+// existe por causa dele. Exceção estreita, como a do comprovante: só este aviso, só dentro da
+// janela de 30 min do próprio agendamento, e nunca antes das 7h nem depois das 20h.
+// Lembrete, aniversário, reativação e o resto continuam presos ao juia_quiet_now().
+export const HORA_MINIMA = 7
+export const HORA_MAXIMA = 20
+export const horaPermitida = (hora: number) => hora >= HORA_MINIMA && hora < HORA_MAXIMA
