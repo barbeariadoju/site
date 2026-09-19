@@ -79,7 +79,11 @@ Deno.serve(async (request: Request) => {
   for (const c of candidates) {
     const phone = canonicalPhone(c.phone)
     const expiresLabel = ddmm(new Date(c.expires_at))
-    const text = `🎉 Parabéns, ${firstName(c.name)}! Você completou 10 pontos de fidelidade na Barbearia do Ju e ganhou 1 serviço grátis! Você tem até ${expiresLabel} (30 dias) pra resgatar — depois disso o prêmio expira. É um benefício pessoal, vale só pra você (intransferível). Da próxima vez que agendar, é só chamar aqui que eu já aplico sozinha, sem precisar pedir! 😊`
+    // v29.208.0 (revisão de textos, 19/09): "eu já aplico sozinha" marcava gênero no número do
+    // Juliano e se contradizia ("é só chamar" + "sem precisar pedir"); e "1 serviço grátis" não
+    // dizia o que acontece no combo — no Concluir o prêmio cobre UM serviço (v29.138.0).
+    const nomeFid = firstName(c.name) === 'você' ? '' : firstName(c.name)
+    const text = `Olá${nomeFid ? `, ${nomeFid}` : ''}. Você completou os 10 pontos do cartão fidelidade da Barbearia do Ju: o próximo serviço é por nossa conta.\n\nO prêmio vale até ${expiresLabel} e é pessoal, só para você. Se o atendimento for um combo, ele cobre um dos serviços. Não precisa pedir nada: fica registrado no seu cadastro e é aplicado no dia.\n\nPara agendar, é só me responder aqui. Obrigado pela preferência 🙏`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',

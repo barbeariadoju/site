@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts'
+import { semEmoji } from '../_shared/sem-emoji.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -127,6 +128,13 @@ async function generateCaption(openaiKey: string | undefined, prompt: string, ex
   }
 }
 
+// v29.208.0 — VOZ DO CLIENTE (19/09/2026): tirada das 108 avaliações reais do Google (75 com
+// texto), lidas pelo Windsor. O modelo escrevia com vocabulário de agência ("venha viver esse
+// cuidado", "o espelho entra em cena"); os clientes escrevem "atencioso", "detalhista", "do
+// jeito que eu pedi", "limpo e organizado", "preço justo". O post passa a falar como quem já
+// sentou na cadeira. A lista "evitar" são termos que nenhum cliente usou.
+const VOZ_CLIENTE = `VOCABULÁRIO: escreva com as palavras que os clientes REAIS usam nas avaliações do Google (use 1 ou 2 por texto, de forma natural, sem aspas e sem dizer "segundo os clientes"): atencioso, detalhista, atenção aos detalhes, do jeito que você pediu, corte bem feito, caprichado no corte e na barba, educado, gente boa, lugar limpo e organizado, ambiente agradável, aconchegante, à vontade, com paciência e sem pressa, cortar o cabelo e a barba em paz, papo agradável, preço justo, cafezinho, barbeiro de confiança, levar o filho junto. NUNCA use: premium, luxo, exclusivo, experiência única/completa/inesquecível, sofisticado, referência, a melhor barbearia, número 1, transformação, autoestima, novo você, ritual, momento só seu, "profissionais" no plural (é um barbeiro só), rapidez, agilidade, barato, promoção imperdível, "venha viver", "entra em cena".`
+
 // Trava determinística contra texto vazio — mesma ideia do SCARCITY_VIOLATION, mas para
 // qualidade em vez de estratégia. O modelo pode desobedecer uma instrução de estilo; não
 // pode desobedecer um filtro. Se a legenda cair em clichê de cartão ou virar lista de
@@ -137,7 +145,7 @@ const CLICHE_VAZIO = /que a semana comece leve|disposi[çc][ãa]o renovada|novos
 // "experiência premium", "acabamento impecável"). São frases que serviriam pra qualquer
 // barbearia do país — o oposto do que o Juliano aprova. Mesma lógica do CLICHE_VAZIO:
 // o prompt proíbe, mas proibição textual depende do modelo; o filtro não.
-const CLICHE_INSTITUCIONAL = /\b(visual|estilo|corte|cabelo|barba|voc[êe])\s+(merece|pede)\b|merece\s+(o\s+)?cuidado|cuidado\s+(e\s+(a\s+)?(precis[ãa]o|estilo)|à\s+altura|nos\s+detalhes)|experi[êe]ncia\s+(premium|[úu]nica|completa|exclusiva)|momento\s+de\s+cuidado|acabamento\s+impec[áa]vel|atendimento\s+(de\s+excel[êe]ncia|impec[áa]vel|diferenciado)|cada\s+corte\s+[ée]\s+pensado|eleve\s+(o\s+)?seu|autoestima\s+em\s+dia|garanta\s+seu\s+momento/i
+const CLICHE_INSTITUCIONAL = /\b(visual|estilo|corte|cabelo|barba|voc[êe])\s+(merece|pede)\b|merece\s+(o\s+)?cuidado|cuidado\s+(e\s+(a\s+)?(precis[ãa]o|estilo)|à\s+altura|nos\s+detalhes)|experi[êe]ncia\s+(premium|[úu]nica|completa|exclusiva)|momento\s+de\s+cuidado|acabamento\s+impec[áa]vel|atendimento\s+(de\s+excel[êe]ncia|impec[áa]vel|diferenciado)|cada\s+corte\s+[ée]\s+pensado|eleve\s+(o\s+)?seu|autoestima\s+em\s+dia|garanta\s+seu\s+momento|(venha\s+)?viver\s+(esse|este|o\s+nosso|essa)\s+(cuidado|experi[êe]ncia|momento)|entra\s+em\s+cena/i
 // v29.31.5 — nunca revelar quando a barbearia abriu (decisão do Juliano, 16/08/2026).
 // Um texto emocionou de verdade dizendo "comecei do zero em março" — mas datar o começo
 // entrega a quem ainda não é cliente que a casa é recente, e isso trabalha contra a
@@ -173,11 +181,11 @@ const BRAND_STYLE = `Imagem para o Instagram da Barbearia do Ju, barbearia mascu
 
 ESTILO: fotografia de produto / still life editorial, estética "Old Money" clássica e atemporal. Iluminação quente e aconchegante, aproximadamente 2700–3000K, tons âmbar/dourados — NUNCA usar luz azul, roxa ou branca fria. Sombras profundas e definidas, reflexos naturais em metal e vidro, profundidade e contraste como fotografia cinematográfica. Capricho no detalhe, sem exagero.
 
-PALETA E MATERIAIS REAIS desta barbearia (use como ingredientes de uma composição still life, não como uma sala inteira): parede de tijolo aparente terracota como textura de fundo desfocada; couro preto capitonê; latão e metal preto escovado com pequenos detalhes dourados/bronze; madeira escura de bancada e viga de madeira clara aparente; vidro e cristal (potes de boticário com tampa, frascos âmbar de produto); folhagem verde-escura de samambaia; toalhas dobradas em tom creme; halo de luz âmbar/dourada ao redor de um espelho, sugerido apenas como brilho de fundo, não como espelho inteiro.
+PALETA E MATERIAIS REAIS desta barbearia (use como ingredientes de uma composição still life, não como uma sala inteira): parede lisa em tom escuro ou creme, desfocada, como fundo (NÃO use parede de tijolo: virou a fórmula repetida que o crivo reprova — v29.208.0); couro preto capitonê; latão e metal preto escovado com pequenos detalhes dourados/bronze; madeira escura de bancada e viga de madeira clara aparente; vidro e cristal (potes de boticário com tampa, frascos âmbar de produto); folhagem verde-escura de samambaia; toalhas dobradas em tom creme; halo de luz âmbar/dourada ao redor de um espelho, sugerido apenas como brilho de fundo, não como espelho inteiro.
 
 OBJETOS EM PRIMEIRO PLANO (still life, poucos por vez): navalha de barbeiro fechada, pente, tesoura de barbeiro, pincel de barba, frasco de produto em vidro âmbar, toalha dobrada — dispostos sobre uma superfície escura (madeira ou mármore preto), com espaço negativo generoso ao redor.
 
-PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas — EM NENHUMA FORMA: nem como pessoa real, nem como silhueta, sombra, reflexo em espelho, figura dentro de quadro/pôster/pintura pendurado na parede, manequim, busto ou boneco. Se houver um quadro na parede, ele deve ser abstrato, geométrico ou vazio; o ambiente inteiro da barbearia como uma sala reconhecível (nada de porta, layout, múltiplos móveis simultâneos, televisão, cadeira de barbeiro dentro de um cômodo); qualquer texto, letra, número, frase, logotipo ou marca d'água na imagem — nunca tente escrever "Barbearia do Ju" nem nenhuma frase; estética de banco de imagens.
+PROIBIDO — não gere em nenhuma hipótese: pessoas, rostos, mãos, corpos ou silhuetas humanas — EM NENHUMA FORMA: nem como pessoa real, nem como silhueta, sombra, reflexo em espelho, figura dentro de quadro/pôster/pintura pendurado na parede, manequim, busto ou boneco. Se houver um quadro na parede, ele deve ser abstrato, geométrico ou vazio; o ambiente inteiro da barbearia como uma sala reconhecível (nada de porta, layout, múltiplos móveis simultâneos, televisão, cadeira de barbeiro dentro de um cômodo); qualquer texto, letra, número, frase, logotipo ou marca d'água na imagem — nunca tente escrever "Barbearia do Ju" nem nenhuma frase, e isso vale também para gravação em superfície, rótulo, etiqueta, carimbo em madeira ou mármore (em 19/09/2026 saiu uma palavra inventada gravada na bancada); emblema, brasão ou selo desenhado; tarja preta em cima ou embaixo (a imagem preenche o quadro inteiro); estética de banco de imagens.
 
 PROIBIDO TAMBÉM, SEM EXCEÇÃO (regra permanente da marca, definida pelo Juliano em 16/08/2026 — ele repudia o estímulo, mesmo inconsciente, a drogas legalizadas): qualquer bebida alcoólica ou objeto que a sugira — copo de whisky/uísque, dose, taça de vinho, garrafa ou decanter de licor, rótulo de destilado, rolha, saca-rolhas, balde de gelo com garrafa, chope, cerveja; qualquer produto de tabaco ou fumo — cigarro, charuto, cachimbo, cinzeiro, isqueiro, fósforo aceso, narguilé, vaporizador, fumaça de cigarro; e qualquer outro elemento imoral, ilegal ou inadequado para público de todas as idades (armas, jogos de azar, apostas, conteúdo sensual). O frasco âmbar permitido é SEMPRE de produto de barbearia (tônico, óleo de barba, loção pós-barba) — nunca com aparência de garrafa de bebida. Na dúvida entre um objeto ambíguo e nenhum objeto, escolha nenhum.
 
@@ -264,7 +272,7 @@ const ENQUADRAMENTOS = [
   'ENQUADRAMENTO DE HOJE — PLANO ABERTO E ARQUITETÔNICO: afaste a câmera e mostre um RECORTE DO AMBIENTE (um canto da parede com a bancada, a luz atravessando o espaço), com os objetos pequenos dentro do quadro, sem serem protagonistas. A sensação é de lugar, não de produto. Continua proibido mostrar a sala inteira reconhecível, porta, televisão ou vários móveis ao mesmo tempo.',
   'ENQUADRAMENTO DE HOJE — CONTRA-LUZ: a fonte de luz fica ATRÁS do objeto, que aparece recortado, quase em silhueta, com o contorno brilhando e o corpo escuro. Muita atmosfera e pouca informação, com o fundo estourado de luz.',
   'ENQUADRAMENTO DE HOJE — VERTICAL COM VAZIO EM CIMA: um único objeto EM PÉ, isolado, na parte de baixo do quadro, com dois terços da imagem ocupados por parede ou ar vazio acima dele. Silêncio visual, quase um pôster minimalista.',
-  'ENQUADRAMENTO DE HOJE — A TEXTURA É O ASSUNTO: o protagonista é uma SUPERFÍCIE em close — o couro capitonê da cadeira, o tijolo aparente, a trama da toalha creme, o veio da madeira — atravessada pela luz. Um objeto pequeno entra só como apoio num canto, ou nem isso.',
+  'ENQUADRAMENTO DE HOJE — A TEXTURA É O ASSUNTO: o protagonista é uma SUPERFÍCIE em close — o couro capitonê da cadeira, a trama da toalha creme, o veio da madeira — atravessada pela luz. Um objeto pequeno entra só como apoio num canto, ou nem isso.',
 ]
 // Indice pelo numero de dias desde 1970, nao pelo dia do mes: gira de verdade e nao reinicia
 // no dia 1o (com 6 opcoes e 30 dias, o dia do mes repetiria o mesmo padrao todo mes).
@@ -296,7 +304,7 @@ PALETA DE DOMINGO (diferente da paleta padrão da marca, de propósito, para cri
 
 COMPOSIÇÃO — MÁXIMO 3 ELEMENTOS NA IMAGEM INTEIRA, e pelo menos 45% de espaço vazio: um objeto herói em foco nítido e no máximo dois apoios discretos e desfocados. Escolha UMA composição: (a) uma navalha de barbeiro fechada, de cabo escuro, repousando sobre uma toalha creme dobrada; (b) uma xícara branca de café sobre uma bancada de madeira escura vazia; (c) uma tesoura e um pente alinhados sobre couro preto; (d) um pincel de barba em pé, sozinho, sobre mármore claro. NUNCA misture louça de café com ferramentas de barbear na mesma superfície — não faz sentido narrativo.
 
-MATERIAIS PERMITIDOS: madeira escura, mármore claro, couro preto, latão, aço polido, algodão creme, vidro âmbar liso e SEM RÓTULO. Fundo: parede de tijolo aparente muito desfocada ou parede lisa clara.
+MATERIAIS PERMITIDOS: madeira escura, mármore claro, couro preto, latão, aço polido, algodão creme, vidro âmbar liso e SEM RÓTULO. Fundo: parede lisa clara, desfocada (nada de tijolo).
 
 ÓPTICA: 85mm, abertura f/2.0, profundidade de campo rasa, câmera na altura da superfície, composição assimétrica com o objeto fora do centro.
 
@@ -776,8 +784,10 @@ ${NAO_INVASIVO}`
     const insertedRows: { id: string; platform: string; caption: string }[] = []
 
     if (platformsToGenerate.includes('whatsapp_business')) {
-      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, pode usar 1 emoji no começo, sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
-      const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaption, 'whatsapp_business'), 'whatsapp_status', diaEmocional)
+      const prompt = `Você escreve o texto de um Status (Stories) de WhatsApp pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, nunca robótico nem "vendedor demais" — é uma barbearia de bairro, não uma grande marca. Use no máximo 2 frases curtas, SEM NENHUM emoji (regra do Juliano de 01/09/2026: o Status sai do WhatsApp dele, que o cliente lê como mensagem dele), sem hashtag. NUNCA invente preço, horário ou dado que não foi passado. NUNCA escreva nenhum link/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}
+
+${VOZ_CLIENTE}`
+      const caption = withBookingLink(semEmoji(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaption, 'whatsapp_business')), 'whatsapp_status', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
         .insert({ platform: 'whatsapp_business', caption, status: 'rascunho', source: 'ia', context })
@@ -788,7 +798,9 @@ ${NAO_INVASIVO}`
     }
 
     if (platformsToGenerate.includes('facebook')) {
-      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve o texto de um post do Facebook pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso e um pouco mais descritivo que uma mensagem de WhatsApp (Facebook aceita texto mais completo), mas ainda direto — no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Mencione que dá pra agendar pelo site ou WhatsApp, mas NUNCA escreva o endereço/URL — o link de agendamento é acrescentado automaticamente depois do seu texto. NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}
+
+${VOZ_CLIENTE}`
       const caption = withBookingLink(safeCaption(await captionComQualidade(openaiKey, prompt, diaEmocional, diaEmocional ? undefined : temaRepetido), fallbackCaptionFacebook, 'facebook'), 'facebook', diaEmocional)
       const { data: inserted, error } = await admin
         .from('content_posts')
@@ -800,7 +812,9 @@ ${NAO_INVASIVO}`
     }
 
     if (platformsToGenerate.includes('instagram')) {
-      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}`
+      const prompt = `Você escreve a legenda de um post do Instagram pra Barbearia do Ju, uma barbearia real em Bragança Paulista/SP. Tom: caloroso, direto, no máximo 3 frases curtas. Pode usar 1 ou 2 emojis, sem hashtag. Diga "agende pelo link na bio ou chame no WhatsApp" (NUNCA escreva a URL crua, Instagram não deixa link clicável na legenda). NUNCA invente preço, horário ou dado que não foi passado. NUNCA mencione quantidade de horários livres nem diga que a agenda está vazia, livre ou aberta, e NUNCA use as palavras "janela", "encaixe", "vaga" ou expressões como "horários livres", "vários horários", "alguns horários". O texto precisa ser POSITIVO e fortalecer a imagem da barbearia — procurada, caprichada e acolhedora: venda a experiência e o motivo pra agendar, nunca a disponibilidade. Fato real de hoje: ${contextFact}
+
+${VOZ_CLIENTE}`
       // Instagram: sem URL nenhuma na legenda (não é clicável) — só "link na bio". Por isso
       // passa por stripSiteUrls sem receber link de volta, diferente das outras plataformas.
       // v29.31.7 — marcação do Juliano e da Nicole em toda legenda do Instagram (pedido dele,

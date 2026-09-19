@@ -363,7 +363,9 @@ Deno.serve(async (request: Request) => {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
       }
-      const text = `Oi de novo! 👋 Notei que você chegou a perguntar sobre ${lead.service_interest || 'um atendimento'} mas não fechamos o agendamento. Pra eu te ajudar melhor da próxima vez, o que rolou?\n\n1️⃣ Não tinha o dia/horário que eu queria\n2️⃣ Preço\n3️⃣ Só estava pesquisando\n4️⃣ Outro motivo (me conta!)\n\nResponda com o número ou me conte com suas palavras.`
+      // v29.208.0: o "1️⃣" passava pelo semEmoji como "1⃣" (tecla ainda visível) — número em
+      // negrito, como na confirmação de presença. O webhook lê a resposta pelo número/palavra.
+      const text = `Olá. Você chegou a perguntar sobre ${lead.service_interest || 'um atendimento'} e acabamos não fechando o agendamento. Para eu melhorar o atendimento, pode me dizer o motivo?\n\n*1* — Não tinha o dia ou horário que eu queria\n*2* — Preço\n*3* — Só estava pesquisando\n*4* — Outro motivo\n\nPode responder com o número ou com suas palavras.`
       await sendWhatsapp(lead.phone, text)
       await admin.from('conversation_leads').update({ followup_stage: 2, followup_2_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('phone', lead.phone)
       nudge2Sent++

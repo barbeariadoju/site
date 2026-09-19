@@ -14,7 +14,10 @@
 // Aplicar SEMPRE na saída (no ponto de envio), NUNCA na entrada: as regex que detectam
 // emoji do CLIENTE (reação 👍, encerramento 🤝) continuam precisando do texto original.
 export const semEmoji = (t = '') => String(t || '')
-  .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, m => m === '\u{1F64F}' ? m : '')
+  .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, m => m === '\u{1F64F}' ? m : '')
+  // v29.208.0 — \u{20E3} (tecla numerada): sem ele o "1️⃣" virava "1⃣", que o WhatsApp ainda
+  // mostra como tecla. E emoji no começo da linha deixava um espaço sobrando depois do \n.
+  .replace(/\n[ \t]+/g, '\n')
   .replace(/[ \t]{2,}/g, ' ')
   .replace(/ +([,.!?;:)\]])/g, '$1')
   .replace(/([(\[]) +/g, '$1')

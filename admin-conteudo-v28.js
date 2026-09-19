@@ -197,7 +197,7 @@
       // Story não tem legenda de verdade na Meta (o texto precisa estar na própria
       // imagem) — o campo de texto aqui é só anotação interna, não sai publicado.
       const isStoryPlatform = r.platform === 'facebook_story' || r.platform === 'instagram_story';
-      return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}" data-carousel="${carouselUrls.length || ''}">
+      return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}" data-carousel="${carouselUrls.length || ''}" data-scheduled="${r.status === 'agendado' && r.scheduled_for ? esc(r.scheduled_for) : ''}">
         <span class="badge ${r.status === 'aprovado' || r.status === 'agendado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'agendado' ? `⏰ Agendado — sai sozinho ${esc(scheduledLabel)}` : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
         ${scheduleError && r.status === 'rascunho' ? `<p class="meta">⚠️ A publicação agendada falhou e voltou pra fila: ${esc(scheduleError)}</p>` : ''}
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
@@ -276,6 +276,19 @@
     const buttons = card.querySelectorAll('button');
     const publishBtn = card.querySelector('[data-action="publish"]');
     const originalLabel = publishBtn.textContent;
+    // v29.208.0 — "Publicar agora" num post agendado para OUTRO dia pede confirmação. Duas peças
+    // do plano de setembro saíram dias antes (Instagram de 19/09 em 13/09; Facebook de 22/09 em
+    // 15/09) porque o botão amarelo publicava direto, sem dizer que a data marcada era outra.
+    const scheduledFor = card.dataset.scheduled;
+    if (scheduledFor) {
+      const diaSP = d => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      if (diaSP(scheduledFor) !== diaSP(Date.now())) {
+        const quando = new Date(scheduledFor).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        if (!await BDJ_UX.confirm(`Este post está marcado para ${quando}, não para hoje.
+
+Publicar agora mesmo assim? Ele sai na hora e não sai de novo na data marcada.`)) return;
+      }
+    }
     buttons.forEach(b => b.disabled = true);
     publishBtn.textContent = 'Publicando...';
     // v28.47.1: sem isso, se o servidor não responder por qualquer motivo (raro, mas

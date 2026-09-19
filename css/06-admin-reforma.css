@@ -219,6 +219,7 @@ body.admin-more-open{overflow:hidden}
 .admin-booking-card:hover{border-color:var(--line)}
 .admin-booking-summary:hover{background:rgba(var(--white-rgb),.025)}
 .admin-booking-detail-inner .admin-services-full{display:block;color:var(--gold2);font-weight:700;font-size:var(--t-sm);line-height:1.35;white-space:normal;margin-bottom:2px}
+.admin-booking-detail-inner .admin-sem-whats{display:block;margin:4px 0 2px;padding:4px 8px;border-radius:6px;background:rgba(255,120,120,.12);color:var(--danger);font-weight:700;font-size:var(--t-xs);white-space:normal}
 .admin-visit-badge{justify-self:start;display:inline-flex;align-items:center;border-radius:var(--r-pill);padding:2px 8px;font-size:var(--t-xs);font-weight:800;white-space:nowrap;margin:1px 0}
 .admin-visit-badge.is-new{background:var(--edge);color:#c9c9c9}
 .admin-visit-badge.is-recurring{background:rgba(var(--gold2-rgb),.16);color:var(--gold2)}

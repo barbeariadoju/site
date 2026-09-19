@@ -108,7 +108,10 @@ Deno.serve(async (request: Request) => {
     // v29.71.1 (25/08, pedido do Juliano no ensaio): "me diz o dia que eu confiro" soava
     // burocrático. CTA novo: pergunta direta + exemplo de resposta + "já deixo reservado"
     // (o mesmo verbo que converte no lead-followup desde a v29.51.0).
-    const text = `Oi${nome ? `, ${nome}` : ''}! 💈 Aqui é a JuIA, da Barbearia do Ju. Já faz ${tempo} desde a sua última vez aqui com o Juliano (${servico}) — deve estar na hora de dar um trato, né? 😄\n\nQuer garantir um horário essa semana? É só me responder com o dia que fica melhor (pode ser "quinta à tarde") que eu já deixo reservado pra você — hora marcada, sem fila. Se preferir, dá pra agendar direto pelo site: https://www.barbeariadoju.com.br/agendar/`
+    // v29.208.0 (revisão de textos, 19/09): saiu "Aqui é a JuIA" — o remetente é o Juliano e o
+    // cliente não sabe que é IA (regra de 01/09) — e o "deve estar na hora de dar um trato, né?",
+    // palpite sobre a aparência de quem lê. Mantido o CTA que converte (responder com o dia).
+    const text = `Olá${nome ? `, ${nome}` : ''}. Aqui é da Barbearia do Ju. Já faz ${tempo} do seu último atendimento com o Juliano (${servico}).\n\nSe quiser deixar o próximo reservado, é só me responder com o dia que fica melhor para você (pode ser "quinta à tarde") que eu já deixo reservado, com hora marcada e sem espera. Se preferir, também dá para agendar pelo site: https://www.barbeariadoju.com.br/agendar/`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',

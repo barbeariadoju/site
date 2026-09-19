@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { numeroSemWhatsapp } from '../_shared/numero-sem-whatsapp.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -235,7 +236,7 @@ Deno.serve(async (request: Request) => {
       const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim() || ''
       const waPhone = canonicalWhatsappPhone(phone)
       if (!waPhone || !evolutionApiUrl || !evolutionApiKey || !evolutionInstance) {
-        return { ok: false, status: 0, data: { error: 'WhatsApp indisponível.' } }
+        return { ok: false, status: 0, data: { error: 'WhatsApp indisponível.' }, waPhone }
       }
       try {
         const response = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
@@ -303,6 +304,24 @@ Deno.serve(async (request: Request) => {
       customerChannel = 'whatsapp'
       const whatsappResult: any = await sendWhatsapp(booking.customer_phone, waText)
       results.push(whatsappResult)
+      // v29.208.0 — anti-trote (caso Luiz, 19/09/2026): confirmação de agendamento NOVO que
+      // não entrou porque o número não tem WhatsApp marca o agendamento (o painel mostra no
+      // cartão) e avisa o Juliano por push. Não bloqueia nada: existe cliente sem WhatsApp.
+      if (!whatsappResult.ok && eventType === 'booking_confirmed' && numeroSemWhatsapp(whatsappResult)) {
+        await admin.from('bookings').update({ whatsapp_unreachable_at: new Date().toISOString() }).eq('id', booking.id).is('whatsapp_unreachable_at', null)
+        const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
+        if (pushSecret) {
+          await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
+            body: JSON.stringify({ custom: {
+              title: 'Agendamento com número sem WhatsApp',
+              body: `${String(booking.customer_name || '').slice(0, 40)} · ${String(booking.booking_date).split('-').reverse().join('/')} ${String(booking.start_time).slice(0, 5)}. Confira antes: pode ser trote.`,
+              url: '/admin-agenda.html?app=1', tag: `sem-whats-${booking.id}`,
+            } }),
+          }).catch((error) => console.error('[booking-email] push sem whatsapp', error))
+        }
+      }
       if (!whatsappResult.ok) {
         customerChannelFallbackUsed = true
         if (booking.customer_email) {
