@@ -115,7 +115,9 @@ Deno.serve(async (req) => {
         }
 
         await admin.from('whatsapp_messages').insert({
-          phone, direction: 'out', body: texto, sent_by: 'bot',
+          // v29.215.0: grava o texto como saiu (sem emoji), igual às outras functions desde a 29.212.0 —
+          // senão a análise de erros conta emoji que o cliente nunca recebeu.
+          phone, direction: 'out', body: semEmoji(texto), sent_by: 'bot',
           evolution_message_id: String(sentData?.key?.id || '') || null,
         })
 

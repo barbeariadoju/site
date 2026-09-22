@@ -173,3 +173,35 @@ describe('primeiroNome (caso Sr. Magno)', () => {
     expect(primeiroNome('Sr', '')).toBe('');
   });
 });
+
+// v29.215.0 — aviso de ausência (casos Newton 19/09, Rafael 21/09, Maurício 16/09).
+import { avisoDeAusencia } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('avisoDeAusencia (Newton, Rafael, Maurício)', () => {
+  it('"estou saindo de viagem amanhã cedo" é ausência sem prazo', () => {
+    expect(avisoDeAusencia('estou saindo de viagem amanha cedo')).toEqual({ dias: null, ferias: false });
+  });
+  it('"vou ficar uma semana fora de Bragança" é ausência de 7 dias', () => {
+    expect(avisoDeAusencia('vou ficar uma semana fora de braganca paulista')).toEqual({ dias: 7, ferias: false });
+  });
+  it('"EU VIAJO AMANHA CEDO" (já normalizado) é ausência', () => {
+    expect(avisoDeAusencia('eu viajo amanha cedo, achei q era na quarta q eu viajava')).toEqual({ dias: null, ferias: false });
+  });
+  it('"volto de viagem de férias em 1 mês e marcamos" é férias de 30 dias', () => {
+    expect(avisoDeAusencia('como disse , volto de viagem de ferias em 1 mes e marcamos novamente... muito obrigado')).toEqual({ dias: 30, ferias: true });
+    expect(avisoDeAusencia('bom dia ! daqui um mes marcamos... estou saindo de ferias... obrigado')).toEqual({ dias: 30, ferias: true });
+  });
+  it('quem pede horário na mesma frase não é ausência', () => {
+    expect(avisoDeAusencia('viajo sexta, tem horario quinta?')).toBeNull();
+    expect(avisoDeAusencia('vou viajar amanha, consegue me atender hoje?')).toBeNull();
+    expect(avisoDeAusencia('quero marcar antes de viajar')).toBeNull();
+  });
+  it('quem já voltou ou só conta da viagem não é ausência', () => {
+    expect(avisoDeAusencia('voltei de viagem, quero marcar')).toBeNull();
+    expect(avisoDeAusencia('fiz a barba na viagem')).toBeNull();
+    expect(avisoDeAusencia('boa viagem pra voce tambem')).toBeNull();
+  });
+  it('frase comum não é ausência', () => {
+    expect(avisoDeAusencia('tem horario hoje?')).toBeNull();
+    expect(avisoDeAusencia('nao. obrigado.')).toBeNull();
+  });
+});

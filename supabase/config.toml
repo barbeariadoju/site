@@ -173,3 +173,7 @@ verify_jwt = false
 
 [functions.benefits-dispatch]
 verify_jwt = false
+
+# v29.215.0: cron de recuperação da pesquisa (chamado com segredo, sem JWT) — já estava assim no ar, só não constava aqui
+[functions.survey-recovery]
+verify_jwt = false

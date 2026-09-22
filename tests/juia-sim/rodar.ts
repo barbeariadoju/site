@@ -109,7 +109,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 // 1. Dia pedido fechado não vira reserva de outro dia (caso "segunda às 18h" → terça, 18/09)
 {
   const r = await turno({ msg: 'Segunda-feira você tem as 18h?', state: { services: ['Corte de cabelo'], name: 'Tiago Teste' },
-    ai: { intent: 'book', reply: 'Reservado!', updates: { date: terca, time: '18:00' } }, contexto: ctxCliente('Tiago Teste'), vagas: { [terca]: ['17:00', '18:00'] } })
+    ai: { intent: 'book', reply: 'Reservado!', updates: { date: somar(segunda, 1), time: '18:00' } }, contexto: ctxCliente('Tiago Teste'), vagas: { [somar(segunda, 1)]: ['17:00', '18:00'] } })
   checar('1 dia fechado: não reserva', !reservou(r), r.reply)
   checar('1 dia fechado: explica que segunda não abre', /segunda/i.test(r.reply) && /não abre/i.test(r.reply), r.reply)
 }
@@ -239,6 +239,64 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte + Barba na navalha com toalha quente'] } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
   checar('15c não repete a pergunta da barba', !/Pra barba, qual/i.test(r3.reply), r3.reply)
   checar('15c um corte só (sem "Corte de cabelo" somado ao combo)', JSON.stringify(r3.state?.services) === JSON.stringify(['Corte + Barba na navalha com toalha quente']), r3.state?.services)
+}
+
+// 16. Newton (sábado 19/09, 17h43–17h46): "Não. Obrigado." é recusa; aviso de viagem não recebe horários
+{
+  const ctx = ctxCliente('Newton Teste', { last_services: 'Barba Express' })
+  const hist = [{ role: 'assistant', content: `Hoje já encerramos (atendemos até 15h). Na terça tenho alguns horários entre 08:00 e 19:00 (por exemplo 08:00, 11:45, 15:00 ou 19:00). Quer que eu reserve um?` }]
+  const r1 = await turno({ msg: 'Não . Obrigado.', state: { services: ['Barba Express'], date: dia1, usual_assumed: true }, history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctx, vagas: { [dia1]: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'] } })
+  checar('16a "Não. Obrigado." não reabre a agenda', !/Consigo te atender|hor[aá]rios? (entre|para)|\d{2}:\d{2}/.test(r1.reply), r1.reply)
+  checar('16a recusa fecha a conversa (dismissed)', r1.state?.dismissed === true, r1.state)
+  const r2 = await turno({ msg: 'Estou saindo de viagem amanhã cedo', state: { services: ['Barba Express'], date: dia1, usual_assumed: true }, history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1, period: 'morning' } }, contexto: ctx, vagas: { [dia1]: ['08:00', '09:30', '10:15', '11:00', '11:45', '12:30', '13:00'] } })
+  checar('16b viagem: boa viagem, sem horários', /Boa viagem/.test(r2.reply) && !/\d{2}:\d{2}/.test(r2.reply), r2.reply)
+  checar('16b viagem: lead apagado (sem cobrança automática)', r2.chamadas.some((x: any) => x.alvo === 'conversation_leads' && x.op === 'delete'), r2.chamadas.filter((x: any) => x.alvo === 'conversation_leads'))
+  checar('16b viagem: agenda da conversa zerada', !r2.state?.date && !r2.state?.pending_waitlist, r2.state)
+  const r3 = await turno({ msg: 'Vou ficar uma semana fora de Bragança Paulista', state: { services: ['Barba Express'], date: dia1 }, history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctx, vagas: { [dia1]: ['08:00', '09:30'] },
+    concluidos: [{ id: 'bk-newton', customer_name: 'Newton Teste', service_name: 'Barba Express', service_price: 25, duration_minutes: 30 }] })
+  const lembN = r3.chamadas.find((x: any) => x.alvo === 'return_invites' && x.op === 'upsert')
+  checar('16c uma semana fora: contato marcado pra volta (deferred)', lembN?.payload?.status === 'deferred' && Boolean(lembN?.payload?.remind_at), lembN?.payload)
+  checar('16c uma semana fora: resposta diz quando chama', /Boa viagem/.test(r3.reply) && /te chamo/.test(r3.reply) && !/\d{2}:\d{2}/.test(r3.reply), r3.reply)
+}
+
+// 17. Rafael (segunda 21/09, 10h46–10h51): "HJ" é hoje; "EU VIAJO AMANHA CEDO" não recebe a manhã de amanhã
+{
+  const ctx = ctxCliente('Rafael Teste', { last_services: 'Corte de cabelo + Barba Express' })
+  const muitos = ['08:00', '09:00', '09:45', '10:30', '11:15', '11:45', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
+  const r1 = await turno({ msg: 'HJ VC ESTÁ ABERTO?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctx, vagas: { [hoje]: muitos, [amanha]: muitos } })
+  checar('17a "hj" é lido como hoje', /hoje/i.test(r1.reply) && !/amanh[ãa] sim/i.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'EU VIAJO AMANHA CEDO, ACHEI Q ERA NA QUARTA Q EU VIAJAVA', state: { services: ['Corte de cabelo', 'Barba Express'], date: amanha, usual_assumed: true },
+    history: [{ role: 'assistant', content: 'Consigo te atender amanhã sim! Ainda tenho alguns horários para Corte de cabelo + Barba Express (aproximadamente 75 min). Você prefere manhã, tarde ou final do dia?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha, period: 'morning' } }, contexto: ctx, vagas: { [amanha]: muitos } })
+  checar('17b viajo amanhã: boa viagem, sem a manhã de amanhã', /Boa viagem/.test(r2.reply) && !/\d{2}:\d{2}/.test(r2.reply), r2.reply)
+}
+
+// 18. Maurício (16/09, 20h51): "volto de viagem de férias em 1 mês e marcamos" agenda o contato pra volta
+{
+  const r = await turno({ msg: 'Como disse , volto de viagem de férias em 1 mês e marcamos novamente... Muito obrigado', state: { services: ['Barba Express'], date: dia1, pending_rebook: { date: dia1, services: ['Barba Express'] } },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Mauricio Teste'), vagas: { [dia1]: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] },
+    concluidos: [{ id: 'bk-mauricio', customer_name: 'Mauricio Teste', service_name: 'Barba Express', service_price: 25, duration_minutes: 30 }] })
+  const lemb = r.chamadas.find((x: any) => x.alvo === 'return_invites' && x.op === 'upsert')
+  const em30 = somar(hoje, 30)
+  checar('18 férias 1 mês: convite adiado ~30 dias', lemb?.payload?.status === 'deferred' && String(lemb?.payload?.remind_at) >= em30, lemb?.payload)
+  checar('18 férias: resposta sem agenda', /Boas férias/.test(r.reply) && !/Consigo te atender|\d{2}:\d{2}/.test(r.reply), r.reply)
+}
+
+// 19. Otavio (sábado 19/09, 10h58–11h15): "E só pra corte de cabelo?" tira a barba; o nome fecha a lista de espera
+{
+  const ctx = ctxCliente('Otavio Teste')
+  const r1 = await turno({ msg: 'E so pra corte de cabelo?', state: { services: ['Corte de cabelo', 'Barba Express'], date: hoje, usual_assumed: false },
+    history: [{ role: 'assistant', content: 'Hoje não tenho mais horário para Corte de cabelo + Barba Express. Na terça tenho alguns horários. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga hoje.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: hoje } }, contexto: ctx, vagas: { [hoje]: [], [dia1]: ['09:00', '11:45', '14:30'] } })
+  checar('19a "e só pra corte" deixa só o corte', JSON.stringify(r1.state?.services) === JSON.stringify(['Corte de cabelo']), r1.state?.services)
+  checar('19a resposta fala do corte, não do combo', /Corte de cabelo/.test(r1.reply) && !/Barba Express/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Otavio', state: { services: ['Corte de cabelo'], date: dia1, pending_waitlist: { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 45 } },
+    history: [{ role: 'assistant', content: 'Para te colocar na lista de espera, preciso de seu nome.' }],
+    ai: { intent: 'other', reply: 'Certo.', updates: { name: 'Otavio' } }, contexto: { completed_visits: 0 }, vagas: { [dia1]: ['09:00'] } })
+  checar('19b nome fecha a lista de espera', r2.saidas.some((s: any) => s.url.includes('join-waitlist')) && /lista de espera/i.test(r2.reply), r2.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

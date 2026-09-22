@@ -175,3 +175,46 @@ export const tirarVocativoInicial = (texto: string): string => {
 export const prometeRecado = (texto: string): boolean =>
   /\b(vou|irei|vamos)\s+(registrar|anotar|repassar|encaminhar|passar|levar|mostrar|considerar|avaliar)\b[^.!?]{0,60}\b(juliano|ju\b|equipe|ele)\b|\bvou considerar\b|\bvou (registrar|anotar) (sua|essa|a) (sugestao|dica|ideia|observacao)\b/i
     .test(String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, ''))
+
+// ---------------------------------------------------------------------------------------------
+// AVISO DE AUSÊNCIA — "estou saindo de viagem amanhã cedo", "vou ficar uma semana fora",
+// "viajo amanhã", "volto de férias em 1 mês e marcamos".
+// Casos de 19 a 21/09/2026: Newton (sábado, 17h45) avisou DUAS vezes que ia viajar e ouviu a
+// mesma lista de horários da terça nas duas; Rafael (segunda, 10h51) escreveu "EU VIAJO AMANHA
+// CEDO" e recebeu os horários da manhã de amanhã; Maurício (16/09, 20h51) disse "volto de viagem
+// de férias em 1 mês e marcamos" e levou "Consigo te atender na quarta sim!" — e o convite de
+// retorno ainda saiu cinco dias depois, com ele viajando. A v29.197.0 só tirava o lead da
+// cobrança; a RESPOSTA continuava oferecendo agenda. Quem avisa que vai estar fora não está
+// pedindo horário: a resposta é boa viagem, e o próximo contato fica pra quando ele voltar.
+// Devolve o prazo em dias quando o cliente disse ("uma semana", "1 mês"), ou null.
+// Não é ausência: quem já VOLTOU ("voltei de viagem"), quem pede horário na mesma frase
+// ("viajo sexta, tem horário quinta?") e quem só conta que viajou ("fiz a barba na viagem").
+// ---------------------------------------------------------------------------------------------
+export type AvisoDeAusencia = { dias: number | null; ferias: boolean }
+export const avisoDeAusencia = (q: string): AvisoDeAusencia | null => {
+  const t = String(q || '').replace(/\.{2,}/g, ' ')
+  if (/\b(voltei|cheguei|de volta|retornei|ja estou aqui|fiz|cortei|aparei)\b/.test(t)) return null
+  if (/\b(tem|teria|consegue|conseguiria|da pra|pode|poderia|quero|queria|preciso|gostaria|encaixa)\b[^.!?]{0,60}\b(hoje|agora|ainda hoje|antes d[aeo]|horario|encaix|atender|marcar|agendar|reservar)\b/.test(t)) return null
+  if (/\b(hoje|agora|antes de viajar|antes da viagem)\b[^.!?]{0,40}\?/.test(t)) return null
+  const ferias = /\bferias\b/.test(t)
+  const viagem = /\b(viaj(o|ar|ando|arei|a|amos|aremos)|viagem|viajem)\b/.test(t) && !/\bboa viagem\b/.test(t)
+  const fora = /\b(ficar|estou|to|tou|estarei|vou estar|vou ficar|fico|ficarei)\s+(uma?\s+\w+\s+|\d+\s+\w+\s+)?fora\b|\bfora (da cidade|de braganca|de bp|daqui|do pais|do brasil|do estado)\b|\bso volto\b|\bvolto (so|apenas|daqui|dia|em \d|semana que vem|mes que vem)\b/.test(t)
+  if (!ferias && !viagem && !fora) return null
+  return { dias: diasPedidosAusencia(t), ferias }
+}
+// Mesma leitura de prazo do adiar-convite ("uma semana", "1 mes", "15 dias"), sem importar o
+// módulo inteiro aqui (este arquivo não depende de nada, e o teste unitário também não).
+const NUM_AUS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, dez: 10, quinze: 15, vinte: 20, trinta: 30 }
+const diasPedidosAusencia = (t: string): number | null => {
+  const m = t.match(/\b(\d{1,3}|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|dez|quinze|vinte|trinta)\s*(dias?|semanas?|mes(?:es)?|quinzenas?)\b/)
+  if (m) {
+    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : NUM_AUS[m[1]] || 0
+    const u = m[2]
+    const d = u.startsWith('semana') ? n * 7 : u.startsWith('mes') ? n * 30 : u.startsWith('quinzena') ? n * 15 : n
+    return d > 0 ? d : null
+  }
+  if (/\b(semana que vem|proxima semana)\b/.test(t)) return 7
+  if (/\b(mes que vem|proximo mes)\b/.test(t)) return 30
+  if (/\b(uma quinzena|quinze dias)\b/.test(t)) return 15
+  return null
+}

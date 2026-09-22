@@ -2080,7 +2080,16 @@ Deno.serve(async (request: Request) => {
             .eq('followup_stage', 2)
             .is('reason', null)
             .maybeSingle()
-          if (pendingLead) {
+          // v29.215.0 — caso Otavio (sábado 19/09, 10h57): dias depois da pesquisa de motivo, ele abriu
+          // conversa nova com "Ola" e recebeu "Entendido, muito obrigado pelo retorno!" — a saudação foi
+          // lida como resposta livre da pesquisa. Saudação ou pedido novo não é motivo: a pesquisa velha
+          // morre em silêncio e a mensagem segue pro fluxo normal da JuIA.
+          const abriuConversaNova = pendingLead && (/^(ola|oi|oie|opa|eai|e ai|bom dia|boa tarde|boa noite|fala|salve)\b/.test(normalize(trimmedText)) || /\b(tem|teria|quero|queria|gostaria|preciso|marcar|agendar|horario|vaga|encaix)\b/.test(normalize(trimmedText)))
+          if (abriuConversaNova) {
+            await admin.from('conversation_leads').delete().eq('phone', phone)
+            console.log('[whatsapp-webhook] pesquisa de motivo encerrada em silêncio: cliente abriu conversa nova', phone)
+          }
+          if (pendingLead && !abriuConversaNova) {
             const normalizedLeadReply = normalize(trimmedText)
             let reason: string | null = null
             if (/^1\b|horario|\bdia\b|\bdata\b/.test(normalizedLeadReply)) reason = 'sem_horario_desejado'

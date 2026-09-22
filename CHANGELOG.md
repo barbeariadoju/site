@@ -1,3 +1,38 @@
+## 29.215.0 — JuIA: revisão das conversas de sábado a terça (19–22/09) — recusa com ponto, "hj", aviso de viagem, "só corte", nome na lista de espera (22/09)
+
+**Pedido do Juliano (22/09, plano do dia):** "tenho muitas reclamações da JuIA, este sábado e ontem ela respondeu errado uma galera (…) revise todas as conversas de hoje até sábado e procure erros e tente deixar a JuIA mais inteligente". Prints do Rafael (segunda, "HJ VC ESTÁ ABERTO?") e do Maurício (convite de retorno em cima de quem avisou que estava de férias).
+
+**O que foi lido:** as 44 conversas de WhatsApp de 19/09 00h até 22/09 09h40, telefone por telefone, mais o histórico anterior dos três clientes centrais. Sábado teve 5 conversas de cliente com erro real (Newton, Otavio, Danilo, e as duas cobranças automáticas em cima do Newton), segunda 2 (Rafael, Maurício) e terça nenhuma até a hora da revisão. O Danilo (10h24, "qual barba?" repetido três vezes) já tinha sido corrigido na 29.214.1 às 14h39 do mesmo dia — conferido que a function no ar é a versão 270, posterior ao commit. Os demais eram defeitos novos, todos de LEITURA da frase do cliente pelo código, não do modelo.
+
+**Os erros e as causas:**
+
+- **Newton (sábado, 17h42–17h46, o caso que o Juliano chamou de "burra").** "Ainda está aberto? Teria um horário?" → "Anotei Barba Express. Para qual dia?" (pergunta de HOJE sem o dia lido). "Não. Obrigado." → "Consigo te atender na terça sim!" (a regra de recusa esperava `não, obrigado` com VÍRGULA; com ponto passava batido, o modelo leu como pedido e o fluxo ofereceu a terça). "Estou saindo de viagem amanhã cedo" → horários da manhã de terça. "Vou ficar uma semana fora de Bragança" → a MESMA lista de novo. Depois, na segunda às 8h: "Boa notícia! Abriu vaga amanhã, que era o dia que você queria" + "seu horário ainda NÃO ficou reservado", e na terça às 8h a pesquisa de motivo — três cobranças em cima de quem disse não e avisou que ia viajar (o aviso de viagem da v29.197.0 só reconhecia "viagem/férias … volto/marcamos"; "saindo de viagem amanhã" e "uma semana fora" não casavam, o lead ficou vivo com a data que a JuIA sugeriu, e um cancelamento na terça disparou o "abriu vaga").
+- **Rafael (segunda, 10h46–10h51).** "HJ VC ESTÁ ABERTO?" → "Consigo te atender amanhã sim!" ("hj" não era "hoje": sem dia lido, a agenda foi pro próximo dia aberto sem explicar que segunda não abre). "EU VIAJO AMANHA CEDO" → a manhã de amanhã, horário por horário. O Juliano mandou áudio.
+- **Maurício (16/09 20h51 → 21/09 10h00).** "volto de viagem de férias em 1 mês e marcamos" → "Consigo te atender na quarta sim!"; e na segunda 21/09 saiu o convite de retorno dos 5 dias da barba ("já faz uma semana da sua barba, quer deixar o próximo reservado?") pra quem está viajando por um mês.
+- **Otavio (sábado, 10h57–11h15).** "Ola" → "Entendido, muito obrigado pelo retorno!" (o webhook leu a saudação como resposta livre da pesquisa de motivo de dias antes). "E so pra corte de cabelo?" → "me embolei" (a regra "só X" exigia a frase COMEÇANDO com "só"; o combo assumido ficou e a negativa do combo se repetiu, o anti-papagaio virou "me embolei"). "Ok, é só um corte mesmo" → a mesma negativa DUPLICADA na mesma mensagem (o "Ok" fechou a pergunta aberta, o resto virou segunda chamada e devolveu o mesmo texto). "Se abrir vaga me avisa" → "preciso de seu nome" → "Otavio" → a negativa de novo, e ninguém entrou na lista.
+
+**Correções (todas com o caso no comentário do código):**
+
+- `_shared/leitura-cliente.ts`: **`avisoDeAusencia()`** — viagem, férias, "ficar/estar fora", "só volto", com prazo quando dito ("uma semana" = 7, "1 mês" = 30). Não é ausência quem já voltou, quem pede horário na mesma frase ("viajo sexta, tem horário quinta?") nem quem só conta da viagem. 7 testes novos em `tests/unit/leitura-cliente.spec.js`.
+- `ju-ia-site`: aviso de ausência **substitui a resposta** (boa viagem / boas férias, sem horário), zera a agenda da conversa e a lista de espera, apaga o lead (nenhuma cobrança automática) e, com prazo, agenda o contato pra volta pela fila do convite de retorno (`return_invites` 'deferred' — o que impede o convite dos 5/12 dias de sair no meio da viagem, caso Maurício) com a resposta dizendo o dia ("eu te chamo por aqui na terça (29/09)").
+- `ju-ia-site`: recusa aceita **qualquer pontuação** ("Não. Obrigado.", "Não! Obrigado", "nao obrigado").
+- `ju-ia-site`: **"hj" = hoje e "amn/amnh" = amanhã** já na normalização (vale pra toda leitura do arquivo); **"está aberto?" / "ainda aberto?" = pergunta de hoje** — no sábado depois das 15h a resposta é "Hoje já encerramos", na segunda é "Hoje a barbearia não abre (domingo e segunda), voltamos terça e aí consigo te atender…".
+- `ju-ia-site`: "só X" aceita muleta de abertura ("e só pra…", "ok, é só um…", "então só…").
+- `ju-ia-site`: nome solto depois de "preciso de seu nome" **fecha a lista de espera**.
+- `ju-ia-site`: segunda parte da mensagem igual à primeira não se repete (fim do texto duplicado).
+- `whatsapp-webhook`: saudação ou pedido novo em cima de uma pesquisa de motivo pendente encerra a pesquisa em silêncio e segue pro fluxo normal — não vira "motivo: outro".
+- `survey-recovery`: grava no banco o texto como saiu (sem emoji), como as outras functions desde a 29.212.0.
+
+**Simulador (`tests/juia-sim/rodar.ts`):** cenários 16 a 19 com as frases reais (Newton ×3, Rafael ×2, Maurício, Otavio ×2) — 52 verificações, todas ok. O cenário 1 ("segunda às 18h") dependia de a terça do simulador ser DEPOIS da segunda; rodando numa terça falhava sozinho. Corrigido pra usar o dia seguinte à segunda.
+
+**Banco:** lead do Newton apagado na mão (estava em `followup_stage 2` com marca de vaga reaberta; com a viagem, não pode gerar mais nada).
+
+**O que fica pro Juliano (não é código):** o Augusto recebeu no sábado 09h o texto ANTIGO de aniversário ("um serviço extra é por nossa conta"), porque a 29.209.0 entrou no ar depois do cron — se ele vier até 19/10, vale o que foi prometido, não a sobrancelha. O Newton e o Rafael foram tratados na hora (áudio); o Maurício levou o convite indevido de segunda e talvez mereça uma linha do Juliano quando voltar.
+
+**Não mudou:** a JuIA continua sem saber marcar DUAS pessoas numa conversa ("eu corto o cabelo, meu pai faz a barba", Otavio 10h57) — ela soma os dois num combo de uma pessoa só. Ficou anotado como próximo caso; hoje o Juliano resolve na mão quando aparece.
+
+**Testes:** 239 unit + 52 e2e (`npm test`, tudo verde). Deploy `ju-ia-site` (`verify_jwt=true`), `whatsapp-webhook` e `survey-recovery` (`verify_jwt=false`) via CLI, iguais ao anterior; smoke logo após.
+
 ## 29.214.1 — JuIA repetia "qual barba?" pra quem já tinha escolhido a barba (19/09)
 
 **Caso reportado pelo Juliano (print, 19/09, 10h22–10h26):** o cliente pediu "cabelo e barba", a JuIA perguntou qual barba (certo). Ele respondeu "barba na navalha com toalha sem ozônio" e recebeu a MESMA lista das três barbas. Respondeu "Corte + barba na navalha" e levou a lista pela terceira vez, com "Anotado: Corte de cabelo no lugar de…" e um segundo corte somado. Ele não agendou, e às 12h30 a cobrança automática ainda falou em "Corte + Barba na navalha + Corte de cabelo". Aconteceu antes da 29.212.0 (JuIA) entrar no ar, mas o defeito continuava no código.

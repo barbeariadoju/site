@@ -13,7 +13,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
@@ -23,7 +23,11 @@ const barbeariaAbertaAgora=()=>{const h=Number(new Intl.DateTimeFormat('en-CA',{
 // Minutos desde a meia-noite, no horário de Brasília (pra "agora" da agenda).
 const agoraMinutosSP=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());return Number(p.slice(0,2))*60+Number(p.slice(3,5))}
 const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
-const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+// v29.215.0 — caso Rafael (21/09/2026, segunda, 10h46): "HJ VC ESTÁ ABERTO?" — "hj" não era lido como
+// "hoje", o dia pedido ficou vazio, a agenda foi pro próximo dia aberto sem explicar que segunda não
+// abre, e a resposta saiu "Consigo te atender amanhã sim!" a quem perguntou de HOJE. Abreviações de
+// WhatsApp viram a palavra inteira já na normalização, pra toda leitura do arquivo enxergar igual.
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha')
 
 // v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
 //
@@ -178,7 +182,10 @@ const weekdayDatesMentioned=(text:string,fromISO:string)=>{
 const addDaysISO=(iso:string,n:number)=>{const d=new Date(iso+'T12:00:00-03:00');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 const diaPedidoNaMensagem=(text:string):string|null=>{
  const q=normalize(text)
- if(/\bhoje\b/.test(q))return today()
+ // v29.215.0 — caso Newton (sábado 19/09, 17h42): "Ainda está aberto a Barbearia? Teria um horário?"
+ // é pergunta de HOJE; sem o dia lido, a JuIA anotou o serviço e perguntou "para qual dia?" em vez de
+ // dizer que já tinha encerrado. "está aberto?", "ainda aberto?", "tá aberto?" = hoje.
+ if(/\bhoje\b/.test(q)||/\b(esta|ta|tao|estao|estas|tas)\s+abert[oa]s?\b|\babert[oa]s?\s+(hoje|agora|ainda)\b|\bainda\s+(esta\s+|ta\s+)?abert[oa]s?\b/.test(q))return today()
  if(/\bamanha\b/.test(q))return addDaysISO(today(),1)
  const m=q.match(/(?:^|[^\d:])(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?(?![\d:])/)
  if(m){
@@ -1168,7 +1175,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // "Corte infantil + Barba Express" — e assim fechou, e assim foi cobrado. "só/somente/apenas
  // X" no INÍCIO da frase é a lista inteira: fica X e mais nada. Vale pra qualquer serviço,
  // não só a barba (o bloco acima). Se X não é serviço do catálogo, não mexe.
- if(/^(so|somente|apenas|apenas o|so o|somente o)\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion)){
+ // v29.215.0 — caso Otavio (sábado 19/09, 10h58): "E so pra corte de cabelo?" e "Ok, é só um corte mesmo"
+ // não casavam (a frase não COMEÇA com "só"): o combo assumido ficou, a JuIA repetiu a negativa do combo
+ // três vezes e caiu no "me embolei". Muleta de abertura ("e", "ok,", "então", "tá") e "pra/um/o" depois
+ // do "só" fazem parte da mesma frase.
+ if(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*(so|somente|apenas)(?:\s+(?:o|a|um|uma|pra|pro|para|de|do|da))*\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion.replace(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*/,''))){
   // v29.142.0 (bateria W15): "só corte de cabelo de criança" — o parser solto casava "Corte de
   // cabelo"; o modelo já tinha devolvido "Corte de cabelo infantil". O modelo tem prioridade;
   // o parser é o plano B. E criança/infantil no texto força o corte infantil.
@@ -2393,6 +2404,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // outros fluxos, mas de risco bem menor (não cria agendamento nem mexe em nada
  // existente) — por isso não exige verifiedPhone como cancel/reschedule/change_service
  // exigem, só um telefone conhecido (site ou WhatsApp) e um nome.
+ // v29.215.0 — caso Otavio (19/09, 11h12–11h15): pediu "se abrir vaga me avisa", a JuIA pediu o nome,
+ // ele respondeu "Otavio" — e recebeu de novo a negativa de horário. O nome solto não virava
+ // join_waitlist e ninguém entrou na lista. Resposta que é só um nome, logo depois de "preciso de seu
+ // nome", fecha a lista de espera.
+ if(next.pending_waitlist&&intent!=='join_waitlist'&&/preciso de (o )?seu (nome|whatsapp)/i.test(ultimaFalaJuIA)&&!simpleNo&&!simpleYes&&!extractRequestedTime(message)){
+  const nomeWl=String(ai.updates?.name||'').trim()||(/^[a-zà-úç'\s]{2,40}$/i.test(message.trim())&&message.trim().split(/\s+/).length<=4?message.trim():'')
+  if(nomeWl&&!findServicesLoose(nomeWl).length){
+   next.name=nomeWl.split(/\s+/).map((p:string)=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ')
+   intent='join_waitlist'
+  }
+ }
  if(intent==='join_waitlist'){
   const offer=next.pending_waitlist
   if(!offer){
@@ -3150,7 +3172,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // mais cedo" caíram no "me embolei" (o primeiro) e na repetição da oferta (o segundo). Quem pede
   // um minuto está pensando: "fico no aguardo", e só.
   const adiou=/\b(vou|vo) (so |ja |rapidinho |dar uma )?(ver|olhar|olhada|conferir|confirmar|checar)\b|\b(so |apenas )?um (minuto|minutinho|momento|momentinho|instante|instantinho|segundo|segundinho)\b|\bja (te )?(falo|volto|respondo|aviso)\b|\b(pera|perai|pera ai|espera ai|aguarda ai|calma ai)\b|\bte (aviso|falo|chamo|retorno|mando (mensagem|msg))\b|\b(depois|mais tarde|amanha) (eu )?(te )?(aviso|falo|chamo|confirmo|retorno)\b|\bqualquer coisa (eu )?(te )?(chamo|aviso|falo)\b/.test(q)&&!/\?/.test(q)
-  const dispensaPura=q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n),?\s*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
+  // v29.215.0 — caso Newton (sábado 19/09, 17h43): "Não. Obrigado." com PONTO no meio não casava com
+  // "nao,? obrigado" — a recusa passou batida, o modelo leu como pedido e saiu "Consigo te atender na
+  // terça sim!" a quem tinha acabado de dizer não. Vírgula, ponto, exclamação ou nada: é a mesma recusa.
+  const dispensaPura=q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
    reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
    actions=[]
@@ -4356,8 +4381,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // Com atendimento anterior, o lembrete entra na mesma fila do convite (return_invites 'deferred',
  // o return-invite-dispatch manda no dia). Sem atendimento anterior, o Juliano recebe o recado.
  let lembreteCombinado=false
+ // v29.215.0 — AVISO DE AUSÊNCIA (casos Newton 19/09 17h45, Rafael 21/09 10h51, Maurício 16/09 20h51):
+ // "estou saindo de viagem amanhã cedo", "vou ficar uma semana fora", "EU VIAJO AMANHA CEDO", "volto de
+ // férias em 1 mês e marcamos". A v29.197.0 só tirava o lead da cobrança; a RESPOSTA continuava sendo a
+ // lista de horários (Newton ouviu a mesma lista da terça duas vezes; Rafael recebeu a manhã de amanhã;
+ // o Juliano teve que mandar áudio). Quem avisa que vai estar fora não pediu horário: a resposta é boa
+ // viagem, a agenda da conversa zera, nenhuma cobrança automática sai (lead apagado, lista de espera
+ // desfeita) e, se ele disse quando volta, o contato fica agendado pra esse dia pela mesma fila do
+ // convite de retorno (return_invites 'deferred') — o que impede o convite dos 5/12 dias de sair no meio
+ // da viagem, como saiu pro Maurício em 21/09.
+ const ausencia=!jaFezFora&&!['cancel','reschedule','change_service','update_products','join_waitlist','handoff'].includes(intent)&&!pediuHumano?avisoDeAusencia(normalizedQuestion):null
+ let ausenciaAvisada=false
  {
-  const dLemb=pediuLembrete(normalizedQuestion)?diasPedidos(normalizedQuestion):null
+  const dLemb=pediuLembrete(normalizedQuestion)?diasPedidos(normalizedQuestion):(ausencia?ausencia.dias:null)
+  if(ausencia){
+   ausenciaAvisada=true
+   next.date=null;next.time=null;next.period=null;next.pending_waitlist=null;next.pending_rebook=undefined;next.usual_assumed=false
+   next.dismissed=true
+   intent='other';handoff=false;actions=[]
+   reply=`Entendido. ${ausencia.ferias?'Boas férias':'Boa viagem'}! Quando voltar, é só me chamar por aqui que eu vejo os horários com você.`
+  }
   if(dLemb&&verifiedPhone&&!['cancel','reschedule','change_service','update_products','join_waitlist'].includes(intent)){
    const quando=dataDoLembrete(today(),dLemb)
    const chave8=String(verifiedPhone).replace(/\D/g,'').slice(-8)
@@ -4377,7 +4420,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     if(pushSecretL&&supabaseUrlL)await fetch(`${supabaseUrlL}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretL},body:JSON.stringify({custom:{title:'Lembrete pedido pelo cliente',body:`${String(contextFullName||body?.whatsapp_name||'').trim()||verifiedPhone} pediu pra ser chamado em ${formatDateBR(quando)}. Ainda não tem atendimento concluído, então o lembrete automático não cobre: chame na mão nesse dia.`,url:'/admin-atendimento.html?app=1',tag:`lembrete-${verifiedPhone}`}})}).catch(()=>{})
    }
    lembreteCombinado=true
-   reply=gravado
+   reply=ausencia
+    ?(gravado
+     ?`Combinado. ${ausencia.ferias?'Boas férias':'Boa viagem'}! Eu te chamo por aqui ${emDia(quando)} pra deixarmos o próximo horário reservado. Se quiser marcar antes, é só me escrever.`
+     :`Combinado. ${ausencia.ferias?'Boas férias':'Boa viagem'}! Quando voltar, é só me chamar por aqui que eu vejo os horários com você.`)
+    :gravado
     ?`Combinado. Eu te chamo por aqui ${emDia(quando)}, como você pediu. Se precisar antes, é só me escrever.`
     :`Combinado. Deixei anotado pro Juliano te chamar por aqui ${emDia(quando)}. Se precisar antes, é só me escrever.`
    intent='other';handoff=false;actions=[]
@@ -4442,7 +4489,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||ausenciaAvisada
   // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
   // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
   // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com
@@ -4664,7 +4711,11 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
    })
    const d=await r.json().catch(()=>null)
    if(r.ok&&d&&typeof d.reply==='string'){
-    reply=[reply,d.reply].filter(Boolean).join('\n\n')
+    // v29.215.0 — caso Otavio (19/09, 11h11): "Ok, é só um corte mesmo" — o "Ok" fechou a pergunta aberta
+    // e o resto virou segunda chamada, que devolveu a MESMA negativa de horário: a mensagem saiu com o
+    // texto duplicado. Segunda parte igual à primeira não se repete.
+    const mesmaResposta=normalize(String(d.reply||'')).replace(/\s+/g,' ').trim()===normalize(String(reply||'')).replace(/\s+/g,' ').trim()
+    reply=mesmaResposta?reply:[reply,d.reply].filter(Boolean).join('\n\n')
     if(d.state&&typeof d.state==='object'){for(const k of Object.keys(next))delete next[k];Object.assign(next,d.state)}
     if(Array.isArray(d.actions))actions=d.actions
     if(d.intent)intent=String(d.intent)
