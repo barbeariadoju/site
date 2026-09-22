@@ -1,3 +1,15 @@
+## 29.215.1 — Operação: SMSDev rotacionou as chaves após incidente de segurança; lembrete de 24h por SMS parado de 16 a 22/09 (22/09)
+
+**Pedido do Juliano (22/09):** "acho que o nosso sms dev não tá funcionando nem pra gente, apesar de termos muitos créditos não chegou os últimos testes".
+
+**O que foi encontrado:** `sms_queue` mostra o último SMS aceito em 14/09 17h15; 16/09 timeout, 17/09 resposta vazia e, de 18/09 em diante, `403 NAO AUTENTICADO` em toda chamada. Conferido direto na API (saldo, envio, DLR): a chave era recusada em todos os endpoints. Causa no e-mail de suporte@smsdev.com.br de 18/09 04h08 ("Comunicado importante de segurança"): incidente na plataforma, todas as senhas redefinidas e todas as chaves de API rotacionadas. O e-mail do Juliano ao suporte (28/08) era de outro assunto e não tinha resposta.
+
+**Impacto:** o lembrete de 24h sai por e-mail ou SMS, nunca por WhatsApp (decisão de 04/08, caso Carlos). Cliente sem e-mail ficou sem lembrete de 24h: 11 falhas entre 16 e 21/09. A confirmação de ~3h pelo WhatsApp não parou, então ninguém ficou sem aviso.
+
+**Correção (sem código):** o Juliano redefiniu a senha no painel (o e-mail de recuperação vem de contato@smsempresa.com.br, não de smsdev.com.br, e por isso não foi encontrado de primeira) e copiou a Chave Key nova em Configurações → Minha conta. A chave foi lida da área de transferência e gravada com `supabase secrets set` sem ser impressa em lugar nenhum. Testes: saldo OK (969 créditos), SMS direto ENVIADA pela TIM, e pela function `send-sms` (chamada por SQL com o segredo do vault) status `sent`.
+
+**Fica de lição:** a chave antiga aparece ecoada pelo SMSDev dentro do `last_error` da `sms_queue` — o provedor devolve a própria chave na mensagem de erro. Já está inválida, mas é o tipo de coisa que não se copia para lugar nenhum. E "NAO AUTENTICADO" depois de dias funcionando é chave trocada do lado deles, não crédito nem código: conferir a caixa de entrada antes de escrever para o suporte.
+
 ## 29.215.0 — JuIA: revisão das conversas de sábado a terça (19–22/09) — recusa com ponto, "hj", aviso de viagem, "só corte", nome na lista de espera (22/09)
 
 **Pedido do Juliano (22/09, plano do dia):** "tenho muitas reclamações da JuIA, este sábado e ontem ela respondeu errado uma galera (…) revise todas as conversas de hoje até sábado e procure erros e tente deixar a JuIA mais inteligente". Prints do Rafael (segunda, "HJ VC ESTÁ ABERTO?") e do Maurício (convite de retorno em cima de quem avisou que estava de férias).
