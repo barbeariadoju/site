@@ -146,9 +146,13 @@ const emDiaCap=(iso:string)=>{const d=emDia(iso);return d?d.charAt(0).toUpperCas
 const horaFalada=(hhmm:string)=>{const [h,m]=String(hhmm||'').split(':');return m==='00'?`${Number(h)}h`:`${Number(h)}h${m}`}
 // Domingo e segunda a barbearia não abre — dizer "não tenho horário" nesses dias soa a
 // agenda cheia e faz o cliente insistir. O motivo verdadeiro é melhor resposta.
-const semVagaTxt=(iso:string)=>{
+// v29.217.0 (pedido do Juliano, 22/09/2026): no dia ABERTO a frase é "não tenho mais vaga",
+// não "não tenho horário". É a mesma verdade dita de outro jeito — "não tenho horário" soa a
+// barbeiro sem serviço que não quer atender; "não tenho mais vaga" é a agenda cheia, que é o
+// que de fato aconteceu. O `fechado` cobre o dia bloqueado no admin (viagem, folga, feriado).
+const semVagaTxt=(iso:string,fechado=false)=>{
  const wd=new Date(iso+'T12:00:00-03:00').getUTCDay()
- return (wd===0||wd===1)?`${emDiaCap(iso)} a gente não abre`:`${emDiaCap(iso)} não tenho horário`
+ return (wd===0||wd===1||fechado)?`${emDiaCap(iso)} a gente não abre`:`${emDiaCap(iso)} não tenho mais vaga`
 }
 const WEEKDAY_NAMES=['domingo','segunda','terca','quarta','quinta','sexta','sabado']
 // Dias citados pelo NOME na mesma frase ("segunda-feira, terça-feira e quarta-feira"), já
@@ -788,6 +792,27 @@ Deno.serve(async req=>{
  const closureWindowEnd=(()=>{const d=new Date(today()+'T12:00:00-03:00');d.setDate(d.getDate()+21);return d.toISOString().slice(0,10)})()
  const {data:closuresData}=await supabase.from('schedule_blocks').select('block_date,reason').eq('all_day',true).gte('block_date',today()).lte('block_date',closureWindowEnd).order('block_date')
  const closures=(closuresData||[]).map((c:any)=>({date:formatDateBR(c.block_date),reason:c.reason||null}))
+ // v29.217.0 — pedido do Juliano (22/09/2026). Duas situações OPOSTAS saíam com a mesma frase:
+ //   a) dia aberto e lotado  → "não tenho horário" (soa a recusa; o certo é "não tenho mais vaga");
+ //   b) dia fechado o dia inteiro (domingo, segunda, viagem, folga, feriado) → "não temos horários
+ //      disponíveis", que o cliente lê como agenda cheia. Aí ele vem "de teimoso tentar um encaixe
+ //      no fio do bigode", encontra a porta fechada e perde a viagem. O que respeita o cliente é
+ //      dizer que não estamos abertos e já dar o próximo dia em que dá pra atender.
+ // Mesma fonte de verdade dos dois lugares que já sabiam disso (openTodayAsk e diaFechadoPedido):
+ // domingo/segunda pelo dia da semana, e `schedule_blocks` com "Fechar o dia inteiro" pelas closures.
+ const diaFechadoInfo=(iso:string)=>{
+  const wd=new Date(iso+'T12:00:00-03:00').getUTCDay()
+  const exc=closures.find((c:any)=>String(c?.date||'')===formatDateBR(iso))
+  if(exc)return{fechado:true,excepcional:true,reason:(exc as any).reason||null}
+  return{fechado:wd===0||wd===1,excepcional:false,reason:null}
+ }
+ // "Hoje não estamos abertos (domingo e segunda a gente não abre)" — o motivo entre parênteses
+ // evita que soe a fechamento definitivo, e o cliente entende que é rotina, não má vontade.
+ const naoAbreFrase=(iso:string)=>{
+  const f=diaFechadoInfo(iso)
+  const motivo=f.excepcional?(f.reason?` (${f.reason})`:' (fechamento excepcional nesse dia)'):' (domingo e segunda a gente não abre)'
+  return `${emDiaCap(iso)} não estamos abertos${motivo}`
+ }
  // v28.62.0 (melhoria A, aprovada 05/08): a JuIA não sabia que existia campanha rodando —
  // com o Dia dos Pais no ar, "tem alguma promoção pro Dia dos Pais?" caía no vazio, e
  // marketing e atendimento viviam desconectados. A campanha ativa vem de marketing_memory,
@@ -2231,7 +2256,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       if(nextAvail){
        // v29.69.0: sem o "(${weekday})" — formatDateBR já sai como "terça (25/08)" na troca
        // determinística do fim da função, e saía "terça (25/08) (terça-feira)" pro cliente.
-       reply=`Não encontrei horário ${emDia(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)}: consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+       reply=diaFechadoInfo(next.date).fechado
+        ?`${naoAbreFrase(next.date)}. Mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+        :`${emDiaCap(next.date)} não tenho mais vaga. O dia mais próximo que consigo é ${formatDateBR(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
        dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
        actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
       }else{
@@ -2275,7 +2302,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     }else{
      const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
      if(nextAvail){
-      reply=`Não encontrei horário ${emDia(next.date)}. O próximo dia com horário disponível é ${formatDateBR(nextAvail.date)}: consigo te atender ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+      reply=diaFechadoInfo(next.date).fechado
+        ?`${naoAbreFrase(next.date)}. Mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+        :`${emDiaCap(next.date)} não tenho mais vaga. O dia mais próximo que consigo é ${formatDateBR(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
       dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
       actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
      }else{
@@ -3354,8 +3383,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    if(!(probe||[]).length){
     const nextAvail=await findNextAvailableDate(supabase,next.date,30)
     if(nextAvail){
-     const noSlotsIntro=next.date===today()?'Hoje não temos horários disponíveis':`Não temos horários ${emDia(next.date)}`
-     reply=`${noSlotsIntro}. O próximo dia com agenda aberta é ${formatDateBR(nextAvail.date)}. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
+     // v29.217.0: dia fechado é "não estamos abertos" + o próximo dia em que dá pra atender —
+     // nunca "não temos horários disponíveis", que lê como agenda cheia e faz o cliente vir à toa.
+     const fech=diaFechadoInfo(next.date)
+     reply=fech.fechado
+      ?`${naoAbreFrase(next.date)}, mas consigo te atender normalmente ${emDia(nextAvail.date)}. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
+      :`${emDiaCap(next.date)} não tenho mais vaga. Consigo te atender ${emDia(nextAvail.date)} — qual serviço você tem interesse? Assim já te passo os horários certinhos.`
      dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     }else{
      reply='No momento não encontrei agenda aberta nas próximas semanas. Quer falar direto com a equipe?'
@@ -3406,7 +3439,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     :await findAvailableDatesInRange(supabase,inicioVarredura,duration,7,3,minTime)
    const comVaga=varredura.filter((d:any)=>d.slots.length)
    const semVaga=diasCitados.length?varredura.filter((d:any)=>!d.slots.length):[]
-   const nota=semVaga.length?` ${semVaga.map((d:any)=>minTime?`${emDiaCap(d.date)} não tenho nada depois das ${horaFalada(minTime)}`:semVagaTxt(d.date)).join(' e ')}.`:''
+   const nota=semVaga.length?` ${semVaga.map((d:any)=>minTime?`${emDiaCap(d.date)} não tenho nada depois das ${horaFalada(minTime)}`:semVagaTxt(d.date,diaFechadoInfo(d.date).fechado)).join(' e ')}.`:''
    if(comVaga.length===1){
     // Um dia só: já assume esse dia e passa direto pros horários — não faz sentido
     // perguntar "qual dia?" quando existe um.
@@ -3457,7 +3490,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       pedeExcecaoAoJuliano=true
      }
     }else if(alternativa){
-     reply=`Nesses dias não sobrou horário para ${serviceNames}. O mais próximo que consigo é ${emDia(alternativa.date)}: ${slotsPhrase(alternativa.slots)}. Serve pra você?`
+     reply=`Nesses dias não sobrou vaga para ${serviceNames}. O mais próximo que consigo é ${emDia(alternativa.date)}: ${slotsPhrase(alternativa.slots)}. Serve pra você?`
      next.date=alternativa.date
      actions=slotsSample(alternativa.slots).map((t:string)=>({label:t,message:t}))
     }else{
@@ -3525,19 +3558,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // terceira vez o anti-papagaio do webhook trocou tudo por "me embolei". Repetir a
     // recusa não é avançar: na insistência a frase muda e vira uma escolha objetiva
     // (esperar uma vaga hoje ou garantir o próximo dia), que é o que fecha ou encerra.
-    const jaDisseQueNaoTem=/não encontrei horário|nao encontrei horario/i.test(ultimaFalaJuIA)
+    // v29.217.0: a frase da recusa mudou ("não tenho mais vaga"), então o detector de insistência
+    // tem que reconhecer a nova redação também — senão a negativa idêntica volta a se repetir.
+    const jaDisseQueNaoTem=/não encontrei horário|nao encontrei horario|não tenho mais vaga|nao tenho mais vaga|não sobrou|nao sobrou/i.test(ultimaFalaJuIA)
+    // Dia fechado o dia inteiro: não é agenda cheia, é porta fechada — e não existe vaga pra
+    // abrir num dia em que ninguém trabalha, então também não se oferece lista de espera.
+    const fechadoNoDia=diaFechadoInfo(next.date)
     // v29.138.0 (pedido do Juliano, 05/09/2026): menos texto, foco em fechar. Diz que não
     // tem, dá o próximo dia com 3 horários e UMA pergunta. A lista de espera vira uma linha.
     reply=jaDisseQueNaoTem
      ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Ou te aviso se abrir vaga ${emDia(waitlistOffer.date)}, ou já reservo ${emDia(nextAvail.date)} (${slotsPhrase(nextAvail.slots)}). Qual prefere?`
      :hojeEncerrado
      ?`Hoje já encerramos (atendemos até ${new Date(today()+'T12:00:00-03:00').getUTCDay()===6?'15h':'19h'}). ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
-     :`${emDiaCap(next.date)} não tenho ${restricaoFalada?'':'mais '}horário para ${serviceNames}${restricaoFalada}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
+     :fechadoNoDia.fechado
+     ?`${naoAbreFrase(next.date)}, mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
+     :`${emDiaCap(next.date)} não tenho ${restricaoFalada?'':'mais '}vaga para ${serviceNames}${restricaoFalada}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`
     // v29.170.0 — caso Venilson (21h48): "te aviso assim que abrir vaga hoje" com a barbearia já
     // fechada há três horas. Depois do fechamento não existe vaga pra abrir hoje: sem lista de espera.
-    next.pending_waitlist=hojeEncerrado?null:waitlistOffer
+    next.pending_waitlist=(hojeEncerrado||fechadoNoDia.fechado)?null:waitlistOffer
     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
-    actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),...(hojeEncerrado?[]:[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}])]
+    actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),...((hojeEncerrado||fechadoNoDia.fechado)?[]:[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}])]
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
     // direct: aqui a pergunta É sobre a lista (não há dia alternativo) — um "sim" solto
@@ -3818,7 +3858,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=`${abertura}${atendendoAgora?'O':'Agora mesmo, o'} primeiro horário livre é ${desdeAgora[0]} para ${serviceNames} (aproximadamente ${duration} min)${seguintes.length?`; depois tenho ${seguintes.join(' e ')}`:''}. Me responde o horário que eu já deixo reservado.`
     actions=desdeAgora.slice(0,3).map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`${abertura}Agora não consigo: hoje já não tenho horário livre para ${serviceNames}. Quer que eu veja amanhã?`
+    reply=`${abertura}Agora não consigo: hoje não tenho mais vaga para ${serviceNames}. Quer que eu veja amanhã?`
     actions=[{label:'Ver amanhã',message:'Amanhã'}]
    }
   }else if(effectivePeriod){
@@ -3835,7 +3875,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para aproximadamente ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`${emDiaCap(next.date)} não tenho horário no período da ${periodLabel(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
+    reply=`${emDiaCap(next.date)} não tenho mais vaga no período da ${periodLabel(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
     actions=[
      {label:'Ver manhã',message:'Prefiro manhã'},
      {label:'Ver tarde',message:'Prefiro tarde'},

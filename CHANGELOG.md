@@ -1,3 +1,27 @@
+## 29.217.0 — JuIA: "não tenho horário" virou "não tenho mais vaga", e dia fechado deixou de ser dito como agenda cheia (22/09)
+
+**Pedido do Juliano (22/09):** "quando estamos sem vaga a JuIA responde 'não encontrei horário para hoje, o mais próximo que vou ter é amanhã'. Poderia dizer que para hoje não tem mais vaga (...) e nos dias que estivermos com a agenda trancada o dia todo dizer 'hoje não estamos abertos, mas eu consigo te atender normalmente no dia X'. No primeiro caso dizer que não tem mais vaga valoriza nosso espaço; no segundo respeita o cliente que pode vir de teimoso tentar um encaixe no fio do bigode e evita que ele perca viagem."
+
+**O que estava errado.** Duas situações OPOSTAS saíam com a mesma frase:
+
+- **Dia aberto e lotado:** "Hoje não tenho horário para Corte de cabelo". É verdade e soa a mentira — lido do outro lado, é barbeiro parado que não quer atender. O que aconteceu de fato é que a agenda encheu, e "não tenho mais vaga" diz exatamente isso.
+- **Dia fechado o dia inteiro** (domingo, segunda, ou "Fechar o dia inteiro" marcado no admin por viagem/folga/feriado): "Hoje não temos horários disponíveis. O próximo dia com agenda aberta é 24/09." O cliente lê isso como agenda cheia, e cliente que lê agenda cheia vem tentar encaixe na porta. Encontra a porta fechada e perde a viagem — e a culpa é da frase, não dele.
+
+**Corregí em `ju-ia-site`,** com fonte única para os dois casos (`diaFechadoInfo` / `naoAbreFrase`, montadas logo depois das `closures`, mesma verdade que `openTodayAsk` e `diaFechadoPedido` já usavam: domingo/segunda pelo dia da semana, resto por `schedule_blocks` com `all_day`). Os 9 lugares que respondiam falta de horário foram revisados:
+
+- dia aberto: **"não tenho mais vaga"** no lugar de "não tenho horário" / "não encontrei horário" (bloco principal, pedido "agora", período sem vaga, dias citados pelo cliente, os dois caminhos de remarcação e o `semVagaTxt`);
+- dia fechado: **"Hoje não estamos abertos (domingo e segunda a gente não abre)"** — ou o motivo do bloqueio, quando existe — **"mas consigo te atender normalmente na quarta (24/09): tenho 9h, 14h ou 17h30"**.
+
+**Defeito achado no caminho, e ele é pior que a frase:** num dia fechado a JuIA ainda oferecia **lista de espera** ("te aviso assim que abrir vaga"). Não abre vaga em dia que ninguém trabalha — era promessa que nunca ia ser cumprida. Mesma classe do caso Venilson (v29.170.0, lista de espera com a barbearia fechada há três horas). Agora a lista só é oferecida em dia de trabalho.
+
+**Cuidado que quase passou:** o detector de insistência da v29.69.0 (caso do sábado 22/08, em que a negativa idêntica se repetiu três vezes até o anti-papagaio cortar) procurava a frase antiga, `"não encontrei horário"`, na última fala da JuIA. Trocar a redação sem mexer nele reintroduziria o defeito calado. O regex passou a reconhecer as três formas.
+
+**Decidido contra o pedido, e digo o motivo:** o "posso agendar pra você amanhã **ou depois**" não virou duas datas na mesma mensagem. A v29.138.0 é decisão do próprio Juliano (05/09): "menos texto, foco em fechar — diz que não tem, dá o próximo dia com 3 horários e UMA pergunta". Duas datas devolvem duas decisões ao cliente e é aí que a conversa esfria. A mudança de tom ("não tenho mais vaga", "consigo te atender normalmente") entrega o que o pedido quer sem reabrir aquilo. Se em duas semanas a recusa continuar derrubando conversa, o segundo dia entra — medido, não no palpite.
+
+**Simulador (`tests/juia-sim/rodar.ts`):** três cenários novos (21 lotado, 22 dia bloqueado no admin, 23 pergunta genérica em dia fechado) e o mock de `schedule_blocks` passou a responder fechamentos, distinguindo a consulta de `all_day` da consulta do bloqueio da câmera. **63 verificações, todas ok.**
+
+**Consertado de quebra:** o cenário 19 falhava toda vez que o simulador rodasse **depois das 19h** — ele fixa `hoje` e, com a barbearia fechada, a resposta certa passa a ser "Hoje já encerramos", que não cita serviço. O que aquele caso testa é que a barba saiu do pedido, e isso vale nas duas redações. Teste que falha à noite é teste em que ninguém confia.
+
 ## 29.216.0 — JuIA: "18" depois da lista de horários virava "Entendi. Se quiser marcar…" — a reserva bateu na trave (22/09)
 
 **Pedido do Juliano (22/09):** print da conversa do Marcelo — "bateu na trave pra ela perder o agendamento, deu certo por pouco".

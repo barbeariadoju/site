@@ -59,13 +59,16 @@ const catalogo = [
 type Cenario = {
   msg: string; state?: any; history?: any[]; ai?: any
   contexto?: any; futuros?: any[]; vagas?: Record<string, string[]>; concluidos?: any[]; nomeWhats?: string
+  fechados?: string[] // dias com "Fechar o dia inteiro" marcado no admin (viagem, folga, feriado)
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
   respostaDoModelo = { reply: 'Como posso ajudar?', intent: 'other', updates: {}, handoff: false, ...(c.ai || {}) }
   respostas.tabela = {
     services: () => catalogo, service_price_changes: () => [], products: () => [], marketing_memory: () => [],
-    schedule_blocks: () => [], customer_benefits: () => [], site_chat_messages: () => null, conversation_leads: () => null,
+    schedule_blocks: (q) => q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'all_day' && f[2] === true)
+      ? (c.fechados || []).map((d) => ({ block_date: d, reason: 'Viagem do Juliano' })) : [],
+    customer_benefits: () => [], site_chat_messages: () => null, conversation_leads: () => null,
     customer_profiles: () => [], whatsapp_attribution: () => [],
     bookings: (q) => q.op === 'select' ? (q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'status' && f[2] === 'completed') ? (c.concluidos || []) : [{ id: 'bk-novo' }]) : null,
     return_invites: () => null,
@@ -292,7 +295,10 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     history: [{ role: 'assistant', content: 'Hoje não tenho mais horário para Corte de cabelo + Barba Express. Na terça tenho alguns horários. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga hoje.' }],
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: hoje } }, contexto: ctx, vagas: { [hoje]: [], [dia1]: ['09:00', '11:45', '14:30'] } })
   checar('19a "e só pra corte" deixa só o corte', JSON.stringify(r1.state?.services) === JSON.stringify(['Corte de cabelo']), r1.state?.services)
-  checar('19a resposta fala do corte, não do combo', /Corte de cabelo/.test(r1.reply) && !/Barba Express/.test(r1.reply), r1.reply)
+  // Depois do fechamento a resposta correta é "Hoje já encerramos", que não cita serviço nenhum —
+  // o que este cenário testa é que a BARBA saiu, e isso vale nas duas redações. Sem esta ressalva
+  // o simulador falhava toda vez que fosse rodado à noite.
+  checar('19a resposta fala do corte, não do combo', !/Barba Express/.test(r1.reply) && (/já encerramos/.test(r1.reply) || /Corte de cabelo/.test(r1.reply)), r1.reply)
   const r2 = await turno({ msg: 'Otavio', state: { services: ['Corte de cabelo'], date: dia1, pending_waitlist: { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 45 } },
     history: [{ role: 'assistant', content: 'Para te colocar na lista de espera, preciso de seu nome.' }],
     ai: { intent: 'other', reply: 'Certo.', updates: { name: 'Otavio' } }, contexto: { completed_visits: 0 }, vagas: { [dia1]: ['09:00'] } })
@@ -310,6 +316,36 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     vagas: { [dia1]: ['18:00', '18:15', '18:30', '18:45', '19:00'] } })
   checar('20 número solto depois da lista de horários reserva', reservou(r), r.reply)
   checar('20 não responde o genérico "Entendi"', !/^Entendi. Se quiser marcar/.test(r.reply), r.reply)
+}
+
+// 21. Dia ABERTO e lotado: a frase é "não tenho mais vaga", nunca "não tenho horário" (22/09)
+{
+  const r = await turno({ msg: 'Tem horário pra corte nesse dia?', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Anderson Teste'),
+    vagas: { [dia1]: [], [dia2]: ['09:00', '14:00', '17:30'] } })
+  checar('21 lotado: diz "não tenho mais vaga"', /não tenho mais vaga/.test(r.reply), r.reply)
+  checar('21 lotado: não diz "não tenho horário"', !/não tenho horário/.test(r.reply), r.reply)
+  checar('21 lotado: oferece o próximo dia e a lista de espera', /09:00|14:00|17:30/.test(r.reply) && Boolean(r.state?.pending_waitlist), r.reply)
+}
+
+// 22. Dia FECHADO o dia inteiro (viagem/folga no admin): "não estamos abertos" + próximo dia,
+//     e SEM lista de espera — não abre vaga em dia que ninguém trabalha (22/09)
+{
+  const r = await turno({ msg: 'Tem horário pra corte nesse dia?', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Anderson Teste'),
+    fechados: [dia1], vagas: { [dia1]: [], [dia2]: ['09:00', '14:00'] } })
+  checar('22 fechado: diz que não estamos abertos', /não estamos abertos/.test(r.reply), r.reply)
+  checar('22 fechado: não diz "não tenho mais vaga"', !/não tenho mais vaga|não tenho horário/.test(r.reply), r.reply)
+  checar('22 fechado: oferece atender normalmente no próximo dia', /normalmente/.test(r.reply) && /09:00|14:00/.test(r.reply), r.reply)
+  checar('22 fechado: sem lista de espera', !r.state?.pending_waitlist && !/lista de espera/i.test(r.reply), { w: r.state?.pending_waitlist, reply: r.reply })
+}
+
+// 23. Pergunta genérica ("tem horário?") em dia fechado, antes de escolher serviço (22/09)
+{
+  const r = await turno({ msg: 'Oi, tem horário?', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } },
+    contexto: ctxCliente('Anderson Teste'), fechados: [dia1], vagas: { [dia1]: [], [dia2]: ['09:00'] } })
+  checar('23 genérica em dia fechado: não estamos abertos', /não estamos abertos/.test(r.reply), r.reply)
+  checar('23 genérica em dia fechado: sem "não temos horários"', !/não temos horários/i.test(r.reply), r.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
