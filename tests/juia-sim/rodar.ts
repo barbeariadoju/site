@@ -299,6 +299,19 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('19b nome fecha a lista de espera', r2.saidas.some((s: any) => s.url.includes('join-waitlist')) && /lista de espera/i.test(r2.reply), r2.reply)
 }
 
+// 20. Marcelo (22/09, 13h15): a JuIA lista "18:00, 18:15, 18:30, 18:45, 19:00. Qual você prefere?"
+// e ele responde só "18". A guarda de texto (29.150.0/29.190.0) descartava — nenhuma palavra de
+// agenda, nenhum pending_* aberto — e a resposta era "Entendi. Se quiser marcar um horário…",
+// com o horário já gravado no estado. Bateu na trave: só o aviso de conversa parada salvou a reserva.
+{
+  const r = await turno({ msg: '18', state: { services: ['Corte de cabelo'], date: dia1, period: 'evening', name: 'Marcelo Teste', upsell_offer_done: true },
+    history: [{ role: 'assistant', content: 'No período da final do dia, estes são todos os horários disponíveis para aproximadamente 45 minutos: 18:00, 18:15, 18:30, 18:45, 19:00. Qual você prefere?' }],
+    ai: { intent: 'book', reply: 'Reservado!', updates: { time: '18:00' } }, contexto: ctxCliente('Marcelo Teste'),
+    vagas: { [dia1]: ['18:00', '18:15', '18:30', '18:45', '19:00'] } })
+  checar('20 número solto depois da lista de horários reserva', reservou(r), r.reply)
+  checar('20 não responde o genérico "Entendi"', !/^Entendi. Se quiser marcar/.test(r.reply), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

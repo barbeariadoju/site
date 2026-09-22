@@ -3985,7 +3985,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const qSolto=normalizedQuestion.trim()
    const numeroSolto=/^\d[\s!.,]*$/.test(qSolto)||/^\d[\s!.,]*(obrigad\w*|valeu|brigad\w*|ok|blz|beleza|joia)[!. ]*$/.test(qSolto)
    const semPerguntaAberta=!state?.last_question&&!Object.keys(state||{}).some((k:string)=>k.startsWith('pending_')&&(state as any)[k])
-   if(intent==='book'&&numeroSolto&&semPerguntaAberta){
+   // v29.216.0 — caso Marcelo (22/09/2026, 13h15): a JuIA listou "18:00, 18:15, 18:30, 18:45,
+   // 19:00. Qual você prefere?", ele respondeu "18" e ouviu "Entendi. Se quiser marcar um
+   // horário…". O modelo tinha lido certo (o estado gravou time 18:00 e a data de amanhã) — quem
+   // jogou a reserva fora foram as duas guardas abaixo, que julgam só o TEXTO: "18" não casa com
+   // \d{1,2}(:|h) nem com palavra de agenda, e listar horários não deixa pending_* no estado,
+   // então "sem pergunta aberta" dava verdadeiro bem no meio do agendamento. Bateu na trave: o
+   // aviso de conversa parada das 15h30 trouxe o Marcelo de volta e a reserva saiu. Agora, quando
+   // o turno TRAZ horário novo com a data já na mesa, nenhuma das duas corre — o horário que o
+   // cliente acabou de escolher vale mais que o formato em que ele escreveu.
+   const escolheuHorarioAgora=Boolean(next.time)&&Boolean(next.date)&&String(next.time)!==String(state?.time||'')
+   if(intent==='book'&&numeroSolto&&semPerguntaAberta&&!escolheuHorarioAgora){
     intent='other';handoff=false;actions=[]
     reply=`Obrigado! Se precisar de horário ou tiver alguma dúvida, é só me dizer por aqui.`
    }
@@ -3994,7 +4004,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // nome de José?". Frase sem NENHUM sinal de agenda (dia, hora, serviço, marcar…) e sem pergunta
    // nossa em aberto não é pedido de horário.
    const semSinalDeAgenda=!/\b(marc|agend|reserv|encaix|horari|vaga|hoje|amanha|semana|segunda|terca|quarta|quinta|sexta|sabado|domingo|manha|tarde|noite|cort|barb|sobrancelha|pezinho|luzes|platinado|nevou|alisamento|pigment|depila|hidrata|lavagem|quero|queria|gostaria|pode|posso|consigo|sim|ok|beleza|fechado|bora|confirm|\d{1,2}(:|h)\d{0,2})/.test(normalizedQuestion)
-   if(intent==='book'&&semSinalDeAgenda&&semPerguntaAberta){
+   if(intent==='book'&&semSinalDeAgenda&&semPerguntaAberta&&!escolheuHorarioAgora){
     intent='other';handoff=false;actions=[]
     reply='Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui.'
    }

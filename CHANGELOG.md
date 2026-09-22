@@ -1,3 +1,22 @@
+## 29.216.0 — JuIA: "18" depois da lista de horários virava "Entendi. Se quiser marcar…" — a reserva bateu na trave (22/09)
+
+**Pedido do Juliano (22/09):** print da conversa do Marcelo — "bateu na trave pra ela perder o agendamento, deu certo por pouco".
+
+**O que aconteceu (22/09, 13h14–13h15, conversa lida no banco):** "tem horário para amanhã?" → "Você prefere manhã, tarde ou final do dia?" → "final do dia" → **"estes são todos os horários disponíveis: 18:00, 18:15, 18:30, 18:45, 19:00. Qual você prefere?"** → o cliente responde **"18"** → **"Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui."** A conversa morreu ali. Só voltou às 15h30, quando o aviso de conversa parada disse que o horário não tinha ficado reservado; ele repetiu "quero as 18 amanhã" e a reserva saiu. Duas horas de agenda em aberto e um cliente que quase foi embora por ter escrito o horário do jeito que todo mundo escreve.
+
+**A causa — e ela não é o modelo.** O estado gravado naquele turno tem `time: "18:00"` e `date` de amanhã: o modelo **leu certo** e a intenção era `book`. Quem jogou a reserva fora foram duas guardas de leitura do próprio código, que julgam só o TEXTO da mensagem:
+
+- a da v29.150.0 (caso João, número solto que era resposta a convite de retorno) e
+- a da v29.190.0 (caso José Carlos, "Estava muito comprida" lido como pedido de horário).
+
+Ambas só correm "sem pergunta aberta no estado" — e é aí que estava o buraco: **listar horários não deixa `pending_*` nenhum**, então, bem no meio do agendamento, "sem pergunta aberta" dava verdadeiro. E "18" não casa com `\d{1,2}(:|h)\d{0,2}` nem com nenhuma palavra de agenda da regex. Resultado: intent virou `other` e a resposta genérica sobrescreveu o "Reservado!". As guardas estavam certas nos casos delas; o defeito é julgar a frase pelo formato quando o turno já trouxe o dado.
+
+**Correção (`ju-ia-site`):** nenhuma das duas guardas corre quando o turno **trouxe horário novo com a data já na mesa** (`next.time` preenchido, diferente do que estava no estado, e `next.date` presente). O horário que o cliente acabou de escolher vale mais que o formato em que ele escreveu. Os casos João e José Carlos continuam protegidos: lá o turno não traz horário novo — é serviço velho na memória.
+
+**Decidido contra a recomendação óbvia:** não foi ampliado o regex de "sinal de agenda" para aceitar número solto de 1–2 dígitos, nem criada a pergunta `pending_time_choice` para a lista de horários. O regex acertaria "18" e erraria qualquer outro número da conversa; a pergunta nova mexeria no roteamento de resposta curta de todo o arquivo (v29.141.0) para consertar um caso que o estado já resolve. Se aparecer um caso em que o modelo **não** lê o horário, aí sim a pergunta registrada é o caminho.
+
+**Simulador (`tests/juia-sim/rodar.ts`):** cenário 20 com as frases reais do Marcelo — "18" depois da lista reserva, e a resposta não é o genérico. Conferido que ele FALHA sem a correção (52 ok/2 falhas) e passa com ela: **54 verificações, todas ok**. `npm test` verde (239 unit, 52 e2e).
+
 ## 29.215.1 — Operação: SMSDev rotacionou as chaves após incidente de segurança; lembrete de 24h por SMS parado de 16 a 22/09 (22/09)
 
 **Pedido do Juliano (22/09):** "acho que o nosso sms dev não tá funcionando nem pra gente, apesar de termos muitos créditos não chegou os últimos testes".
