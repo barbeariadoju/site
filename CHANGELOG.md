@@ -1,3 +1,26 @@
+## 29.230.0 — Segundo telefone no mesmo cadastro; "Mesclar" guarda o telefone; Marcos e Marcelo unificados (23/09)
+
+**Pedido do Juliano (23/09):** "devíamos ter um recurso para adicionar 2 telefones ao mesmo cadastro. Tem clientes que fazem isto: cada hora marcam com 1 telefone e acaba gerando mais de 1 cadastro no CRM." Casos citados: o Marcelo que marcou hoje ("é o Marcelo Iphone") e o Marcos atendido ontem ("desconfio que seja Marcos Lima e Marcos Roberto Lima").
+
+**O que já existia e não bastava:** o botão **🔗 Mesclar** do CRM (migração 056) juntava histórico e pontos, mas **apagava o telefone do cadastro duplicado**. Na vez seguinte em que o cliente usava aquele número, nascia outro cadastro.
+
+**O que mudou (banco, migração `customer_phone_aliases_v29_230`):**
+- **`customer_phone_aliases`** guarda os outros telefones de um cliente, com RLS só-admin e GRANT explícito, já na regra de 30/10.
+- **`phone_match_key` passou a resolver o secundário para o principal.** A conta antiga virou `phone_match_key_raw`. São **36 funções** que comparam telefone por ela (contexto da JuIA, fidelidade, confirmação de presença, cancelar e remarcar pelo WhatsApp, reativação, benefícios…), e todas passam a enxergar os dois números como o mesmo cliente, sem mudar uma linha delas. Nenhum índice nem coluna gerada depende dela (as geradas usam `phone_key`). Conferido: com a tabela vazia, nenhum dos agendamentos mudou de chave.
+- **Trigger `trg_bookings_resolve_phone_alias`:** um agendamento feito pelo telefone secundário é gravado no telefone principal do cadastro. Sem isso, a conclusão criaria ficha nova, porque `customer_profiles.phone_key` é gerado do próprio número. **Consequência:** lembrete, aviso de chegada e comprovante vão para o telefone principal.
+- **Mesclar** (`merge_customers_internal`, chamada pelo `admin_merge_customers`) agora **guarda o telefone do cadastro apagado como segundo telefone** e também leva `customer_benefits` e as indicações (`referred_by_customer_id`), que ficavam órfãos.
+- **`admin_add_customer_phone` / `admin_remove_customer_phone`:** adicionar traz para o cadastro os agendamentos que já existiam naquele número. Se o número já tem cadastro próprio, a função recusa e manda usar o Mesclar, que junta tudo.
+
+**No CRM (`admin-v15-4-crm.js`):** o card mostra "📱 Outro telefone: (11) … [remover]", ganhou o botão **＋ Telefone**, e a busca acha o cliente por qualquer um dos números. O texto da confirmação do Mesclar agora diz que o telefone vem junto.
+
+**Dados arrumados agora:**
+- **Marcos Lima** (11 97534-5745, em 26/08 às 15h, quarta, Corte + Barboterapia) foi mesclado em **Marcos Roberto Lima** (11 97354-5745). Os dois dígitos trocados vieram de um agendamento pelo site. Fidelidade: 1 + 1 = 2 pontos.
+- **Marcelo** (final 0738, o agendamento de hoje às 18h) foi mesclado em **Marcelo Iphone**. O principal virou o **0738**, que é o número que ele usa hoje (conversa de 22/09). O antigo (11 93350-0117, última mensagem em 08/09) ficou como segundo telefone. As 3 visitas anteriores (06/08, 22/08 e 05/09, um sábado, como o Juliano lembrou) agora aparecem pelos dois números.
+
+**Teste novo:** `tests/e2e/admin/admin-clientes-outro-telefone.spec.js` (card, busca pelo outro número e o ＋ Telefone chamando a RPC). 38 testes do painel e 247 unitários ok.
+
+**Cache:** `admin-v15-4-crm.js` em 29.230.0 (6 páginas), `06-admin-reforma.css` em 29.230.0 (17 páginas), `ADMIN_VERSION` e `admin-version.json` em 29.230.0.
+
 ## 29.229.0 — JuIA: convite para o Instagram no fechamento da conversa de agendamento (23/09)
 
 **Pedido do Juliano (23/09):** mandou o print do fechamento do WhatsApp de um laboratório ("Atendimento Finalizado · Você já segue nosso perfil no Instagram?") e disse: "veja se dá pra aproveitar e vamos aplicar pra ver se a gente consegue mais seguidores". Isso segue a diretriz de 27/08, de o Instagram virar canal de aquisição.
