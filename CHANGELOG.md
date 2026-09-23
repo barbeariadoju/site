@@ -1,3 +1,20 @@
+## 29.219.0 — Balcão: forma de pagamento em botões e total fixo no rodapé, igual ao Concluir da Agenda (23/09)
+
+**Pedido do Juliano (23/09, com print da tela):** "a tela de conclusão do balcão precisava aparecer o total e a forma de pagamento. Ao invés de eu selecionar na lista, se fosse igual é na agenda, ficaria mais padronizado e mais fácil de enxergar."
+
+**O que estava diferente.** Os dois lugares que registram um atendimento concluído pediam o pagamento de jeitos diferentes. No Concluir da Agenda são botões grandes (Pix, Débito, Crédito, Dinheiro, Bônus de fidelidade), e o total fica no rodapé ao lado do botão. No Balcão era uma lista suspensa ("Selecione…"), e o total ficava numa faixa no meio da página, fora da tela quando ele chegava no botão de registrar. No print, o aviso "Selecione a forma de pagamento" aparecia no rodapé e a lista estava lá em cima.
+
+**O que mudou (`admin-balcao.html`, `admin-balcao-v29.js`):**
+
+- **Pagamento em botões**, com o mesmo visual do Concluir da Agenda (grade de 2 colunas e o Bônus de fidelidade na largura toda). A forma escolhida fica dourada. O bloco veio para logo depois dos serviços e produtos, antes de data e horário, que quase sempre já vêm preenchidos.
+- **Total no rodapé fixo**, ao lado de "Registrar atendimento", com a forma escolhida embaixo ("R$ 40,00 · Débito"). Antes de escolher, aparece "escolha a forma de pagamento". A faixa de total do meio da página saiu, porque seria o mesmo número duas vezes.
+- O valor continua num campo escondido `#balcao-payment`. Validação, gravação (`admin_register_walkin_visit`) e limpeza depois de salvar não mudaram. Se faltar a forma de pagamento, o aviso aparece colado nos botões e some ao escolher.
+- O listener dos botões tem guarda (`dataset.bound`), porque o `show()` pode rodar duas vezes (lição da v29.198.0).
+
+**Teste novo:** `tests/e2e/admin/admin-balcao-pagamento.spec.js`, que confere que a lista antiga sumiu, que o total e a forma escolhida aparecem no rodapé, que trocar de Pix para Débito desmarca o anterior e que o aviso de pagamento faltando aparece e some. Os prints de computador e de celular foram conferidos.
+
+**Cache:** `admin-balcao-v29.js?v=29.219.0`. `ADMIN_VERSION` e `admin-version.json` subiram juntos para 29.219.0, com o `?v=` do `admin-v15-4-core.js` nas 6 páginas, para que o painel aberto recarregue e pegue a tela nova.
+
 ## 29.218.0 — JuIA: o serviço de sempre deixou de ser narrado no meio da conversa; "pro meu filho" leva só o serviço do filho (23/09)
 
 **Pedido do Juliano (23/09, plano do dia):** "este negócio da JuIA presumir o último serviço, 'já anotei aqui corte de cabelo mais sobrancelha', isso é chato demais, tem que melhorar isto."

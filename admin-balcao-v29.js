@@ -59,6 +59,7 @@
       updateTotal();
     });
     bindCustomerSearch();
+    bindPaymentPicker();
     setDefaultDateTime();
     $('balcao-save').onclick = saveWalkin;
     await loadTodayLog();
@@ -126,6 +127,35 @@
       else setProductQty(input, productQty(input) - 1);
       updateTotal();
     });
+  }
+
+  // v29.219.0 (pedido do Juliano, 23/09): botões de pagamento no lugar da lista, igual ao
+  // "Concluir" da Agenda. O valor continua no input escondido #balcao-payment, então o
+  // resto (validação, RPC, limpeza) não mudou; o rodapé fixo mostra total + forma escolhida.
+  function setPayment(value) {
+    $('balcao-payment').value = value || '';
+    document.querySelectorAll('#balcao-payment-grid [data-payment-option]').forEach(b => {
+      const on = b.dataset.paymentOption === value;
+      b.classList.toggle('is-selected', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const label = $('balcao-payment-label');
+    if (label) {
+      label.textContent = value ? (value === 'fidelidade' ? 'Bônus de fidelidade' : PAYMENT_LABELS[value] || value) : 'escolha a forma de pagamento';
+      label.classList.toggle('is-set', Boolean(value));
+    }
+  }
+  function bindPaymentPicker() {
+    const grid = $('balcao-payment-grid');
+    if (!grid || grid.dataset.bound) return;
+    grid.dataset.bound = '1';
+    grid.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-payment-option]');
+      if (!btn) return;
+      setPayment(btn.dataset.paymentOption);
+      $('balcao-payment-wrap').dispatchEvent(new Event('change'));
+    });
+    setPayment('');
   }
 
   function updateTotal() {
@@ -228,7 +258,7 @@
     // comprovante mostra apenas as linhas de produto.
     if (!services.length && !products.length) { falhar(document.querySelector('input[name="balcao-service"]'), 'Selecione ao menos um serviço ou produto.'); return; }
     if (!date || !time) { falhar(!date ? $('balcao-date') : $('balcao-time'), 'Informe a data e o horário aproximado.'); return; }
-    if (!payment) { falhar($('balcao-payment'), 'Selecione a forma de pagamento.'); return; }
+    if (!payment) { falhar($('balcao-payment-wrap'), 'Selecione a forma de pagamento.'); return; }
 
     const saveBtn = $('balcao-save');
     saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; msg.classList.remove('is-error'); msg.removeAttribute('role'); msg.textContent = 'Salvando...';
@@ -301,7 +331,7 @@
       // v29.179.0: quando o Balcão está embutido na tela Hoje, avisa a tela de fora pra ela se redesenhar.
       if (window.parent !== window) { try { window.parent.postMessage({ type: 'bdj:walkin-saved' }, location.origin); } catch (_) {} }
 
-      $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; $('balcao-payment').value = '';
+      $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; setPayment('');
       { const styleField = $('balcao-style'); if (styleField) { styleField.value = ''; styleField.dataset.prefill = ''; } }
       $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = ''; $('balcao-tip').value = '';
       document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); });
