@@ -415,6 +415,8 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
  return true
 })
 const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':period==='not_morning'?'tarde ou fim do dia':period==='not_afternoon'?'manhã ou fim do dia':period==='not_evening'?'manhã ou tarde':'final do dia'
+// v29.224.0: "no período da final do dia" (conversa do Tiago, 23/09) — o fim do dia não é "período da".
+const noPeriodo=(period:string)=>period==='evening'?'no final do dia':`no período da ${periodLabel(period)}`
 const periodoFalado=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à tarde':p==='evening'?'no fim do dia':p==='not_morning'?'depois do meio-dia':p==='not_afternoon'?'de manhã ou no fim do dia':p==='not_evening'?'até as 18h':''
 // v29.12.0 — caso real 11/08/2026: cliente respondeu "Indiferente" e depois "QQ horário"
 // para a pergunta "manhã, tarde ou final do dia?" e a JuIA repetiu a MESMA pergunta, porque
@@ -3976,13 +3978,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // cliente a escolher; ele pode responder qualquer horário, não só os exemplos.
     const sample=[periodSlots[0],periodSlots[Math.floor(periodSlots.length*0.25)],periodSlots[Math.floor(periodSlots.length/2)],periodSlots[Math.floor(periodSlots.length*0.75)],periodSlots[periodSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
     // v29.69.0: o dia SEMPRE na frente da lista de horários — ver comentário do diaHumano.
-    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, tenho horários entre ${periodSlots[0]} e ${periodSlots[periodSlots.length-1]} para aproximadamente ${duration} minutos. Alguns exemplos: ${sample.join(', ')}. Qual horário fica melhor pra você?`
+    reply=`${emDiaCap(next.date)}, ${noPeriodo(effectivePeriod)}, tenho horários entre ${periodSlots[0]} e ${periodSlots[periodSlots.length-1]} para aproximadamente ${duration} minutos. Alguns exemplos: ${sample.join(', ')}. Qual horário fica melhor pra você?`
     actions=sample.map((t:string)=>({label:t,message:t}))
    }else if(periodSlots.length){
-    reply=`${emDiaCap(next.date)}, no período da ${periodLabel(effectivePeriod)}, estes são todos os horários disponíveis para aproximadamente ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
+    reply=`${emDiaCap(next.date)}, ${noPeriodo(effectivePeriod)}, estes são todos os horários disponíveis para aproximadamente ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`${emDiaCap(next.date)} não tenho mais vaga no período da ${periodLabel(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
+    reply=`${emDiaCap(next.date)} não tenho mais vaga ${noPeriodo(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
     actions=[
      {label:'Ver manhã',message:'Prefiro manhã'},
      {label:'Ver tarde',message:'Prefiro tarde'},

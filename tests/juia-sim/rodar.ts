@@ -440,6 +440,21 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('29 estado não guarda o dia passado', r.state?.date !== velho && r.state?.pending_waitlist?.date !== velho, r.state)
 }
 
+// 30. Tiago (23/09, 10h42): "Agendar horário" → "Sexta-feira dia 25" → "Final do dia". Na conversa real as
+//     duas últimas foram engolidas pela pesquisa de satisfação pendente (corrigido no webhook, 29.223.0).
+//     Aqui, a parte da JuIA: com as mensagens chegando nela, a conversa fecha em horário.
+{
+  const ctx = ctxCliente('Tiago Teste', { last_services: 'Corte de cabelo' })
+  const vagas = { [dia2]: ['09:00', '10:00', '14:00', '17:00', '17:15', '17:30', '18:00', '18:30', '19:00'] }
+  const r1 = await turno({ msg: 'Agendar horário', state: {}, ai: { intent: 'book', reply: 'Vamos marcar!', updates: {} }, contexto: ctx, vagas })
+  const r2 = await turno({ msg: `Sexta-feira dia ${dia2.slice(8, 10)}`, state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia2 } }, contexto: ctx, vagas })
+  checar('30a dia dito: pergunta o período ou já mostra horários', /manhã, tarde ou final do dia|\d{2}:\d{2}/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'Final do dia', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { period: 'evening' } }, contexto: ctx, vagas })
+  checar('30b "final do dia": lista os horários do fim do dia', /17:00|18:00|18:30|19:00/.test(r3.reply) && !/manhã, tarde ou final do dia/.test(r3.reply), r3.reply)
+  const r4 = await turno({ msg: '18h', state: r3.state, history: [{ role: 'assistant', content: r3.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '18:00' } }, contexto: ctx, vagas })
+  checar('30c "18h": fecha (confirma o serviço de sempre ou reserva)', reservou(r4) || /como da última vez/.test(r4.reply), r4.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

@@ -1,3 +1,13 @@
+## 29.224.0 — JuIA: a conversa do Tiago passou pelo simulador inteira; "no período da final do dia" virou "no final do dia" (23/09)
+
+**Pedido do Juliano (23/09):** "mas o Tiago foi claro: quero marcar corte de cabelo para sexta-feira no final do dia."
+
+Ele tem razão, e o defeito não estava na leitura da JuIA: duas das três mensagens nem chegaram a ela, porque a pesquisa de satisfação pendente respondeu antes (corrigido na 29.223.0). Para provar que, chegando nela, a conversa fecha, o **cenário 30** do simulador repete a sequência real: "Agendar horário", depois "Sexta-feira dia 25", depois "Final do dia" e por fim "18h". O resultado foi: horários da sexta → horários do fim do dia (18:00, 18:30, 19:00) → "Na sexta (25/09) às 18:00. Reservo Corte de cabelo, como da última vez?".
+
+**Achado no caminho:** a resposta dizia "Na sexta (25/09), **no período da final do dia**, estes são…". Agora é "no final do dia" (`noPeriodo()`), nas três frases que usavam o período. Manhã e tarde continuam "no período da manhã/tarde".
+
+**Simulador:** 86 verificações ok. **Deploy:** `ju-ia-site`. No ar, "final do dia" com a sexta no estado devolveu "Na sexta (25/09), no final do dia, estes são todos os horários disponíveis…". A sessão de teste foi apagada.
+
 ## 29.223.0 — WhatsApp: pesquisa de satisfação pendente parou de interromper o agendamento (caso Tiago, 23/09)
 
 **Pedido do Juliano (23/09, com print):** "outra viajada da JuIA, parece que ela tá piorando."
