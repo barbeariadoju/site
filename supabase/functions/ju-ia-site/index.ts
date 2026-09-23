@@ -3352,6 +3352,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=fvFirst
      ?`Que alegria receber você pela primeira vez! 🎉 Pode vir no capricho: aqui é hora marcada, sem fila, atendimento sem pressa e café por nossa conta. Vai ser um prazer cuidar do seu visual — até já! 💈`
      :`Que bom saber que você já é de casa! 🙌 Obrigado por avisar — registrei aqui no seu cadastro. Até o seu horário! 💈`
+    // v29.229.0 (pedido do Juliano, 23/09/2026, inspirado no fechamento do WhatsApp de um laboratório:
+    // "vamos aplicar pra ver se a gente consegue mais seguidores"). Esta é a última fala da conversa de
+    // agendamento — horário marcado, cliente satisfeito, nada mais pendente — e é o momento de boa
+    // vontade para o convite. Uma vez por cliente: quem já recebeu o @ da casa (aqui ou no convite pós-
+    // pesquisa, v29.83.0) não recebe de novo. Sem o "Atendimento Finalizado" do exemplo: soa a central
+    // de atendimento, e aqui quem fala é o Juliano. Link junto do @ para abrir com um toque.
+    // O "_" é curinga no ILIKE: sem o escape, "barbeariadoju_" casava com o "barbeariadoju." de todo
+    // link do site e 196 telefones contavam como já convidados (os de verdade eram 13).
+    try{
+     const {data:jaConvidado}=await supabase.from('whatsapp_messages').select('id').like('phone',`%${fvDigits.slice(-8)}`).eq('direction','out').ilike('body','%@barbeariadoju\\_%').limit(1)
+     if(!jaConvidado||!jaConvidado.length){
+      reply+=`\n\nSe quiser acompanhar os cortes e as novidades da barbearia, estamos no Instagram: *@barbeariadoju_* (com o _ no final) https://www.instagram.com/barbeariadoju_`
+     }
+    }catch(igErr){console.error('[ju-ia-site] convite instagram',igErr)}
     actions=[]
     intent='other'
     handoff=false

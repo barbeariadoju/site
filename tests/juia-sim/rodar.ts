@@ -61,6 +61,7 @@ type Cenario = {
   contexto?: any; futuros?: any[]; vagas?: Record<string, string[]>; concluidos?: any[]; nomeWhats?: string
   fechados?: string[] // dias com "Fechar o dia inteiro" marcado no admin (viagem, folga, feriado)
   estendidoOk?: boolean // resposta do extended_close_slot_ok (horário livre fora da grade/do expediente)
+  jaConvidadoIG?: boolean // já existe mensagem com o @barbeariadoju_ para este telefone
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -73,6 +74,7 @@ const turno = async (c: Cenario) => {
     customer_profiles: () => [], whatsapp_attribution: () => [],
     bookings: (q) => q.op === 'select' ? (q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'status' && f[2] === 'completed') ? (c.concluidos || []) : [{ id: 'bk-novo' }]) : null,
     return_invites: () => null,
+    whatsapp_messages: () => (c.jaConvidadoIG ? [{ id: 'm1' }] : []),
   }
   respostas.rpc = {
     get_customer_commercial_context: () => c.contexto || {},
@@ -453,6 +455,17 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('30b "final do dia": lista os horários do fim do dia', /17:00|18:00|18:30|19:00/.test(r3.reply) && !/manhã, tarde ou final do dia/.test(r3.reply), r3.reply)
   const r4 = await turno({ msg: '18h', state: r3.state, history: [{ role: 'assistant', content: r3.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '18:00' } }, contexto: ctx, vagas })
   checar('30c "18h": fecha (confirma o serviço de sempre ou reserva)', reservou(r4) || /como da última vez/.test(r4.reply), r4.reply)
+}
+
+// 31. Convite do Instagram no fechamento da conversa (23/09, ideia do Juliano a partir do WhatsApp de um
+//     laboratório): depois do "é a sua primeira vez?", a última fala leva o @ uma vez por cliente.
+{
+  const st = { pending_first_visit: true, name: 'Caio Teste', last_question: { kind: 'first_visit' } }
+  const r1 = await turno({ msg: '2', state: st, ai: { intent: 'other', reply: 'Certo.' }, contexto: ctxCliente('Caio Teste') })
+  checar('31a fechamento leva o convite do Instagram', /@barbeariadoju_/.test(r1.reply) && /instagram\.com\/barbeariadoju_/.test(r1.reply), r1.reply)
+  checar('31a convite sem "Atendimento Finalizado"', !/Atendimento Finalizado/i.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: '1', state: st, ai: { intent: 'other', reply: 'Certo.' }, contexto: ctxCliente('Caio Teste'), jaConvidadoIG: true })
+  checar('31b quem já recebeu o @ não recebe de novo', !/@barbeariadoju_/.test(r2.reply) && /primeira vez/i.test(r2.reply), r2.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

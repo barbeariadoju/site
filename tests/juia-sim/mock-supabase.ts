@@ -25,6 +25,7 @@ class Consulta {
   lte(k: string, v: any) { this.c.filtros!.push(['lte', k, v]); return this }
   lt(k: string, v: any) { this.c.filtros!.push(['lt', k, v]); return this }
   like(k: string, v: any) { this.c.filtros!.push(['like', k, v]); return this }
+  ilike(k: string, v: any) { this.c.filtros!.push(['ilike', k, v]); return this }
   order() { return this }
   limit() { return this }
   maybeSingle() { this.c.filtros!.push(['single']); return this }

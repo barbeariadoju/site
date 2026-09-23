@@ -1,3 +1,21 @@
+## 29.229.0 — JuIA: convite para o Instagram no fechamento da conversa de agendamento (23/09)
+
+**Pedido do Juliano (23/09):** mandou o print do fechamento do WhatsApp de um laboratório ("Atendimento Finalizado · Você já segue nosso perfil no Instagram?") e disse: "veja se dá pra aproveitar e vamos aplicar pra ver se a gente consegue mais seguidores". Isso segue a diretriz de 27/08, de o Instagram virar canal de aquisição.
+
+**O que entrou (`ju-ia-site`, resposta ao "é a sua primeira vez?"):** essa é a última fala da conversa de agendamento. O horário está marcado, o cliente respondeu e não sobrou nada pendente, então é o momento de boa vontade. Ela passa a terminar com:
+
+> Se quiser acompanhar os cortes e as novidades da barbearia, estamos no Instagram: *@barbeariadoju_* (com o _ no final) https://www.instagram.com/barbeariadoju_
+
+- **Uma vez por cliente.** Quem já recebeu o @ da casa em qualquer mensagem, aqui ou no convite pós-pesquisa da v29.83.0, não recebe de novo (busca em `whatsapp_messages` pelos 8 últimos dígitos).
+- **Link junto do @**, para abrir com um toque. O "_ no final" continua escrito, porque existe uma conta homônima sem o underline.
+- **Não copiado do exemplo:** o "Atendimento Finalizado" em negrito. Soa a central de atendimento, e o remetente aqui é o Juliano (regra de 01/09).
+
+**Erro meu, pego antes do commit:** a primeira versão procurava `%barbeariadoju_%` com ILIKE, onde `_` é curinga. Isso casava com o `barbeariadoju.` de todo link do site e com o `contato@barbeariadoju.com.br` da chave Pix, e **196 telefones** contavam como já convidados. Os de verdade eram **13**. Agora a busca é por `@barbeariadoju\_`, com o sublinhado escapado (duas barras no fonte JS, que viram `\_` para o Postgres), conferida no banco: 13.
+
+**Simulador:** cenário 31 (convite no fechamento; sem repetir para quem já recebeu). O dublê do banco ganhou `ilike`: sem ele, o código caía no `catch` e o teste acusava a falta do convite, embora em produção o filtro exista. **89 verificações ok.** Deploy do `ju-ia-site` com smoke test ok.
+
+**Medir:** seguidores do @barbeariadoju_ daqui a 2 a 3 semanas, contra o ritmo anterior (+19 em 17 dias em agosto). Até hoje, 13 telefones já tinham recebido o @ por outro caminho e não recebem de novo.
+
 ## 29.228.0 — Alarme removido do sistema (o Juliano volta para o app da EKASA); vigia da câmera mantido (23/09)
 
 **Pedido do Juliano (23/09):** "do alarme da barbearia, pode remover esta funcionalidade porque não vai ser necessária. Vou voltar pro app do Ekasa, este app adicional só serviu pra me confundir."
