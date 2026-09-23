@@ -348,6 +348,44 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('23 genérica em dia fechado: sem "não temos horários"', !/não temos horários/i.test(r.reply), r.reply)
 }
 
+// 24. Serviço de sempre é suposição SILENCIOSA (Juliano, 23/09/2026: "já anotei aqui corte de cabelo
+//     mais sobrancelha isso é chato demais"). Enquanto se escolhe dia e horário, a JuIA não narra o
+//     serviço; ele aparece UMA vez, na pergunta que fecha a reserva.
+{
+  const ctx = ctxCliente('Josue Teste', { last_services: 'Corte de cabelo + Sobrancelha Masculina' })
+  const r1 = await turno({ msg: 'Tem horário amanhã?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } }, contexto: ctx,
+    vagas: { [amanha]: ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] } })
+  checar('24a pergunta de agenda não diz "Anotei"', !/anotei|de sempre/i.test(r1.reply), r1.reply)
+  checar('24a pergunta de agenda não cita o serviço suposto', !/Sobrancelha|Corte de cabelo/.test(r1.reply), r1.reply)
+  checar('24a suposição fica guardada no estado', r1.state?.usual_assumed === true, r1.state)
+  const r2 = await turno({ msg: '10h', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '10:00' } }, contexto: ctx,
+    vagas: { [amanha]: ['08:00', '09:00', '10:00'] } })
+  checar('24b o serviço aparece na pergunta que fecha', !reservou(r2) && /Corte de cabelo \+ Sobrancelha Masculina, como da última vez/.test(r2.reply), r2.reply)
+}
+{
+  const r = await turno({ msg: 'tem horário hoje às 14h?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '14:00' } }, contexto: {},
+    vagas: { [hoje]: ['13:00', '15:00'] } })
+  checar('24c cliente novo: corte suposto sem "(Anotei…)"', !/anotei/i.test(r.reply), r.reply)
+  const r2 = await turno({ msg: '13h então', state: r.state, history: [{ role: 'assistant', content: r.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '13:00' } }, contexto: {},
+    vagas: { [hoje]: ['13:00', '15:00'] } })
+  checar('24d cliente novo: confirma o corte antes de reservar, sem "como da última vez"', !reservou(r2) && /Reservo Corte de cabelo\?/.test(r2.reply) && !/última vez/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: '1', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: {},
+    vagas: { [hoje]: ['13:00', '15:00'] } })
+  checar('24e "1" segue a reserva (reserva ou pede o nome)', reservou(r3) || /nome/i.test(r3.reply), r3.reply)
+}
+
+// 25. Josué (22/09, 21h00): o convite pós-atendimento deixou "Corte + Sobrancelha" no estado e ele
+//     pediu "horário amanhã para meu filho" — saiu "Corte infantil + Corte + Sobrancelha (100 min)".
+//     Horário pra outra pessoa leva só o serviço dela.
+{
+  const ctx = ctxCliente('Josue Teste', { last_services: 'Corte de cabelo + Sobrancelha Masculina' })
+  const r = await turno({ msg: 'Tem como marcar horário amanhã para meu filho?', state: { services: ['Corte de cabelo', 'Sobrancelha Masculina'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo infantil', 'Corte de cabelo', 'Sobrancelha Masculina'], date: amanha } }, contexto: ctx,
+    vagas: { [amanha]: ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] } })
+  checar('25 filho: fica só o corte infantil', JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo infantil']), r.state?.services)
+  checar('25 filho: resposta sem a sobrancelha do pai', !/Sobrancelha/.test(r.reply), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

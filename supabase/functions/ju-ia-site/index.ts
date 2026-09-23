@@ -142,6 +142,22 @@ const diaHumano=(iso:string)=>{
 // v29.150.0 (caso Gilberto, 08/09): "Na sábado (12/09)" — sábado e domingo são masculinos.
 const emDia=(iso:string)=>{const h=diaHumano(iso);return (!h||h==='hoje'||h==='amanhã')?h:`${/^(sábado|domingo)/.test(h)?'no':'na'} ${h}`}
 const emDiaCap=(iso:string)=>{const d=emDia(iso);return d?d.charAt(0).toUpperCase()+d.slice(1):''}
+// v29.218.0 (Juliano, 23/09/2026): serviço suposto (o de sempre, ou o corte de quem não disse) não é
+// narrado enquanto se escolhe dia e horário — só na pergunta que fecha a reserva.
+const escRe=(t:string)=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')
+const semServicoSuposto=(reply:string,nomes:string)=>{
+ if(!nomes)return reply
+ const n=escRe(nomes),dur='(?:\\s*\\(aproximadamente \\d+ min\\))?'
+ let r=String(reply||'')
+  .replace(/\n*\(Anotei [^)]*\)\s*$/,'')
+  .replace(new RegExp(`\\bPara ${n}${dur},?\\s+(\\S)`,'g'),(_m,c)=>c.toUpperCase())
+  .replace(new RegExp(`\\s+(?:para|pra|pro) ${n}${dur}`,'gi'),'')
+  .replace(new RegExp(`\\s*\\(aproximadamente \\d+ min\\)`,'g'),'')
+ return r.replace(/\s+([.,?!])/g,'$1').replace(/ {2,}/g,' ').trim()
+}
+const perguntaServicoSuposto=(nomes:string,origem?:string)=>origem==='padrao'
+ ?`Reservo ${nomes}? Digite *1* para sim ou *2* se quiser outro serviço.`
+ :`Reservo ${nomes}, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.`
 // "19:00" no meio de uma frase falada soa a sistema; gente diz "19h" e "14h30".
 const horaFalada=(hhmm:string)=>{const [h,m]=String(hhmm||'').split(':');return m==='00'?`${Number(h)}h`:`${Number(h)}h${m}`}
 // Domingo e segunda a barbearia não abre — dizer "não tenho horário" nesses dias soa a
@@ -1126,7 +1142,29 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.212.0 — caso Amanda (11/09/2026): marcou o corte do namorado e a reserva saiu no nome dela (o
  // telefone tem cadastro e o nome do cadastro foi assumido). Horário pra outra pessoa pede o nome de
  // quem vai sentar na cadeira; a resposta seguinte (só o nome) fecha a reserva.
- if(horarioParaOutraPessoa(normalize(message)))next.other_person=true
+ if(horarioParaOutraPessoa(normalize(message))){
+  next.other_person=true
+  // v29.218.0 — caso Josué (22/09/2026, 21h00): o convite pós-atendimento deixou "Corte de cabelo +
+  // Sobrancelha" (o dele) no estado, ele pediu "horário amanhã para meu filho" e saiu "Corte infantil
+  // + Corte + Sobrancelha (100 min)". O serviço de quem vai sentar na cadeira é o que ESTA mensagem
+  // diz (criança/filho = corte infantil); o do dono do telefone não vai junto. Sem serviço nenhum
+  // dito, cai na suposição do corte, que é confirmada antes de reservar.
+  // O que o modelo trouxe de NOVO neste turno vale ("um corte pro meu namorado" — o parser solto
+  // nem sempre casa); o que já estava no estado antes da mensagem era do dono do telefone.
+  const doEstado=new Set((Array.isArray(state?.services)?state.services:[]).map((x:string)=>normalize(x)))
+  const novosDoModelo=(Array.isArray(ai.updates?.services)?ai.updates.services:[]).filter((x:string)=>!doEstado.has(normalize(x))).map((x:string)=>findService(x)).filter(Boolean)
+  const soltos=findServicesLoose(message)
+  const nomeados=soltos.length?soltos:novosDoModelo
+  let daPessoa=nomeados
+  if(/\b(crianca|infantil|filho|filha|menino|menina|neto|neta|sobrinho|sobrinha|enteado)\b/.test(normalize(message))){
+   const inf=findService('Corte de cabelo infantil')
+   if(inf)daPessoa=[inf,...nomeados.filter((x:any)=>!/corte/i.test(String(x.name)))]
+  }
+  next.services=normalizeServiceFamilies(daPessoa.map((x:any)=>({name:x.name,price:x.price}))).items.map((x:any)=>x.name)
+  chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+  next.usual_assumed=false
+  next.usual_rejected=true
+ }
  if(state?.pending_other_name){
   delete next.pending_other_name
   const nomeDito=String(ai.updates?.name||'').trim()||(/^[a-zà-úç'\s]{2,40}$/i.test(message.trim())&&message.trim().split(/\s+/).length<=4?message.trim():'')
@@ -1426,6 +1464,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // fica no estado até o cliente nomear um serviço ou responder à pergunta de confirmação
   // (ver pending_usual_confirm).
   next.usual_assumed=true
+  next.usual_origem='historico'
  }
 
  if(hasCustomer && repeatRequest){
@@ -3348,7 +3387,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    chosen.push(corteAssumido)
    next.services=chosen.map((c:any)=>c.name)
    if(!next.date&&(effectiveTime||requestedPeriod)&&!weekdayDatesMentioned(normalizedQuestion,today()).length)next.date=today()
-   cabeloAssumidoNota='(Anotei Corte de cabelo — se quiser outro serviço ou incluir a barba, é só me dizer 😉)'
+   // v29.218.0 (Juliano, 23/09/2026: "já anotei aqui corte de cabelo… isso é chato demais"): a
+   // suposição é silenciosa — nada de "(Anotei…)" no meio da conversa. O serviço aparece UMA vez,
+   // na pergunta que fecha a reserva (mesma trava do serviço de sempre, ver pending_usual_confirm).
+   next.usual_assumed=true
+   next.usual_origem='padrao'
   }
  }
  // v29.143.0 (caso Cleiton, ver diaPedidoNaMensagem): o dia que o cliente pediu é lido do
@@ -3655,7 +3698,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // antes de reservar. O horário fica guardado; o "1" reserva (ver pending_usual_confirm).
       next.pending_usual_confirm={date:next.date,time:effectiveTime}
       const abre=`${emDia(next.date)} às ${effectiveTime} está livre.`
-      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} Reservo ${serviceNames}, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.`
+      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} ${perguntaServicoSuposto(serviceNames,next.usual_origem)}`
       actions=[{label:'1 — Sim',message:'1'},{label:'2 — Outro serviço',message:'2'}]
       respostaConferidaNaAgenda=true
       intent='other';handoff=false
@@ -3956,7 +3999,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(intent==='book'&&next.usual_assumed&&verifiedPhone&&next.date&&next.time&&chosen.length&&!state?.pending_usual_confirm){
   next.pending_usual_confirm={date:next.date,time:String(next.time).slice(0,5)}
   const abreUc=`${emDia(next.date)} às ${String(next.time).slice(0,5)}.`
-  reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} Reservo ${chosen.map((s:any)=>s.name).join(' + ')}, como da última vez? Digite *1* para sim ou *2* se quiser outro serviço.`
+  reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} ${perguntaServicoSuposto(chosen.map((s:any)=>s.name).join(' + '),next.usual_origem)}`
   actions=[{label:'1 — Sim',message:'1'},{label:'2 — Outro serviço',message:'2'}]
   intent='other';handoff=false
  }
@@ -4612,9 +4655,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v28.30.4 (presumir em silêncio). Nota única, no fim, sem repetir se a resposta já disser.
  // v29.138.0 (caso Moises, 05/09): saía "Perfeito! Anotei Corte de cabelo..." E a nota
  // "(Anotei Corte de cabelo, o seu de sempre...)" na mesma mensagem — duas vezes a mesma coisa.
- if(assumedUsualService&&!handoff&&(intent==='availability'||intent==='book')&&!/de sempre/i.test(reply)&&!/\banotei\b/i.test(reply)){
-  // v29.150.0: o emoji que separava as frases sai no semEmoji() e ficava "de sempre Se quiser".
-  reply+=`\n\n(Anotei ${assumedUsualService}, o seu de sempre. Se quiser outro serviço ou incluir algo, é só dizer.)`
+ // v29.218.0 (Juliano, 23/09/2026: "esse negócio da JuIA presumir o último serviço, já anotei aqui
+ // corte de cabelo mais sobrancelha, é chato demais"): a nota saiu, e enquanto o serviço for
+ // suposição as respostas de agenda também não o citam ("Para Corte + Sobrancelha (aproximadamente
+ // 60 min) consigo…" vira "Consigo…"). O risco da v28.30.4 não volta: desde a v29.140.0 serviço
+ // suposto não reserva sem a pergunta que fecha — e é nela, uma vez só, que o serviço aparece.
+ if(next.usual_assumed&&chosen.length&&!handoff&&!next.pending_usual_confirm){
+  reply=semServicoSuposto(reply,chosen.map((s:any)=>s.name).join(' + '))
  }
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`
