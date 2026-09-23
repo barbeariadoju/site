@@ -1073,7 +1073,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // modelo devolveu e não estava no state. Se for da família de um já anotado (e o antigo não
   // foi repetido), é troca. Regra pura em _shared/service-rules.ts (testes na cópia JS).
   {
-   const modelNew=(Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(String(x))?.name).filter((n:any)=>n&&!prevServices.includes(n)) as string[]
+   // v29.221.0 — caso Gabriel (22/09/2026, 15h56): "Teria algum horário ainda pra hoje?" recebeu
+   // "Anotado: Corte de cabelo no lugar de Corte + Lavagem. Fica Corte de cabelo." Ele não falou de
+   // serviço nenhum; quem trocou foi o modelo, preenchendo o padrão. Troca só existe quando o cliente
+   // cita um serviço na mensagem; sem isso, o serviço do modelo não conta como pedido novo.
+   const falouDeServico=mentionedLoose.length>0||/\b(corte|cortar|cabelo|barba|sobrancelha|lavagem|lavar|pezinho|platinad\w*|luzes|pigment\w*|navalha|express|barboterapia|depila\w*|raspar|infantil|maquina|degrade|tesoura|quimica|alisa\w*|relaxa\w*|hidrata\w*)\b/.test(normalize(message))
+   const modelNew=(falouDeServico&&Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(String(x))?.name).filter((n:any)=>n&&!prevServices.includes(n)) as string[]
+   // E o serviço que o modelo preencheu por conta própria também não entra por cima do que já estava
+   // anotado — senão a regra das famílias, logo abaixo, narra a "correção" de algo que ninguém disse.
+   if(!falouDeServico&&prevServices.length){
+    const doModelo=new Set((Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(String(x))?.name).filter(Boolean))
+    next.services=next.services.filter((n:string)=>prevServices.includes(n)||!doModelo.has(n))
+   }
    const mentionedNow=[...new Set([...mentionedLoose,...modelNew])]
    const sw=swapWithinFamily(next.services,mentionedNow)
    if(sw.swaps.length){
@@ -2330,7 +2341,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      next.pending_reschedule_new_date=next.date
      next.pending_reschedule_new_time=time
      const isSatR=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6
-     reply=`Nosso horário normal vai até ${isSatR?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${time} sim 😊 Confirmo a mudança de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}? Responda sim ou não.`
+     // v29.221.0 (caso Jessica): "o Ju estica" só quando o atendimento termina depois do fechamento.
+     const [ehR,emR]=String(time).split(':').map(Number)
+     const varaR=ehR*60+emR+duration>(isSatR?15:19)*60
+     reply=`${varaR?`Nosso horário normal vai até ${isSatR?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${time} sim 😊`:`${time} está livre em ${formatDateBR(next.date)}.`} Confirmo a mudança de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)} para ${formatDateBR(next.date)} às ${time}? Responda sim ou não.`
      actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
      handoff=false
     }else if(allSlots.length){
@@ -3243,9 +3257,22 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // v29.215.0 — caso Newton (sábado 19/09, 17h43): "Não. Obrigado." com PONTO no meio não casava com
   // "nao,? obrigado" — a recusa passou batida, o modelo leu como pedido e saiu "Consigo te atender na
   // terça sim!" a quem tinha acabado de dizer não. Vírgula, ponto, exclamação ou nada: é a mesma recusa.
-  const dispensaPura=q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
+  // v29.221.0 — caso Edgar (23/09/2026, 08h37): pediu 11:15, a JuIA ofereceu 09:15 ou 11:25 e ele
+  // respondeu "Outro horário fica difícil, obrigado". A palavra "horário" contava como PEDIDO NOVO
+  // (temPedidoNovo) e "fica difícil" não era recusa conhecida: saiu "Consigo te atender hoje sim!
+  // Manhã, tarde ou final do dia?" — a oferta inteira de novo, e o Juliano entrou na mão. Recusar os
+  // horários oferecidos, sem trazer dia, horário ou período novo, é dispensa. Se ele tinha pedido um
+  // horário de hoje, o Juliano recebe o aviso: é ele quem decide se dá para encaixar.
+  const recusaDeHorario=!/\?/.test(q)&&/\b(outro horario|outra hora|outros horarios|esses horarios|esse horario|nesses horarios|nesse horario)\b[\s\S]{0,25}\b(dificil|complicad|nao da|nao consigo|nao posso|nao rola|nao serve|nao fica bom)|\b(fica|e|seria|ta|esta) (meio |bem |muito |mais )?(dificil|complicad)/.test(q)
+   &&!extractRequestedTime(message)&&!detectPeriod(q)&&!weekdayDatesMentioned(q,today()).length&&!/\b(amanha|outro dia|semana que vem)\b/.test(q)
+  const pedidoDeHoje=recusaDeHorario&&state?.last_requested_time&&(state?.last_requested_date||state?.date)===today()?String(state.last_requested_time).slice(0,5):''
+  const dispensaPura=q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
-   reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
+   reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar às ${pedidoDeHoje}; se der, te respondo por aqui.`:'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
+   if(pedidoDeHoje&&!next.dismissed){
+    const psE=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
+    if(psE)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psE},body:JSON.stringify({custom:{title:`Pedido de encaixe às ${pedidoDeHoje}`,body:`${next.name||contextFullName||'Cliente'} queria hoje às ${pedidoDeHoje} e recusou os outros horários. Se der para encaixar, responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`encaixe-${verifiedPhone||'site'}-${pedidoDeHoje}`}})}).catch(()=>{})
+   }
    actions=[]
    intent='other'
    handoff=false
@@ -3755,7 +3782,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // v29.16.0: horário estendido nunca leva oferta de venda (o atendimento já vai varar
       // o fechamento) — marca a oferta como dispensada pro "sim" seguinte fechar direto.
       next.upsell_offer_done=true
-      reply=`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${effectiveTime} sim 😊 Posso confirmar?`
+      // v29.221.0 — caso Jessica (22/09/2026, 10h51): "Prefiro 16h10" na sexta recebeu "Nosso horário
+      // normal vai até 19:00, mas pra você o Ju estica: consigo te encaixar às 16:10". 16h10 está no
+      // meio da tarde; só não está na lista porque a grade é de 15 em 15 minutos, e o estendido
+      // aceitou porque o horário estava livre. "O Ju estica" só vale quando o atendimento termina
+      // DEPOIS do fechamento; dentro do expediente o horário fora da grade é um horário normal.
+      const [ehX,emX]=String(effectiveTime).split(':').map(Number)
+      const varaFechamento=ehX*60+emX+duration>(isSatX?15:19)*60
+      reply=varaFechamento
+       ?`Nosso horário normal vai até ${isSatX?'15:00':'19:00'}, mas pra você o Ju estica: consigo te encaixar às ${effectiveTime} sim 😊 Posso confirmar?`
+       :`Sim, ${emDia(next.date)} às ${effectiveTime} está livre. Posso confirmar?`
       actions=[{label:`Confirmar ${effectiveTime}`,message:`Quero reservar ${effectiveTime}`}]
       next.time=effectiveTime
       extendedOffered=true

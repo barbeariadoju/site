@@ -85,10 +85,41 @@ Deno.serve(async (request: Request) => {
   const evolutionApiKey = requiredSecret('EVOLUTION_API_KEY')
   const evolutionInstance = requiredSecret('EVOLUTION_INSTANCE_NAME')
 
+  // v29.221.0 — caso Newton (19–22/09/2026): disse "Não. Obrigado." e "vou ficar uma semana fora" no
+  // sábado, levou dois toques automáticos na segunda e, na terça, a pesquisa de motivo às 08h00 E esta
+  // reativação às 14h00. Quatro mensagens em três dias para quem tinha acabado de dizer não. A
+  // reativação é para quem SUMIU: quem conversou com a gente (ou recebeu qualquer mensagem) na última
+  // semana não sumiu, e quem tem contato adiado ("me chama quando eu voltar") já tem data certa.
+  // Pulado aqui não grava outreach: volta a ser candidato quando a conversa esfriar.
+  const SILENCIO_MS = 7 * 86400000
+  // Casa pelos 8 últimos dígitos: o mesmo cliente aparece com e sem o 9 (e com e sem o 55).
+  const conversouRecente = async (phone: string): Promise<string | null> => {
+    const fim = `%${phone.slice(-8)}`
+    const { data: msgs } = await admin
+      .from('whatsapp_messages')
+      .select('id')
+      .like('phone', fim)
+      .gte('created_at', new Date(Date.now() - SILENCIO_MS).toISOString())
+      .limit(1)
+    if (msgs && msgs.length) return 'conversa_recente'
+    const { data: adiado } = await admin
+      .from('return_invites')
+      .select('id')
+      .like('phone', fim)
+      .eq('status', 'deferred')
+      .gte('remind_at', new Date().toISOString())
+      .limit(1)
+    if (adiado && adiado.length) return 'contato_adiado'
+    return null
+  }
+
   let sent = 0
   let failed = 0
+  let skipped = 0
   for (const c of candidates) {
     const phone = canonicalPhone(c.phone)
+    const motivoPular = await conversouRecente(phone)
+    if (motivoPular) { skipped++; console.log('[customer-reactivation] pulado', motivoPular, phone.slice(-4)); continue }
     // v29.66.0 (22/08/2026, Juliano ligou a reativação de 30 dias): texto genérico "sentimos
     // sua falta" virou mensagem com o que ele fez e há quanto tempo, e o CTA é o mesmo que
     // já converte no lead-followup ("me diz o dia") — a resposta cai na JuIA como pedido de
@@ -134,5 +165,5 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  return json({ ok: true, dry_run: false, eligible: candidates.length, sent, failed })
+  return json({ ok: true, dry_run: false, eligible: candidates.length, sent, failed, skipped })
 })

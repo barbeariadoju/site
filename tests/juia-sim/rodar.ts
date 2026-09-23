@@ -60,6 +60,7 @@ type Cenario = {
   msg: string; state?: any; history?: any[]; ai?: any
   contexto?: any; futuros?: any[]; vagas?: Record<string, string[]>; concluidos?: any[]; nomeWhats?: string
   fechados?: string[] // dias com "Fechar o dia inteiro" marcado no admin (viagem, folga, feriado)
+  estendidoOk?: boolean // resposta do extended_close_slot_ok (horário livre fora da grade/do expediente)
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -78,7 +79,7 @@ const turno = async (c: Cenario) => {
     phone_upcoming_bookings: () => c.futuros || [],
     get_available_slots: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     get_available_slots_excluding: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
-    extended_close_slot_ok: () => false,
+    extended_close_slot_ok: () => Boolean(c.estendidoOk),
     create_public_booking_v15: () => ({ data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: 'Corte de cabelo' }], error: null }),
     waitlist_matches_for_slot: () => [],
@@ -384,6 +385,42 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     vagas: { [amanha]: ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] } })
   checar('25 filho: fica só o corte infantil', JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo infantil']), r.state?.services)
   checar('25 filho: resposta sem a sobrancelha do pai', !/Sobrancelha/.test(r.reply), r.reply)
+}
+
+// 26. Edgar (23/09, 08h37): pediu 11:15, recebeu 09:15 ou 11:25 e respondeu "Outro horário fica
+//     difícil, obrigado". Saía "Consigo te atender hoje sim! Manhã, tarde ou final do dia?".
+{
+  const r = await turno({ msg: 'Outro horário fica dificil , obrigado', state: { services: ['Corte de cabelo'], date: hoje, last_requested_time: '11:15', last_requested_date: hoje, usual_assumed: true },
+    history: [{ role: 'assistant', content: 'Hoje às 11:15 já está ocupado. O mais próximo que tenho é 09:15 ou 11:25. Serve pra você?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Edgar Teste'), vagas: { [hoje]: ['09:00', '09:15', '11:25', '11:30'] } })
+  checar('26 recusa dos horários: não reabre a agenda', !/Consigo te atender|manhã, tarde|\d{2}:\d{2}(?!.*11:15)/.test(r.reply.replace('11:15', '')), r.reply)
+  checar('26 recusa dos horários: diz que vê com o Juliano o 11:15', /Juliano/.test(r.reply) && /11:15/.test(r.reply), r.reply)
+  checar('26 recusa dos horários: push pro Juliano', r.saidas.some((s: any) => s.url.includes('send-push') && /11:15/.test(JSON.stringify(s.body))), r.saidas.map((s: any) => s.url))
+  const r2 = await turno({ msg: 'fica complicado pra mim, valeu', state: { services: ['Corte de cabelo'], date: dia1 },
+    history: [{ role: 'assistant', content: 'Na quinta tenho 09:00 ou 14:00. Quer que eu reserve um?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Edgar Teste'), vagas: { [dia1]: ['09:00', '14:00'] } })
+  checar('26b "fica complicado" sem pedido de hoje: dispensa educada', !/\d{2}:\d{2}/.test(r2.reply) && r2.state?.dismissed === true, r2.reply)
+}
+
+// 27. Gabriel (22/09, 15h56): "Teria algum horário ainda pra hoje?" recebeu "Anotado: Corte de cabelo
+//     no lugar de Corte + Lavagem" — troca que ele não pediu (o modelo preencheu o corte padrão).
+{
+  const r = await turno({ msg: 'Teria algum horário ainda pra hoje?', state: { services: ['Corte + Lavagem'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: hoje } }, contexto: ctxCliente('Gabriel Teste'),
+    vagas: { [hoje]: ['16:15', '16:30', '16:45'] } })
+  checar('27 sem serviço na frase: nada de "Anotado: X no lugar de Y"', !/no lugar de/.test(r.reply), r.reply)
+  checar('27 sem serviço na frase: nada de "Só pra ajustar"', !/pra ajustar/.test(r.reply), r.reply)
+}
+
+// 28. Jessica (22/09, 10h51): "Prefiro 16h10" numa sexta recebeu "Nosso horário normal vai até 19:00,
+//     mas pra você o Ju estica". 16h10 só não estava na grade de 15 em 15 minutos.
+{
+  const r = await turno({ msg: 'Prefiro 16h10', state: { services: ['Corte de cabelo'], date: dia2, name: 'Jessica Teste', upsell_offer_done: true },
+    history: [{ role: 'assistant', content: 'Consigo te atender na sexta sim! Você prefere manhã, tarde ou final do dia?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia2, time: '16:10' } }, contexto: ctxCliente('Jessica Teste'),
+    vagas: { [dia2]: ['16:00', '16:15', '16:30'] }, estendidoOk: true })
+  checar('28 16h10 dentro do expediente: sem "o Ju estica"', !/estica|horário normal vai até/.test(r.reply), r.reply)
+  checar('28 16h10: diz que está livre e pede confirmação', /16:10/.test(r.reply) && /livre/.test(r.reply), r.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

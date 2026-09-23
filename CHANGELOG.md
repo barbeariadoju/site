@@ -1,3 +1,21 @@
+## 29.221.0 — JuIA e robôs: quem recusou não leva mais mensagem em série; "fica difícil" é recusa; 16h10 não é "o Ju estica"; troca de serviço que ninguém pediu (23/09)
+
+Correções da revisão das conversas de 22 e 23/09 (plano do dia). Todos os casos foram reproduzidos no simulador antes de corrigir.
+
+**1. Caso Newton (19 a 22/09): quatro mensagens automáticas em três dias para quem disse não.** No sábado ele respondeu "Não. Obrigado." e avisou que ficaria uma semana fora. Na segunda, às 08h00, saíram no mesmo minuto "Abriu vaga de novo…" e "seu horário ainda NÃO ficou reservado". Na terça saíram a pesquisa de motivo às 08h00 e a reativação de 30 dias às 14h00. A v29.215.0 já tinha fechado a porta na conversa (recusa e viagem apagam o lead), mas dois robôs continuavam cegos:
+- **`customer-reactivation`** mandava "Já faz um mês…" sem olhar a conversa. Agora pula quem trocou qualquer mensagem com a barbearia nos últimos 7 dias, e quem tem contato adiado (`return_invites` deferred com data futura). Pulado não grava outreach, então volta a ser candidato quando a conversa esfriar. O telefone é comparado pelos 8 últimos dígitos, porque o mesmo cliente aparece com e sem o 9. A resposta passou a devolver `skipped`.
+- **`whatsapp-lead-followup`**: agora sai no máximo **uma mensagem por telefone por rodada**. O que não saiu agora sai na próxima rodada, se ainda fizer sentido.
+
+**2. Caso Edgar (23/09, 08h37): "Outro horário fica difícil, obrigado" reabria a agenda.** Ele pediu 11:15, a JuIA ofereceu 09:15 ou 11:25, e a resposta foi "Consigo te atender hoje sim! Manhã, tarde ou final do dia?". O Juliano entrou na mão e encaixou. Havia duas falhas: a palavra "horário" contava como pedido novo (`temPedidoNovo`), e "fica difícil" não era uma recusa conhecida. Agora recusar os horários oferecidos ("fica difícil", "complicado", "esses horários não dá"…), sem trazer dia, horário ou período novo, é dispensa. **Se o cliente tinha pedido um horário de hoje**, a resposta é "Vou ver com o Juliano se dá para te encaixar às 11:15; se der, te respondo por aqui", e o Juliano recebe um push "Pedido de encaixe às 11:15". Foi exatamente o que ele fez na mão, e a decisão continua com ele.
+
+**3. Caso Jessica (22/09, 10h51): "Prefiro 16h10" numa sexta recebeu "Nosso horário normal vai até 19:00, mas pra você o Ju estica".** 16h10 só não estava na grade de 15 em 15 minutos. O horário estendido (`extended_close_slot_ok`) aceitou porque estava livre, e a frase de depois do expediente saiu sem conferir se o atendimento passava do fechamento. Agora "o Ju estica" só aparece quando o atendimento termina depois das 19h (15h no sábado). Dentro do expediente a resposta é "Sim, na sexta (25/09) às 16:10 está livre. Posso confirmar?". A mesma correção valeu para a remarcação, que tinha a mesma frase.
+
+**4. Caso Gabriel (22/09, 15h56): "Anotado: Corte de cabelo no lugar de Corte + Lavagem".** Ele só perguntou "Teria algum horário ainda pra hoje?". O modelo preencheu o corte padrão, e a troca dentro da família (v29.165.0) anunciou uma troca que ninguém pediu. Na primeira correção sumiu o "Anotado", mas apareceu "Só pra ajustar: Corte + Lavagem já inclui…". Agora, quando a mensagem não cita serviço nenhum, o serviço que o modelo trouxe não entra por cima do que já estava anotado, nem como troca nem como soma. É o mesmo princípio da v29.218.0: o que o cliente não disse não é narrado.
+
+**Simulador:** cenários 26 (Edgar, com o push, e "fica complicado, valeu" sem pedido de hoje), 27 (Gabriel) e 28 (Jessica, com o dublê `estendidoOk`). **80 verificações, todas ok.** `deno check` limpo nas três functions, 239 testes unitários ok.
+
+**Deploy:** `ju-ia-site`, `whatsapp-lead-followup` e `customer-reactivation`, com o `verify_jwt` conferido depois (true, false, false, como antes). No smoke test a JuIA respondeu normal, e as duas functions de cron devolveram 401 sem o segredo (subiram sem erro de import). As sessões `deploy-check-v29.221.0-*` foram apagadas.
+
 ## 29.220.0 — Painel: "Como foi feito" também no ✎ Editar, para anotar depois de concluir (23/09)
 
 **Pedido do Juliano (23/09, com print do Editar):** "concluí o Sr. Edgar mas esqueci de colocar como ele corta. Por favor, no campo Editar depois de concluir, disponibilizar esta funcionalidade."

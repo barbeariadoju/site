@@ -75,8 +75,15 @@ Deno.serve(async (request: Request) => {
     return digits
   }
 
+  // v29.221.0 — caso Newton (21/09/2026, 08h00): no mesmo minuto saíram "Abriu vaga de novo…" (vaga
+  // reaberta) e "seu horário ainda NÃO ficou reservado" (1º toque) — dois robôs desta rodada, cada um
+  // com a sua regra certa, somando duas mensagens seguidas. Uma mensagem por telefone por rodada: o
+  // que não saiu agora sai na próxima, se ainda fizer sentido.
+  const jaMandouNestaRodada = new Set<string>()
+  const chaveFone = (raw: string) => String(raw || '').replace(/\D/g, '').slice(-8)
   const sendWhatsapp = async (to: string, textBody: string) => {
     const number = toWhatsNumber(to)
+    jaMandouNestaRodada.add(chaveFone(number))
     const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
@@ -229,6 +236,7 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of reopenedLeads || []) {
     try {
+      if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
       if (await isResolved(lead.phone, lead.last_message_at)) {
         await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
         continue
@@ -281,6 +289,7 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of stage0Leads || []) {
     try {
+      if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
       // v29.71.0: a query acima usa o limiar curto (30 min) pra alcançar o booking_intent;
       // os outros kinds só entram quando completam as 2h de sempre.
       if (lead.kind !== 'booking_intent' && now - new Date(lead.last_message_at).getTime() < NUDGE1_AFTER_MS) continue
@@ -350,6 +359,7 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of stage1Leads || []) {
     try {
+      if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
       // v29.43.0 — fila unica de perguntas numeradas: este follow-up tem opcoes 1-4; se o
       // telefone ja tem pesquisa/convite/confirmacao sem resposta, espera o proximo cron.
       {
