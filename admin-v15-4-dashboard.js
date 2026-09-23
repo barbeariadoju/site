@@ -56,25 +56,7 @@
       setText('metric-cadeira-sub',`vs ${reg} registrado${reg===1?'':'s'} · ${status}`);
       const card=$('metric-cadeira-card');if(card){card.classList.toggle('admin-metric-warn',cam!==reg||(minAgo!==null&&minAgo>15))}
     }).catch(()=>{})}
-    // v29.48.0 (19/08): card "Alarme" — central(is) EKASA via Tuya Cloud (tuya-watch, 10 min). Mostra modo
-    // (armado/casa/desarmado), online, e alertas abertos (offline, sensor sem prova de vida, bateria, disparo).
-    if($('metric-alarme')){sb.rpc('alarm_summary').then(({data,error})=>{
-      if(error||!data||!Array.isArray(data.hubs)||!data.hubs.length){setText('metric-alarme','–');setText('metric-alarme-sub',error?'sem dados':'nenhuma central vinculada');const a0=$('metric-alarme-card');if(a0)a0.hidden=true;return}
-      const hubs=data.hubs,alerts=Array.isArray(data.open_alerts)?data.open_alerts:[];
-      const modeLabel=m=>({armado:'Armado 🔒',casa:'Modo Casa 🏠',desarmado:'Desarmado 🔓'})[m]||(m||'?');
-      const main=hubs.length===1?modeLabel(hubs[0].mode):hubs.map(h=>`${h.name}: ${modeLabel(h.mode)}`).join(' · ');
-      setText('metric-alarme',main);
-      const off=hubs.filter(h=>!h.online).map(h=>h.name);
-      // v29.53.1 (20/08): hora da última leitura no card — a central é lida a cada 10 min,
-      // então o modo pode estar "atrasado" (caso real: Juliano rearmou 10h10 e o card ficou
-      // "Desarmado" até a leitura seguinte, parecendo bug). Com o horário, dá pra ver que é
-      // foto de minutos atrás, não estado ao vivo.
-      const lastRead=hubs.map(h=>h.last_seen_at?new Date(h.last_seen_at):null).filter(Boolean).sort((a,b)=>b-a)[0];
-      const readLabel=lastRead?` · lido às ${String(lastRead.getHours()).padStart(2,'0')}h${String(lastRead.getMinutes()).padStart(2,'0')}`:'';
-      const sub=(alerts.length?alerts.map(a=>a.message).join(' · '):(off.length?`offline: ${off.join(', ')}`:`${hubs.length===1?'central online':hubs.length+' centrais online'} · ${hubs.reduce((n,h)=>n+((h.sensors||[]).length),0)} sensores ok`))+readLabel;
-      setText('metric-alarme-sub',sub);
-      const card=$('metric-alarme-card');if(card){card.classList.toggle('admin-metric-warn',alerts.length>0||off.length>0||hubs.some(h=>h.alarm_on))}
-    }).catch(()=>{})}
+    // v29.228.0 (23/09/2026): o card "Alarme" (v29.48.0) saiu — o Juliano voltou para o app da EKASA.
     setText('metric-noshows',noShowsToday.length);setText('metric-clients',customers.length);setText('metric-tomorrow',tomorrowRows.length);
 
     // ---- Cabeçalho do dia ----

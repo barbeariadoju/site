@@ -1,3 +1,20 @@
+## 29.228.0 — Alarme removido do sistema (o Juliano volta para o app da EKASA); vigia da câmera mantido (23/09)
+
+**Pedido do Juliano (23/09):** "do alarme da barbearia, pode remover esta funcionalidade porque não vai ser necessária. Vou voltar pro app do Ekasa, este app adicional só serviu pra me confundir."
+
+**Contexto.** Em 19/08 (v29.48.0), a central da barbearia saiu do app da EKASA e foi para o Smart Life, porque só o Smart Life se liga à nuvem de desenvolvedor da Tuya. Isso permitiu criar o card "Alarme" e os avisos por push. O custo foram dois apps para a mesma central, e o plano IoT Core da Tuya venceu em 20/09 (ver 29.227.0).
+
+**O que saiu:**
+- **Card "Alarme" da tela Hoje** (`admin.html`) e o bloco que o preenchia (`admin-v15-4-dashboard.js`, chamada a `alarm_summary`).
+- **A leitura da Tuya no `tuya-watch`.** A function passou a ser só o **vigia do contador de cadeira** (v29.124.0), com a correção do dia da semana da 29.227.0. O nome continua o mesmo porque o cron `bdj-tuya-watch` chama esta function. Testado no ar: `{"ok":true,"camera":{"error":""}}`.
+- Os **segredos `TUYA_ACCESS_ID`, `TUYA_ACCESS_SECRET` e `TUYA_REGION`** saíram do Supabase. Alertas de alarme em aberto foram encerrados (`resolved_at`).
+
+**O que ficou, de propósito:** as tabelas `alarm_hubs` e `alarm_events` continuam no banco como histórico, e nada mais escreve nelas. A `alarm_alerts` continua em uso, porque é a tabela de avisos da câmera. O código do monitor está no Git (29.227.0), se um dia voltar.
+
+**Cache:** `admin-v15-4-dashboard.js?v=29.228.0` nas 6 páginas, `admin-v15-4-core.js` com `ADMIN_VERSION` e `admin-version.json` em 29.228.0. 37 testes do painel ok.
+
+**Ainda do Juliano:** tirar a central do Smart Life e pareá-la de novo no app da EKASA (passo a passo na conversa de 23/09; o importante é "Desconectar" sem apagar dados, para manter os sensores). O projeto de desenvolvedor em iot.tuya.com pode ficar parado, sem custo; se ele quiser, pode apagar.
+
 ## 29.227.0 — Alarme: o monitor passou a avisar quando perde o acesso à central (estava cego desde 19/09); vigia da câmera voltou a funcionar (23/09)
 
 **Achado na leitura dos e-mails (pedido do Juliano, 23/09: "veja todos se tem alguma coisa importante").** A Tuya avisou em 19/09 que o plano **IoT Core** venceria em 20/09. Venceu. Desde então, a consulta de aparelhos devolve "IoT Core service subscription has expired", e o `tuya-watch` tratava isso como "nenhuma central": respondia `ok, hubs: []` de 10 em 10 minutos. A última leitura da central "Barbearia" foi em 19/09 às 14h10. **Foram 4 dias sem ninguém vigiando disparo, queda de energia nem bateria, e sem nenhum aviso.**
