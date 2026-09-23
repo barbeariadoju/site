@@ -18,7 +18,22 @@
    const partiallyBlocked=!fullyBlocked&&dayBlocks.length>0;
    const flag=closed?'<i class="day-flag day-flag-closed" title="Não atende">🚫</i>':fullyBlocked?'<i class="day-flag day-flag-locked" title="Dia bloqueado">🔒</i>':partiallyBlocked?'<i class="day-flag day-flag-partial" title="Bloqueio parcial">⏰</i>':'';
    html+=`<button class="calendar-day ${ds===selectedDate?'is-selected':''} ${ds===isoLocal(new Date())?'is-today':''}" data-date="${ds}">${flag}<span>${d}</span>${count?`<small>${count}</small>`:''}</button>`}grid.innerHTML=html;grid.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;renderCalendar();loadAgendaDay()})}
-  async function loadAgendaDay(){setText('agenda-date-title',formatDate(selectedDate));const rows=allBookings.filter(x=>x.booking_date===selectedDate).sort((a,b)=>a.start_time.localeCompare(b.start_time)),list=$('agenda-day-list');list.innerHTML=rows.length?rows.map(bookingCard).join(''):'<div class="admin-empty">Nenhum agendamento nesta data.</div>';bindBookingActions(list);await loadBlocks()}
+  // v29.225.0 (pedido do Juliano, 23/09/2026): o bloqueio de horário aparece na lista do dia, na ordem
+  // dos horários, entre os agendamentos — antes ficava só na caixa "Bloquear dia ou horário", longe da
+  // agenda. Dia inteiro fechado vira uma faixa no topo. A caixa de baixo continua (é onde se cria).
+  function blockDayRow(x){
+    const faixa=x.all_day?'Dia inteiro':`${String(x.start_time||'').slice(0,5)}–${String(x.end_time||'').slice(0,5)}`;
+    return `<div class="agenda-block-inline${x.all_day?' is-all-day':''}"><span class="agenda-block-inline-time">${faixa}</span><span class="agenda-block-inline-text"><strong>🔒 Bloqueado</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></span><button type="button" data-delete-block="${x.id}">Liberar</button></div>`;
+  }
+  async function loadAgendaDay(){
+    setText('agenda-date-title',formatDate(selectedDate));
+    const rows=allBookings.filter(x=>x.booking_date===selectedDate).sort((a,b)=>a.start_time.localeCompare(b.start_time)),list=$('agenda-day-list');
+    const blocks=await loadBlocks();
+    const itens=[...rows.map(x=>({t:String(x.start_time||''),html:bookingCard(x)})),...blocks.map(x=>({t:x.all_day?'':String(x.start_time||''),html:blockDayRow(x)}))].sort((a,b)=>a.t.localeCompare(b.t));
+    list.innerHTML=itens.length?itens.map(i=>i.html).join(''):'<div class="admin-empty">Nenhum agendamento nesta data.</div>';
+    bindBookingActions(list);
+    list.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock));
+  }
   // Card colapsado por padrão (só resumo: hora/nome/status/total) — pedido do Juliano
   // depois que os campos de preço/pagamento (v28.22-28.23) deixaram o card alto demais,
   // forçando rolar muito com vários agendamentos no dia. Clique no resumo expande o
@@ -864,7 +879,7 @@ ${data?.email?.error||'Verifique os registros da função.'}`);
     await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
     BDJ_UX.toast(`Retorno marcado: ${R.rotuloOpcao(escolha)}. A confirmação sai sozinha na véspera.`,'success',6000);
   }
-  async function loadBlocks(){const box=$('agenda-block-list'),{data,error}=await sb.from('schedule_blocks').select('*').eq('block_date',selectedDate).order('start_time',{ascending:true,nullsFirst:true});if(error){box.innerHTML=`<div class="admin-empty">${esc(error.message)}</div>`;return}box.innerHTML=(data||[]).length?data.map(x=>`<div class="admin-block-row"><div><strong>${x.all_day?'Dia inteiro':`${x.start_time.slice(0,5)}–${x.end_time.slice(0,5)}`}</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></div><button data-delete-block="${x.id}">Liberar</button></div>`).join(''):'<div class="admin-empty">Nenhum bloqueio nesta data.</div>';box.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock))}
+  async function loadBlocks(){const box=$('agenda-block-list'),{data,error}=await sb.from('schedule_blocks').select('*').eq('block_date',selectedDate).order('start_time',{ascending:true,nullsFirst:true});if(error){box.innerHTML=`<div class="admin-empty">${esc(error.message)}</div>`;return []}box.innerHTML=(data||[]).length?data.map(x=>`<div class="admin-block-row"><div><strong>${x.all_day?'Dia inteiro':`${x.start_time.slice(0,5)}–${x.end_time.slice(0,5)}`}</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></div><button data-delete-block="${x.id}">Liberar</button></div>`).join(''):'<div class="admin-empty">Nenhum bloqueio nesta data.</div>';box.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock));return data||[]}
   // v28.31.1: bloqueio em INTERVALO de dias (pedido do Juliano, 31/07/2026, depois de uma
   // viagem em que ele teve que bloquear dia a dia) — só disponível com "Fechar o dia
   // inteiro" marcado (bloqueio parcial de horário não faz sentido replicado por vários
@@ -887,6 +902,6 @@ ${data?.email?.error||'Verifique os registros da função.'}`);
    const rows=dates.map(d=>({block_date:d,all_day:allDay,start_time:allDay?null:start,end_time:allDay?null:end,reason}))
    const {error}=await sb.from('schedule_blocks').insert(rows)
    msg.textContent=error?error.message:(dates.length>1?`${dates.length} dias bloqueados.`:'Bloqueio criado.')
-   if(!error){$('block-reason').value='';$('block-range-end').value='';await refreshCalendar();await loadBlocks()}
+   if(!error){$('block-reason').value='';$('block-range-end').value='';await refreshCalendar();await loadAgendaDay()}
   }
-  async function deleteBlock(id){if(!await BDJ_UX.confirm('Liberar este bloqueio?'))return;const {error}=await sb.from('schedule_blocks').delete().eq('id',id);if(error)alert(error.message);else loadBlocks()}
+  async function deleteBlock(id){if(!await BDJ_UX.confirm('Liberar este bloqueio?'))return;const {error}=await sb.from('schedule_blocks').delete().eq('id',id);if(error)alert(error.message);else loadAgendaDay()}

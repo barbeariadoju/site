@@ -1,3 +1,17 @@
+## 29.225.0 — Agenda: bloqueio de horário aparece na lista do dia, na ordem dos horários (23/09)
+
+**Pedido do Juliano (23/09, com print):** "sugestão: meu bloqueio aparecer na agenda na sequência dos horários."
+
+**Antes:** o bloqueio parcial (ex.: 15:00–15:30 "google henrique ads") só aparecia na caixa "Bloquear dia ou horário", abaixo da lista do dia. Lendo a agenda de cima para baixo, aquele meio horário parecia livre.
+
+**Agora (`admin-v15-4-agenda.js`):** a lista do dia mistura agendamentos e bloqueios, ordenados pelo horário de início. O bloqueio é uma linha tracejada e apagada ("17:15–17:30 · 🔒 Bloqueado · motivo") com o botão **Liberar** ali mesmo. Dia inteiro fechado vira uma faixa sólida no topo. A caixa de baixo continua existindo, porque é onde o bloqueio é criado. Criar ou liberar redesenha a lista inteira (`loadAgendaDay`), e não só a caixa. `loadBlocks()` passou a devolver as linhas que carregou, para a lista usar a mesma consulta sem buscar duas vezes.
+
+**CSS:** `.agenda-block-inline` em `css/06-admin-reforma.css`, que só o painel carrega.
+
+**Teste novo:** `tests/e2e/admin/admin-agenda-bloqueio-na-lista.spec.js`. Com um bloqueio fictício às 17:15 entre os agendamentos das 17:00 e das 17:30, o teste confere a ordem e o texto; o print foi conferido. 37 testes do painel ok.
+
+**Cache:** `06-admin-reforma.css?v=29.225.0` nas 17 páginas do painel, `admin-v15-4-agenda.js` e `admin-v15-4-core.js` em 29.225.0 nas 6 páginas, e `ADMIN_VERSION` com `admin-version.json` em 29.225.0.
+
 ## 29.224.0 — JuIA: a conversa do Tiago passou pelo simulador inteira; "no período da final do dia" virou "no final do dia" (23/09)
 
 **Pedido do Juliano (23/09):** "mas o Tiago foi claro: quero marcar corte de cabelo para sexta-feira no final do dia."

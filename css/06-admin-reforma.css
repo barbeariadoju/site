@@ -753,3 +753,13 @@ html{color-scheme:dark}
   [data-admin-page="dashboard"] .admin-header-actions .btn.primary,#today-balcao,#today-now{grid-column:1/-1}
   #today-prev,#today-next,#today-refresh{min-height:44px;padding:0 6px!important;font-size:var(--t-sm)}
 }
+/* v29.225.0 — bloqueio de horário na lista do dia da Agenda, na ordem dos horários (pedido do Juliano,
+   23/09/2026). Tracejado e apagado de propósito: é tempo ocupado, não cliente. */
+.agenda-block-inline{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:10px;padding:12px 14px;border:1px dashed rgba(240,201,135,.35);border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 8px,transparent 8px 16px)}
+.agenda-block-inline.is-all-day{border-style:solid;border-color:rgba(240,201,135,.5);background:rgba(240,201,135,.08)}
+.agenda-block-inline-time{font-weight:800;color:var(--gold2);white-space:nowrap}
+.agenda-block-inline-text{display:grid;gap:2px;min-width:0}
+.agenda-block-inline-text strong{font-size:var(--t-sm);color:#d8d8d8}
+.agenda-block-inline-text small{color:#9a9a9a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agenda-block-inline button{background:none;border:1px solid rgba(255,255,255,.14);color:#ddd;border-radius:10px;padding:8px 12px;font:inherit;font-size:var(--t-xs);font-weight:700;cursor:pointer;min-height:40px}
+.agenda-block-inline button:hover{border-color:var(--gold);color:var(--gold2)}
