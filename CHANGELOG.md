@@ -1,3 +1,15 @@
+## 29.220.0 — Painel: "Como foi feito" também no ✎ Editar, para anotar depois de concluir (23/09)
+
+**Pedido do Juliano (23/09, com print do Editar):** "concluí o Sr. Edgar mas esqueci de colocar como ele corta. Por favor, no campo Editar depois de concluir, disponibilizar esta funcionalidade."
+
+**O que faltava.** O "Como foi feito ✂️" (v29.195.0) só existia no Concluir e no Balcão. Se não fosse preenchido na hora, o único outro caminho era abrir a ficha do cliente em Clientes → Preferências de estilo, longe do atendimento.
+
+**O que mudou (`admin-v15-4-agenda.js`, modal ✎ Editar):** o campo aparece logo abaixo de "Serviço realizado", com o mesmo texto de ajuda do Concluir. Ele abre com o que já está no cadastro (`styleTextFor`) e grava por `admin_set_customer_style` só quando o texto muda. Essa é a mesma regra do Concluir, então apagar tudo também conta como mudança, e abrir e salvar sem mexer não regrava. Se a gravação falhar, o aviso diz que as outras alterações foram salvas e só o estilo não.
+
+**Teste novo:** `tests/e2e/admin/admin-editar-como-foi-feito.spec.js`, com dois cenários: anotar depois de concluir grava no telefone certo, e abrir com o estilo do cadastro e salvar sem mudar não chama a RPC.
+
+**Cache:** `admin-v15-4-agenda.js?v=29.220.0` e `admin-v15-4-core.js?v=29.220.0` nas 6 páginas, e `ADMIN_VERSION` com `admin-version.json` em 29.220.0.
+
 ## 29.219.0 — Balcão: forma de pagamento em botões e total fixo no rodapé, igual ao Concluir da Agenda (23/09)
 
 **Pedido do Juliano (23/09, com print da tela):** "a tela de conclusão do balcão precisava aparecer o total e a forma de pagamento. Ao invés de eu selecionar na lista, se fosse igual é na agenda, ficaria mais padronizado e mais fácil de enxergar."

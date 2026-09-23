@@ -657,7 +657,7 @@
         modal.id='booking-edit-modal';
         modal.className='admin-modal';
         modal.hidden=true;
-        modal.innerHTML='<div class="admin-modal-backdrop" data-edit-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-edit-cancel>&times;</button><h2>✎ Editar atendimento</h2><p class="privacy-note">Ajuste o que foi realizado de verdade — funciona pra qualquer agendamento (site ou balcão), concluído ou não.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin-top:16px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin-top:16px">Forma de pagamento <small class="field-help" style="font-weight:400">opcional</small></h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><button type="button" class="btn primary" data-edit-save style="width:100%;margin-top:16px">Salvar alterações</button></section>';
+        modal.innerHTML='<div class="admin-modal-backdrop" data-edit-cancel></div><section class="admin-modal-card booking-edit-card" role="dialog" aria-modal="true"><button type="button" class="admin-modal-close" data-edit-cancel>&times;</button><h2>✎ Editar atendimento</h2><p class="privacy-note">Ajuste o que foi realizado de verdade — funciona pra qualquer agendamento (site ou balcão), concluído ou não.</p><h3 style="margin-top:14px">Serviço realizado</h3><div data-service-slot></div><h3 style="margin-top:16px">Como foi feito ✂️ <small class="field-help" style="font-weight:400">fica no cadastro e aparece no próximo atendimento</small></h3><input type="text" data-style-notes maxlength="200" placeholder="Ex.: máquina 1 dos lados e 4 em cima · degradê alto navalhado · tudo na tesoura" class="checkout-input"><h3 style="margin-top:16px">Produtos vendidos <small class="field-help" style="font-weight:400">opcional</small></h3><div data-products-slot></div><h3 style="margin-top:16px">Forma de pagamento <small class="field-help" style="font-weight:400">opcional</small></h3><div data-payment-slot></div><button type="button" class="checkout-split-toggle" data-split-toggle>▸ Produtos pagos de outra forma? (raro)</button><div data-products-payment-wrap hidden><h3 style="margin:10px 0 4px">Pagamento dos produtos <small class="field-help" style="font-weight:400">só se for diferente do serviço</small></h3><div data-products-payment-slot></div></div><button type="button" class="btn primary" data-edit-save style="width:100%;margin-top:16px">Salvar alterações</button></section>';
         document.body.appendChild(modal);
         bindServiceChecklistRule(modal.querySelector('[data-service-slot]'));
       }
@@ -665,6 +665,11 @@
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
       modal.querySelector('[data-payment-slot]').innerHTML=paymentPickerHtml(booking.payment_method||'');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml(booking.products_payment_method||'');
+      // v29.220.0 (pedido do Juliano, 23/09: concluiu o Sr. Edgar e esqueceu o "Como foi feito") —
+      // o campo do Concluir também existe no Editar, aberto com o que está no cadastro.
+      const editStyleInput=modal.querySelector('[data-style-notes]');
+      const editStylePrefill=(typeof styleTextFor==='function')?styleTextFor(booking.customer_phone):'';
+      editStyleInput.value=editStylePrefill;
       let selectedPayment=booking.payment_method||'',selectedProductsPayment=booking.products_payment_method||'';
       // v29.84.0 — caso raro recolhido por padrão; abre já expandido se o registro tem
       // pagamento de produto diferente gravado (senão o dado ficaria invisível ao editar).
@@ -704,6 +709,8 @@
           products:readChecklistProducts(modal),
           payment_method:selectedPayment||null,
           products_payment_method:selectedProductsPayment||null,
+          style_notes:editStyleInput.value.trim(),
+          style_prefill:editStylePrefill,
         });
       };
       const cancelEls=modal.querySelectorAll('[data-edit-cancel]');
@@ -728,6 +735,11 @@
       if(result.products_payment_method)body.products_payment_method=result.products_payment_method;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){alert(data?.error||error?.message||'Não foi possível salvar as alterações.');return}
+      // v29.220.0 — mesma regra do Concluir: só grava o "Como foi feito" se o texto mudou.
+      if(result.style_notes!==result.style_prefill&&booking.customer_phone){
+        const {data:styleRes,error:styleErr}=await sb.rpc('admin_set_customer_style',{p_phone:booking.customer_phone,p_style:result.style_notes,p_name:booking.customer_name||null});
+        if(styleErr||styleRes?.ok===false)alert(`Alterações salvas, mas o "Como foi feito" NÃO foi salvo no cadastro: ${styleErr?.message||styleRes?.error||'motivo desconhecido'}`);
+      }
       await loadBaseData();if(page==='atendimento')renderServiceMode();else if(page==='dashboard')renderDashboard();else{renderCalendar();await loadAgendaDay()}
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
