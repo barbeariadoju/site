@@ -1806,6 +1806,20 @@ Deno.serve(async (request: Request) => {
         }
 
         if (pending && (!juiaAwaitingAnswer || surveyEhMaisRecente) && (!quotedTarget || quotedTarget === 'survey')) {
+          // v29.223.0 (caso Tiago): se a JuIA já conversou com o cliente DEPOIS que a pesquisa saiu, a
+          // conversa é outra. Resposta que não é claramente da pesquisa (1/2, elogio, reclamação) vai pra
+          // JuIA, em vez do "Não entendi" que interrompia o agendamento a cada mensagem.
+          const juiaFalouDepoisDaPesquisa = async (): Promise<boolean> => {
+            if (!pending.sent_at) return false
+            const { count } = await admin
+              .from('whatsapp_messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('phone', phone)
+              .eq('direction', 'out')
+              .gte('created_at', new Date(new Date(String(pending.sent_at)).getTime() + 2 * 60 * 1000).toISOString())
+              .not('body', 'ilike', '%se ficou satisfeito%')
+            return (count ?? 0) > 0
+          }
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           // Emoji de satisfação/insatisfação: cobre a família toda de reações comuns, não só o
@@ -1830,7 +1844,12 @@ Deno.serve(async (request: Request) => {
           // de "satisfeito" e ignorou o pedido de Pix, que o Juliano teve que atender na mão.
           // Quando a mensagem traz um pedido concreto, ela não é resposta de pesquisa, tenha
           // o emoji que tiver: cai pro fluxo normal da JuIA, que sabe resolver.
+          // v29.223.0 — caso Tiago (23/09/2026, 10h43): com a pesquisa de ontem sem resposta, ele marcou
+          // horário com a JuIA e cada resposta de agenda ("Sexta-feira dia 25", "Final do dia") virou
+          // "Não entendi. Digite 1 se ficou satisfeito". Dia da semana, data, hora e período também são
+          // assunto de agenda, não resposta de pesquisa.
           const asksSomethingElse = /\bpix\b|pagar|pagamento|transferir|chave|agendar|marcar|remarcar|cancelar|horario|hora marcada|amanha|quanto custa|pre[cç]o|valor|aberto|abre|funciona/.test(normalizedReply)
+            || /\b(segunda|terca|quarta|quinta|sexta|sabado|domingo)(-feira)?\b|\bdia \d{1,2}\b|\b\d{1,2}\/\d{1,2}\b|\b\d{1,2}\s*(h|hs|hrs|horas)\b|\b\d{1,2}:\d{2}\b|\b(de|pela|a|na) (manha|tarde|noite)\b|\bfinal do dia\b|\b(fim|comeco|inicio) da (tarde|manha)\b/.test(normalizedReply)
           // v28.67.0 (caso Marcelo, 06/08/2026): cliente mandou áudio elogiando e depois
           // escreveu "só elogios hein" — a JuIA respondeu "não entendi" e NÃO disparou o
           // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:
@@ -2051,7 +2070,7 @@ Deno.serve(async (request: Request) => {
               }
               return
             }
-          } else if (ambiguousShortReply) {
+          } else if (ambiguousShortReply && !(await juiaFalouDepoisDaPesquisa())) {
             // v29.51.0 — caso Frei (19/08): "Eu que agradeço" levou um seco "Não entendi".
             // Gentileza recebe gentileza; o lembrete da pesquisa vai junto, mas acolhendo.
             const courtesy = /eu que agradeco|obrigad|valeu|de nada|disponha|abraco|amem|\bamen\b|tmj|por nada/.test(trimmedNormalized)

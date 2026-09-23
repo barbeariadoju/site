@@ -1,3 +1,17 @@
+## 29.223.0 — WhatsApp: pesquisa de satisfação pendente parou de interromper o agendamento (caso Tiago, 23/09)
+
+**Pedido do Juliano (23/09, com print):** "outra viajada da JuIA, parece que ela tá piorando."
+
+**O que aconteceu (conversa lida no banco).** O Tiago foi atendido ontem às 18h e não respondeu a pesquisa ("Digite 1 se ficou satisfeito…"). Hoje às 10h42 ele escreveu "Agendar horário", e a JuIA respondeu certo ("Me diz a data e o horário"). As respostas seguintes, "Sexta-feira dia 25" e "Final do dia", foram capturadas pelo interceptador da pesquisa no `whatsapp-webhook`. Mensagem curta que não é 1, 2, elogio nem reclamação caía no ramo `ambiguousShortReply`, que responde "Não entendi. Digite 1 se ficou satisfeito, ou 2 se ficou insatisfeito". Ele recebeu isso duas vezes, no meio do agendamento, e o Juliano fechou na mão às 12h25.
+
+**Não é piora das mudanças de hoje.** O interceptador é antigo e a v29.218–29.222 não mexeu nele. Ele já deixava passar "agendar", "horário" e "amanhã" (`asksSomethingElse`), mas não conhecia dia da semana, data, hora nem período. A pergunta aberta da JuIA ("manhã, tarde ou final do dia?") também não conta como `juiaAwaitingAnswer`, porque não deixa `pending_*` nem `last_question`.
+
+**O que mudou em `whatsapp-webhook`:**
+- **Dia da semana, "dia 25", "25/09", "17h", "11:15", "de manhã/pela tarde" e "final do dia" são assunto de agenda**, não resposta de pesquisa, e seguem para a JuIA. Conferido com frases reais: "1", "2", "obrigado", "eu que agradeço", "top demais" e "boa tarde" continuam indo para a pesquisa.
+- **Se a JuIA já conversou com o cliente depois que a pesquisa saiu**, a mensagem ambígua vai para a JuIA em vez do "Não entendi". A pesquisa continua valendo para quem responde 1, 2, elogio ou reclamação.
+
+**Deploy:** `whatsapp-webhook` com `verify_jwt=false`, como antes. O smoke test sem o segredo devolveu 401, então a function subiu sem erro de import. O webhook não está no simulador (ele cobre só a `ju-ia-site`); a regex foi conferida à parte, com as frases reais.
+
 ## 29.222.0 — JuIA: dia que já passou sai da conversa; "às 17h" sem dia é hoje (caso Marcello, 23/09)
 
 **Pedido do Juliano (23/09, com print):** "você viu isso?"
