@@ -423,6 +423,23 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('28 16h10: diz que está livre e pede confirmação', /16:10/.test(r.reply) && /livre/.test(r.reply), r.reply)
 }
 
+// 29. Marcello (23/09, 10h03): o estado da conversa de 09/09 ainda tinha date=09/09. Respondendo ao
+//     convite de retorno, "As 17h" virou "Na quarta (09/09) não tenho mais vaga… te aviso quando abrir
+//     vaga na quarta (09/09)". Dia que já passou sai do estado; hora sem dia é hoje.
+{
+  const velho = somar(hoje, -14)
+  const r = await turno({ msg: 'As 17h', state: { services: ['Barba Express'], date: velho, time: '17:00', usual_assumed: true, pending_waitlist: { date: velho, service_name: 'Barba Express', duration_minutes: 30 } },
+    history: [{ role: 'assistant', content: 'Vamos marcar! Barba Express sai R$ 25,00. Me diz o horário que eu já deixo reservado pra você.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { time: '17:00', date: velho } }, contexto: ctxCliente('Marcello Teste', { last_services: 'Barba Express' }),
+    vagas: { [hoje]: ['12:10', '13:45', '16:15', '17:00', '19:00'] } })
+  const dVelho = velho.slice(8, 10) + '/' + velho.slice(5, 7)
+  checar('29 dia passado não aparece na resposta', !r.reply.includes(dVelho), r.reply)
+  // Depois das 17h a hora já passou e o certo é perguntar o dia — mesma ressalva do cenário 19.
+  const jaPassou17 = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()) >= '17:00'
+  checar('29 hora sem dia vira hoje e 17:00 é oferecido', jaPassou17 ? /qual dia/i.test(r.reply) : (/17:00/.test(r.reply) && /hoje|Hoje/.test(r.reply)), r.reply)
+  checar('29 estado não guarda o dia passado', r.state?.date !== velho && r.state?.pending_waitlist?.date !== velho, r.state)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

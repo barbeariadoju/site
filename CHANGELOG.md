@@ -1,3 +1,17 @@
+## 29.222.0 — JuIA: dia que já passou sai da conversa; "às 17h" sem dia é hoje (caso Marcello, 23/09)
+
+**Pedido do Juliano (23/09, com print):** "você viu isso?"
+
+**O que aconteceu (conversa lida no banco).** A conversa anterior do Marcello foi em 09/09, e o estado guardou `date=2026-09-09`. Duas semanas depois, às 10h00, saiu o convite de retorno. Ele respondeu "Bom dia", "Ia mesmo mandar msg hj" e depois "As 17h". A JuIA procurou vaga no dia guardado: **"Na quarta (09/09) não tenho mais vaga. Hoje tenho alguns horários entre 12:10 e 19:00 (…) Se preferir, te aviso assim que abrir vaga na quarta (09/09)."** Ela falou de uma data de duas semanas atrás, ofereceu lista de espera para essa data e não disse se as 17h de hoje estavam livres. Estavam. Às 12h15 saiu o aviso de "ainda não ficou reservado", e ele não respondeu mais.
+
+**O que mudou em `ju-ia-site`:**
+- **Dia que já passou sai do estado antes de qualquer leitura.** Isso vale para `date` (com o `time` e o `period` junto), `last_requested_date` e `last_requested_time`, qualquer `pending_*` preso a uma data passada (lista de espera, confirmação) e a remarcação pendente. O modelo também não consegue repor um dia passado pelo `updates.date`.
+- **Hora dita sem dia, que ainda não passou, é hoje.** Antes, "As 17h" sem dia na conversa recebia "Para qual dia você quer ver os horários?" às 10h da manhã. A v29.72.0 já fazia isso, mas só para o corte suposto de cliente novo. Se a hora já passou ou se a frase cita outro dia (amanhã, dia da semana, "semana que vem", "dia 25"), a pergunta do dia continua.
+
+**Simulador:** cenário 29 (o do Marcello, com estado de 14 dias atrás). Como a verificação depende do relógio, depois das 17h o certo é perguntar o dia, a mesma ressalva do cenário 19. **83 verificações, todas ok.**
+
+**Deploy:** `ju-ia-site` com `verify_jwt` inalterado. No teste de fumaça em produção, mandei um estado velho com `date=2026-09-09` e "tem horário as 18h?"; a resposta foi sobre hoje ("Hoje às 18:00 já está ocupado. O mais próximo é 18:45"). A sessão de teste foi apagada.
+
 ## 29.221.0 — JuIA e robôs: quem recusou não leva mais mensagem em série; "fica difícil" é recusa; 16h10 não é "o Ju estica"; troca de serviço que ninguém pediu (23/09)
 
 Correções da revisão das conversas de 22 e 23/09 (plano do dia). Todos os casos foram reproduzidos no simulador antes de corrigir.

@@ -662,6 +662,23 @@ Deno.serve(async req=>{
   if(!message)message='Olá!'
  }
  const state=body.state&&typeof body.state==='object'?body.state:{}
+ // v29.222.0 — caso Marcello (23/09/2026, 10h03): a conversa anterior dele foi em 09/09 e o estado
+ // guardou date=2026-09-09. Duas semanas depois, respondendo ao convite de retorno, ele escreveu
+ // "As 17h" e a JuIA procurou vaga no dia GUARDADO: "Na quarta (09/09) não tenho mais vaga… te
+ // aviso assim que abrir vaga na quarta (09/09)" — um dia que já tinha passado, e sem dizer se as
+ // 17h de hoje estavam livres. Dia que já passou não é pedido de ninguém: sai do estado antes de
+ // qualquer leitura, junto com o horário, o período e as pendências presas a ele.
+ {
+  const hojeIso=today()
+  const passou=(d:any)=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}/.test(d)&&d.slice(0,10)<hojeIso
+  if(passou(state.date)){delete state.date;delete state.time;delete state.period}
+  if(passou(state.last_requested_date)){delete state.last_requested_date;delete state.last_requested_time}
+  for(const k of Object.keys(state)){
+   const v=(state as any)[k]
+   if(k.startsWith('pending_')&&v&&typeof v==='object'&&passou(v.date))delete (state as any)[k]
+  }
+  if(passou(state.pending_reschedule_new_date)){delete state.pending_reschedule_new_date;delete state.pending_reschedule_new_time}
+ }
  // v29.141.0 — registro único (ver PERGUNTAS no topo): roteia a resposta curta para a ÚLTIMA
  // pergunta e separa "resposta + pedido novo" em dois turnos.
  const ultimaPergunta=state?.last_question&&typeof state.last_question==='object'?String(state.last_question.kind||''):''
@@ -993,6 +1010,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // ("บริการ solicitado"), que ficava salvo no state e voltava pro prompt nos próximos
  // turnos como ruído sem sentido. Exclui do merge automático — só as 2 atribuições
  // deterministicas (abaixo) definem esse campo agora.
+ // v29.222.0 (caso Marcello): o modelo também não repõe um dia que já passou.
+ if(ai.updates&&typeof ai.updates.date==='string'&&ai.updates.date.slice(0,10)<today())delete ai.updates.date
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  // v29.212.0 — caso Sr. Magno (16/09/2026, 15h16): "limpeza de pelos das orelhas e nas narinas.
@@ -3169,6 +3188,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   &&/\b(quais?|que|qual|outros?|outras?|mais|demais)\s+(os\s+|as\s+|seus\s+)?(horarios?|horas|opcoes|vagas)\b|\bhorarios? (disponiveis|livres|voce tem|vc tem|voce teria|vc teria|tem\b|teria\b)|\b(opcoes|opcao) de horarios?\b/.test(normalizedQuestion)
  if(perguntaDeHorarios&&!next.completed&&next.time)next.time=null
  if(perguntaDeHorarios&&!['cancel','reschedule','change_service','update_products'].includes(intent)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
+ // v29.222.0 (caso Marcello, 23/09/2026): "As 17h" sem dia nenhum na conversa recebia "Para qual dia
+ // você quer ver os horários?", às 10h da manhã. Hora dita sem dia, que ainda não passou, é hoje —
+ // é o que qualquer pessoa entende (a v29.72.0 já fazia isso só para o cliente novo). Hora que já
+ // passou continua pedindo o dia.
+ if(requestedTime&&!next.date&&!['cancel','reschedule','change_service','update_products'].includes(intent)
+  &&!weekdayDatesMentioned(normalizedQuestion,today()).length&&!/\b(amanha|depois de amanha|semana que vem|proxima semana|dia \d{1,2})\b/.test(normalizedQuestion)){
+  const agoraHm=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())
+  if(String(requestedTime).slice(0,5)>agoraHm)next.date=today()
+ }
  const effectiveTime=requestedTime||(next.completed?'':next.time||'')
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
 
