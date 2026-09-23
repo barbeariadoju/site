@@ -59,6 +59,7 @@ const MODE: Record<string, string> = { '1': 'armado', '2': 'desarmado', '3': 'ca
 // sinal a cada 5 min, então 30 absorve uma queda de rede ou um reinício sem gerar alarme falso.
 const CAMERA_SILENT_MIN = 30
 const CAMERA_DEVICE = 'camera-cadeira'
+const TUYA_CLOUD = 'tuya-cloud'
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'POST' }, 405)
@@ -91,6 +92,18 @@ Deno.serve(async (req) => {
     await tuya.auth()
     const list = await tuya.call('GET', '/v1.0/iot-01/associated-users/devices?size=50')
     const devices: any[] = (list.result?.devices || []).filter((d: any) => d.category === 'wfcon' || /alarm|sirene|seguran/i.test(d.product_name || ''))
+    // v29.227.0 — o vigia também vigia a si mesmo. O plano "IoT Core" da Tuya venceu em 20/09/2026
+    // (e-mail de aviso em 19/09) e, desde então, a lista de aparelhos voltava vazia: o monitor rodava
+    // de 10 em 10 minutos respondendo "ok, nenhuma central" e o alarme ficou 4 dias sem vigilância sem
+    // ninguém saber. Lista recusada ou sem nenhuma central = alerta (uma vez; fecha sozinho quando voltar).
+    if (!list.success || devices.length === 0) {
+      const motivo = !list.success ? String(list.msg || list.code || 'erro desconhecido') : 'nenhuma central na conta'
+      await alert(TUYA_CLOUD, 'monitor_sem_acesso', null,
+        `O monitor do alarme não está conseguindo ler a central (${motivo}). Se o plano IoT Core da Tuya venceu, renove em iot.tuya.com. Enquanto isso, disparo e queda de energia NÃO estão sendo avisados.`,
+        'Alarme sem monitoramento')
+    } else {
+      await resolve(TUYA_CLOUD, 'monitor_sem_acesso', null)
+    }
     const out: any[] = []
     const now = Date.now()
     for (const d of devices) {
@@ -213,7 +226,10 @@ Deno.serve(async (req) => {
       // Só cobra sinal em horário de funcionamento (ter-sáb, 8h-19h). Fora disso o notebook
       // pode estar desligado de propósito, e avisar seria ruído — a barbearia fecha domingo
       // e segunda, e o Juliano não vai ligar o PC de madrugada para calar um alerta.
-      const spDia = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'numeric' } as Intl.DateTimeFormatOptions).format(new Date())) || new Date().getUTCDay()
+      // v29.227.0: weekday:'numeric' não existe no Intl — lançava "Value numeric out of range" em TODA
+      // rodada e o vigia da câmera nunca chegava a conferir nada. Dia da semana pela data de São Paulo.
+      const spHoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      const spDia = new Date(`${spHoje}T12:00:00Z`).getUTCDay()
       const spHora = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
       const diaAberto = spDia >= 2 && spDia <= 6
       const dentroDoExpediente = diaAberto && spHora >= 8 && spHora < 19

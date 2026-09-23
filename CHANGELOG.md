@@ -1,3 +1,15 @@
+## 29.227.0 — Alarme: o monitor passou a avisar quando perde o acesso à central (estava cego desde 19/09); vigia da câmera voltou a funcionar (23/09)
+
+**Achado na leitura dos e-mails (pedido do Juliano, 23/09: "veja todos se tem alguma coisa importante").** A Tuya avisou em 19/09 que o plano **IoT Core** venceria em 20/09. Venceu. Desde então, a consulta de aparelhos devolve "IoT Core service subscription has expired", e o `tuya-watch` tratava isso como "nenhuma central": respondia `ok, hubs: []` de 10 em 10 minutos. A última leitura da central "Barbearia" foi em 19/09 às 14h10. **Foram 4 dias sem ninguém vigiando disparo, queda de energia nem bateria, e sem nenhum aviso.**
+
+**Corrigido em `tuya-watch`:**
+- **O vigia também vigia a si mesmo.** Se a lista de aparelhos é recusada ou vem sem nenhuma central, ele grava o alerta `tuya-cloud / monitor_sem_acesso` e manda um push "Alarme sem monitoramento" com o motivo que a Tuya devolveu. O aviso sai uma vez, sem repetir enquanto estiver em aberto, e fecha sozinho quando a leitura volta. Testado no ar: o alerta foi criado às 16h34 com a mensagem da Tuya.
+- **Vigia da câmera (contador de cadeira, v29.124.0):** `Intl.DateTimeFormat` com `weekday: 'numeric'` não existe e lançava "Value numeric out of range" em **toda** rodada, então a checagem nunca chegava a conferir nada. Agora o dia da semana vem da data de São Paulo.
+
+**Pendência do Juliano (conta dele, não dá para fazer por ele):** renovar ou estender o IoT Core em iot.tuya.com → Cloud → a assinatura do projeto. O plano de testes costuma ser estendido de graça. Quando voltar, o alerta fecha sozinho na rodada seguinte.
+
+**Também registrado no CLAUDE.md (seção 4):** a partir de 30/10/2026, tabela nova em `public` precisa de GRANT explícito na mesma migração (e-mail da Supabase de 23/09). As tabelas existentes, inclusive `closure_notices`, criada hoje, não mudam.
+
 ## 29.226.0 — Aviso de fechamento: quem costuma vir nos dias em que a barbearia vai fechar recebe um aviso uma semana antes (23/09)
 
 **Pedido do Juliano (23/09):** vai viajar com a família e a barbearia fecha de **quinta 15 a sábado 17 de outubro**. "Já cria este motor das mensagens, tem clientes que marcam todas as sextas, como o Sr. Longanesi, o Juliano Prando etc." Na mesma conversa, ele pediu para escrever "Viagem" no motivo dos três bloqueios, e isso já foi feito direto no banco.
