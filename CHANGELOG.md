@@ -1,3 +1,22 @@
+## 29.226.0 — Aviso de fechamento: quem costuma vir nos dias em que a barbearia vai fechar recebe um aviso uma semana antes (23/09)
+
+**Pedido do Juliano (23/09):** vai viajar com a família e a barbearia fecha de **quinta 15 a sábado 17 de outubro**. "Já cria este motor das mensagens, tem clientes que marcam todas as sextas, como o Sr. Longanesi, o Juliano Prando etc." Na mesma conversa, ele pediu para escrever "Viagem" no motivo dos três bloqueios, e isso já foi feito direto no banco.
+
+**Por quê.** Pelas médias de agosto e setembro, com os preços novos, os três dias valem uns R$ 1.600. O cliente fiel que chega e encontra a porta fechada pode cortar em outro lugar e não voltar. Avisado com uma semana de antecedência, ele marca antes ou depois, e a agenda tem espaço para isso.
+
+**Como funciona (serve para qualquer fechamento futuro, não só esta viagem):**
+- **Quando:** o cron `bdj-aviso-fechamento` roda às 10h15, de terça a sábado, fora do silêncio da JuIA. Ele lê os dias fechados o dia inteiro (`schedule_blocks.all_day`) e junta os consecutivos num período. Domingo e segunda no meio não quebram o período, e segunda sozinha nem conta, porque a barbearia já não abre. O aviso sai quando o período começa daqui a 3 a 10 dias; para 15/10, a primeira rodada é na terça 06/10.
+- **Quem recebe (`closure_notice_candidates`, com os últimos 180 dias de atendimentos concluídos):**
+  - *habitual*: veio 3 ou mais vezes em algum dos dias da semana fechados, ou metade das visitas cai neles. A primeira versão só usava a proporção e deixava de fora o Juliano Prando, que vem duas vezes por semana (terça e sexta, 6 de 11 visitas de quinta a sábado);
+  - *retorno*: o próximo atendimento previsto (última visita mais o intervalo médio) cai no período, com folga de 3 dias para cada lado.
+  - Ficam de fora quem já marcou horário entre 10 dias antes e 10 dias depois do período, quem já foi avisado, quem tem o cadastro arquivado e quem não vem há mais de 75 dias (esse é caso da reativação). Achado no teste: a primeira versão excluía qualquer agendamento futuro e tirava o Sr. Longanesi da lista só porque ele tem horário nesta sexta, 25/09. Horário de setembro não resolve outubro.
+- **O texto (`_shared/aviso-fechamento.ts`, fonte única, com teste em `tests/unit/aviso-fechamento.spec.js`):** diz o período, por que ele está recebendo ("como você costuma vir às sextas" ou "pela data do seu último atendimento") e **dias concretos**: até 2 dias abertos antes, a partir de amanhã, e o primeiro dia aberto depois. Não tem emoji nem pergunta numerada, e **não diz o motivo do fechamento**, porque viagem é da vida do Juliano, não do cliente. A resposta cai na JuIA como um pedido de horário comum.
+- **Travas:** uma mensagem por telefone por período (`closure_notices`, com `unique`). Se o robô já falou com o cliente nas últimas 20 horas, o aviso fica para a rodada seguinte. No máximo 40 envios por rodada. Um push para o Juliano diz quantos clientes foram avisados.
+
+**Ensaio em produção (dry_run, sem enviar nada):** para 15–17/10 foram **25 clientes**, 16 habituais e 9 de retorno. O Sr. Longanesi aparece com "costuma vir às sextas". Os dias oferecidos são terça 13/10, quarta 14/10 e "a partir de terça 20/10". O dry_run sem período forçado devolveu vazio, como devia, porque o fechamento ainda está a 22 dias.
+
+**Arquivos:** `supabase/functions/aviso-fechamento/` (`verify_jwt=false` no config.toml, chamada com segredo, como todo cron), `_shared/aviso-fechamento.ts`, a migração `aviso_fechamento_v29_226` (tabela `closure_notices` com RLS só-admin e a RPC só para service_role) e `aviso_fechamento_janela_v29_226`. 247 testes unitários ok.
+
 ## 29.225.0 — Agenda: bloqueio de horário aparece na lista do dia, na ordem dos horários (23/09)
 
 **Pedido do Juliano (23/09, com print):** "sugestão: meu bloqueio aparecer na agenda na sequência dos horários."
