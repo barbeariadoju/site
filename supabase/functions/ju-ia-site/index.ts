@@ -776,6 +776,7 @@ Deno.serve(async req=>{
 
  let context:any={}
  let upcomingBookings:any[]=[]
+ let bookingsEmAndamento:any[]=[]
  // verified_phone vem do canal WhatsApp (whatsapp-webhook), onde o número de quem
  // está escrevendo é o próprio remetente da mensagem — não precisa (e não deve)
  // ser perguntado de novo. No chat do site esse campo não é enviado.
@@ -803,6 +804,13 @@ Deno.serve(async req=>{
   // confirmado explicitamente (ver bloco de confirmação no intent 'book' mais abaixo).
   const {data:upcoming}=await supabase.rpc('phone_upcoming_bookings',{p_phone:knownPhone})
   upcomingBookings=Array.isArray(upcoming)?upcoming:[]
+  // v29.231.0 — caso Américo (24/09/2026): o phone_upcoming_bookings só traz horário que ainda não
+  // começou. Às 09:16, o 09:15 dele já tinha "passado", sumiu da conversa, e o próprio horário virou
+  // "acabou de ser reservado por outro cliente". Horário de hoje que começou há até 2h fica à parte.
+  try{
+   const {data:emCurso}=await supabase.rpc('phone_current_bookings',{p_phone:knownPhone})
+   bookingsEmAndamento=Array.isArray(emCurso)?emCurso:[]
+  }catch(e){console.error('[ju-ia-site] phone_current_bookings',e)}
   // v29.209.0 — presente de aniversário e indicação (customer_benefits). Entra no contexto do
   // cliente, então vale a mesma regra de privacidade dos pontos/prêmios (phoneTrustNote). Quem
   // aplica é o Juliano no Concluir: a JuIA só informa, nunca muda o valor do agendamento.
@@ -970,7 +978,7 @@ Serviços:
 ${catalog}
 Produtos:
 ${productCatalog}
-Hoje: ${today()}. Saudação correta agora: ${greetingNow()}. Primeira mensagem desta conversa: ${isFirstMessage}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}. Dias excepcionalmente fechados nas próximas semanas: ${closures.length?JSON.stringify(closures):'nenhum'}.`,
+Hoje: ${today()}. Saudação correta agora: ${greetingNow()}. Primeira mensagem desta conversa: ${isFirstMessage}. Estado: ${JSON.stringify(state)}. Contexto conhecido do cliente: ${JSON.stringify(context)}. Agendamentos futuros já confirmados desse telefone: ${JSON.stringify(upcomingBookings)}.${bookingsEmAndamento.length?` Horário de HOJE desse telefone que já começou (o cliente está a caminho, atrasado ou na cadeira; esse horário é DELE, nunca diga que foi reservado por outro): ${JSON.stringify(bookingsEmAndamento)}.`:''} Dias excepcionalmente fechados nas próximas semanas: ${closures.length?JSON.stringify(closures):'nenhum'}.`,
 ...(campaigns?[`# CAMPANHA EM ANDAMENTO (contexto interno, não é tabela de preços)
 ${campaigns}
 - Use só como contexto: se o cliente perguntar de promoção ou data comemorativa, responda com o que está escrito acima, sem inventar desconto, brinde, preço ou condição. No máximo uma menção na conversa, e só quando encaixar.`]:[]),
@@ -1237,7 +1245,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // de tolerância; atraso grande vai pro Juliano) — por isso "atras"/"demor" ficam de fora daqui.
  let chegadaTratada=false
  if(!pediuHumano&&verifiedPhone&&avisoDeChegada(normalize(message))&&!/atras|demor/.test(normalize(message))&&!extractRequestedTime(message)){
-  const deHoje=upcomingBookings.find((b:any)=>b&&b.booking_date===today())
+  const deHoje=bookingsEmAndamento[0]||upcomingBookings.find((b:any)=>b&&b.booking_date===today())
   if(deHoje){
    chegadaTratada=true
    reply=`Tudo certo, te espero. Seu horário das ${String(deHoje.start_time||'').slice(0,5)} está guardado.`
@@ -3818,7 +3826,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // WhatsApp (verifiedPhone); o site continua estrito. extended_close_slot_ok valida
     // colisão/bloqueio/dia fechado — só o teto do fechamento é esticado.
     let extendedOffered=false
-    if(verifiedPhone){
+    // v29.231.0 — caso Américo (24/09/2026): o horário "ocupado" era o do PRÓPRIO cliente, e a
+    // resposta disse que "acabou de ser reservado por outro cliente". Se o dia e a hora pedidos são
+    // de um agendamento deste telefone, a resposta é que o horário é dele.
+    const horarioProprio=[...bookingsEmAndamento,...upcomingBookings].find((b:any)=>b&&b.booking_date===next.date&&String(b.start_time||'').slice(0,5)===effectiveTime)
+    if(horarioProprio){
+     const jaComecou=bookingsEmAndamento.some((b:any)=>b.id===horarioProprio.id)
+     reply=jaComecou
+      ?`Tudo certo, te espero. Seu horário das ${effectiveTime} está guardado.`
+      :`Esse horário já é seu: ${emDia(next.date)} às ${effectiveTime}, ${horarioProprio.service_name}. Está tudo certo por aqui.`
+     actions=[];handoff=false;intent='other'
+     next.time=null
+     extendedOffered=true
+    }
+    if(verifiedPhone&&!extendedOffered){
      const {data:extOk}=await supabase.rpc('extended_close_slot_ok',{p_date:next.date,p_start_time:effectiveTime,p_duration_minutes:duration,p_extend_minutes:60})
      if(extOk===true){
       const isSatX=new Date(next.date+'T12:00:00-03:00').getUTCDay()===6

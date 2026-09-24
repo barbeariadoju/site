@@ -1,3 +1,18 @@
+## 29.231.0 — JuIA: cliente a caminho do próprio horário não ouve mais "reservado por outro cliente" (24/09)
+
+**O caso (Américo, 24/09, 09h16, print do Juliano):** marcou pelo site às 08h46 para as 09:15. Às 09:16 escreveu "Bom dia Ju..estou em trânsito...chego em instantes" e recebeu: *"Hoje às 09:15 acabou de ser reservado por outro cliente. O mais próximo que tenho é 11:10."* O Juliano entrou na hora, pediu desculpas e segurou o horário.
+
+**Por que aconteceu (duas falhas somadas):**
+1. **`phone_upcoming_bookings` só devolve horário que ainda não começou.** Às 09:16, o 09:15 dele já não era "futuro": sumiu da conversa. O horário ocupado (pelo próprio Américo) caiu no fluxo de agenda e, como a confirmação das 08h46 citava 09:15, a JuIA concluiu que o horário "tinha sido oferecido e alguém fechou".
+2. **"estou em trânsito" / "chego em instantes" não estavam no `avisoDeChegada`.** A frase não foi lida como chegada. E, mesmo que fosse, a resposta fixa ("te espero") procurava o horário de hoje só entre os futuros, então também falharia pelo motivo 1.
+
+**O que mudou:**
+- **Função nova `phone_current_bookings`** (migração 170, só `service_role`): o horário de HOJE que começou há até 2h. O `ju-ia-site` carrega junto com os futuros; a resposta "te espero, seu horário das X está guardado" usa esse horário primeiro, e o prompt recebe que esse horário é DELE.
+- **Trava no fluxo de horário ocupado:** se o dia e a hora pedidos são de um agendamento do próprio telefone (em andamento ou futuro), a resposta é que o horário é dele. Nunca mais "ocupado"/"reservado por outro cliente" para o próprio horário, venha a frase que vier.
+- **`avisoDeChegada`** (`_shared/leitura-cliente.ts`) passa a reconhecer trânsito, "a caminho" solto, "to indo", "saindo agora", "quase chegando" e "chego" sem número ("em instantes", "já", "logo", "rapidinho", "em breve").
+
+**Testes:** cenário 32 no simulador (trânsito e atraso com o horário já começado; 92 ok) e 6 frases novas em `tests/unit/leitura-cliente.spec.js`. `npm test` ok. Deploy do `ju-ia-site` conferido: 200 com a chave publicável, 401 sem ela (verify_jwt segue true).
+
 ## 29.230.0 — Segundo telefone no mesmo cadastro; "Mesclar" guarda o telefone; Marcos e Marcelo unificados (23/09)
 
 **Pedido do Juliano (23/09):** "devíamos ter um recurso para adicionar 2 telefones ao mesmo cadastro. Tem clientes que fazem isto: cada hora marcam com 1 telefone e acaba gerando mais de 1 cadastro no CRM." Casos citados: o Marcelo que marcou hoje ("é o Marcelo Iphone") e o Marcos atendido ontem ("desconfio que seja Marcos Lima e Marcos Roberto Lima").

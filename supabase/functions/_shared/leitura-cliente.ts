@@ -62,11 +62,14 @@ export const pedeFalarComJuliano = (q: string, julianoNaUltimaFala = false): boo
 // baixo e recebeu "você já tem um agendamento para hoje às 19:00, quer que eu cancele esse já
 // que vai escolher outro dia?" — a conversa da tarde (terça oferecida) ainda estava no estado.
 // Quem avisa que está chegando não está pedindo nada: é "te espero".
+// Caso Américo (24/09/2026, 09h16): "estou em trânsito...chego em instantes" não casava e a
+// conversa caiu no fluxo de agenda. Entram trânsito, "a caminho" solto, "to indo" e o "chego"
+// sem número ("em instantes", "já", "logo", "rapidinho", "em breve").
 // ---------------------------------------------------------------------------------------------
 export const avisoDeChegada = (q: string): boolean => {
   const t = String(q || '')
   if (/\?/.test(t) && /\b(remarc|cancel|mudar|trocar|outro (dia|horario))\b/.test(t)) return false
-  return /\b(to|tou|tô|estou|ja estou|ja to|so|sou)\s+(chegando|a caminho|indo ai|indo la|saindo( de casa| daqui)?|na rua|aqui (na|em) frente|na porta|aqui fora|estacionando|procurando vaga|subindo|quase ai|perto)\b|\brua de baixo\b|\bchego (em|daqui a?)\s*\d{1,2}\s*(min|minutos?)\b|\bja cheguei\b|^cheguei\b|\bestou aqui (na|em) frente\b|\bto aqui (na|em) frente\b|\bem \d{1,2}\s*(min|minutos?) (to|estou|chego)\b/.test(t)
+  return /\b(to|tou|tô|estou|ja estou|ja to|so|sou)\s+(chegando|a caminho|indo ai|indo la|indo|saindo( de casa| daqui| agora)?|na rua|aqui (na|em) frente|na porta|aqui fora|estacionando|procurando vaga|subindo|quase ai|quase chegando|perto|(em|no) transito)\b|\brua de baixo\b|\bchego (em|daqui a?)\s*\d{1,2}\s*(min|minutos?)\b|\b(ja )?chego (em (instantes|breve|seguida|minutos|poucos minutos)|ja|logo|rapidinho|ja ja)\b|\bja chego\b|\b(no|em) transito\b|^(ja )?(a|to a|estou a) caminho\b|\bja cheguei\b|^cheguei\b|\bestou aqui (na|em) frente\b|\bto aqui (na|em) frente\b|\bem \d{1,2}\s*(min|minutos?) (to|estou|chego)\b/.test(t)
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -62,6 +62,7 @@ type Cenario = {
   fechados?: string[] // dias com "Fechar o dia inteiro" marcado no admin (viagem, folga, feriado)
   estendidoOk?: boolean // resposta do extended_close_slot_ok (horário livre fora da grade/do expediente)
   jaConvidadoIG?: boolean // já existe mensagem com o @barbeariadoju_ para este telefone
+  emAndamento?: any[] // phone_current_bookings: horário de hoje que já começou (há até 2h)
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -79,6 +80,7 @@ const turno = async (c: Cenario) => {
   respostas.rpc = {
     get_customer_commercial_context: () => c.contexto || {},
     phone_upcoming_bookings: () => c.futuros || [],
+    phone_current_bookings: () => c.emAndamento || [],
     get_available_slots: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     get_available_slots_excluding: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
@@ -466,6 +468,23 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('31a convite sem "Atendimento Finalizado"', !/Atendimento Finalizado/i.test(r1.reply), r1.reply)
   const r2 = await turno({ msg: '1', state: st, ai: { intent: 'other', reply: 'Certo.' }, contexto: ctxCliente('Caio Teste'), jaConvidadoIG: true })
   checar('31b quem já recebeu o @ não recebe de novo', !/@barbeariadoju_/.test(r2.reply) && /primeira vez/i.test(r2.reply), r2.reply)
+}
+
+// 32. Horário que acabou de começar é do cliente (24/09, 09h16): marcado às 09:15, "estou em trânsito,
+//     chego em instantes" um minuto depois virou "09:15 acabou de ser reservado por outro cliente".
+{
+  const emCurso = [{ id: 'b915', booking_date: hoje, start_time: '09:15:00', duration_minutes: 45, service_name: 'Corte de cabelo', status: 'confirmed' }]
+  const hist = [{ role: 'assistant', content: `Seu horário foi confirmado: ${hoje} às 09:15 - Corte de cabelo` }]
+  const r1 = await turno({ msg: 'Bom dia Ju..estou em trânsito...chego em instantes', history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '09:15', services: ['Corte de cabelo'] } },
+    contexto: ctxCliente('Americo Teste'), emAndamento: emCurso, vagas: { [hoje]: ['11:10', '11:15', '11:30'] } })
+  checar('32a trânsito: "te espero" com o horário dele', /te espero/i.test(r1.reply) && /09:15/.test(r1.reply), r1.reply)
+  checar('32a trânsito: nunca "outro cliente"', !/outro cliente|ocupado/i.test(r1.reply), r1.reply)
+  // Mesmo se a frase não for reconhecida, o horário pedido sendo o dele nunca vira "ocupado".
+  const r2 = await turno({ msg: 'vou atrasar uns minutinhos', history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '09:15', services: ['Corte de cabelo'] } },
+    contexto: ctxCliente('Americo Teste'), emAndamento: emCurso, vagas: { [hoje]: ['11:10', '11:15', '11:30'] } })
+  checar('32b atraso: horário próprio não vira "reservado por outro"', !/outro cliente|ocupado/i.test(r2.reply) && !reservou(r2), r2.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

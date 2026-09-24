@@ -58,6 +58,14 @@ describe('avisoDeChegada (caso Moisés, 18/09)', () => {
     expect(avisoDeChegada('chego em 5 minutos')).toBe(true);
     expect(avisoDeChegada('cheguei')).toBe(true);
   });
+  it('trânsito e "chego" sem número (caso Américo, 24/09)', () => {
+    expect(avisoDeChegada('bom dia ju..estou em transito...chego em instantes')).toBe(true);
+    expect(avisoDeChegada('to no transito')).toBe(true);
+    expect(avisoDeChegada('ja chego')).toBe(true);
+    expect(avisoDeChegada('chego rapidinho')).toBe(true);
+    expect(avisoDeChegada('a caminho')).toBe(true);
+    expect(avisoDeChegada('to indo')).toBe(true);
+  });
   it('pedido de remarcar não é chegada', () => {
     expect(avisoDeChegada('to saindo agora, da pra remarcar pra outro dia?')).toBe(false);
     expect(avisoDeChegada('tem horario amanha?')).toBe(false);
