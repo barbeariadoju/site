@@ -1,3 +1,17 @@
+## 29.232.0 — Concluir abre com a cortesia marcada quando o atendimento já é cortesia (24/09)
+
+**O caso (Filipe, 24/09):** agendou Corte + Barba na navalha às 12:45; por distração saiu só o corte. O Juliano combinou a barba por conta da casa e ela foi marcada para as 19:30 como serviço normal de R$ 40. Pedido do Juliano: *"certifique-se que a barba em cortesia não pontue, assim como serviços de cortesia não devem pontuar"*.
+
+**O que já estava certo:** o gatilho de fidelidade (`v21_sync_loyalty_on_completed_booking`) não credita ponto quando `courtesy = true`, nem consome prêmio.
+
+**O furo:** o modal Concluir **zerava** a caixa "Cortesia" a cada abertura (v29.20.0). Um atendimento marcado como cortesia antes abria cobrando R$ 40 e pedindo forma de pagamento; se o Juliano não remarcasse a caixa, saía como venda no Financeiro.
+
+**O que mudou:** o Concluir abre com a caixa marcada e o motivo preenchido quando o agendamento já tem `courtesy = true` (e desmarca o pedido de avaliação, como já acontecia ao marcar à mão). Atendimento comum segue abrindo desmarcado.
+
+**Dados:** a barba das 19:30 do Filipe foi marcada como cortesia ("Barba não feita em 24/09 (atendimento das 12:45)"); o motivo é anotação interna e não vai pro cliente. A ficha dele ganhou a nota da cortesia.
+
+**Cache:** `admin-v15-4-agenda.js` e `admin-v15-4-core.js` em 29.232.0 (6 páginas), `ADMIN_VERSION` e `admin-version.json` em 29.232.0. Suíte do painel 38/38, unitários 248.
+
 ## 29.231.0 — JuIA: cliente a caminho do próprio horário não ouve mais "reservado por outro cliente" (24/09)
 
 **O caso (Américo, 24/09, 09h16, print do Juliano):** marcou pelo site às 08h46 para as 09:15. Às 09:16 escreveu "Bom dia Ju..estou em trânsito...chego em instantes" e recebeu: *"Hoje às 09:15 acabou de ser reservado por outro cliente. O mais próximo que tenho é 11:10."* O Juliano entrou na hora, pediu desculpas e segurou o horário.

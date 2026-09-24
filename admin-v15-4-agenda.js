@@ -413,9 +413,14 @@
       modal.querySelector('[data-tip-amount]').value='';
       const courtesyBox=modal.querySelector('[data-courtesy]');
       const courtesyReasonInput=modal.querySelector('[data-courtesy-reason]');
-      courtesyBox.checked=false;
-      courtesyReasonInput.hidden=true;
-      courtesyReasonInput.value='';
+      // v29.232.0 (caso Filipe, 24/09/2026): atendimento já marcado como cortesia na Agenda (barba
+      // que ficou para trás e voltou por conta da casa) abre o Concluir com a caixa marcada e o
+      // motivo preenchido — senão a conclusão cobrava R$ 40 e pedia forma de pagamento.
+      const jaCortesia=booking&&booking.courtesy===true;
+      courtesyBox.checked=Boolean(jaCortesia);
+      courtesyReasonInput.hidden=!jaCortesia;
+      courtesyReasonInput.value=jaCortesia?String(booking.courtesy_reason||''):'';
+      if(jaCortesia){const rq=modal.querySelector('[data-request-google-review]');if(rq)rq.checked=false}
       const onCourtesyToggle=()=>{
         courtesyReasonInput.hidden=!courtesyBox.checked;
         // cortesia normalmente é funcionário/amigo — não faz sentido pedir avaliação no Google
