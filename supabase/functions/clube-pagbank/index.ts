@@ -63,5 +63,60 @@ Deno.serve(async (req) => {
     })
   }
 
+  // Chave pública da recorrência (para criptografar o cartão no navegador). Cria se não existir.
+  if (action === 'public_key') {
+    let key = await pb('GET', '/public-keys')
+    if (!(key.data as any)?.public_key) key = await pb('PUT', '/public-keys')
+    return json({ ok: key.status < 300, sandbox, public_key: (key.data as any)?.public_key || null, status: key.status })
+  }
+
+  // Fluxo completo de teste (homologação): plano → assinatura com assinante novo e cartão criptografado →
+  // consulta da assinatura e das faturas → cancelamento. Devolve cada request/response (o PagBank pede
+  // esses logs no chamado). Só roda no sandbox.
+  if (action === 'fluxo_teste') {
+    if (!sandbox) return json({ ok: false, message: 'Fluxo de teste só no sandbox.' }, 400)
+    const encrypted = String(body.encrypted || '')
+    if (!encrypted) return json({ ok: false, message: 'Faltou o cartão criptografado.' }, 400)
+    const log: unknown[] = []
+    const call = async (method: string, path: string, reqBody?: unknown) => {
+      const r = await pb(method, path, reqBody)
+      log.push({ method, url: `${base()}${path}`, request: reqBody ?? null, status: r.status, response: r.data })
+      return r
+    }
+    const sufixo = Date.now().toString(36)
+    const plano = await call('POST', '/plans', {
+      reference_id: `clube-corte-homolog-${sufixo}`, name: 'Clube Corte (homologação)', description: '2 cortes por mês — Clube do Ju',
+      amount: { value: 8500, currency: 'BRL' }, interval: { unit: 'MONTH', length: 1 }, payment_method: ['CREDIT_CARD'],
+    })
+    const planId = (plano.data as any)?.id
+    if (!planId) return json({ ok: false, etapa: 'plano', log })
+    const assin = await call('POST', '/subscriptions', {
+      reference_id: `CJ-HOMOLOG-${sufixo}`,
+      plan: { id: planId },
+      customer: {
+        reference_id: `cli-homolog-${sufixo}`, name: 'Cliente Teste Homologacao', email: `teste.homolog.${sufixo}@example.com`,
+        tax_id: '12345678909', phones: [{ country: '55', area: '11', number: '999999999' }],
+        billing_info: [{ type: 'CREDIT_CARD', card: { encrypted } }],
+      },
+      payment_method: [{ type: 'CREDIT_CARD', card: { security_code: '123' } }],
+      pro_rata: false,
+    })
+    const subId = (assin.data as any)?.id
+    if (subId) {
+      await call('GET', `/subscriptions/${subId}`)
+      await call('GET', `/subscriptions/${subId}/invoices`)
+      if (body.cancelar !== false) await call('PUT', `/subscriptions/${subId}/cancel`)
+    }
+    return json({ ok: Boolean(subId), plan_id: planId, subscription_id: subId || null, log })
+  }
+
+  // Webhook e retentativas da recorrência (produção, depois da liberação; no sandbox para o teste).
+  if (action === 'setup') {
+    const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/pagbank-webhook`
+    const notif = await pb('PUT', '/preferences/notifications', { urls: [url], email: { merchant: { enabled: true }, customer: { enabled: false } } })
+    const retry = await pb('PUT', '/preferences/retries', { first_try: '3', second_try: '5', third_try: '7', finally: 'SUSPEND' })
+    return json({ ok: notif.status < 300 && retry.status < 300, sandbox, notificacoes: { status: notif.status, data: notif.data }, retentativas: { status: retry.status, data: retry.data } })
+  }
+
   return json({ ok: false, message: 'Ação desconhecida.' }, 400)
 })
