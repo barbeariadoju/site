@@ -181,3 +181,22 @@ verify_jwt = false
 # v29.226.0: aviso de fechamento (cron com segredo, sem JWT)
 [functions.aviso-fechamento]
 verify_jwt = false
+
+# v29.233.0 — Clube do Ju: bastidor da recorrência do PagBank. Só o backend chama (service_role exata
+# conferida no código); verify_jwt fica true.
+[functions.clube-pagbank]
+verify_jwt = true
+
+# v29.233.0 — o PagBank chama sem JWT; a autenticidade é o x-authenticity-token conferido no código.
+# Estava false em produção sem estar declarado aqui: um deploy pela CLI teria ligado o JWT e matado
+# as confirmações de pagamento em silêncio.
+[functions.pagbank-webhook]
+verify_jwt = false
+
+# v29.233.0 — Clube do Ju: página pública (chave publicável no header, como a cliente-area).
+[functions.clube]
+verify_jwt = true
+
+# v29.233.0 — Clube do Ju: rotina (cron) — x-webhook-secret conferido no código.
+[functions.clube-ciclo]
+verify_jwt = false

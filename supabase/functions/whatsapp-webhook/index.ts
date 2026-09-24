@@ -1024,6 +1024,21 @@ Deno.serve(async (request: Request) => {
           }
         }
 
+        // v29.233.0 — "SAIR" (mensagem de lançamento do Clube do Ju e qualquer novidade): a pessoa sai da
+        // lista de marketing na hora (customer_profiles.marketing_opt_out_at) e recebe a confirmação.
+        // Mensagem do próprio agendamento (confirmação, lembrete, comprovante) continua: é serviço, não
+        // novidade. Só a palavra sozinha conta — "vou sair mais cedo" não é pedido de descadastro.
+        if (/^\s*(sair|parar|pare|descadastrar|remover|nao quero (mais )?receber( mais)?( mensagens| novidades)?)\s*[.!]*\s*$/.test(normalize(String(text || '')))) {
+          const agoraOptOut = new Date().toISOString()
+          const chave8 = String(phone).replace(/\D/g, '').slice(-8)
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: String(text || '') })
+          await admin.from('customer_profiles').update({ marketing_opt_out_at: agoraOptOut }).eq('phone_key', chave8).is('marketing_opt_out_at', null)
+          const { data: mkOpt } = await admin.rpc('phone_match_key', { p_phone: phone })
+          if (mkOpt) await admin.from('club_announcements').update({ status: 'pulada', sent_at: agoraOptOut, error: 'pediu SAIR' }).eq('phone_mkey', String(mkOpt)).eq('status', 'fila')
+          await sendWhatsapp(phone, 'Pronto, você não vai mais receber novidades da barbearia. As mensagens dos seus agendamentos, como confirmação e lembrete, continuam chegando normalmente.', true)
+          return json({ ok: true, opt_out: true })
+        }
+
         const stillActive = isTakeoverActive(conversation)
         await admin.from('whatsapp_conversations').upsert({
           phone,

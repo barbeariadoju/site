@@ -767,3 +767,67 @@ html{color-scheme:dark}
 .crm-alias-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .crm-alias-remove{background:none;border:1px solid rgba(255,255,255,.14);color:#aaa;border-radius:8px;padding:2px 10px;font:inherit;font-size:var(--t-xs);cursor:pointer;min-height:28px}
 .crm-alias-remove:hover{border-color:#e07a7a;color:#e07a7a}
+
+/* v29.233.0 — Clube do Ju: selo no card da Agenda */
+.admin-clube-mini{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:rgba(var(--gold2-rgb),.16);color:var(--gold2);font-size:var(--t-xs);font-weight:700;vertical-align:middle}
+
+/* v29.233.0 — tela do Clube do Ju (admin-clube.html) */
+.clube-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:760px){.clube-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.clube-block{margin-bottom:18px}
+.clube-block h2{margin:0 0 12px}
+.clube-muted{color:var(--muted);font-size:var(--t-sm);line-height:1.55;max-width:46em}
+.clube-tabs{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden;margin-bottom:16px}
+.clube-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:var(--t-sm);padding:.45rem .9rem;cursor:pointer;min-height:36px}
+.clube-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:var(--ink)}
+.clube-pend-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.clube-pend{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--edge);border-left:3px solid var(--line);border-radius:var(--r-sm);background:var(--surface-3)}
+.clube-pend>div{display:grid;gap:3px;min-width:0}
+.clube-pend span{color:var(--text);font-size:var(--t-sm)}
+.clube-pend small{color:var(--grey-3);font-size:var(--t-xs);line-height:1.5}
+.clube-pend[data-tipo="devolver"]{border-left-color:#e07a7a}
+.clube-pend[data-tipo="aberto"]{border-left-color:#f1d675}
+.clube-pend[data-tipo="aguardando"]{border-left-color:#8fbfe0}
+.clube-wa,.clube-link{color:var(--gold2);font-weight:700;text-decoration:none}
+.clube-wa:hover,.clube-link:hover{text-decoration:underline}
+.clube-link{white-space:nowrap;font-size:var(--t-sm)}
+.clube-card{border:1px solid var(--edge);border-radius:var(--r-md);background:var(--surface-3);padding:14px 16px;margin-bottom:12px}
+.clube-card:hover{border-color:rgba(var(--gold2-rgb),.3)}
+.clube-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.clube-card-head>div{display:grid;gap:2px}
+.clube-nome{font-size:var(--t-lg)}
+.clube-sub{color:var(--muted);font-size:var(--t-sm)}
+.clube-card code,.clube-dl code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--t-xs);color:var(--grey-1);word-break:break-all}
+.clube-status,.clube-charge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:var(--r-pill);background:var(--surface-4);border:1px solid var(--edge);font-size:var(--t-xs);font-weight:700;white-space:nowrap;color:var(--grey-3)}
+.clube-status[data-status="ativa"],.clube-charge[data-status="paga"]{color:var(--ok)}
+.clube-status[data-status="atrasada"],.clube-charge[data-status="pendente"]{color:#f1d675}
+.clube-status[data-status="aguardando_pagamento"]{color:#8fbfe0}
+.clube-status[data-status="arrependida"],.clube-charge[data-status="estornada"]{color:#e6a0a0}
+.clube-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px;margin:12px 0 0}
+.clube-grid>div{min-width:0}
+.clube-grid dt,.clube-dl dt{color:var(--grey-3);font-size:var(--t-xs);font-weight:700}
+.clube-grid dd{margin:2px 0 0;font-size:var(--t-sm);font-variant-numeric:tabular-nums}
+.clube-grid dd small{display:block;color:var(--grey-3);font-size:var(--t-xs)}
+@media(max-width:900px){.clube-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.clube-aviso{margin:10px 0 0;padding:8px 12px;border-radius:var(--r-xs);background:rgba(241,214,117,.08);border:1px solid rgba(241,214,117,.25);color:#f1d675;font-size:var(--t-sm)}
+.clube-details{margin-top:12px;border-top:1px solid var(--edge);padding-top:10px}
+.clube-details summary{cursor:pointer;color:var(--gold2);font-weight:700;font-size:var(--t-sm);min-height:32px;display:flex;align-items:center}
+.clube-details h4{margin:14px 0 8px;font-size:var(--t-sm);color:var(--text)}
+.clube-table-wrap{overflow-x:auto}
+.clube-table{width:100%;border-collapse:collapse;font-size:var(--t-sm);font-variant-numeric:tabular-nums}
+.clube-table th{text-align:left;color:var(--grey-3);font-size:var(--t-xs);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--edge);white-space:nowrap}
+.clube-table td{padding:7px 8px;border-bottom:1px solid rgba(var(--white-rgb),.05);white-space:nowrap}
+.clube-dl{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:6px 14px;margin:0;font-size:var(--t-sm)}
+.clube-dl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+@media(max-width:560px){.clube-dl{grid-template-columns:1fr;gap:2px}.clube-dl dd{margin-bottom:6px}.clube-pend{flex-direction:column;align-items:flex-start}}
+.clube-config{display:grid;gap:14px;max-width:640px}
+.clube-config-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.clube-anuncio{margin-top:24px;padding-top:18px;border-top:1px solid var(--edge);display:grid;gap:12px}
+.clube-anuncio h3{margin:0}
+.clube-anuncio p{margin:0}
+.clube-anuncio-counts{display:flex;flex-wrap:wrap;gap:8px}
+.clube-anuncio-counts span{display:grid;gap:1px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-3);min-width:96px}
+.clube-anuncio-counts small{color:var(--grey-3);font-size:var(--t-xs)}
+.clube-anuncio-counts b{font-variant-numeric:tabular-nums}
+.clube-anuncio-state{font-weight:700;color:var(--grey-3)}
+.clube-anuncio-state[data-on="1"]{color:var(--ok)}

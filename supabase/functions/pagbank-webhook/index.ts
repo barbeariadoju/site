@@ -14,6 +14,7 @@
 // (mesma exceção da JuIA respondendo mensagens).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
+import { processarPagamentoClube } from '../_shared/clube-ativacao.ts'
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -61,6 +62,9 @@ Deno.serve(async (req) => {
     if (!referenceId) return json({ ok: true, ignored: 'sem reference_id' })
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    // v29.233.0 — mensalidade do Clube do Ju (referência CLB-<código>-<n>): fluxo próprio.
+    if (referenceId.startsWith('CLB-')) return json(await processarPagamentoClube(admin, referenceId, charges, checkoutId))
 
     const { data: booking } = await admin
       .from('bookings')

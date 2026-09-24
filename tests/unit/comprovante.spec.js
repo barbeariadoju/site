@@ -99,6 +99,10 @@ describe('montarCupom', () => {
   it('presente de aniversário e indicação saem com o nome; outro motivo continua escondido', () => {
     const aniv = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Sobrancelha Masculina', servicoValor: 55, desconto: 15, descontoMotivo: '20% · Presente de aniversário' }));
     expect(aniv).toContain('Presente de aniversário: -R$ 15,00');
+    // v29.233.0 — visita do Clube do Ju: a linha diz que o plano cobriu, e o total fica no que sobrou.
+    const clube = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Sobrancelha Masculina', servicoValor: 70, desconto: 50, descontoMotivo: 'Clube do Ju' }));
+    expect(clube).toContain('Coberto pelo Clube do Ju: -R$ 50,00');
+    expect(clube).toContain('Total: R$ 20,00');
     expect(aniv).toContain('*Total: R$ 40,00*');
     const ind = norm(montarCupom({ ...base, servicoValor: 40, desconto: 10, descontoMotivo: 'Indicação: 1º atendimento' }));
     expect(ind).toContain('Desconto de indicação: -R$ 10,00');

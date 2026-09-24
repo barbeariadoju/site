@@ -63,6 +63,10 @@ type Cenario = {
   estendidoOk?: boolean // resposta do extended_close_slot_ok (horário livre fora da grade/do expediente)
   jaConvidadoIG?: boolean // já existe mensagem com o @barbeariadoju_ para este telefone
   emAndamento?: any[] // phone_current_bookings: horário de hoje que já começou (há até 2h)
+  clube?: any // assinatura viva do Clube do Ju (club_subscriptions)
+  clubeCobre?: boolean // o banco cobriu o horário recém-criado (trg_zz_club_before_insert)
+  clubeMotivo?: string // club_quote: motivo de não cobrir
+  clubeVendas?: boolean // club_settings.vendas_abertas
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -73,7 +77,13 @@ const turno = async (c: Cenario) => {
       ? (c.fechados || []).map((d) => ({ block_date: d, reason: 'Viagem do Juliano' })) : [],
     customer_benefits: () => [], site_chat_messages: () => null, conversation_leads: () => null,
     customer_profiles: () => [], whatsapp_attribution: () => [],
-    bookings: (q) => q.op === 'select' ? (q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'status' && f[2] === 'completed') ? (c.concluidos || []) : [{ id: 'bk-novo' }]) : null,
+    bookings: (q) => q.op === 'select' ? (q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'status' && f[2] === 'completed') ? (c.concluidos || [])
+      : q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'id' && f[2] === 'bk-novo') && q.filtros?.some((f: any) => f[0] === 'single')
+        ? { service_price: 0, discount_amount: 50, discount_reason: c.clubeCobre ? 'Clube do Ju' : null, club_subscription_id: c.clubeCobre ? 'sub1' : null }
+        : [{ id: 'bk-novo' }]) : null,
+    club_settings: () => ({ vendas_abertas: c.clubeVendas === true }),
+    club_subscriptions: () => (c.clube ? { id: 'sub1', code: 'CJ-TESTE1', plan_id: 'clube-corte', visits_per_cycle: 2, current_cycle_start: hoje, current_cycle_end: somar(hoje, 29), cancel_at_cycle_end: false, fixed_weekday: null, fixed_time: null, ...c.clube } : null),
+    club_plans: () => ({ name: 'Clube Corte' }),
     return_invites: () => null,
     whatsapp_messages: () => (c.jaConvidadoIG ? [{ id: 'm1' }] : []),
   }
@@ -81,6 +91,8 @@ const turno = async (c: Cenario) => {
     get_customer_commercial_context: () => c.contexto || {},
     phone_upcoming_bookings: () => c.futuros || [],
     phone_current_bookings: () => c.emAndamento || [],
+    phone_match_key: () => '1100000001',
+    club_quote: () => [{ eligible: false, reason: c.clubeMotivo || null }],
     get_available_slots: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     get_available_slots_excluding: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
@@ -485,6 +497,23 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '09:15', services: ['Corte de cabelo'] } },
     contexto: ctxCliente('Americo Teste'), emAndamento: emCurso, vagas: { [hoje]: ['11:10', '11:15', '11:30'] } })
   checar('32b atraso: horário próprio não vira "reservado por outro"', !/outro cliente|ocupado/i.test(r2.reply) && !reservou(r2), r2.reply)
+}
+
+// 33. Clube do Ju (v29.233.0). "O que é o clube do ju?" caía no cartão fidelidade ("Hoje o que temos
+//     é o cartão fidelidade") porque a assinatura não existia. E o assinante precisa saber, na reserva,
+//     se o Clube cobriu ou por que não cobriu.
+{
+  const r1 = await turno({ msg: 'o que é o clube do ju?', ai: { intent: 'loyalty', reply: 'Hoje o que temos é o cartão fidelidade' }, contexto: ctxCliente('Caio Teste') })
+  checar('33a clube: explica a assinatura', /assinatura mensal/.test(r1.reply) && /\/clube\//.test(r1.reply) && !/cartão fidelidade, e ele é automático/.test(r1.reply), r1.reply)
+  checar('33a clube: antes de 01/10 diz quando abre', /abrem em 1º de outubro/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: `Quero corte de cabelo dia ${dia2.slice(8, 10)}/${dia2.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia2, time: '10:00' } }, contexto: ctxCliente('Caio Teste'),
+    vagas: { [dia2]: ['09:00', '10:00'] }, clube: { status: 'ativa' }, clubeCobre: true })
+  checar('33b assinante coberto: reserva diz "coberto pelo Clube do Ju"', reservou(r2) && /coberto pelo Clube do Ju/.test(r2.reply) && !/R\$ 40,00\)/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Caio Teste'),
+    vagas: { [dia1]: ['09:00', '10:00'] }, clube: { status: 'ativa' }, clubeCobre: false, clubeMotivo: 'Pelo Clube, o horário é marcado com no mínimo 7 dias de antecedência.' })
+  checar('33c assinante fora da regra: diz que sai pelo preço normal e por quê', reservou(r3) && /preço normal: pelo Clube, o horário é marcado com no mínimo 7 dias/.test(r3.reply), r3.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

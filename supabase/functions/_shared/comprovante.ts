@@ -153,6 +153,8 @@ export const rotuloDesconto = (motivo?: string) => {
   const m = String(motivo || '').replace(/^\s*\d+%\s*·\s*/, '').trim()
   if (/^presente de anivers/i.test(m)) return 'Presente de aniversário'
   if (/^indica/i.test(m)) return 'Desconto de indicação'
+  // v29.233.0 — visita coberta pelo Clube do Ju: o cliente reconhece o próprio plano no cupom.
+  if (/^clube do ju/i.test(m)) return 'Coberto pelo Clube do Ju'
   return 'Desconto'
 }
 

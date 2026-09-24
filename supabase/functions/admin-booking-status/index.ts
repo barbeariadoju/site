@@ -206,7 +206,10 @@ Deno.serve(async (request: Request) => {
     // relatório financeiro. Validado aqui também (não só na tela) porque o admin-booking-status
     // é chamado com a sessão do dono, mas nada impede outra chamada direta à function.
     // v29.20.0: cortesia é a exceção — atendimento por conta da casa não tem pagamento.
-    if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange && !courtesy) {
+    // v29.233.0: atendimento 100% coberto pelo Clube do Ju também não tem pagamento — conferido
+    // logo abaixo, depois de ler o agendamento (a tela manda club_coverage:true).
+    const pedeClube = body?.club_coverage === true
+    if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange && !courtesy && !pedeClube) {
       return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
     }
 
@@ -282,19 +285,30 @@ Deno.serve(async (request: Request) => {
     //              serviço muda (o "✎ Editar" corrige o serviço e não conhece o desconto;
     //              sem isso, editar Corte→Corte+Sobrancelha devolvia o preço cheio calado);
     //   líquido  = cheio − desconto, nunca negativo. É o que vai em service_price.
+    // v29.233.0 — Clube do Ju: o abatimento do Clube foi calculado pelo banco na hora do agendamento
+    // (club_quote) e não é mexido pelo Concluir. A tela sempre manda o objeto de desconto (mesmo
+    // com 0), e sem esta guarda o Concluir apagaria a cobertura e cobraria o serviço inteiro.
+    const clubeCobre = Boolean(current.club_subscription_id)
+    const aplicaDesconto = hasDiscountChange && !clubeCobre
+    if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange && !courtesy && pedeClube) {
+      const liquido = Number(current.service_price || 0) + Number(current.products_price || 0)
+      if (!clubeCobre || liquido > 0) {
+        return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
+      }
+    }
     const descontoAtual = Math.max(0, Number(current.discount_amount || 0))
     const precoCheio = Math.max(0, serviceUpdate ? serviceUpdate.price : Number(current.service_price || 0) + descontoAtual)
-    const descontoFinal = Math.min(precoCheio, hasDiscountChange ? discountAmount : descontoAtual)
+    const descontoFinal = Math.min(precoCheio, aplicaDesconto ? discountAmount : descontoAtual)
     const precoLiquido = Math.round(Math.max(0, precoCheio - descontoFinal) * 100) / 100
     if (serviceUpdate) {
       updatePayload.service_name = serviceUpdate.name
       updatePayload.service_price = precoLiquido
       updatePayload.duration_minutes = serviceUpdate.duration_minutes
     }
-    if (hasDiscountChange || (serviceUpdate && descontoAtual > 0)) {
+    if (aplicaDesconto || (serviceUpdate && descontoAtual > 0)) {
       updatePayload.service_price = precoLiquido
       updatePayload.discount_amount = descontoFinal
-      updatePayload.discount_reason = descontoFinal > 0 ? ((hasDiscountChange ? discountReason : String(current.discount_reason || '')) || null) : null
+      updatePayload.discount_reason = descontoFinal > 0 ? ((aplicaDesconto ? discountReason : String(current.discount_reason || '')) || null) : null
     }
     // v29.138.0 — prêmio da fidelidade. Três entradas possíveis, uma saída só:
     //   (a) a tela mandou o serviço premiado → desconto = preço dele (limitado ao serviço);

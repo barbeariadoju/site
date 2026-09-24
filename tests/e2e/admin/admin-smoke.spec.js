@@ -27,6 +27,7 @@ const PAGES = [
   { file: 'admin-avaliacoes.html', nome: 'Avaliações Google', veja: 'Marcos Testando' },
   { file: 'admin-leads.html', nome: 'Funil de Reativação', veja: 'Quente Testando' },
   { file: 'admin-conteudo.html', nome: 'Central de Conteúdo', veja: 'garantir o seu' },
+  { file: 'admin-clube.html', nome: 'Clube do Ju', veja: 'Paulo Assinante' },
 ];
 
 // Ruído esperado que NÃO é bug das telas: recursos de PWA/push que não existem

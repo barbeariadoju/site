@@ -62,7 +62,7 @@
         : `<span class="admin-prepay-flag" title="O cliente declarou ter pago por Pix — confira o comprovante">💸 Cliente diz ter adiantado por Pix<br><small>Conferir em: <b>${esc(prepayKeyLabel)}</b></small></span><button type="button" class="btn primary admin-prepay-confirm" data-confirm-prepay="${x.id}">✅ Confirmar que o Pix caiu</button>`)
       : '';
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?'✅':'💸'}</span>`:'';
-    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${benefitChipsHtml(x)}${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">⚠ Número sem WhatsApp: confira antes, pode ser trote</small>':''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}</span><span class="admin-booking-summary-main"><strong>${esc(x.customer_name)}${prepayMini}${x.club_subscription_id?' <span class="admin-clube-mini" title="Visita coberta pelo Clube do Ju">🎟️ Clube</span>':''}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">✂ ${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${benefitChipsHtml(x)}${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">⚠ Número sem WhatsApp: confira antes, pode ser trote</small>':''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
   }
   function bookingCard(x){return bookingCardHtml(x,bookingActionsHtml(x))}
   // v29.175.0: as ações viraram função própria — a tela Hoje coloca a pergunta "já cortou aqui antes?" (do antigo Modo Atendimento) na frente das mesmas ações.
@@ -437,6 +437,13 @@
       const discountReasonInput=modal.querySelector('[data-discount-reason]');
       let selectedDiscountPct=0;
       discountInput.value='';discountReasonInput.value='';
+      // v29.233.0 — Clube do Ju: o banco já abateu o que o plano cobre (discount_reason 'Clube do Ju').
+      // O Concluir mostra a cobertura, trava o desconto manual e dispensa a forma de pagamento
+      // quando não sobra nada a cobrar (o servidor confere e preserva o abatimento).
+      const clubeValor=booking&&booking.club_subscription_id?Math.max(0,Number(booking.discount_amount||0)):0;
+      discountInput.disabled=clubeValor>0;discountReasonInput.disabled=clubeValor>0;
+      discountQuick.hidden=clubeValor>0;
+      if(clubeValor>0){discountInput.value=String(clubeValor);discountReasonInput.value='Clube do Ju'}
       // v29.209.0 — benefício do cliente em um clique: preenche o desconto manual com o motivo
       // que o gatilho do banco reconhece ("Presente de aniversário" / "Indicação: …") e que dá a
       // baixa sozinho ao concluir. Um benefício por atendimento: aplicar outro substitui.
@@ -526,10 +533,10 @@
         const baseDesconto=Math.max(0,sv-premio);
         // v29.162.0 — atalho de % recalcula sobre o serviço atual; valor digitado é respeitado até o teto
         if(selectedDiscountPct>0){const calc=Math.round(baseDesconto*selectedDiscountPct)/100;if(Number(discountInput.value)!==calc)discountInput.value=calc?String(calc):''}
-        const desconto=isCourtesy?0:readDiscount(baseDesconto);
+        const desconto=isCourtesy?0:(clubeValor>0?Math.min(clubeValor,baseDesconto):readDiscount(baseDesconto));
         const svShow=isCourtesy?0:Math.max(0,baseDesconto-desconto);
         const due=Math.max(0,svShow+pr-paidValue);
-        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · 🎁 fidelidade −${money(premio)} (${esc(free.name)})`:''}${desconto>0?` · 🏷️ desconto −${money(desconto)}${selectedDiscountPct?` (${selectedDiscountPct}%)`:''}`:''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
+        totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'🎁 cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · 🎁 fidelidade −${money(premio)} (${esc(free.name)})`:''}${desconto>0?(clubeValor>0?` · 🎟️ coberto pelo Clube do Ju −${money(desconto)}`:` · 🏷️ desconto −${money(desconto)}${selectedDiscountPct?` (${selectedDiscountPct}%)`:''}`):''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">✅ pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
       };
       const onRestClick=e=>{const btn=e.target.closest('[data-rest-option]');if(!btn)return;selectedRestPayment=selectedRestPayment===btn.dataset.restOption?'':btn.dataset.restOption;loyaltyPick.querySelectorAll('[data-rest-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.restOption===selectedRestPayment));renderTotal()};
       loyaltyPick.addEventListener('click',onRestClick);
@@ -599,9 +606,12 @@
         if(!services.length){alert('Selecione ao menos um serviço.');return}
         // v29.20.0: cortesia dispensa forma de pagamento (não há pagamento)
         const isCourtesy=courtesyBox.checked;
+        // v29.233.0: visita 100% coberta pelo Clube (sem produto) não tem forma de pagamento.
+        const svTotal=services.reduce((a,s)=>a+Number(s.price||0),0);
+        const clubeCobreTudo=clubeValor>0&&!isCourtesy&&svTotal-clubeValor<=0&&!readChecklistProducts(modal).length;
         // v29.88.0 (pedido do Juliano, 28/08): faltou pagamento → além do aviso, a tela rola
         // sozinha até a seção e ela pisca — ele só escolhe e finaliza, sem procurar onde é.
-        if(!selectedPayment&&!isCourtesy){
+        if(!selectedPayment&&!isCourtesy&&!clubeCobreTudo){
           alert('Escolha a forma de pagamento (ou marque Cortesia se for por conta da casa).');
           paymentSlot.scrollIntoView({behavior:'smooth',block:'center'});
           paymentSlot.classList.remove('payment-flash');void paymentSlot.offsetWidth;paymentSlot.classList.add('payment-flash');
@@ -638,6 +648,7 @@
           tip_amount:Math.max(0,Number(modal.querySelector('[data-tip-amount]').value))||0,
           courtesy:isCourtesy,
           courtesy_reason:isCourtesy?courtesyReasonInput.value.trim():'',
+          club_coverage:clubeCobreTudo&&!selectedPayment,
           // v29.162.0 — desconto manual: sempre vai (amount 0 = sem desconto), o servidor
           // grava service_price líquido + discount_amount/discount_reason (migration 147).
           // O motivo guarda a % escolhida junto com o texto, pra ficar legível no card.
@@ -764,7 +775,7 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionCourtesyReason='',completionLoyaltyFree=null,completionDiscount=null,completionStyle=null,completionStylePrefill='';
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCourtesy=false,completionClubCoverage=false,completionCourtesyReason='',completionLoyaltyFree=null,completionDiscount=null,completionStyle=null,completionStylePrefill='';
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
@@ -781,6 +792,7 @@
       completionVisitNumber=choice.visit_number||0;
       completionTipAmount=choice.tip_amount||0;
       completionCourtesy=Boolean(choice.courtesy);
+      completionClubCoverage=Boolean(choice.club_coverage);
       completionCourtesyReason=choice.courtesy_reason||'';
       completionStyle=typeof choice.style_notes==='string'?choice.style_notes:null;
       completionStylePrefill=choice.style_prefill||'';
@@ -814,6 +826,7 @@
       // v29.20.0: caixinha (fora do faturamento) e cortesia (serviço por conta da casa)
       if(completionTipAmount>0)body.tip_amount=completionTipAmount;
       if(completionCourtesy){body.courtesy=true;if(completionCourtesyReason)body.courtesy_reason=completionCourtesyReason}
+      if(completionClubCoverage)body.club_coverage=true;
       // v29.162.0: desconto manual (vai sempre na conclusão; amount 0 = sem desconto)
       if(completionDiscount)body.discount=completionDiscount;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});

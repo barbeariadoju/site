@@ -164,6 +164,35 @@ export function makeFixtures(overrides = {}) {
       { phone: '5599900021004', customer_name: 'Vaga Reaberta Testando', kind: 'availability', last_message_text: 'Queria dia 8 de tarde', service_interest: 'Corte + Barba Express', date_interest: dayOfMonth(8), last_message_at: tsOfMonth(6), followup_stage: 1, followup_1_sent_at: tsOfMonth(6), followup_2_sent_at: null, reason: null, reason_detail: null, responded_at: null, resolved_at: null, resolution: null, slot_reopened_at: tsOfMonth(7), slot_reopened_notified_at: null, campaign_sent_at: null, heat: 'quente' },
       { phone: '5599900021005', customer_name: 'Convertido Testando', kind: 'availability', last_message_text: 'Fechado, pode marcar', service_interest: 'Corte de cabelo', date_interest: dayOfMonth(5), last_message_at: tsOfMonth(5), followup_stage: 0, followup_1_sent_at: null, followup_2_sent_at: null, reason: null, reason_detail: null, responded_at: null, resolved_at: tsOfMonth(5, 15), resolution: 'booked', slot_reopened_at: null, slot_reopened_notified_at: null, campaign_sent_at: null, heat: 'quente' },
     ],
+
+    // v29.233.0 — Clube do Ju (tela admin-clube.html). Um assinante de cada situação que a tela destaca.
+    club_settings: [
+      { id: 1, vagas_geral: 20, vagas_cativa: 5, vendas_abertas: true, anuncio_ativo: false, anuncio_por_rodada: 2, terms_version: 'v1', updated_at: tsOfMonth(1) },
+    ],
+    club_plans: [
+      { id: 'clube-corte', name: 'Clube Corte', price: 85, table_value: 100, pool: 'geral', sort: 10 },
+      { id: 'barboterapia-semanal', name: 'Barboterapia Semanal', price: 150, table_value: 200, pool: 'geral', sort: 40 },
+      { id: 'cadeira-cativa', name: 'Cadeira Cativa', price: 249, table_value: 510, pool: 'cativa', sort: 70 },
+    ],
+    club_subscriptions: [
+      { id: 'mock-cs-1', code: 'CLB-TESTE1', name: 'Paulo Assinante', phone: '5511911112222', email: 'paulo@example.com', plan_id: 'clube-corte', status: 'ativa', price: 85, table_value: 100, discount_pct: 15, visit_items: ['Corte de cabelo'], visits_per_cycle: 2, fixed_weekday: null, fixed_time: null, current_cycle_start: dayOfMonth(1), current_cycle_end: iso(addDays(new Date(today.getFullYear(), today.getMonth() + 1, 1), -1)), cancel_at_cycle_end: false, accepted_at: tsOfMonth(1, 9), accept_ip: '203.0.113.10', accept_user_agent: 'Mozilla/5.0 (teste)', accept_checks: { contrato: true }, terms_version: 'v1', refund_due: null, refunded_at: null, created_at: tsOfMonth(1, 9), activated_at: tsOfMonth(1, 10), cancelled_at: null, cancel_reason: null, bonus_visits: {} },
+      { id: 'mock-cs-2', code: 'CLB-TESTE2', name: 'Renato Cativo', phone: '11933334444', email: null, plan_id: 'cadeira-cativa', status: 'atrasada', price: 249, table_value: 510, discount_pct: null, visit_items: ['Corte + Barba na navalha com toalha quente', 'Sobrancelha Masculina'], visits_per_cycle: null, fixed_weekday: 3, fixed_time: '10:00:00', current_cycle_start: dayOfMonth(1), current_cycle_end: dayOfMonth(28), cancel_at_cycle_end: true, accepted_at: tsOfMonth(1, 11), accept_ip: '203.0.113.20', accept_user_agent: 'Mozilla/5.0 (teste 2)', accept_checks: {}, terms_version: 'v1', refund_due: null, refunded_at: null, created_at: tsOfMonth(1, 11), activated_at: tsOfMonth(1, 12), cancelled_at: null, cancel_reason: null, bonus_visits: {} },
+      { id: 'mock-cs-3', code: 'CLB-TESTE3', name: 'Tiago Desistente', phone: '5511955556666', email: null, plan_id: 'barboterapia-semanal', status: 'arrependida', price: 150, table_value: 200, discount_pct: 25, visit_items: ['Barba na navalha com toalha quente'], visits_per_cycle: 4, fixed_weekday: null, fixed_time: null, current_cycle_start: null, current_cycle_end: null, cancel_at_cycle_end: false, accepted_at: tsOfMonth(1, 8), accept_ip: '203.0.113.30', accept_user_agent: 'Mozilla/5.0 (teste 3)', accept_checks: {}, terms_version: 'v1', refund_due: 150, refunded_at: null, created_at: tsOfMonth(1, 8), activated_at: tsOfMonth(1, 8), cancelled_at: tsOfMonth(2, 9), cancel_reason: 'Arrependimento', bonus_visits: {} },
+    ],
+    club_charges: [
+      { id: 'mock-cc-1', subscription_id: 'mock-cs-1', seq: 1, amount: 85, status: 'paga', method: 'pix', paid_at: tsOfMonth(1, 10), pay_link: null, cycle_start: dayOfMonth(1), cycle_end: dayOfMonth(28), created_at: tsOfMonth(1, 9) },
+      { id: 'mock-cc-2', subscription_id: 'mock-cs-2', seq: 2, amount: 249, status: 'pendente', method: null, paid_at: null, pay_link: 'https://example.com/pagar/mock', cycle_start: null, cycle_end: null, created_at: tsOfMonth(1, 11) },
+    ],
+    club_usage: [
+      { subscription_id: 'mock-cs-1', booking_id: 'mock-bk-clube-1', cycle_start: dayOfMonth(1), covered_items: ['Corte de cabelo'], covered_value: 50, status: 'usada' },
+    ],
+    club_waitlist: [
+      { id: 'mock-cw-1', name: 'Lucas Esperando', phone: '11977778888', plan_id: 'cadeira-cativa', created_at: tsOfMonth(2), notified_at: null },
+    ],
+    club_announcements: [
+      { phone_mkey: '11900000001', status: 'fila' },
+      { phone_mkey: '11900000002', status: 'enviada' },
+    ],
   };
 
   // Respostas das RPCs e Edge Functions quando alguma tela as chamar.
@@ -187,6 +216,10 @@ export function makeFixtures(overrides = {}) {
       parou_na_saudacao: 2,
       sem_lead_registrado: 1,
     }],
+    club_vagas: [
+      { pool: 'geral', total: 20, ocupadas: 1, livres: 19, vendas_abertas: true },
+      { pool: 'cativa', total: 5, ocupadas: 1, livres: 4, vendas_abertas: true },
+    ],
     ...(overrides.rpcs || {}),
   };
   const functions = { ...(overrides.functions || {}) };

@@ -12,7 +12,7 @@
 // <body>, como primeiro script "admin-". O item ativo do menu vem de data-admin-page no <body>.
 (() => {
   const page = document.body.dataset.adminPage || 'dashboard';
-  // Mesma lista da fase 1 (v29.172.0), menos o Modo Atendimento (virou a tela Hoje na fase 3, v29.175.0): 17 destinos em 4 grupos.
+  // Mesma lista da fase 1 (v29.172.0), menos o Modo Atendimento (virou a tela Hoje na fase 3, v29.175.0): 17 destinos em 4 grupos (18 com o Clube do Ju, v29.233.0).
   const GROUPS = [
     ['Dia a dia', [
       ['dashboard', 'admin.html', '⌂', 'Hoje'],
@@ -25,6 +25,7 @@
       ['clientes', 'admin-clientes.html', '👥', 'CRM / Clientes'],
       ['fidelidade', 'admin-fidelidade.html', '🏆', 'Fidelidade'],
       ['vales', 'admin-vales.html', '🎁', 'Vales-presente'],
+      ['clube', 'admin-clube.html', '◆', 'Clube'], // v29.233.0
       ['leads', 'admin-leads.html', '🔥', 'Funil de Reativação'],
     ]],
     ['Dinheiro', [

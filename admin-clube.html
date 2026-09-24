@@ -1,0 +1,56 @@
+<!doctype html><html lang="pt-BR"><head><title>Clube do Ju | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png?v=2"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.210.1"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.233.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.6"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png?v=2">
+</head><body data-admin-page="clube"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card" data-shell="login"></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar" data-shell="sidebar"></aside><main class="admin-content">
+
+<header class="admin-page-header"><div><h1>Clube do Ju</h1><p>Assinaturas, pagamentos, vagas e a mensagem de lançamento, num lugar só.</p></div><div class="admin-header-actions"><button id="clube-reload" class="btn ghost" type="button">Atualizar</button></div></header>
+
+<section class="admin-metrics clube-metrics">
+  <article><span>Receita mensal</span><strong id="clube-metric-receita">R$ 0,00</strong><small>ativas + em aberto</small></article>
+  <article><span>Assinantes ativos</span><strong id="clube-metric-ativos">0</strong><small id="clube-metric-ativos-detail">em dia</small></article>
+  <article><span>Vagas</span><strong id="clube-metric-vagas">—</strong><small id="clube-metric-vagas-detail">planos · Cadeira Cativa</small></article>
+  <article><span>Recebido no mês</span><strong id="clube-metric-recebido">R$ 0,00</strong><small id="clube-metric-recebido-detail">mensalidades pagas</small></article>
+</section>
+
+<section class="admin-surface clube-block" id="clube-pendencias-box">
+  <div class="admin-section-title"><div><h2>Pendências</h2></div></div>
+  <div id="clube-pendencias"></div>
+</section>
+
+<section class="admin-surface clube-block">
+  <div class="admin-section-title"><div><h2>Assinantes</h2></div></div>
+  <div class="clube-tabs" role="tablist">
+    <button data-clube-tab="vivas" class="is-active" type="button">Assinantes</button>
+    <button data-clube-tab="ativa" type="button">Ativas</button>
+    <button data-clube-tab="atrasada" type="button">Em aberto</button>
+    <button data-clube-tab="aguardando_pagamento" type="button">Aguardando 1º pagamento</button>
+    <button data-clube-tab="encerradas" type="button">Encerradas</button>
+    <button data-clube-tab="todas" type="button">Todas</button>
+  </div>
+  <div id="clube-lista"></div>
+</section>
+
+<section class="admin-surface clube-block">
+  <div class="admin-section-title"><div><h2>Lista de espera</h2></div></div>
+  <div id="clube-espera"></div>
+</section>
+
+<section class="admin-surface clube-block">
+  <div class="admin-section-title"><div><h2>Configurações</h2></div></div>
+  <div class="clube-config">
+    <div class="admin-inline-fields">
+      <label>Vagas nos planos<input id="clube-vagas-geral" type="number" min="0" max="200" step="1" inputmode="numeric"></label>
+      <label>Vagas na Cadeira Cativa<input id="clube-vagas-cativa" type="number" min="0" max="50" step="1" inputmode="numeric"></label>
+    </div>
+    <label class="pretty-check"><input id="clube-vendas-abertas" type="checkbox"><span class="pretty-check-box">✓</span><span><strong>Vendas abertas</strong><small>Desligado, a página do Clube só aceita nome na lista de espera.</small></span></label>
+    <div class="clube-config-actions"><button id="clube-config-save" class="btn primary" type="button">Salvar configurações</button><span id="clube-config-msg" class="field-help"></span></div>
+  </div>
+  <div class="clube-anuncio">
+    <h3>Mensagem de lançamento</h3>
+    <p class="clube-muted">Envia a mensagem de lançamento para os clientes cadastrados, 2 por vez a cada 10 minutos (cerca de 12 por hora), das 9h às 19h, de terça a sábado. Quem responder SAIR não recebe mais novidades.</p>
+    <div class="clube-anuncio-counts" id="clube-anuncio-counts"></div>
+    <div class="clube-config-actions"><span class="clube-anuncio-state" id="clube-anuncio-state">—</span><button id="clube-anuncio-toggle" class="btn primary" type="button" disabled>—</button></div>
+  </div>
+</section>
+
+</main></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.32.0"></script><script src="admin-shell-v30.js?v=29.233.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="admin-clube.js?v=29.233.0"></script><script src="admin-pwa.js?v=29.206.1"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
