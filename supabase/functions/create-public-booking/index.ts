@@ -112,6 +112,22 @@ Deno.serve(async(req:Request)=>{
       }catch(refErr){console.error('[create-public-booking] indicacao exception',refErr)}
     }
 
+    // v29.237.0 — clique do Google Ads (gclid/wbraid/gbraid) que o site guardou quando a pessoa chegou pelo
+    // anúncio. Vai pra booking_ad_clicks e, quando o atendimento é CONCLUÍDO, sai no CSV de conversões
+    // offline (view google_ads_offline_conversions). Cada tipo no seu campo: wbraid no campo de gclid faz o
+    // Google descartar a linha. Nunca derruba o agendamento.
+    try{
+      const click=body.click_id&&typeof body.click_id==='object'?body.click_id:null
+      const tipo=['gclid','wbraid','gbraid'].includes(String(click?.k))?String(click.k):'gclid'
+      const valor=String(click?.v||'').trim()
+      if(/^[A-Za-z0-9_\-.~]{10,512}$/.test(valor)){
+        const t=Number(click?.t)
+        const clickedAt=Number.isFinite(t)&&t>Date.now()-91*864e5&&t<=Date.now()+6e5?new Date(t).toISOString():null
+        const {error:clickError}=await admin.from('booking_ad_clicks').insert({booking_id:id,[tipo]:valor,clicked_at:clickedAt})
+        if(clickError)console.error('[create-public-booking] clique do anuncio',clickError)
+      }
+    }catch(clickErr){console.error('[create-public-booking] clique do anuncio exception',clickErr)}
+
     let push={sent:0,failed:0}
     if(pushSecret){
       try{

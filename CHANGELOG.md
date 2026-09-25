@@ -1,3 +1,21 @@
+## 29.237.0 — Google Ads: agendamento do site vira conversão offline (e só quem sentou na cadeira conta) (25/09)
+
+**Origem:** análise dos 30 dias pedida pelo Juliano; a PMax mostrava "Os problemas com os dados de conversão off-line estão afetando a performance". Diagnóstico de conversões do Google: **"Conversão off-line — Sem dados recentes — Uma fonte não tem dados recentes"**; meta "Reservar horário" em "Requer atenção".
+
+**Causa:** o CSV (`google-ads-conversions-csv`) respondia 200, mas só com o cabeçalho. A view só olhava `whatsapp_attribution` (anúncio → site → botão do WhatsApp → JuIA): 9 registros desde 03/09, 1 com clique de anúncio, e esse foi cancelado. Quem vem do anúncio agenda direto no /agendar/ (33 clientes novos pelo site em 30 dias) — esse caminho nunca entrou no arquivo; só a tag do navegador contava (6 no mês).
+
+**O que mudou (passos 1 e 2 combinados com o Juliano):**
+- **Site:** `agenda-v15.js` manda o clique guardado pelo `whatsapp-attrib-v29.js` (`bdj_gclid_v1`, `{v,k,t}`, 90 dias) no corpo do `create-public-booking` como `click_id`. Sem clique ou vencido → `null`, agendamento igual.
+- **Function:** `create-public-booking` grava em `booking_ad_clicks` (tabela nova, migração 174: RLS, sem policy, GRANT só `service_role` — regra de 30/10) com cada tipo no seu campo (wbraid no campo de gclid = linha descartada pelo Google). Nunca derruba o agendamento.
+- **View `google_ads_offline_conversions`:** junta os dois caminhos (site tem prioridade se o mesmo agendamento estiver nos dois) e manda **só atendimento concluído**, sem cortesia, com o **valor líquido pago** e a **hora do atendimento** (dentro de 90 dias do clique e nunca no futuro). Antes contava o agendamento na hora da criação — inclusive de quem faltava. Testado em transação desfeita: atendimento de 24/09 9h15 saiu com R$ 40,00.
+
+**Decidido contra o óbvio:**
+- **Nome da ação continua "Agendamento confirmado (WhatsApp)"**, mesmo agora valendo também pro site: trocar exigiria reconfigurar a fonte no Data Manager, e nome que não bate é descartado em silêncio.
+- **Passo 3 (promover a conversão offline a principal e a tag do navegador a secundária) NÃO foi feito.** A PMax precisa de histórico da meta nova; trocar com zero dados faz ela reaprender gastando mal. Plano: ~16/10/2026, com ~3 semanas de conversões reais, decidir com o Juliano.
+- **Sem retroativo:** os cliques de antes de hoje não foram guardados junto dos agendamentos; o aviso do Google só some quando o primeiro cliente vindo do anúncio **for atendido e concluído**.
+
+Testes: `tests/e2e/booking-ads-click.spec.js` (wbraid vai no campo certo; clique vencido não vai). `agenda-v15.js?v=29.237.0`.
+
 ## 29.236.0 — "Como foi feito" logo abaixo da forma de pagamento (25/09)
 
 **Pedido do Juliano (25/09, print do ✎ Editar):** *"a parte do como foi feito deveria ficar perto da forma de pagamento pra eu não esquecer"*.
