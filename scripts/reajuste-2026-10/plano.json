@@ -1586,5 +1586,11 @@
  {
   "arquivo": "precos/setembro/index.html",
   "conteudo": "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"utf-8\">\n<title>Tabela de preços | Barbearia do Ju</title>\n<meta name=\"robots\" content=\"noindex,follow\">\n<link rel=\"canonical\" href=\"https://www.barbeariadoju.com.br/precos/\">\n<meta http-equiv=\"refresh\" content=\"0; url=/precos/\">\n</head>\n<body>\n<p><a href=\"/precos/\">Ver a tabela de preços</a></p>\n</body>\n</html>\n"
+ },
+ {
+  "arquivo": "index.html",
+  "de": "<a href=\"sobre-o-juliano.html\">Sobre o Juliano</a> • <a href=\"blog.html\">Blog</a>",
+  "para": "<a href=\"sobre-o-juliano.html\">Sobre o Juliano</a> • <a href=\"/clube/\">Clube do Ju</a> • <a href=\"blog.html\">Blog</a>",
+  "n": 1
  }
 ]
