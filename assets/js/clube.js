@@ -413,8 +413,8 @@
         <li>Se a barbearia fechar num dia em que você tinha horário, a visita não se perde.</li>
         <li>Reajuste só com aviso de 30 dias. O ciclo já pago nunca muda de preço.</li>
       </ul>
-      <p>Contrato versão ${esc(c.versao || 'v1')}. Código de integridade (SHA-256): <span class="clube-hash">${esc(c.sha256 || '')}</span></p>`
-    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v1' })
+      <p>Contrato versão ${esc(c.versao || 'v2')}. Código de integridade (SHA-256): <span class="clube-hash">${esc(c.sha256 || '')}</span></p>`
+    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v2' })
   }
 
   // Envio final

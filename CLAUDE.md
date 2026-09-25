@@ -200,12 +200,15 @@ Se uma auditoria apontar estes itens como pendência, a auditoria está errada.
   baixa por esse texto: **não renomear esses motivos**. Mudou regra → muda o regulamento junto.
 - **Clube do Ju (assinatura, v29.233.0, lançamento 01/10/2026) tem regra aprovada pelo Juliano em
   24/09/2026:** só terça a quinta; horário do Clube marcado com **mínimo 7 e máximo 30 dias** de
-  antecedência (a Cadeira Cativa tem horário fixo); cancelar com menos de 24h ou faltar = visita usada;
-  desconto pela tabela mensal (até R$119 15%, R$120-199 20%, R$200+ 25%); 20 vagas + 5 Cativa; **não
-  existe plano ilimitado** (a Cativa é o lugar dele); visita do Clube não pontua na fidelidade. Quem
+  antecedência; cancelar com menos de 24h ou faltar = visita usada;
+  desconto pela tabela mensal (até R$119 15%, R$120-199 20%, R$200+ 25%); 20 vagas; **não existe
+  plano ilimitado nem de horário fixo** — a **Cadeira Cativa foi RETIRADA em 25/09/2026, antes do
+  lançamento** (v29.238.0: ~R$37 por hora de cadeira contra ~R$80 do avulso; no teto de 10 clientes/dia
+  ela toma horário que seria vendido cheio). Não reintroduzir sem o Juliano pedir; o código ficou inerte
+  (plano inativo, 0 vaga). Visita do Clube não pontua na fidelidade. Quem
   decide a cobertura é o banco (`club_quote` + gatilhos `trg_zz_club_*`), não a tela nem a JuIA. O
-  contrato é `clube/contrato/v1.txt` — **mudou uma vírgula, é versão nova** (v2 + hash novo; o teste
-  confere). Mudou regra → muda o contrato, a página /clube/ e o `_shared/clube-regras.ts` juntos.
+  contrato vigente é `clube/contrato/v2.txt` (o v1 fica guardado intacto) — **mudou uma vírgula, é versão
+  nova** (v3 + hash novo; o teste confere). Mudou regra → muda o contrato, a página /clube/ e o `_shared/clube-regras.ts` juntos.
 - **Convite de retorno sai no dia 12 do corte (5 da barba)** — decisão do Juliano em 19/09/2026
   (média real de retorno ~15 dias). Não "corrigir" para 30 dias; os 30 dias são da reativação.
 - **Pedido de avaliação no Google só para quem respondeu "satisfeito" fica como está** —

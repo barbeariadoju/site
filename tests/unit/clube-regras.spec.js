@@ -35,12 +35,23 @@ describe('régua de desconto e mensalidades aprovadas', () => {
 
 describe('contrato', () => {
   it('o hash do texto é o registrado (mudou o texto = versão nova)', () => {
-    const txt = readFileSync('clube/contrato/v1.txt').toString('utf8').replace(/\r\n/g, '\n');
+    const txt = readFileSync('clube/contrato/v2.txt').toString('utf8').replace(/\r\n/g, '\n');
     expect(createHash('sha256').update(txt, 'utf8').digest('hex')).toBe(TERMS_SHA256);
-    expect(TERMS_VERSION).toBe('v1');
+    expect(TERMS_VERSION).toBe('v2');
+  });
+  // v29.238.0 — a Cadeira Cativa saiu antes do lançamento; o v1 fica guardado intacto (registro).
+  it('v2 não tem Cadeira Cativa; v1 continua intacto; a página mostra o hash do v2', () => {
+    const v2 = readFileSync('clube/contrato/v2.txt', 'utf8');
+    expect(v2).not.toMatch(/cativa/i);
+    expect(v2).toContain('Versão v2');
+    const v1 = readFileSync('clube/contrato/v1.txt').toString('utf8').replace(/\r\n/g, '\n');
+    expect(createHash('sha256').update(v1, 'utf8').digest('hex')).toBe('64c9488de8d25676756d4190a4cbd419045289b27105ab8c7e843359f5dc3e46');
+    const html = readFileSync('clube/contrato/index.html', 'utf8');
+    expect(html).not.toMatch(/cativa/i);
+    expect(html).toContain(TERMS_SHA256);
   });
   it('as regras em destaque estão no texto', () => {
-    const txt = readFileSync('clube/contrato/v1.txt', 'utf8');
+    const txt = readFileSync('clube/contrato/v2.txt', 'utf8');
     expect(txt).toContain('NO MÍNIMO 7 DIAS e NO MÁXIMO 30 DIAS');
     expect(txt).toContain('CANCELAR COM MENOS DE 24 HORAS OU FALTAR SEM AVISO CONTA COMO VISITA USADA');
     expect(txt).toMatch(/terça a quinta-feira/);

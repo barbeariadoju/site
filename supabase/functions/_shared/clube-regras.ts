@@ -4,12 +4,12 @@
 // da régua em assets/js/clube.js. Mudou aqui, muda lá (o teste tests/unit/clube-regras.spec.js confere).
 // Nenhum texto para cliente leva emoji (regra de 01/09/2026); a saída passa pelo semEmoji de qualquer jeito.
 
-export const TERMS_VERSION = 'v1'
+export const TERMS_VERSION = 'v2'
 export const TERMS_URL = 'https://www.barbeariadoju.com.br/clube/contrato/'
-export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v1.txt'
-// SHA-256 do clube/contrato/v1.txt com quebras de linha LF (.gitattributes fixa eol=lf).
+export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v2.txt'
+// v29.238.0: v2 = v1 sem a Cadeira Cativa (tirada antes do lançamento). SHA-256 do clube/contrato/v2.txt com quebras de linha LF (.gitattributes fixa eol=lf).
 // O teste recalcula e falha se o texto mudar sem trocar a versão.
-export const TERMS_SHA256 = '64c9488de8d25676756d4190a4cbd419045289b27105ab8c7e843359f5dc3e46'
+export const TERMS_SHA256 = 'cf820c75386cebeaec924886e9ea961e94ede4783d910a6f08d0faeddca59311'
 export const PAGINA_CLUBE = 'https://www.barbeariadoju.com.br/clube/'
 export const PAGINA_MINHA = 'https://www.barbeariadoju.com.br/clube/minha-assinatura/'
 
@@ -109,6 +109,6 @@ export const textosAnuncio = (nome: string): string[] => {
 // JuIA: resposta fixa para "o que é o Clube do Ju?" (texto conferido, sem o modelo inventar condição).
 export const textoClubeExplica = (vendasAbertas: boolean) =>
   `O Clube do Ju é a assinatura mensal da barbearia: você escolhe um plano, paga por mês adiantado e tem desconto sobre a tabela nos atendimentos de terça a quinta, com hora marcada. ` +
-  `Os planos vão do Clube Corte (2 cortes por mês, R$ 85) à Cadeira Cativa (horário fixo toda semana com corte, Barboterapia e sobrancelha, R$ 249), e tem o Sob Medida, em que você monta o seu. ` +
+  `Os planos vão do Clube Corte (2 cortes por mês, R$ 85) ao Clube Completo (2 visitas com corte, Barboterapia e sobrancelha, R$ 172), e tem o Sob Medida, em que você monta o seu. ` +
   `Pelo Clube, o horário é marcado com 7 a 30 dias de antecedência, e dá para cancelar quando quiser, sem multa.` +
   (vendasAbertas ? ` Os planos, as regras e a assinatura estão aqui: ${PAGINA_CLUBE}` : ` As assinaturas abrem em 1º de outubro. Os planos e as regras já estão aqui: ${PAGINA_CLUBE}`)

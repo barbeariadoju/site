@@ -1,3 +1,20 @@
+## 29.238.0 — Clube do Ju sai sem a Cadeira Cativa; contrato v2 (25/09)
+
+**Decisão do Juliano (25/09, depois da análise dos 30 dias):** *"Eu tô achando que o clube do Ju vai achatar a renda pra baixo"* → mostrei a conta → *"Então tira este cadeira cativa do plano"*.
+
+**A conta que decidiu:**
+- **Planos comuns aumentam a renda do cliente típico:** ele volta a cada ~21 dias (≈1,4 corte/mês = R$ 71 na tabela nova); no Clube Corte paga R$ 85 adiantado. Perde-se só com quem já vem a cada 15 dias — pior caso, 20 assinantes assim ≈ R$ 500/mês (~4% de R$ 13 mil). E terça a quinta têm ~11 atendimentos/semana de folga até o teto de 10/dia; 20 assinantes usam ~10.
+- **A Cativa era o risco:** R$ 249 por corte + Barboterapia + sobrancelha toda semana + hidratação (tabela R$ 510, 51% off), ~1h40 de cadeira por semana por assinante ≈ **R$ 37/hora contra ~R$ 80 do avulso**. Com agenda sobrando, preenche hora vazia; no teto de dezembro (10 clientes/dia), 5 cativos tomariam ~8h/semana que seriam vendidas cheias.
+
+**O que mudou:**
+- Banco (migração 175): `club_plans.cadeira-cativa` inativo, `vagas_cativa = 0`, `club_terms` v2, `club_settings.terms_version = 'v2'`. A function `clube` só lista plano ativo → a Cativa some da página e não pode ser assinada nem por chamada direta.
+- **Contrato v2** (`clube/contrato/v2.txt`, SHA-256 `cf820c75…`): igual ao v1 sem a Cativa (2.4, 2.5, 4.2, 6.1 e a cláusula 4.7 inteira; 4.8/4.9 viraram 4.7/4.8). **O v1 fica no repositório intacto** (registro do que foi publicado). Ninguém tinha assinado — vendas fechadas até 01/10.
+- Página do contrato, /clube/ (links v2, FAQ e "como marcar" sem a Cativa), `clube.js?v=29.238.0`.
+- JuIA: `textoClubeExplica` vai "do Clube Corte ao Clube Completo"; o prompt diz que **não existe plano de horário fixo**.
+- Código da Cativa (`club_cativa_*`, telas) **ficou inerte**, não apagado: se um dia voltar, é reativar com preço novo e contrato v3.
+- Functions republicadas: `clube`, `clube-ciclo`, `pagbank-webhook`, `ju-ia-site` (todas importam as regras). `verify_jwt` conferido depois.
+- Testes: `clube-regras.spec.js` — v2 sem Cativa, hash do v2 na página, v1 intacto.
+
 ## 29.237.0 — Google Ads: agendamento do site vira conversão offline (e só quem sentou na cadeira conta) (25/09)
 
 **Origem:** análise dos 30 dias pedida pelo Juliano; a PMax mostrava "Os problemas com os dados de conversão off-line estão afetando a performance". Diagnóstico de conversões do Google: **"Conversão off-line — Sem dados recentes — Uma fonte não tem dados recentes"**; meta "Reservar horário" em "Requer atenção".
