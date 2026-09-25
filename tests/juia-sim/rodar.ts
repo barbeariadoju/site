@@ -516,6 +516,53 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('33c assinante fora da regra: diz que sai pelo preço normal e por quê', reservou(r3) && /preço normal: pelo Clube, o horário é marcado com no mínimo 7 dias/.test(r3.reply), r3.reply)
 }
 
+// 34. Lista de espera aceita com a recusa do outro dia junto (casos Israel 24/09 17h37 e Paulo 25/09 09h07).
+//     "Se abrir alguma vaga hj me avisa / Amanhã não consigo" levou "me embolei"; "Se abrir pra hj /
+//     Prefiro" levou a mesma oferta de novo. Os dois estavam aceitando o aviso de vaga de HOJE.
+{
+  const wl = { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 45, direct: false }
+  const base = { services: ['Corte de cabelo'], date: amanha, pending_waitlist: wl }
+  const r1 = await turno({ msg: 'Se abrir alguma vaga hj me avisa\nAmanhã não consigo', state: base,
+    ai: { intent: 'availability', reply: 'Hoje não tenho mais vaga.', updates: { date: amanha } }, contexto: ctxCliente('Israel Teste'), vagas: { [amanha]: ['08:00', '12:00'] } })
+  checar('34a aviso + "amanhã não consigo": entra na lista de hoje', r1.saidas.some((s: any) => s.url.includes('join-waitlist')) && /lista de espera|te aviso/i.test(r1.reply), r1.reply)
+  checar('34a não oferece amanhã de novo', !/08:00|12:00/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Se abrir pra hj\nPrefiro', state: base,
+    ai: { intent: 'availability', reply: 'Hoje não tenho mais vaga.', updates: { date: hoje } }, contexto: ctxCliente('Paulo Teste'), vagas: { [amanha]: ['08:00', '15:00'] } })
+  checar('34b "se abrir pra hj, prefiro": entra na lista de hoje', r2.saidas.some((s: any) => s.url.includes('join-waitlist')), r2.reply)
+}
+
+// 35. "Amanhã não posso, trabalho 12 hrs / 06 às 06" não é pedido de meio-dia (caso Paulo, 25/09 09h08),
+//     e "trabalho das 6 da manhã às 6 da tarde" não é reserva às 15h (09h10).
+{
+  const wl = { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 45, direct: false }
+  const r1 = await turno({ msg: 'Amanhã não posso trabalhar 12 hrs\n06 as 06', state: { services: ['Corte de cabelo'], date: amanha, last_requested_time: '15:00', pending_waitlist: wl },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha, time: '12:00' } }, contexto: ctxCliente('Paulo Teste'),
+    vagas: { [amanha]: ['12:45', '13:00', '15:00'], [dia2]: ['09:00', '15:00'] } })
+  checar('35a "não posso trabalhar 12 hrs": não trata 12 como horário', !/12:00|12:45/.test(r1.reply) && !reservou(r1), r1.reply)
+  checar('35a oferece o aviso de hoje ou outro dia', /te aviso|lista de espera|outro dia|qual dia/i.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Trabalhar 06 da manhã as 06 da tarde\nKkkk', state: { services: ['Corte de cabelo'], date: amanha, time: '12:00', last_requested_time: '15:00' },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { date: amanha, time: '15:00' } }, contexto: ctxCliente('Paulo Teste'), vagas: { [amanha]: ['12:45', '15:00'] } })
+  checar('35b expediente do cliente não vira reserva amanhã', !/amanhã às 15:00 está livre/i.test(r2.reply) && !/Quer incluir mais alguma coisa/.test(r2.reply) && !reservou(r2), r2.reply)
+}
+
+// 36. "Como estão seus horários?" não anuncia serviço suposto (caso Bruno, 24/09 10h59).
+{
+  const r = await turno({ msg: 'Me tire um dúvida, por favor? \n\nComo estão seus horários ?\nAmém Ju', state: {},
+    ai: { intent: 'availability', reply: 'Para qual dia?', updates: { services: ['Corte de cabelo'] } },
+    contexto: ctxCliente('Bruno Teste', { last_service_name: 'Corte de cabelo', usual_service_name: 'Corte de cabelo' }), vagas: { [hoje]: ['11:30', '12:00'] } })
+  checar('36 horários: sem "Anotei Corte"', !/Anotei/i.test(r.reply), r.reply)
+}
+
+// 37. "A gente marcou o horário de hoje?" é pergunta sobre a reserva, não pedido de vaga (caso 25/09 07h54).
+{
+  const msg = 'Fala, Ju. Bom dia, tudo bem? Ô, Ju, não lembra se a gente marcou o horário de hoje? Não consegui na terça. Hoje nós estamos com o horário marcado?'
+  const r1 = await turno({ msg, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Juca Teste'), vagas: { [hoje]: ['11:30', '11:45'] } })
+  checar('37a sem reserva hoje: diz que não tem horário marcado', /hoje não tem horário marcado/i.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Juca Teste'),
+    futuros: [{ id: 'b37', booking_date: hoje, start_time: '11:30:00', service_name: 'Corte de cabelo', status: 'confirmed' }], vagas: { [hoje]: ['11:45'] } })
+  checar('37b com reserva hoje: confirma o horário dele', /11:30/.test(r2.reply) && !/11:45/.test(r2.reply), r2.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

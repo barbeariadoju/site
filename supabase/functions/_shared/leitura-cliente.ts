@@ -81,6 +81,64 @@ export const avisoDeChegada = (q: string): boolean => {
 export const aceitaAvisoDeVaga = (q: string): boolean =>
   /^(sim|ok|isso|pode|claro|quero|por favor|pfv|pf)?[\s,!.]*(pode\s+)?(me\s+)?(avisar?|avise|avisa|aviso|o aviso|me avisa|me avise|me coloca na (lista|espera)|coloca na (lista|espera)|lista( de espera)?|espera|quero (ser avisado|o aviso|que (me )?avise)|pode avisar|avisa sim|aviso sim)[\s,!.]*(sim|por favor|pfv|pf|obrigad[oa])?[\s!.]*$/.test(String(q || '').trim())
 
+// v29.234.0 (caso Paulo, 25/09/2026, 09h07): à oferta "ou já reservo amanhã, ou te aviso se abrir
+// vaga hoje", respondeu "Se abrir pra hj" + "Prefiro" — e recebeu a mesma oferta de novo, sem entrar
+// na lista. Com a oferta pendente, "se abrir/vagar/surgir…" já é a escolha do aviso (a condição é a
+// própria oferta), e "prefiro" seco / "prefiro hoje" / "prefiro esperar" também.
+export const escolheAvisoDaOferta = (q: string): boolean => {
+  const t = String(q || '').trim()
+  if (/\b(nao|n)\b/.test(t) && !/\bamanha\b/.test(t)) return false
+  return /\b(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar|sobrar|cancelar|desistir)\b/.test(t)
+    || /(^|\n)\s*(eu )?prefiro( (hoje|hj|pra hoje|pra hj|o aviso|esperar|aguardar|a lista|que avise|que me avise))?[\s!.]*($|\n)/.test(t)
+}
+
+// ---------------------------------------------------------------------------------------------
+// O CLIENTE FALANDO DO PRÓPRIO EXPEDIENTE — "trabalho 12 hrs", "06 às 06", "trabalho das 6 da manhã
+// às 6 da tarde". Caso Paulo (25/09/2026, 09h08-09h10): "Amanhã não posso trabalhar 12 hrs / 06 as
+// 06" virou "amanhã às 12:00 já está ocupado, o mais próximo é 12:45", e a explicação seguinte virou
+// "Sim! amanhã às 15:00 está livre" com a oferta de adicionais — reserva no dia que ele tinha acabado
+// de recusar. Número dentro de frase sobre o trabalho dele não é horário pedido.
+// Não conta quando a frase também pede horário ("trabalho até as 18h, tem depois?") — aí o piso/teto
+// já lê o que importa.
+// ---------------------------------------------------------------------------------------------
+export const falaDoProprioExpediente = (q: string): boolean => {
+  const t = String(q || '')
+  if (!/\b(trabalh\w*|expediente|plantao|plantoes|turno|escala|to de servico|estou de servico)\b/.test(t)) return false
+  if (/\?/.test(t) || /\b(tem|teria|consegue|conseguiria|da pra|pode|poderia|encaixa)\b[^.!\n]{0,30}\b(horario|vaga|encaix|depois|antes|atender)\b/.test(t)) return false
+  return true
+}
+
+// DIA RECUSADO — "amanhã não posso", "hoje não consigo", "não dá amanhã". Devolve 'hoje' | 'amanha' | null.
+// Mesmo caso Paulo: a recusa de amanhã vinha colada na explicação do trabalho.
+export const diaRecusado = (q: string): 'hoje' | 'amanha' | null => {
+  const t = String(q || '')
+  const neg = '(nao|n)\\s+(posso|consigo|da|dá|vou poder|vou conseguir|rola|tenho como|vai dar)'
+  const m = t.match(new RegExp(`\\b(hoje|amanha)\\b[^.!?\\n]{0,15}\\b${neg}\\b|\\b${neg}\\b[^.!?\\n]{0,10}\\b(hoje|amanha)\\b`))
+  if (!m) return null
+  // "amanhã não posso de manhã, só à tarde" é restrição de período, não o dia inteiro recusado.
+  const depois = t.slice((m.index || 0) + m[0].length, (m.index || 0) + m[0].length + 25)
+  if (/^\s*,?\s*(de manha|pela manha|a tarde|de tarde|a noite|cedo|antes|depois|ate|as \d|a partir|no horario|nesse horario|esse horario|\d)/.test(depois)) return null
+  return (m[1] || m[m.length - 1]) === 'hoje' ? 'hoje' : 'amanha'
+}
+
+// ---------------------------------------------------------------------------------------------
+// "JÁ TENHO HORÁRIO MARCADO?" — o cliente quer saber da PRÓPRIA reserva, não ver vagas.
+// Caso Juca (25/09/2026, 07h54): "não lembra se a gente marcou o horário de hoje? … Hoje nós estamos
+// com o horário marcado?" levou "Hoje, estes são os horários disponíveis: 11:30, 11:45" — a pergunta
+// ficou sem resposta. Devolve o dia perguntado ('hoje' | 'amanha' | 'qualquer') ou null.
+// ---------------------------------------------------------------------------------------------
+export const perguntaSeTemReserva = (q: string): 'hoje' | 'amanha' | 'qualquer' | null => {
+  const t = String(q || '')
+  const pergunta = /\b(a gente|nos|eu|voce|vc)\s+(ja\s+)?(marc|agend)(ou|amos|ei|ou pra mim)\b[^?]{0,40}(\?|horario|hoje|amanha)/.test(t)
+    || /\b(estou|estamos|to|tou|tenho|temos|tem|ta|esta|ficou|ja tem|ja tenho)\s+(com\s+)?(o\s+|um\s+|meu\s+|algum\s+)?(horario|agendamento|hora|reserva)\s+(marcad|agendad|reservad|confirmad)/.test(t)
+    || /\b(meu|o meu)\s+(horario|agendamento)\s+(e|eh|ficou|ta|esta)\s+(que horas|pra quando|quando|confirmado|marcado)/.test(t)
+    || /\b(nao )?lembr\w*\s+(se|que horas|quando)\b[^?]{0,40}\b(marc|agend|horario)/.test(t)
+  if (!pergunta) return null
+  if (/\bhoje\b/.test(t)) return 'hoje'
+  if (/\bamanha\b/.test(t)) return 'amanha'
+  return 'qualquer'
+}
+
 // ---------------------------------------------------------------------------------------------
 // HORÁRIO PRA OUTRA PESSOA — "corte pro meu namorado", "é pro meu filho", "pra ele".
 // Caso Amanda (11/09/2026): marcou o corte do namorado e a reserva saiu no nome dela, porque o

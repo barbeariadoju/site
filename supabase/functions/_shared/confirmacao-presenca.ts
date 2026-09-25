@@ -49,10 +49,22 @@ const chaveDe = (parteNormalizada: string): RegExp | null => {
   return par ? par[1] : null
 }
 
+// v29.234.0 (caso Luiz, 24/09/2026, 10h04): "1 - mas só vou fazer a barba", com Corte + Barboterapia
+// reservados, levou "Confirmado!" sem ajuste — o "só" só era lido para o corte. Agora "só / somente /
+// apenas (vou) (fazer) (a/o) X" vale para qualquer família: devolve a chave do X ou null.
+const chaveDoSo = (t: string): RegExp | null => {
+  const m = t.match(/\b(?:so|somente|apenas)\s+(?:vou\s+|quero\s+|vai\s+ser\s+)?(?:fazer\s+|cortar\s+)?(?:a\s+|o\s+|as\s+|os\s+)?([a-z]+(?:\s+[a-z]+)?)/)
+  if (!m) return null
+  const alvo = m[1]
+  if (/^(cortar|corte|cabelo)\b/.test(alvo) || /^(cortar)$/.test(alvo)) return CHAVES.find(([re]) => re.test('corte'))![1]
+  const par = CHAVES.find(([, kw]) => kw.test(alvo))
+  return par ? par[1] : null
+}
+
 // Negação sobre serviço (não sobre vir): "nao vou pintar", "sem barba", "so vou cortar".
 export const negacaoDeServico = (normalizedReply: string): boolean => {
   const t = normalizedReply
-  if (/\bso (vou )?(cortar|o corte|corte|cabelo)\b|\bsomente (o )?corte\b|\bapenas (o )?corte\b/.test(t)) return true
+  if (chaveDoSo(t)) return true
   const re = /\b(nao|sem|nem)\b/g
   let m: RegExpExecArray | null
   while ((m = re.exec(t))) {
@@ -84,9 +96,16 @@ export const servicosNegados = (serviceName: string, normalizedReply: string): s
   if (partes.length < 2) return []
   const t = normalizedReply
   const negadas = new Set<string>()
-  // "só vou cortar" / "só o corte": tudo que não é corte sai
-  if (/\bso (vou )?(cortar|o corte|corte|cabelo)\b|\bsomente (o )?corte\b|\bapenas (o )?corte\b/.test(t)) {
-    partes.forEach((p) => { if (!/corte|cabelo/.test(normalize(p))) negadas.add(p) })
+  // "só vou cortar" / "só o corte" / "só vou fazer a barba": tudo que não é o X sai — menos o que
+  // o cliente citou na mesma frase (Sr. Magno: "o cabelo só vou cortar … depilação nas orelhas e
+  // nasal ok" — o "só" era sobre o cabelo, as depilações ficam).
+  const so = chaveDoSo(t)
+  if (so) {
+    partes.forEach((p) => {
+      const kw = chaveDe(normalize(p))
+      if (kw && (kw.source === so.source || kw.test(t))) return
+      negadas.add(p)
+    })
   }
   const re = /\b(nao|sem|nem)\b/g
   let m: RegExpExecArray | null

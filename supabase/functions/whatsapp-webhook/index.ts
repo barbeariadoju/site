@@ -562,7 +562,7 @@ Deno.serve(async (request: Request) => {
         // ainda não consigo ouvir mensagens de voz") era FALSO — a JuIA transcreve áudio
         // normalmente; cair aqui é falha pontual de download/Whisper. Agora: verdade +
         // caminho real (o áudio está no WhatsApp e o Juliano ouve) + push pra ele saber.
-        const fallback = 'Recebi seu áudio! 🙏 Não consegui escutar direitinho por aqui, mas o Juliano vai ouvir e já te responde. Se quiser adiantar, pode me escrever 😉'
+        const fallback = 'Recebi seu áudio! Não consegui escutar direitinho por aqui, mas o Juliano vai ouvir e já te responde. Se quiser adiantar, pode me escrever 😉'
         await sendWhatsapp(phone, fallback)
         await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[áudio recebido, não foi possível transcrever]' })
         const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
@@ -684,10 +684,10 @@ Deno.serve(async (request: Request) => {
             // entendido nada do que aconteceu.
             const jaAtendido = String(b.status) === 'completed'
             await sendWhatsapp(phone, jaAtendido
-              ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
+              ? `Recebi, ${nome}! Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Obrigado pela visita!`
               : ehSinal
-                ? `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} (sinal) e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado; o restante, R$ ${restanteFmt}, você acerta no dia.`
-                : `Recebi, ${nome}! 🙏 Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
+                ? `Recebi, ${nome}! Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} (sinal) e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado; o restante, R$ ${restanteFmt}, você acerta no dia.`
+                : `Recebi, ${nome}! Vou passar pro Juliano conferir o Pix de R$ ${valorAoClienteFmt} e te confirmo por aqui assim que ele validar. Seu horário (${quando}) segue reservado.`)
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
               body: JSON.stringify({ custom: { title: '💸 Cliente diz que pagou (Pix)', body: `${bk?.customer_name || phone} — R$ ${totalFmt}${ehSinal ? ` (sinal; restante R$ ${restanteFmt} no dia)` : ''} · ${quando}${jaAtendido ? ' (já atendido)' : ''}\n${b.service_name}${divergencia}\nConfira no PicPay e confirme na Agenda.`, url: `/admin-agenda.html?data=${b.booking_date}&app=1`, tag: `prepay-${b.id}` } }) }).catch(() => {})
@@ -707,7 +707,7 @@ Deno.serve(async (request: Request) => {
               ? analiseImagem.split('|')[1]?.trim().replace(/[^\d,.]/g, '') || ''
               : ''
             await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: `[comprovante recebido, sem atendimento vinculado${valorSolto ? ` — R$ ${valorSolto}` : ''}]` })
-            await sendWhatsapp(phone, `Recebi seu comprovante${valorSolto ? ` de R$ ${valorSolto}` : ''} 🙏 Vou passar pro Juliano conferir e ele te confirma por aqui.`)
+            await sendWhatsapp(phone, `Recebi seu comprovante${valorSolto ? ` de R$ ${valorSolto}` : ''}. Vou passar pro Juliano conferir e ele te confirma por aqui.`)
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) await fetch(`${supabaseUrl}/functions/v1/send-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': pushSecret },
               body: JSON.stringify({ custom: { title: '💸 Comprovante sem atendimento vinculado', body: `${pushName || phone}${valorSolto ? ` — R$ ${valorSolto}` : ''}\nNão achei reserva pra esse telefone. Confere no PicPay e vê a que se refere.`, url: '/admin-mensagens.html?app=1', tag: `prepay-solto-${phone}` } }) }).catch(() => {})
@@ -1441,12 +1441,12 @@ Deno.serve(async (request: Request) => {
               return
             } else if (nUnsat === 2 || /ressarc|reembols|devolu|estorno|dinheiro de volta/.test(rawUnsat)) {
               await clearUnsat()
-              await sendWhatsapp(phone, 'Entendido. Já passei agora pro Juliano providenciar o ressarcimento — ele confirma com você por aqui em breve. E mais uma vez: me desculpe por não termos acertado dessa vez 🙏')
+              await sendWhatsapp(phone, 'Entendido. Já passei agora pro Juliano providenciar o ressarcimento — ele confirma com você por aqui em breve. E mais uma vez: me desculpe por não termos acertado dessa vez.')
               await pushUnsat('💸 Insatisfeito pediu RESSARCIMENTO', `${nomeUnsat} pediu o valor de volta. Falar com ele e providenciar — o robô só registrou, não devolveu nada.`)
               return
             } else if (nUnsat === 3) {
               await clearUnsat()
-              await sendWhatsapp(phone, 'Pode contar 🙏 Estou lendo, e o Juliano também vai ler pessoalmente cada palavra. O que aconteceu?')
+              await sendWhatsapp(phone, 'Pode contar. Estou lendo, e o Juliano também vai ler pessoalmente cada palavra. O que aconteceu?')
               return
             } else {
               // Texto livre = o próprio relato. Registra como feedback da pesquisa e
@@ -2001,6 +2001,8 @@ Deno.serve(async (request: Request) => {
               // serviço não está no catálogo ou quando nenhum candidato tem horário — aí a resposta
               // é a de sempre. A oferta tira da mensagem o "responda 1 se já avaliou" (um "1" com a
               // oferta aberta iria pra JuIA) e a linha da sugestão: uma pergunta por mensagem.
+              // v29.234.0 (caso Otavio, 24/09/2026): cliente de primeira vez ouvia "Pela sua rotina" — sem
+              // cadência medida, não existe rotina; a frase sai só quando customer_visit_cadence_days responde.
               let ofertaRetorno = ''
               try {
                 const { data: visita } = await admin.from('bookings').select('service_name, duration_minutes, booking_date, start_time').eq('id', pending.booking_id).maybeSingle()
@@ -2021,7 +2023,7 @@ Deno.serve(async (request: Request) => {
                     }
                     if (escolhido) {
                       const wd = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][diaDaSemana(escolhido.date)]
-                      ofertaRetorno = `Quer já deixar o próximo reservado? Pela sua rotina, ${wd} (${escolhido.date.slice(8, 10)}/${escolhido.date.slice(5, 7)}) às ${escolhido.time} fica bom — ${nomesServ.join(' + ')}. Me responde *sim* que eu reservo, ou me diz outro dia.`
+                      ofertaRetorno = `Quer já deixar o próximo reservado? ${typeof cadencia === 'number' ? `Pela sua rotina, ${wd}` : wd.charAt(0).toUpperCase() + wd.slice(1)} (${escolhido.date.slice(8, 10)}/${escolhido.date.slice(5, 7)}) às ${escolhido.time} fica bom — ${nomesServ.join(' + ')}. Me responde *sim* que eu reservo, ou me diz outro dia.`
                       const { data: convRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
                       const st = (convRow?.state && typeof convRow.state === 'object') ? convRow.state as Record<string, unknown> : {}
                       await admin.from('whatsapp_conversations').update({ state: { ...st, services: nomesServ, date: escolhido.date, time: null, period: null, completed: false, pending_rebook: { date: escolhido.date, time: escolhido.time, services: nomesServ, after_booking_id: pending.booking_id }, last_question: { kind: 'rebook', at: new Date().toISOString(), reply: 'Quer já deixar o próximo reservado' } }, updated_at: new Date().toISOString() }).eq('phone', phone)
@@ -2035,7 +2037,7 @@ Deno.serve(async (request: Request) => {
                   ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
                   : skipGoogleAsk
                     ? `Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\n${ofertaRetorno}`
-                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}`)
+                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}`)
                 : alreadyReviewed
                 // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
                 // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
@@ -2046,7 +2048,7 @@ Deno.serve(async (request: Request) => {
                 ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
-                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto: 🙏\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
+                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
               await sendWhatsapp(phone, reply, true)
               // Marca que a etapa 2 saiu — é isso que permite interpretar um "1" seguinte
               // como "já avaliei" em vez de resposta solta.
@@ -2285,7 +2287,7 @@ Deno.serve(async (request: Request) => {
             }
 
             console.warn('[whatsapp-webhook] IA repetiu resposta para pergunta nova — contornando em vez de calar', phone)
-            reply = 'Desculpe, me embolei aqui. 🙏 Já estou vendo isso certinho com o Juliano e te respondo em instantes.'
+            reply = 'Desculpe, me embolei aqui. Já estou vendo isso certinho com o Juliano e te respondo em instantes.'
             handoff = true
           }
 

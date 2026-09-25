@@ -72,6 +72,18 @@ describe('servicosNegados', () => {
   it('"só o corte" tira tudo que não é corte', () => {
     expect(servicosNegados('Corte de cabelo + Barba na navalha com toalha quente + Pezinho (acabamento)', 'so o corte mesmo')).toEqual(['Barba na navalha com toalha quente', 'Pezinho (acabamento)']);
   });
+  it('caso Luiz (24/09/2026): "só vou fazer a barba" tira o corte', () => {
+    const reserva = 'Corte de cabelo + Barboterapia com vaporizador de ozônio';
+    expect(lerRespostaConfirmacao('1 - mas so vou fazer a barba')).toBe('confirm');
+    expect(servicosNegados(reserva, '1 - mas so vou fazer a barba')).toEqual(['Corte de cabelo']);
+    expect(servicosNegados(reserva, 'confirmo so a barboterapia')).toEqual(['Corte de cabelo']);
+    expect(servicosNegados('Corte de cabelo + Barba Express + Sobrancelha Masculina', 'so a sobrancelha')).toEqual(['Corte de cabelo', 'Barba Express']);
+    expect(negacaoDeServico('mas so vou fazer a barba')).toBe(true);
+  });
+  it('"só" sem serviço depois não mexe em nada', () => {
+    expect(servicosNegados('Corte de cabelo + Barba Express', '1 so pra confirmar')).toEqual([]);
+    expect(servicosNegados('Corte de cabelo + Barba Express', 'confirmo, so chego 5 min atrasado')).toEqual([]);
+  });
   it('não tira nada quando a negação é sobre vir, quando tiraria tudo, ou com serviço único', () => {
     expect(servicosNegados('Corte de cabelo + Barba Express', 'nao vou poder ir')).toEqual([]);
     expect(servicosNegados('Corte de cabelo + Barba Express', 'sem corte e sem barba')).toEqual([]);

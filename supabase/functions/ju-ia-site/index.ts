@@ -13,7 +13,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -1287,6 +1287,30 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
   }
  }
+ // v29.234.0 — caso Juca (25/09/2026, 07h54): "a gente marcou o horário de hoje?" levou só a lista de vagas
+ // de hoje, sem resposta à pergunta. Com reserva no dia perguntado: a resposta é a reserva (e a conversa de
+ // agenda não abre). Sem reserva: a resposta de agenda segue, com a frase que responde a pergunta na frente.
+ let reservaConsultada=false
+ let prefixoSemReserva=''
+ {
+  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada?perguntaSeTemReserva(normalize(message)):null
+  if(diaPerg){
+   const amanhaR=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
+   const alvo=diaPerg==='hoje'?today():diaPerg==='amanha'?amanhaR:''
+   const todas=[...bookingsEmAndamento,...upcomingBookings].filter((b:any)=>b&&b.booking_date)
+   const achada=alvo?todas.find((b:any)=>b.booking_date===alvo):todas[0]
+   if(achada){
+    reservaConsultada=true
+    reply=`Sim, está marcado: ${emDia(achada.booking_date)} às ${String(achada.start_time||'').slice(0,5)} (${achada.service_name}). Te espero.`
+    intent='other';handoff=false;actions=[]
+    next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   }else{
+    const proxima=todas.find((b:any)=>b.booking_date>(alvo||today()))
+    prefixoSemReserva=`${alvo?`${emDiaCap(alvo)} não tem horário marcado no seu nome`:'Não encontrei horário marcado no seu nome'}${proxima?` — o seu próximo é ${emDia(proxima.booking_date)} às ${String(proxima.start_time||'').slice(0,5)}`:''}.`
+   }
+  }
+ }
  // v29.14.0 — vira true quando o CÓDIGO monta uma resposta afirmativa depois de consultar
  // a agenda de verdade. A trava anti-promessa (lá no fim) precisa disso pra saber a
  // diferença entre o modelo chutando "temos sim" e o sistema confirmando um horário que
@@ -1860,7 +1884,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // conversa É sobre o horário dele (confirmação de cancelamento aberta, modelo leu cancelar/remarcar,
  // ou a nossa última fala citou o agendamento) — "tem outro horário?" numa reserva nova não é isso.
  const querRemarcarAgora=upcomingBookings.length>0&&querRemarcar(normalizedQuestion)&&(Boolean(next.pending_cancel_booking_id)||ai.intent==='cancel'||ai.intent==='reschedule'||/agendamento|seu hor[aá]rio|est[aá] guardado|confirmo presen/i.test(ultimaFalaJuIA))
- const rescheduleAsk=(includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])||arrivalTimeAsk||querRemarcarAgora)&&!changeServiceAsk&&!chegadaTratada
+ const rescheduleAsk=(includesAny(normalizedQuestion,['remarcar','reagendar','mudar meu agendamento','mudar o agendamento','mudar esse agendamento','mudar de dia','mudar o dia','mudar de horario','mudar o horario','trocar de horario','trocar o horario','trocar de dia','trocar o dia','posso mudar pra','posso mudar para','quero mudar pra','quero mudar para','mudar para outro dia','mudar para outro horario'])||arrivalTimeAsk||querRemarcarAgora)&&!changeServiceAsk&&!chegadaTratada&&!reservaConsultada
  const cancelAsk=includesAny(normalizedQuestion,['pode cancelar','cancelar meu','cancela meu','quero cancelar','desmarcar','cancelamento','ja marquei em outro','marquei em outro lugar','nao vou mais poder ir','cancela o ','cancelar o ','cancela esse','cancelar esse','cancela pra mim','cancelar pra mim','cancela a ','cancelar a '])
  // "Não quero cancelar" contém a substring "quero cancelar", então cancelAsk também
  // disparava aqui — bug real (28/07/2026): cliente disse "Não quero cancelar, quero
@@ -1895,6 +1919,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   ||/\b(me avis[ae]\b|me avisar\b|pode(ria)? (me )?avisar\b|avisa (ai|aqui|por aqui|sim)\b|(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar)[^.!?]{0,40}\bavis)/.test(normalizedQuestion)
   // v29.212.0 (caso Moisés, 18/09/2026, 13h05): respondeu só "Avisar" à oferta e levou "me embolei".
   ||(Boolean(next.pending_waitlist)&&aceitaAvisoDeVaga(normalizedQuestion))
+  // v29.234.0 (caso Paulo, 25/09/2026, 09h07): "Se abrir pra hj" + "Prefiro" à oferta pendente.
+  ||(Boolean(next.pending_waitlist)&&escolheAvisoDaOferta(normalizedQuestion))
  // v29.69.0 — os DOIS casos de sábado (22/08/2026, 11h45 e 16h29): depois de "não encontrei
  // horário hoje; o próximo dia é terça… ou entro com você na lista de espera", os clientes
  // responderam "Não obrigado" e "Vou deixar obrigado". A JuIA só limpava a oferta e seguia
@@ -2294,7 +2320,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
     handoff=false
    }else{
-    reply=`Só confirmando: você quer mudar seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(next.pending_reschedule_new_date)} às ${next.pending_reschedule_new_time}? Responda simou não.`
+    reply=`Só confirmando: você quer mudar seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)} para ${formatDateBR(next.pending_reschedule_new_date)} às ${next.pending_reschedule_new_time}? Responda sim ou não.`
     actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
     handoff=false
    }
@@ -2389,7 +2415,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       const slotsRem=perRem?slotsForPeriod(allSlots,perRem):allSlots
       const listaRem=slotsRem.length?slotsRem:allSlots
       const notaRem=perRem&&!slotsRem.length?`${periodoFalado(perRem).charAt(0).toUpperCase()+periodoFalado(perRem).slice(1)} não sobrou nada. `:''
-      reply=`${notaRem}Em ${formatDateBR(next.date)}${perRem&&slotsRem.length?` ${periodoFalado(perRem)}`:''} consigo te atender ${slotsPhrase(listaRem)}. Qual fica melhor pra você?`
+      reply=`${notaRem}${emDiaCap(next.date)}${perRem&&slotsRem.length?` ${periodoFalado(perRem)}`:''} consigo te atender ${slotsPhrase(listaRem)}. Qual fica melhor pra você?`
       actions=slotsSample(listaRem).map((t:string)=>({label:t,message:t}))
      }
      handoff=false
@@ -3219,7 +3245,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // Restrição do cliente aplicada a qualquer lista de horários (dia pedido ou próximo dia).
  const dentroDaRestricao=(dur:number)=>(slots:string[])=>slots.filter((t:string)=>(!maxTime||minHM(t)+dur<=minHM(maxTime))&&(!tetoInicioAtivo||(tetoInicio!.inclusivo?minHM(t)<=minHM(tetoInicio!.hora):minHM(t)<minHM(tetoInicio!.hora))))
  const restricaoFalada=maxTime?` que termine antes das ${horaFalada(maxTime)}`:tetoInicioAtivo?` ${tetoInicio!.inclusivo?'até as':'antes das'} ${horaFalada(tetoInicio!.hora)}`:''
- const requestedTime=(tetoDeHorario||tetoInicioAtivo)?'':(requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):''))
+ // v29.234.0 (caso Paulo, 25/09/2026, 09h08): "Amanhã não posso trabalhar 12 hrs / 06 as 06" — número dentro
+ // da fala sobre o expediente DELE não é horário pedido (ver falaDoProprioExpediente).
+ const expedienteDoCliente=falaDoProprioExpediente(normalizedQuestion)
+ if(expedienteDoCliente&&!next.completed)next.time=null
+ const requestedTime=(tetoDeHorario||tetoInicioAtivo||expedienteDoCliente)?'':(requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):''))
  // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
  // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
@@ -3236,7 +3266,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   &&!/\b(abre|fecha|funciona|atende ate|ate que horas|expediente)\b/.test(normalizedQuestion)
   &&/\b(quais?|que|qual|outros?|outras?|mais|demais)\s+(os\s+|as\s+|seus\s+)?(horarios?|horas|opcoes|vagas)\b|\bhorarios? (disponiveis|livres|voce tem|vc tem|voce teria|vc teria|tem\b|teria\b)|\b(opcoes|opcao) de horarios?\b/.test(normalizedQuestion)
  if(perguntaDeHorarios&&!next.completed&&next.time)next.time=null
- if(perguntaDeHorarios&&!['cancel','reschedule','change_service','update_products'].includes(intent)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
+ // v29.234.0 (caso Israel, 24/09/2026, 17h37): "Se abrir alguma vaga hj me avisa" entrou na lista de
+ // espera — e o "vaga hj" da mesma frase jogava o intent de volta pra 'availability' aqui embaixo: a
+ // resposta repetia a oferta, o anti-papagaio do webhook trocou por "me embolei" e ele nunca soube que
+ // estava na lista. Lista de espera aceita é fluxo fechado, como cancelar/remarcar.
+ if(perguntaDeHorarios&&!['cancel','reschedule','change_service','update_products','join_waitlist'].includes(intent)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
  // v29.222.0 (caso Marcello, 23/09/2026): "As 17h" sem dia nenhum na conversa recebia "Para qual dia
  // você quer ver os horários?", às 10h da manhã. Hora dita sem dia, que ainda não passou, é hoje —
  // é o que qualquer pessoa entende (a v29.72.0 já fazia isso só para o cliente novo). Hora que já
@@ -3247,7 +3281,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   if(String(requestedTime).slice(0,5)>agoraHm)next.date=today()
  }
  const effectiveTime=requestedTime||(next.completed?'':next.time||'')
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&(requestedPeriod||requestedTime)&&next.date&&chosen.length&&!bareBarbaAsk)intent='availability'
 
  // Pergunta genérica de disponibilidade ("tem horário agora?", "tem vaga hoje?") não é
  // motivo de handoff — a JuIA sabe checar a agenda sozinha. Sem isso, faltando serviço
@@ -3268,12 +3302,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const pedeAgora=/\b(nesse|neste) momento\b|\bagora mesmo\b|\bagorinha\b|\bimediat\w*|\bde imediato\b|\b(pra|para) ja\b|o quanto antes|o mais rapido possivel|\bagora\b/.test(normalizedQuestion)
   &&!/\bagora nao\b|\bnao (posso|consigo|da|vou|quero) agora\b|\bagora n\b|\bpor agora\b|\bate agora\b|\bagora (nao|so) (da|posso)/.test(normalizedQuestion)
   &&/\bcort|\bbarb|\batend|\bvaga|\bhorari|\bencaix|\bmarcar|\bagend|\bsobrancelha|\bpezinho/.test(normalizedQuestion)
- if(pedeAgora&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&!bareCabeloAsk&&!bareBarbaAsk){
+ if(pedeAgora&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!bareCabeloAsk&&!bareBarbaAsk){
   next.date=today();next.asap=true;next.period=undefined
   if(intent!=='book')intent='availability'
   handoff=false
  }
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&availabilityAsk&&!bareCabeloAsk&&!bareBarbaAsk){
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&availabilityAsk&&!bareCabeloAsk&&!bareBarbaAsk){
   if(!next.date&&includesAny(normalizedQuestion,['agora','hoje']))next.date=today()
   intent='availability'
   handoff=false
@@ -3468,6 +3502,33 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   next.sales_stage='postponed'
   intent='other'
   handoff=false
+ }
+ // v29.234.0 (caso Paulo, 25/09/2026, 09h08-09h10): recusou amanhã ("amanhã não posso") ou só explicou o
+ // próprio expediente ("trabalho das 6 da manhã às 6 da tarde") — e recebeu horários de amanhã e, na
+ // sequência, "amanhã às 15:00 está livre" com a lista de adicionais. Quem recusa o dia oferecido não
+ // está pedindo horário nele: o dia sai da conversa e a pergunta volta pra ele — com o aviso de vaga de
+ // hoje, se essa oferta ainda está de pé (a oferta vira direta: um "sim" já entra na lista).
+ {
+  const recusaDia=diaRecusado(normalizedQuestion)
+  const amanhaIso=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
+  const diaRecusadoIso=recusaDia==='hoje'?today():recusaDia==='amanha'?amanhaIso:''
+  const semOutroDia=!weekdayDatesMentioned(normalizedQuestion,today()).length&&!/\b(depois de amanha|semana que vem|proxima semana|dia \d{1,2})\b/.test(normalizedQuestion)
+  const recusouODiaDaConversa=Boolean(diaRecusadoIso)&&(next.date===diaRecusadoIso||state?.date===diaRecusadoIso)&&semOutroDia&&(!requestedTimeRaw||expedienteDoCliente)
+  if((recusouODiaDaConversa||(expedienteDoCliente&&semOutroDia))&&notSpecialFlow&&intent!=='join_waitlist'&&!next.completed){
+   const nome=hasCustomer&&customerFirstName!=='cliente'?`, ${customerFirstName}`:''
+   const diaFalado=recusaDia==='hoje'?'hoje':recusaDia==='amanha'?'amanhã':''
+   const wlHoje=Boolean(next.pending_waitlist&&next.pending_waitlist.date===today()&&recusaDia!=='hoje')
+   reply=wlHoje
+    ?`Entendi${nome}${diaFalado?`, ${diaFalado} não dá`:''}. Quer que eu te avise se abrir vaga hoje? Se preferir outro dia, é só me dizer qual.`
+    :`Entendi${nome}${diaFalado?`, ${diaFalado} não dá`:''}. Qual dia fica melhor pra você?`
+   if(wlHoje)next.pending_waitlist={...next.pending_waitlist,direct:true}
+   actions=[]
+   next.date=null
+   next.time=null
+   next.period=null // "6 da manhã às 6 da tarde" é o turno dele, não o período pedido
+   intent='other'
+   handoff=false
+  }
  }
 
  dropPezinhoSeTemCorte()
@@ -3669,8 +3730,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // v29.153.0 (caso do alisamento): "Qual valor ?" caía aqui e levava "Perfeito! Anotei…" —
    // a pergunta feita é a do preço, então o preço vem primeiro e a do dia depois. E na primeira
    // vez que o serviço entra na conversa, o valor vai junto sem ele pedir (uma vez só).
+   // v29.234.0 (caso Bruno, 24/09/2026, 11h00): "Como estão seus horários?" levou "Perfeito! Anotei Corte
+   // de cabelo — R$ 40,00" — o serviço era SUPOSTO (usual_assumed), e a regra da v29.218.0 diz que suposição
+   // é silenciosa. Este caminho (sem dia) tinha ficado de fora — e o serviço pode vir do MODELO (tirado do
+   // histórico do cliente), o que também é suposição: ele não citou serviço nenhum.
+   const servicoSupostoAqui=!findServicesLoose(message).length&&!(Array.isArray(state?.services)&&state.services.length)
+   if(servicoSupostoAqui&&!next.usual_assumed){next.usual_assumed=true;next.usual_origem=next.usual_origem||'padrao'} // sem "como da última vez": não sabemos se foi
    reply=askedPrice
     ?`${linhaPreco(chosen)} Para qual dia você quer ver os horários?`
+    :next.usual_assumed
+    ?`Para qual dia você quer ver os horários${requestedTime?` das ${horaFalada(requestedTime)}`:''}?`
     :`Perfeito! Anotei ${serviceNames}${requestedTime?` para as ${horaFalada(requestedTime)}`:''}${precoJaDito?'':` — ${money(chosen.reduce((a:number,x:any)=>a+Number(x.price||0),0))}`}. Para qual dia você quer ver os horários?`
    handoff=false
   }
@@ -4515,6 +4584,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }
   }
  }
+ // v29.234.0 (caso Juca): a pergunta "já tenho horário marcado?" é respondida antes da agenda.
+ if(prefixoSemReserva&&reply&&!/horário marcado no seu nome/.test(reply))reply=`${prefixoSemReserva} ${reply.replace(/^\s*(bom dia|boa tarde|boa noite)\b[^!.]*[!.]\s*/i,'').replace(/^(hoje|amanhã),\s*e/i,'E')}`
  // Saudação sempre determinística (Bom dia/Boa tarde/Boa noite), nunca deixada por conta
  // do modelo — ele às vezes pulava direto pra responder o pedido do cliente sem cumprimentar,
  // mesmo instruído a fazer isso (caso real: cliente perguntou disponibilidade já na primeira
@@ -4739,7 +4810,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||ausenciaAvisada
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada
   // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
   // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
   // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com
