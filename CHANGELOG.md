@@ -1,3 +1,13 @@
+## 29.234.1 — Raspar a cabeça fica em R$ 40 depois de 01/10 (25/09)
+
+**Decisão do Juliano (25/09):** *"raspar a cabeça manter 40,00, não aumentar 01/10"*. Era um dos 18 serviços do reajuste de 30/08 (40 → 50).
+
+- **Banco:** a mudança agendada em `service_price_changes` virou 40 → 40, com a decisão anotada no `note` (preferi isso a apagar a linha: fica o registro de que o reajuste foi pensado e desfeito de propósito). Nenhum agendamento de outubro tinha raspar, então ninguém foi cobrado a mais.
+- **Site na virada:** saíram do `plano.json` os 9 trechos do raspar (cartão do /agendar/ e os 8 da `servico-raspar-a-cabeca.html`: meta, og, twitter, schema `offers.price`, FAQ). Nas duas listas das perguntas frequentes, o trecho fica, mas o `para` diz "Raspar a cabeça R$ 40". Agora são 257 trechos em 28 arquivos.
+- **Já no ar:** a `/precos/`, que mostra a tabela nova desde 30/08, dizia Raspar R$ 50 e foi corrigida para 40. A arte `artes/placa-reajuste-outubro.html` também.
+- **Tarefas agendadas neste PC** (`reajuste-01-10-vespera` e `-manha`): a da véspera tinha "40→50 corte/raspar" na lista do que conserta e poderia "corrigir" o raspar de volta para 50. Agora o raspar está em "NÃO mudam", com o motivo.
+- ⚠️ **Fora do repo:** a plaquinha do reajuste impressa em outro lugar (16/09) pode estar com Raspar R$ 50. Conferir a placa física.
+
 ## 29.234.0 — JuIA: lista de espera aceita de verdade, "amanhã não posso" e "já tenho horário?" (25/09)
 
 **Origem:** plano do dia de sexta (revisão das conversas de 24/09 e varredura da semana 18-24/09) e a conversa do Paulo, que o Juliano mandou por print às 9h10. Todos os casos foram reproduzidos no simulador antes da correção (cenários 34 a 37, 105 ok).

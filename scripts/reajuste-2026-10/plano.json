@@ -19,12 +19,6 @@
  },
  {
   "arquivo": "agendar/index.html",
-  "de": "R$ 40</strong></div><button class=\"service-btn\" data-name=\"Raspar a cabeça\" data-price=\"40.00\"",
-  "para": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Raspar a cabeça\" data-price=\"50.00\"",
-  "n": 1
- },
- {
-  "arquivo": "agendar/index.html",
   "de": "R$ 50</strong></div><button class=\"service-btn\" data-name=\"Barboterapia com vaporizador de ozônio\" data-price=\"50.00\"",
   "para": "R$ 60</strong></div><button class=\"service-btn\" data-name=\"Barboterapia com vaporizador de ozônio\" data-price=\"60.00\"",
   "n": 1
@@ -380,7 +374,7 @@
  {
   "arquivo": "perguntas-frequentes.html",
   "de": "tyle R$ 15, Depilação nasal R$ 25, Depilação de orelhas R$ 25, Corte infantil R$ 40, Raspar a cabeça R$ 40",
-  "para": "tyle R$ 15, Depilação nasal R$ 30, Depilação de orelhas R$ 30, Corte infantil R$ 50, Raspar a cabeça R$ 50",
+  "para": "tyle R$ 15, Depilação nasal R$ 30, Depilação de orelhas R$ 30, Corte infantil R$ 50, Raspar a cabeça R$ 40",
   "n": 1
  },
  {
@@ -452,7 +446,7 @@
  {
   "arquivo": "perguntas-frequentes.html",
   "de": "yle R$ 15 · Depilação nasal R$ 25 · Depilação de orelhas R$ 25 · Corte infantil R$ 40 · Raspar a cabeça R$ 40",
-  "para": "yle R$ 15 · Depilação nasal R$ 30 · Depilação de orelhas R$ 30 · Corte infantil R$ 50 · Raspar a cabeça R$ 50",
+  "para": "yle R$ 15 · Depilação nasal R$ 30 · Depilação de orelhas R$ 30 · Corte infantil R$ 50 · Raspar a cabeça R$ 40",
   "n": 1
  },
  {
@@ -1467,54 +1461,6 @@
   "arquivo": "servico-pigmentacao-sobrancelha.html",
   "de": "/summary><p>O serviço custa R$ 20,00",
   "para": "/summary><p>O serviço custa R$ 25,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "e>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
-  "para": "e>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "g:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
-  "para": "g:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "r:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
-  "para": "r:title\"/>\n<meta content=\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": ":\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 40,00",
-  "para": ":\"Cabeça raspada (à máquina ou navalha) na Barbearia do Ju. R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"40.00\"",
-  "para": "},\"offers\":{\"@type\":\"Offer\",\"price\":\"50.00\"",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "er\",\"text\":\"O serviço custa R$ 40,00",
-  "para": "er\",\"text\":\"O serviço custa R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "ça na Barbearia do Ju custa R$ 40,00",
-  "para": "ça na Barbearia do Ju custa R$ 50,00",
-  "n": 1
- },
- {
-  "arquivo": "servico-raspar-a-cabeca.html",
-  "de": "/summary><p>O serviço custa R$ 40,00",
-  "para": "/summary><p>O serviço custa R$ 50,00",
   "n": 1
  },
  {
