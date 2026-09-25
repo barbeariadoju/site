@@ -1,3 +1,11 @@
+## 29.235.0 — Agenda: previsão de término em cada card (25/09)
+
+**Pedido do Juliano (25/09, com print da Agenda):** *"adicionasse uma previsão de término do serviço … por ex. filipe 19:30 previsto termino 20:15 … pra eu pensar rápido"*.
+
+- Embaixo do horário de início de cada card aparece **"até HH:MM"**, menor e mais apagado, para não competir com o horário de chegada. O valor é o `end_time` do agendamento — o mesmo que já aparecia escondido no detalhe do card ("até 20:10 • 40 min"), que é o que a agenda usa para bloquear o horário seguinte. Não é cálculo novo, então não tem como divergir do que a agenda considera ocupado.
+- Estilo em `css/06-admin-reforma.css` (só do painel). `?v=` do css/06 nas 18 páginas do admin, `admin-v15-4-agenda.js` e `admin-v15-4-core.js` → 29.235.0; `ADMIN_VERSION` e `admin-version.json` juntos (lição da 29.99.0).
+- Teste novo: `tests/e2e/admin/admin-agenda-previsao-termino.spec.js` (todo card tem "até HH:MM" depois do início; prints em computador e celular).
+
 ## 29.234.1 — Raspar a cabeça fica em R$ 40 depois de 01/10 (25/09)
 
 **Decisão do Juliano (25/09):** *"raspar a cabeça manter 40,00, não aumentar 01/10"*. Era um dos 18 serviços do reajuste de 30/08 (40 → 50).
