@@ -56,3 +56,28 @@ test('Editar: abre com o estilo do cadastro e não regrava se não mudou', async
   await page.waitForTimeout(300);
   expect(gravados.length).toBe(0);
 });
+
+// v29.236.0 (pedido do Juliano, 25/09/2026: "a parte do como foi feito deveria ficar perto da forma de
+// pagamento pra eu não esquecer"). O campo vem logo depois dos botões de pagamento — a última coisa que
+// ele toca antes de salvar — no Editar e no Balcão (no Concluir o teste do checkout cobre o mesmo).
+test('Editar e Balcão: "Como foi feito" fica logo abaixo da forma de pagamento', async ({ page }) => {
+  const modal = await abrirEditar(page, { tables: { bookings: [concluido] } });
+  const ordemEditar = await modal.evaluate((m) => {
+    const pag = m.querySelector('[data-payment-slot]'), estilo = m.querySelector('[data-style-notes]');
+    return { depois: Boolean(pag.compareDocumentPosition(estilo) & Node.DOCUMENT_POSITION_FOLLOWING), vizinho: pag.nextElementSibling?.textContent || '' };
+  });
+  expect(ordemEditar.depois).toBe(true);
+  expect(ordemEditar.vizinho).toContain('Como foi feito');
+  await modal.locator('[data-style-notes]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/admin-screens/editar-como-foi-feito-perto-do-pagamento.png' });
+
+  await page.goto('/admin-balcao.html');
+  await expect(page.locator('#balcao-payment-grid')).toBeAttached();
+  const balcao = await page.evaluate(() => {
+    const pag = document.querySelector('#balcao-payment-wrap'), estilo = document.querySelector('#balcao-style');
+    const entre = [];
+    for (let el = pag.nextElementSibling; el && !el.contains(estilo); el = el.nextElementSibling) entre.push(el.id || el.tagName);
+    return entre;
+  });
+  expect(balcao).toEqual(['balcao-payment']); // só o input escondido do pagamento no meio
+});

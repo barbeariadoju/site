@@ -1,3 +1,12 @@
+## 29.236.0 — "Como foi feito" logo abaixo da forma de pagamento (25/09)
+
+**Pedido do Juliano (25/09, print do ✎ Editar):** *"a parte do como foi feito deveria ficar perto da forma de pagamento pra eu não esquecer"*.
+
+- A forma de pagamento é o último toque antes de salvar; o "Como foi feito" ficava antes dela — no Editar, depois da lista longa de serviços e **antes** dos produtos, fora da tela no momento de fechar. Agora vem **logo abaixo dos botões de pagamento** nas três telas que fecham atendimento: Concluir, ✎ Editar e Balcão (no Balcão ficava depois de data, horário e caixinha).
+- Mesma posição nas três de propósito: é a mão dele que aprende o lugar.
+- Teste: `admin-editar-como-foi-feito.spec.js` ganhou a checagem de ordem no Editar e no Balcão (+ print).
+- `admin-v15-4-agenda.js`/`core.js` `?v=29.236.0` nas 6 páginas; `ADMIN_VERSION` e `admin-version.json` juntos.
+
 ## 29.235.0 — Agenda: previsão de término em cada card (25/09)
 
 **Pedido do Juliano (25/09, com print da Agenda):** *"adicionasse uma previsão de término do serviço … por ex. filipe 19:30 previsto termino 20:15 … pra eu pensar rápido"*.

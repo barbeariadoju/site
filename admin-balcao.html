@@ -50,6 +50,8 @@
 </div></div>
 <input type="hidden" id="balcao-payment" value="">
 
+<label class="admin-modal-notes">Como foi feito ✂️ <small>fica no cadastro e aparece no próximo atendimento</small><input type="text" id="balcao-style" maxlength="200" placeholder="Ex.: máquina 1 dos lados e 4 em cima · degradê alto navalhado · tudo na tesoura"></label><label class="admin-modal-notes">Observações <small>opcional</small><textarea id="balcao-notes" rows="2"></textarea></label>
+
 <div class="admin-inline-fields">
 <label>Data<input id="balcao-date" type="date"></label>
 <label>Horário aproximado<input id="balcao-time" type="time"></label>
@@ -58,7 +60,6 @@
 
 <label>Caixinha <small>opcional — o que o cliente deu por fora. Fica fora do faturamento e sai no comprovante com um agradecimento</small><input id="balcao-tip" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></label>
 
-<label class="admin-modal-notes">Como foi feito ✂️ <small>fica no cadastro e aparece no próximo atendimento</small><input type="text" id="balcao-style" maxlength="200" placeholder="Ex.: máquina 1 dos lados e 4 em cima · degradê alto navalhado · tudo na tesoura"></label><label class="admin-modal-notes">Observações <small>opcional</small><textarea id="balcao-notes" rows="2"></textarea></label>
 
 <label>Pontos de fidelidade extra <small>opcional — carimbos do cartão de papel de antes do sistema, além do ponto normal que este atendimento já credita sozinho</small><input id="balcao-loyalty-delta" type="number" min="-50" max="50" step="1" placeholder="0"></label>
 <label>Nº desta visita <small>opcional — contando desde antes do sistema. Ex.: se este é o 6º corte dele aqui, digite 6; a etiqueta (1ª visita/recorrente) passa a seguir esse número</small><input id="balcao-visit-number" type="number" inputmode="numeric" min="1" max="500" step="1"></label>
