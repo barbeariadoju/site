@@ -44,6 +44,11 @@ Deno.serve(async (req: Request) => {
     const servicePrice = Number.isFinite(Number(body?.service_price)) && Number(body?.service_price) >= 0 ? Number(body.service_price) : null
     const duration = Number.isInteger(Number(body?.duration_minutes)) && Number(body.duration_minutes) >= 10 && Number(body.duration_minutes) <= 240 ? Number(body.duration_minutes) : null
     const notes = body?.notes ? String(body.notes).trim().slice(0, 500) : null
+    // v29.239.0 (caso Sérgio): faixa de horário. A JuIA manda o teto quando o cliente já tem horário
+    // no dia e só quer ser avisado de vaga ANTES dele.
+    const hora = (v: unknown) => /^\d{2}:\d{2}$/.test(String(v || '')) ? String(v) : null
+    const timeStart = hora(body?.preferred_time_start)
+    const timeEnd = hora(body?.preferred_time_end)
 
     const url = Deno.env.get('SUPABASE_URL')!
     const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -67,6 +72,8 @@ Deno.serve(async (req: Request) => {
       duration_minutes: duration,
       preferred_date: preferredDate,
       preferred_period: period,
+      preferred_time_start: timeStart && timeEnd ? timeStart : null,
+      preferred_time_end: timeStart && timeEnd ? timeEnd : null,
       notes,
       source,
     }

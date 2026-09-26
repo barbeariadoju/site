@@ -460,10 +460,12 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 //     duas últimas foram engolidas pela pesquisa de satisfação pendente (corrigido no webhook, 29.223.0).
 //     Aqui, a parte da JuIA: com as mensagens chegando nela, a conversa fecha em horário.
 {
+  // A mensagem diz "sexta-feira": a data tem que ser uma sexta (com sexta falhava todo fim de semana).
+  const sexta = proxima(5) === hoje ? somar(hoje, 7) : proxima(5)
   const ctx = ctxCliente('Tiago Teste', { last_services: 'Corte de cabelo' })
-  const vagas = { [dia2]: ['09:00', '10:00', '14:00', '17:00', '17:15', '17:30', '18:00', '18:30', '19:00'] }
+  const vagas = { [sexta]: ['09:00', '10:00', '14:00', '17:00', '17:15', '17:30', '18:00', '18:30', '19:00'] }
   const r1 = await turno({ msg: 'Agendar horário', state: {}, ai: { intent: 'book', reply: 'Vamos marcar!', updates: {} }, contexto: ctx, vagas })
-  const r2 = await turno({ msg: `Sexta-feira dia ${dia2.slice(8, 10)}`, state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia2 } }, contexto: ctx, vagas })
+  const r2 = await turno({ msg: `Sexta-feira dia ${sexta.slice(8, 10)}`, state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sexta } }, contexto: ctx, vagas })
   checar('30a dia dito: pergunta o período ou já mostra horários', /manhã, tarde ou final do dia|\d{2}:\d{2}/.test(r2.reply), r2.reply)
   const r3 = await turno({ msg: 'Final do dia', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { period: 'evening' } }, contexto: ctx, vagas })
   checar('30b "final do dia": lista os horários do fim do dia', /17:00|18:00|18:30|19:00/.test(r3.reply) && !/manhã, tarde ou final do dia/.test(r3.reply), r3.reply)
@@ -561,6 +563,42 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r2 = await turno({ msg, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Juca Teste'),
     futuros: [{ id: 'b37', booking_date: hoje, start_time: '11:30:00', service_name: 'Corte de cabelo', status: 'confirmed' }], vagas: { [hoje]: ['11:45'] } })
   checar('37b com reserva hoje: confirma o horário dele', /11:30/.test(r2.reply) && !/11:45/.test(r2.reply), r2.reply)
+}
+
+// 38. Já agendado pedindo "se desmarcar mais cedo me avisa" (caso Sérgio, 25/09 10h32): entrou na lista do
+//     dia sem limite de hora, a JuIA respondeu só "você já está confirmado" e no dia seguinte ele recebeu a
+//     vaga das 11h30 — DEPOIS do horário dele — como "o horário que você estava esperando".
+{
+  const r = await turno({ msg: 'Caso tenha algum horario desmarcado para mais cedo pode me avisar que consigo ir.', state: { services: ['Corte + Barba na navalha com toalha quente'], date: amanha, time: '09:45' },
+    ai: { intent: 'other', reply: 'Você já está confirmado para amanhã às 09:45 (Corte + Barba na navalha com toalha quente). Pode vir tranquilo, te esperamos!' }, contexto: ctxCliente('Sergio Teste'),
+    futuros: [{ id: 'b38', booking_date: amanha, start_time: '09:45:00', service_name: 'Corte + Barba na navalha com toalha quente', status: 'confirmed' }] })
+  const wl = r.saidas.find((s: any) => s.url.includes('join-waitlist'))
+  checar('38 mais cedo: entra na lista com teto no horário dele', wl && wl.body?.preferred_time_end === '09:45', wl?.body || r.reply)
+  checar('38 mais cedo: resposta diz que avisa se abrir ANTES das 09:45', /antes das 09:45/.test(r.reply) && /aviso/i.test(r.reply), r.reply)
+}
+
+// 39. Pergunta de horário de funcionamento com oferta pendente (caso Gilvana, 25/09 13h10): "Vc fica até q horas
+//     aberto" levou a lista de horários de novo, e "Entendi" virou "Sim! hoje às 15:30 está livre".
+{
+  const base = { services: ['Corte de cabelo infantil'], date: hoje }
+  const hist = [{ role: 'assistant', content: 'Para Corte de cabelo infantil hoje, estes são os horários disponíveis: 15:30. Qual você prefere?' }]
+  const r1 = await turno({ msg: 'Vc fica até q horas aberto', state: base, history: hist,
+    ai: { intent: 'availability', reply: 'Para Corte de cabelo infantil hoje, estes são os horários disponíveis: 15:30. Qual você prefere?', updates: { date: hoje } }, contexto: ctxCliente('Gil Teste'), vagas: { [hoje]: ['15:30'] } })
+  checar('39a até que horas: responde o horário de funcionamento', /atendemos até (19|15)h|encerramos/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Entendi', state: { ...base, last_requested_time: '15:30' }, history: hist,
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { date: hoje, time: '15:30' } }, contexto: ctxCliente('Gil Teste'), vagas: { [hoje]: ['15:30'] } })
+  checar('39b "Entendi" não aceita o horário', !/está livre|confirmar esse agendamento/.test(r2.reply) && !reservou(r2) && /quando decidir/i.test(r2.reply), r2.reply)
+}
+
+// 40. "2 — quero remarcar" na confirmação de presença, depois só o horário (caso Guilherme, 26/09 07h39): o "15:00"
+//     caiu de volta no menu 1/2/3. O webhook agora deixa pending_reschedule_booking_id no estado; aqui, a parte da
+//     JuIA: hora solta = mesmo dia do horário que ele tem, e 15:00 depois do expediente vira o mais próximo.
+{
+  const futuros = [{ id: 'b40', booking_date: dia1, start_time: '11:30:00', service_name: 'Corte de cabelo + Barba Express', status: 'confirmed', duration_minutes: 60 }]
+  const r = await turno({ msg: '15:00', state: { pending_reschedule_booking_id: 'b40' },
+    history: [{ role: 'assistant', content: 'Sem problema! Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.' }],
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: { time: '15:00' } }, contexto: ctxCliente('Gui Teste'), futuros, vagas: { [dia1]: ['14:00', '14:30'] } })
+  checar('40 remarcar só com hora: fica no mesmo dia e oferece o mais próximo', /14:30/.test(r.reply) && !/Confirmo presença/.test(r.reply), r.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

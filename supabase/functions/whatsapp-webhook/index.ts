@@ -1178,6 +1178,16 @@ Deno.serve(async (request: Request) => {
               // Só orienta e devolve pro fluxo normal da JuIA — ela já sabe remarcar
               // (intent reschedule + phone_reschedule_booking, que desde a migration 090
               // marca o horário novo como confirmado).
+              // v29.239.0 (caso Guilherme, 26/09/2026, 07h39): ele mandou "2", recebeu este pedido e
+              // respondeu "15:00" — que caiu de novo AQUI (a confirmação continuava pendente) e voltou o
+              // menu 1/2/3. Mandou "2" outra vez, mesma coisa; o Juliano remarcou na mão. Deixando o
+              // pending_reschedule no estado, juiaAwaitingAnswer fica verdadeiro e a próxima fala vai
+              // pra JuIA, que remarca (hora solta = mesmo dia do horário dele).
+              try {
+                const { data: convRow } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+                const st = (convRow?.state && typeof convRow.state === 'object') ? convRow.state as Record<string, unknown> : {}
+                await admin.from('whatsapp_conversations').update({ state: { ...st, pending_reschedule_booking_id: pendingConfirmation.id, date: String(pendingConfirmation.booking_date).slice(0, 10), time: null, completed: false, last_question: { kind: 'reschedule', at: new Date().toISOString(), reply: 'Me diz o dia e o horário que ficam melhores' } }, updated_at: new Date().toISOString() }).eq('phone', phone)
+              } catch (e) { console.error('[whatsapp-webhook] pending_reschedule da confirmação', e) }
               await sendWhatsapp(phone, 'Sem problema! 🔄 Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.')
               return
             }
@@ -1286,7 +1296,7 @@ Deno.serve(async (request: Request) => {
           } else if (ambiguousShortReply && !isReschedule) {
             const pendingTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
             const pendingDayWord = String(pendingConfirmation.booking_date) === pendingTodaySP ? 'hoje' : 'amanhã'
-            await sendWhatsapp(phone, `Só pra eu não te perder na agenda 😊 Sobre seu horário de ${pendingDayWord} às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name}), me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌`)
+            await sendWhatsapp(phone, `Só pra eu não te perder na agenda: sobre o seu horário de ${pendingDayWord} às ${String(pendingConfirmation.start_time).slice(0, 5)} (${pendingConfirmation.service_name}), me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌`)
             return
           }
           // Mensagem longa/claramente sobre outro assunto — cai pro fluxo normal da JuIA.

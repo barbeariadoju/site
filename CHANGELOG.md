@@ -1,3 +1,21 @@
+## 29.239.0 — Revisão da JuIA de 26/09: lista de espera de quem já tem horário, remarcar pela confirmação, "Entendi", "até que horas" (26/09)
+
+**Origem:** plano do dia. O Juliano apontou o Sérgio e o Guilherme; a varredura das 40 h achou mais três.
+
+- **Sérgio (25-26/09) — o grave.** Agendado às 09:45, escreveu "caso tenha algum horário desmarcado para mais cedo pode me avisar". A JuIA o pôs na lista de espera **do dia inteiro, sem teto de hora**, e respondeu só "você já está confirmado". Na manhã seguinte o Guilherme remarcou das 11:30 para as 14:30, o gatilho ofereceu **as 11:30 (depois do horário dele)** como "o horário que você estava esperando", e um "sim" teria criado **um segundo agendamento** (`phone_confirm_waitlist_booking` sempre criava). O Juliano pediu desculpas na mão.
+  - Banco (migração 176): `waitlist_matches_for_slot` não casa quem já tem horário ativo no dia com vaga que começa no horário dele ou depois; `phone_confirm_waitlist_booking` **move** o horário existente do mesmo dia (`phone_reschedule_booking`, com todas as validações) em vez de criar outro. Conferido com os dados reais: 11:30 bloqueado, 08:15 liberado.
+  - JuIA: com horário no dia, a lista entra com `preferred_time_end` = horário dele (o `join-waitlist` passou a aceitar a faixa) e a resposta diz "se abrir um horário antes das 09:45, eu te aviso e, se quiser, passo o seu para mais cedo".
+  - `whatsapp-lead-followup`: para quem já tem horário no dia, a oferta diz "abriu um horário mais cedo… quer que eu passe o seu para as X? Se for não, o das Y continua garantido"; vaga igual ou depois do horário dele volta a lista em silêncio.
+  - A entrada do Sérgio foi cancelada na mão hoje às 8h e poucos minutos.
+- **Guilherme (26/09, 07h38).** Respondeu "2 — quero remarcar" à confirmação, recebeu "me diz o dia e o horário", mandou "15:00" — e voltou o menu 1/2/3 (a confirmação continuava pendente e o "15:00" caiu de novo no interceptador). Mandou "2" outra vez, mesma coisa; o Juliano remarcou na mão. Agora o "2" grava `pending_reschedule_booking_id` + o dia do horário no estado: a próxima fala vai pra JuIA, que remarca (hora solta = mesmo dia) e, se a hora não existe (sábado 15h), oferece a mais próxima. Também: "Só pra eu não te perder na agenda Sobre seu horário" (o emoji tirado deixava a frase sem pontuação) virou "na agenda: sobre o seu horário"; "não está disponível em terça" virou "na terça".
+- **Gilvana (25/09, 13h10).** "Vc fica até q horas aberto" levou a lista de horários de novo, sem resposta — e "Entendi" virou "Sim! hoje às 15:30 está livre, quer incluir mais alguma coisa?". "Até que horas / que horas fecha" agora responde o expediente do dia; "Entendi" (e "hum", "saquei", "ata") é recibo: o horário do modelo não entra e a resposta é "Combinado. Quando decidir, é só me dizer o horário que eu reservo."
+- **Paulo (26/09).** 08h00 "abriu vaga de novo hoje, quer que eu reserve?" e 08h15 "acabamos não fechando, pode me dizer o motivo?". A trava de uma mensagem por telefone só valia dentro da mesma rodada do cron. Agora nudge e pesquisa esperam se o último recado nas 3 h foi do robô sem resposta, e a pesquisa de motivo não sai nas 24 h depois de um "abriu vaga de novo".
+- **Lucas (26/09, 00h38)** recebeu "Bom dia". Entre 0h e 5h a saudação é "Boa noite".
+
+**Ficou de fora, anotado:** a JuIA respondeu o aviso automático de entrega da maquininha como se fosse cliente ("Bom dia, Juliano! Entendi…") — inofensivo, o número é de empresa.
+
+Simulador: cenários 38, 39 e 40 (110 ok). O cenário 30 falhava todo fim de semana (a mensagem diz "sexta-feira" e a data era a do próximo dia útil) — agora usa uma sexta de verdade.
+
 ## 29.238.0 — Clube do Ju sai sem a Cadeira Cativa; contrato v2 (25/09)
 
 **Decisão do Juliano (25/09, depois da análise dos 30 dias):** *"Eu tô achando que o clube do Ju vai achatar a renda pra baixo"* → mostrei a conta → *"Então tira este cadeira cativa do plano"*.

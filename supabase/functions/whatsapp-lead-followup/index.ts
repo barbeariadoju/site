@@ -80,6 +80,19 @@ Deno.serve(async (request: Request) => {
   // com a sua regra certa, somando duas mensagens seguidas. Uma mensagem por telefone por rodada: o
   // que não saiu agora sai na próxima, se ainda fizer sentido.
   const jaMandouNestaRodada = new Set<string>()
+  // v29.239.0 — caso Paulo (26/09/2026): 08h00 "Abriu vaga de novo hoje… quer que eu reserve?" e, na rodada
+  // seguinte, 08h15, "acabamos não fechando o agendamento, pode me dizer o motivo?". A trava acima só vale
+  // dentro da mesma rodada. Robô que falou com o cliente nas últimas 3 h sem resposta dele: nudge e
+  // pesquisa esperam.
+  const roboFalouHaPouco = async (phone: string): Promise<boolean> => {
+    const chave = chaveFone(phone)
+    if (chave.length !== 8) return false
+    const { data } = await admin.from('whatsapp_messages').select('direction, sent_by')
+      .like('phone', `%${chave}`).gte('created_at', new Date(Date.now() - 3 * 3600 * 1000).toISOString())
+      .order('created_at', { ascending: false }).limit(1)
+    const ultima = data && data[0]
+    return Boolean(ultima && ultima.direction === 'out' && ultima.sent_by === 'bot')
+  }
   const chaveFone = (raw: string) => String(raw || '').replace(/\D/g, '').slice(-8)
   const sendWhatsapp = async (to: string, textBody: string) => {
     const number = toWhatsNumber(to)
@@ -171,7 +184,21 @@ Deno.serve(async (request: Request) => {
       const name = firstName(offer.customer_name)
       const dateLabel = formatDateBR(offer.offered_date)
       const timeLabel = String(offer.offered_start_time).slice(0, 5)
-      await sendWhatsapp(offer.customer_phone, `Boa notícia${name ? `, ${name}` : ''}! 🎉 Abriu uma vaga pra ${dateLabel} às ${timeLabel}${offer.service_name ? ` (${offer.service_name})` : ''} — o horário que você estava esperando. Ainda quer? Responda *sim* ou *não*.`)
+      // v29.239.0 (caso Sérgio, 26/09/2026): quem já tem horário no dia só recebe vaga ANTES dele (o banco
+      // filtra, migração 176) e a mensagem diz o que acontece no "sim": o horário dele é passado pra mais
+      // cedo, não vira um segundo agendamento.
+      const chaveOf = String(offer.customer_phone || '').replace(/\D/g, '').slice(-8)
+      const { data: jaNoDia } = await admin.from('bookings').select('start_time').eq('phone_key', chaveOf)
+        .eq('booking_date', offer.offered_date).in('status', ['pending', 'confirmed']).order('start_time').limit(1)
+      const atual = jaNoDia && jaNoDia[0] ? String(jaNoDia[0].start_time).slice(0, 5) : null
+      if (atual && atual <= timeLabel) {
+        await admin.from('waitlist').update({ status: 'esperando', offered_date: null, offered_start_time: null, notified_at: null, updated_at: new Date().toISOString() }).eq('id', offer.id)
+        waitlistOfferSkipped++
+        continue
+      }
+      await sendWhatsapp(offer.customer_phone, atual
+        ? `Olá${name ? `, ${name}` : ''}. Abriu um horário mais cedo no dia ${dateLabel}: às ${timeLabel}, antes do seu das ${atual}. Quer que eu passe o seu horário para as ${timeLabel}? Responda *sim* ou *não* — se for não, o das ${atual} continua garantido.`
+        : `Boa notícia${name ? `, ${name}` : ''}! Abriu uma vaga pra ${dateLabel} às ${timeLabel}${offer.service_name ? ` (${offer.service_name})` : ''} — o horário que você estava esperando. Ainda quer? Responda *sim* ou *não*.`)
       await admin.from('waitlist').update({ notified_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', offer.id)
       waitlistOfferSent++
     } catch (error) {
@@ -289,7 +316,7 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of stage0Leads || []) {
     try {
-      if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
+      if (jaMandouNestaRodada.has(chaveFone(lead.phone)) || await roboFalouHaPouco(lead.phone)) continue
       // v29.71.0: a query acima usa o limiar curto (30 min) pra alcançar o booking_intent;
       // os outros kinds só entram quando completam as 2h de sempre.
       if (lead.kind !== 'booking_intent' && now - new Date(lead.last_message_at).getTime() < NUDGE1_AFTER_MS) continue
@@ -347,7 +374,7 @@ Deno.serve(async (request: Request) => {
   // --- Estágio 2 (só price_or_service/availability): pesquisa de motivo, dia seguinte ---
   const { data: stage1Leads, error: stage1Error } = await admin
     .from('conversation_leads')
-    .select('phone, service_interest, last_message_at, followup_1_sent_at, kind')
+    .select('phone, service_interest, last_message_at, followup_1_sent_at, kind, slot_reopened_notified_at')
     .eq('followup_stage', 1)
     .is('resolved_at', null)
     .neq('kind', 'greeting')
@@ -359,7 +386,9 @@ Deno.serve(async (request: Request) => {
 
   for (const lead of stage1Leads || []) {
     try {
-      if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
+      if (jaMandouNestaRodada.has(chaveFone(lead.phone)) || await roboFalouHaPouco(lead.phone)) continue
+      // Acabou de receber "abriu vaga de novo" (vaga reaberta): perguntar por que não fechou não cabe.
+      if (lead.slot_reopened_notified_at && now - new Date(lead.slot_reopened_notified_at).getTime() < 24 * 3600 * 1000) continue
       // v29.43.0 — fila unica de perguntas numeradas: este follow-up tem opcoes 1-4; se o
       // telefone ja tem pesquisa/convite/confirmacao sem resposta, espera o proximo cron.
       {

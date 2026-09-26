@@ -354,7 +354,8 @@ const includesAny=(text:string,terms:string[])=>terms.some(term=>text.includes(t
 // garantir que "Bom dia/Boa tarde/Boa noite" nunca saia errado.
 const greetingNow=()=>{
  const hour=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false}).format(new Date()))
- return hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite'
+ // v29.239.0 (caso Lucas, 26/09 00h38): de madrugada é "Boa noite", não "Bom dia".
+ return hour<5?'Boa noite':hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite'
 }
 
 const extractRequestedTime=(text='')=>{
@@ -1056,6 +1057,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.222.0 (caso Marcello): o modelo também não repõe um dia que já passou.
  if(ai.updates&&typeof ai.updates.date==='string'&&ai.updates.date.slice(0,10)<today())delete ai.updates.date
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
+ // v29.239.0 (caso Gilvana, 25/09/2026, 13h11): depois de "hoje tenho 15:30", ela respondeu "Entendi" e a
+ // JuIA devolveu "Sim! hoje às 15:30 está livre… Quer incluir mais alguma coisa?" — o modelo tratou a
+ // concordância como escolha. "Entendi" é recibo, não é sim: o horário não entra e a conversa fica com ela.
+ const soRecibo=/^(entendi+|entendo|hum+|hm+|saquei|compreendi|ah? ?entendi|ata|ah ta|certo,? entendi)[.!\s]*$/.test(normalize(message).trim())
+ if(soRecibo&&!state?.completed)next.time=state?.time||null
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  // v29.212.0 — caso Sr. Magno (16/09/2026, 15h16): "limpeza de pelos das orelhas e nas narinas.
  // Pergunto: você faz pintura nos cabelos?" — a Pigmentação entrou na reserva (R$ 140, 145 min) só
@@ -2442,7 +2448,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      actions=[{label:'Sim, remarcar',message:'Sim, pode remarcar'},{label:'Não, manter',message:'Não, manter o horário atual'}]
      handoff=false
     }else if(allSlots.length){
-     reply=`${time} não está disponível em ${formatDateBR(next.date)}, mas consigo te atender ${slotsPhrase(allSlots)}. Algum desses serve?`
+     reply=`${time} não está disponível ${emDia(next.date)}, mas consigo te atender ${slotsPhrase(allSlots)}. Algum desses serve?`
      actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
      next.time=null
      handoff=false
@@ -2609,6 +2615,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=`Para te colocar na lista de espera, preciso de ${missing.join(' e ')}.`
     handoff=false
    }else{
+    // v29.239.0 (caso Sérgio, 25-26/09/2026): já agendado às 09:45, pediu "caso tenha algum horário
+    // desmarcado para mais cedo pode me avisar". Entrou na lista do DIA INTEIRO, sem teto de hora, e na
+    // manhã seguinte recebeu a vaga das 11:30 (depois da dele) como "o horário que você estava esperando".
+    // Um "sim" teria criado um SEGUNDO agendamento. Quem já tem horário no dia só espera horário ANTES
+    // dele (o banco também garante: waitlist_matches_for_slot, migração 176).
+    const jaNoDia=upcomingBookings.filter((b:any)=>b.booking_date===offer.date&&['pending','confirmed',undefined].includes(b.status)).sort((a:any,b:any)=>String(a.start_time).localeCompare(String(b.start_time)))[0]
+    const tetoWl=jaNoDia?String(jaNoDia.start_time).slice(0,5):null
     let wlOk=false
     try{
      const wlResp=await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/join-waitlist`,{
@@ -2618,7 +2631,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        customer_name:wlName,
        customer_phone:wlPhone,
        preferred_date:offer.date,
-       preferred_period:offer.period||'qualquer',
+       preferred_period:['manha','tarde'].includes(offer.period)&&!tetoWl?offer.period:'qualquer',
+       ...(tetoWl?{preferred_time_start:'00:00',preferred_time_end:tetoWl}:{}),
        service_name:offer.service_name,
        service_price:offer.service_price,
        duration_minutes:offer.duration_minutes,
@@ -2628,7 +2642,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      const wlData=await wlResp.json().catch(()=>({}))
      wlOk=wlResp.ok&&Boolean(wlData?.ok)
     }catch(error){console.error('[ju-ia-site] join_waitlist',error)}
-    reply=wlOk
+    reply=wlOk&&tetoWl
+     ?`Combinado, ${firstName(wlName)}. Seu horário ${emDia(offer.date)} às ${tetoWl} continua garantido. Se abrir um horário antes das ${tetoWl}, eu te aviso por aqui e, se você quiser, passo o seu para mais cedo.`
+     :wlOk
      ?`Prontinho, ${firstName(wlName)}! Te coloquei na lista de espera pra ${formatDateBR(offer.date)}${offer.service_name?` (${offer.service_name})`:''}. Assim que abrir uma vaga, eu te aviso por aqui.`
      :'Não consegui te colocar na lista de espera agora. Pode tentar de novo em instantes, ou fale com o Juliano.'
     handoff=false
@@ -3455,7 +3471,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  // "voces atendem hoje?" / "aberto ainda?" / "socorro, aberto?": primeiro diz se esta aberto
  // e ate que horas, depois segue o fluxo normal (o restante da resposta continua).
- const openTodayAsk=/\b(atende[m]? hoje|atendendo hoje|aberto (ainda|hoje|agora)|abertos? (ainda|hoje|agora)|funciona hoje|abre hoje|est[ãa]o abertos?|ainda da p(ra|ara)? atender|ainda atende)\b/.test(normalizedQuestion)
+ // v29.239.0 (caso Gilvana, 25/09/2026, 13h10): "Vc fica até q horas aberto" levou a lista de horários de
+ // novo, sem resposta — pergunta de cliente nunca fica sem resposta. "Até que horas", "que horas fecha".
+ const openTodayAsk=/\b(atende[m]? hoje|atendendo hoje|aberto (ainda|hoje|agora)|abertos? (ainda|hoje|agora)|funciona hoje|abre hoje|est[ãa]o abertos?|ainda da p(ra|ara)? atender|ainda atende|ate q(ue)? horas?|que horas? (voce |vc |voces |vcs )?(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate)\b/.test(normalizedQuestion)
  if(openTodayAsk&&!/\b(amanh[ãa]|s[áa]bado|domingo|segunda|ter[çc]a|quarta|quinta|sexta|feriado)\b/.test(normalizedQuestion)){
   const wd=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay()
   const hourNow=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
@@ -3465,7 +3483,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   if(fechadoHoje)aviso='Hoje estamos excepcionalmente fechados.'
   else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h.'
   else if(hourNow>=limite)aviso=`Hoje já encerramos — atendemos até ${limite}h.`
-  else aviso=`Sim, hoje atendemos até ${limite}h!`
+  else aviso=/ate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
   avisoAbertoHoje=aviso
  }
  // v29.43.0 — ADIAMENTO/DESISTENCIA (caso Bruno, 15/08, 11:28): depois de nao conseguir o
@@ -4905,6 +4923,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   reply=`${linhaPreco(chosen)}\n\n${reply}`.trim()
  }
 
+ if(soRecibo&&!next.completed&&!handoff&&!['cancel','reschedule','change_service','update_products','join_waitlist'].includes(intent)){
+  reply='Combinado. Quando decidir, é só me dizer o horário que eu reservo.'
+  actions=[]
+  intent='other'
+ }
  // v29.43.2: "voces atendem hoje?" — o aviso de aberto/fechado entra por ultimo, porque os blocos
  // de fluxo (ex.: "qual servico?") reescrevem o reply inteiro no meio do caminho.
  if(avisoAbertoHoje&&!handoff&&!/atendemos até|estamos fechados|já encerramos|excepcionalmente fechados/i.test(reply)){
