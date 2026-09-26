@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barbearia do Ju — placa "na barbearia" A4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ebdb; --ink: #17140f; --ink-soft: #4a4338;
+    --gold: #b8873f; --gold-text: #8a6120; --gold-soft: #d6b06f; --red: #b8322c;
+    --pix: #2f9e8f;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #888; }
+  body { font-family: Inter, "InterFallback", system-ui, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .page {
+    position: relative; width: 210mm; height: 297mm; margin: 0 auto;
+    background: var(--paper); overflow: hidden;
+    display: flex; flex-direction: column; padding: 13mm 16mm 14mm;
+  }
+  @media screen { .page { margin: 12mm auto; box-shadow: 0 10px 40px rgba(0,0,0,.35); } }
+  .frame { position: absolute; inset: 8mm; pointer-events: none; border: 0.6mm solid var(--ink); }
+  .frame::after { content: ""; position: absolute; inset: 1.6mm; border: 0.25mm solid var(--gold); }
+  .corner { position: absolute; width: 9mm; height: 9mm; pointer-events: none; }
+  .corner::before, .corner::after { content: ""; position: absolute; background: var(--ink); }
+  .corner::before { width: 9mm; height: 0.6mm; }
+  .corner::after { width: 0.6mm; height: 9mm; }
+  .corner.tl { top: 8mm; left: 8mm; } .corner.tr { top: 8mm; right: 8mm; transform: scaleX(-1); }
+  .corner.bl { bottom: 8mm; left: 8mm; transform: scaleY(-1); } .corner.br { bottom: 8mm; right: 8mm; transform: scale(-1); }
+
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 3mm; }
+  .brand img { width: 58mm; height: auto; display: block; }
+  .tagline { font-size: 9.5pt; letter-spacing: .3em; text-transform: uppercase; font-weight: 600; color: var(--ink-soft); }
+
+  .rule { display: flex; align-items: center; gap: 4mm; margin: 7mm 0 5mm; }
+  .rule::before, .rule::after { content: ""; flex: 1; height: 0.35mm; background: var(--ink); opacity: .75; }
+  .rule span { font-size: 9.5pt; letter-spacing: .28em; text-transform: uppercase; font-weight: 700; color: var(--ink-soft); }
+
+  /* Avaliação: texto à esquerda, QR à direita */
+  .review { display: grid; grid-template-columns: 1fr 60mm; gap: 10mm; align-items: center; }
+  .review h1 {
+    font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 42pt;
+    line-height: 0.92; letter-spacing: .02em; margin: 0; text-wrap: balance;
+  }
+  .review h1 .accent { color: var(--gold-text); }
+  .stars { display: inline-flex; gap: 2mm; margin: 4mm 0 3mm; }
+  .stars svg { width: 6.2mm; height: 6.2mm; fill: var(--gold); display: block; }
+  .nota { margin: 0; font-size: 14pt; font-weight: 800; }
+  .review p.body { margin: 2.5mm 0 0; font-size: 11pt; line-height: 1.45; color: var(--ink-soft); max-width: 92mm; }
+  .review p.body b { color: var(--ink); }
+
+  .qr { position: relative; background: #fff; border: 0.6mm solid var(--ink); box-shadow: 0 2.5mm 6mm rgba(23,20,15,.16); padding: 3.5mm; }
+  .qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+  .qr .badge {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 22%; height: 22%; border-radius: 50%; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 0.5mm #fff;
+  }
+  .qr .badge svg { width: 68%; height: 68%; display: block; }
+  .review .qr { width: 60mm; }
+
+  /* Enquanto você está aqui: grade 2×2 com filetes, sem caixas */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 0.35mm solid var(--ink); border-bottom: 0.35mm solid var(--ink); }
+  .item { display: grid; grid-template-columns: 38mm 1fr; gap: 5mm; align-items: center; padding: 5mm 4mm; }
+  .item:nth-child(2n) { border-left: 0.25mm solid var(--gold-soft); }
+  .item:nth-child(n+3) { border-top: 0.25mm solid var(--gold-soft); }
+  .item .qr { width: 38mm; padding: 2.5mm; box-shadow: 0 1.5mm 4mm rgba(23,20,15,.14); }
+  .item h2 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 22pt; letter-spacing: .03em; line-height: 1; margin: 0 0 1.5mm; display: flex; align-items: center; gap: 2.2mm; }
+  .item h2 svg { width: 6mm; height: 6mm; flex: none; }
+  .item p { margin: 0; font-size: 10.5pt; line-height: 1.4; color: var(--ink-soft); overflow-wrap: normal; word-break: keep-all; }
+  .item p b { color: var(--ink); font-weight: 700; }
+
+  .footer { margin-top: auto; padding-top: 5mm; display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; border-top: 0.35mm solid var(--ink); }
+  .footer .hours { font-size: 10pt; line-height: 1.5; color: var(--ink-soft); flex: 1 1 auto; white-space: nowrap; }
+  .footer .hours b { display: block; color: var(--ink); font-weight: 800; font-size: 11.5pt; }
+  .footer .cafe { font-size: 10pt; letter-spacing: .3em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); text-align: right; max-width: 70mm; }
+  .footer .cafe small { display: block; letter-spacing: .04em; text-transform: none; font-weight: 500; color: var(--ink-soft); font-size: 9pt; margin-top: 1mm; line-height: 1.4; }
+</style>
+</head>
+<body>
+<section class="page" id="placa">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+  <div class="brand">
+    <img src="marca-selo.png" alt="Barbearia do Ju">
+    <div class="tagline">Hora marcada · Um cliente por vez</div>
+  </div>
+
+  <div class="rule"><span>Antes de ir embora</span></div>
+
+  <div class="review">
+    <div>
+      <h1>Se o corte ficou bom,<br><span class="accent">deixe sua avaliação.</span></h1>
+      <div class="stars" aria-label="cinco estrelas">
+        <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg>
+      </div>
+      <p class="nota">Nota 5,0 no Google.</p>
+      <p class="body">Aponte a câmera e avalie no Google. Leva <b>menos de um minuto</b> e ajuda quem ainda não conhece a decidir.</p>
+    </div>
+    <div class="qr">
+      <img src="qrh-avaliar.png" alt="QR Code para avaliar no Google">
+      <span class="badge"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
+    </div>
+  </div>
+
+  <div class="rule"><span>Enquanto você está aqui</span></div>
+
+  <div class="grid">
+    <div class="item">
+      <div class="qr">
+        <img src="qrh-wifi.png" alt="QR Code do Wi-Fi">
+        <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#17140f" stroke-width="2" stroke-linecap="round"><path d="M2.5 9a14 14 0 0 1 19 0"/><path d="M5.8 12.3a9.5 9.5 0 0 1 12.4 0"/><path d="M9 15.6a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1.3" fill="#17140f" stroke="none"/></svg></span>
+      </div>
+      <div>
+        <h2>Wi-Fi</h2>
+        <p>Rede <b>@barbeariadoju_</b><br>Senha <b>Barbearia_2026</b></p>
+      </div>
+    </div>
+    <div class="item">
+      <div class="qr"><img src="qr-pix.png" alt="QR Code Pix"></div>
+      <div>
+        <h2><svg viewBox="0 0 24 24" fill="none" stroke="#2f9e8f" stroke-width="2" stroke-linejoin="round"><path d="M12 2.8 21.2 12 12 21.2 2.8 12z"/><path d="M8.2 12 12 8.2 15.8 12 12 15.8z" fill="#2f9e8f" stroke="none"/></svg>Pix</h2>
+        <p>Chave <b>contato@<wbr>barbeariadoju.com.br</b><br>Juliano Bruno Lopes Padilha · PicPay</p>
+      </div>
+    </div>
+    <div class="item">
+      <div class="qr">
+        <img src="qrh-instagram.png" alt="QR Code do Instagram">
+        <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#17140f" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.2" fill="#17140f" stroke="none"/></svg></span>
+      </div>
+      <div>
+        <h2>Instagram</h2>
+        <p><b>@barbeariadoju_</b><br>Cortes, novidades e inspirações</p>
+      </div>
+    </div>
+    <div class="item">
+      <div class="qr">
+        <img src="qrh-servicos.png" alt="QR Code do catálogo de serviços">
+        <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#17140f" stroke-width="2" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="3"/><circle cx="6.5" cy="17.5" r="3"/><path d="M8.7 8.7 21 20M8.7 15.3 21 4"/></svg></span>
+      </div>
+      <div>
+        <h2>Catálogo de serviços</h2>
+        <p>Todos os preços e durações<br><b>barbeariadoju.com.br/<wbr>servicos</b></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="hours">Terça a sexta, 8h às 19h · Sábado, 8h às 15h<b>WhatsApp (11) 96707-3038</b></div>
+    <div class="cafe">Café cortesia<small>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista</small></div>
+  </div>
+</section>
+</body>
+</html>
