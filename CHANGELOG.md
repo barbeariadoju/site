@@ -1,3 +1,30 @@
+## 29.241.0 — Senha Digital: quem chega sem agendamento entra na fila pelo QR da parede (26/09)
+
+**Origem (Juliano, sábado 26/09):** atendia o Sérgio com a agenda vazia; entraram o Mateus e o Anderson sem hora e sentaram. *"Se alguém agendar agora, chega e tem os caras para cortar, como eu faço?"* A câmera não resolve: ela vê corpos, não intenção (o acompanhante é o caso clássico). A causa é uma só — **quem entra pela porta não existe pra agenda**, e o site continua oferecendo o horário. Ele pediu a "senha digital": plaquinha com QR, o cliente aponta, faz o que precisa e *"bingo, agenda e a gente chama na sequência"*.
+
+**Como funciona:**
+- Placa A4 "Veio sem agendamento? Pegue sua senha digital" (`impressos/`, branch `arte/placas-a4`) com QR para `/senha/`.
+- A página pede nome, WhatsApp e serviço (catálogo do site) e chama a function **`senha-digital`** (`action:'criar'`). No banco, **`senha_digital_criar`** (migração 179) pega um `pg_advisory_xact_lock`, escolhe o **primeiro horário livre de hoje** por `get_available_slots_excluding` (buffer de 15 min, bloqueios da câmera, descanso a cada 4, fechamento) e cria pelo **`create_public_booking_v15`** — herda todas as validações e gatilhos (cliente bloqueado, telefone canônico, preço vigente, Clube). Depois marca `channel='porta'`, o **`senha_numero`** do dia e `arrival_route_sent_at` (a pessoa já está aqui; nada de rota do Maps).
+- O site **deixa de oferecer aquele horário na mesma hora** — é um agendamento como qualquer outro. Dois QR ao mesmo tempo: o segundo espera o lock e pega o horário seguinte.
+- WhatsApp na hora: *"Sua senha na Barbearia do Ju é a 3. Corte de cabelo, com previsão para as 14:50. Há 2 pessoas antes de você. Pode dar uma volta no centro. Aviso por aqui quando você for o próximo."* + link de acompanhamento (`/senha/#c=CODE&t=TOKEN` — fragmento, não vai a servidor nem a log; mesmo esquema de código+token do meu-agendamento).
+- **"Você é o próximo"**: function **`senha-proximo`**, cron `bdj-senha-proximo` a cada minuto (8h–19h). Regra em `_shared/senha-digital.ts` (`ehProximo`): ninguém com horário ativo começando antes do meu e ainda não terminado. Horário que passou do fim sem "Concluir" conta como acabado — senão o aviso nunca sairia. Marca `proximo_avisado_at` com reserva otimista, como o aviso de chegada. Quem pegou senha sem ninguém na frente já é avisado na própria mensagem da senha.
+- A página mostra a posição ao vivo (consulta `action:'status'` a cada 30 s; sem realtime, como o resto do site), "Atualizar agora" e "Cancelar minha senha" (usa o `manage-booking` com o mesmo code+token).
+- Painel: card da Agenda ganha o selo **🚶 Porta · senha N** (`admin-v15-4-agenda.js?v=29.241.0`; o core já lê `*`).
+- Push pro Juliano na criação: "Senha 3: Mateus (Corte de cabelo) · previsão 14:50 · 2 na frente".
+
+**Decisões (assumidas e avisadas ao Juliano):**
+- **Sem sinal de 50%** na porta (a pessoa está na loja) e **sem `booking-email`** (a confirmação padrão do site seria a terceira mensagem em um minuto). Só senha + próximo + comprovante de sempre.
+- **Uma senha ativa por telefone por dia** (`phone_match_key`): o segundo pedido devolve a mesma senha com link novo, em vez de criar outra.
+- **Sem horário hoje** (fechou, lotou, domingo/segunda): não cria; a página oferece agendar outro dia e o WhatsApp.
+- "Você é o próximo" **fura o `juia_quiet_now()`** como o aviso de chegada: é resposta a uma ação do cliente, no mesmo dia, dentro da loja; guarda própria 8h–20h. Exceção estreita, documentada aqui.
+- `bookings_block_guard` passou a incluir `'porta'` (o insert nasce como `site` e vira `porta` depois, então já era coberto; fica explícito).
+
+**Ficou de fora, anotado:** interceptador no `whatsapp-webhook` (a mensagem não faz pergunta; texto livre cai na JuIA, que já sabe "estou aqui/cheguei"); limite por IP; contagem "site vs. balcão vs. porta" nos relatórios.
+
+**Também hoje:** placas A4 pra imprimir (senha, avaliação, Wi-Fi, Pix, agendar e a placa unificada "na barbearia") e o selo da marca refeito em 1200 px com as bases dos postes sólidas — o PNG do site tinha buracos no alfa (`impressos/selo-hd.py`).
+
+Testes: `tests/unit/senha-digital.spec.js` (11); function testada no ar depois do fechamento (`criar` → 409 `sem_horario`, `status` inválido → 404, campos → 400); `functions list` confirma verify_jwt (senha-digital true, senha-proximo false); cron ativo. Migração 179 aplicada pelo MCP.
+
 ## 29.240.0 — Sinal de 50% depois de dois cancelamentos em cima da hora (26/09)
 
 **Pedido do Juliano (26/09):** *"cliente cancelou 2x seguidas só remarca com pagamento de 50%"*. Dei a opinião com dois ajustes e ele aprovou: *"pode montar do jeito que vc sugeriu"*.

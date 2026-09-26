@@ -200,3 +200,11 @@ verify_jwt = true
 # v29.233.0 — Clube do Ju: rotina (cron) — x-webhook-secret conferido no código.
 [functions.clube-ciclo]
 verify_jwt = false
+
+# v29.241.0 — Senha Digital: página pública /senha/ (chave publicável no header, como o site).
+[functions.senha-digital]
+verify_jwt = true
+
+# v29.241.0 — "você é o próximo" (cron bdj-senha-proximo, x-webhook-secret conferido no código).
+[functions.senha-proximo]
+verify_jwt = false
