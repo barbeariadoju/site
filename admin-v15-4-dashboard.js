@@ -98,6 +98,8 @@
     // ---- Clientes com ausência ----
     const alerts=$('dashboard-alerts'),noShows=customers.filter(c=>c.noShows>0).sort((a,b)=>b.noShows-a.noShows).slice(0,5);alerts.innerHTML=noShows.length?noShows.map(c=>`<div class="admin-alert-row"><span>${esc(c.name)}</span><strong>${c.noShows} ausência${c.noShows>1?'s':''}</strong></div>`).join(''):BDJ_UX.empty('Nenhuma ausência registrada.');
     const bb=$('today-balcao');if(bb&&!bb.dataset.bound){bb.dataset.bound='1';bb.onclick=openBalcaoInline}
+    // v29.242.0 — Abrir/Fechar a barbearia (admin-v15-4-expediente.js). Guardado: a tela não pode cair se o módulo não carregar.
+    if(typeof renderExpediente==='function')renderExpediente(today,ehHoje).catch(e=>console.error('[expediente]',e));
     $('today-refresh')?.addEventListener('click',async e=>{const b=e.currentTarget;BDJ_UX.setBusy(b,true,'Atualizando…');try{await loadBaseData();renderDashboard()}finally{BDJ_UX.setBusy(b,false)}},{once:true});
   }
   // v29.179.0 — BALCÃO DENTRO DA TELA HOJE (pedido do Juliano: "arruma tudo o que faltou"). O botão

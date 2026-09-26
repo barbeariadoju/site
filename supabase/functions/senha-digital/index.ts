@@ -161,7 +161,16 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true, existente: true, code: atual.booking_code, token: managementToken, senha: await situacao(admin, atual) })
       }
       if (msg.includes('sem_horario')) {
-        return json({ ok: false, motivo: 'sem_horario', error: 'Não há mais horário para hoje. Você pode agendar outro dia pelo site ou falar com o Juliano no WhatsApp.' }, 409)
+        // v29.242.0 — se o Juliano fechou mais cedo (Abrir/Fechar), diz isso em vez de "não há horário".
+        let texto = 'Não há mais horário para hoje. Você pode agendar outro dia pelo site ou falar com o Juliano no WhatsApp.'
+        try {
+          const { data: exp } = await admin.rpc('expediente_hoje')
+          if (exp?.fechado_em) {
+            const h = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(new Date(exp.fechado_em))
+            texto = `A barbearia já fechou hoje, às ${h}. Você pode agendar outro dia pelo site ou falar com o Juliano no WhatsApp.`
+          }
+        } catch (expErr) { console.error('[senha-digital] expediente', expErr) }
+        return json({ ok: false, motivo: 'sem_horario', error: texto }, 409)
       }
       if (msg.includes('cliente_bloqueado')) {
         return json({ error: 'Não foi possível gerar a senha por aqui. Fale com o Juliano no balcão.' }, 400)

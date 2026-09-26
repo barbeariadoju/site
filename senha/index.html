@@ -33,6 +33,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .senha-form input,.senha-form select{font:inherit;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:inherit;min-height:52px}
   .senha-form input:focus-visible,.senha-form select:focus-visible{outline:2px solid #c89b55;outline-offset:2px}
   .senha-form small.erro{color:#f2b8b5;font-weight:500}
+  /* Serviços: os mesmos nomes e preços do carrinho do site, em botões de toque (44px+). */
+  .senha-servicos-bloco{display:flex;flex-direction:column;gap:8px;font-weight:600}
+  .senha-servicos-titulo small{font-weight:500;color:#b8b2a5}
+  .senha-servicos{display:flex;flex-direction:column;gap:10px}
+  .senha-servicos h3{margin:6px 0 0;font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:#c89b55;font-weight:700}
+  .senha-servicos .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .senha-chip{font:inherit;font-weight:500;text-align:left;min-height:44px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px;max-width:100%}
+  .senha-chip small{color:#b8b2a5;font-weight:500;white-space:nowrap}
+  .senha-chip[aria-pressed="true"]{border-color:#c89b55;background:rgba(200,155,85,.16);box-shadow:inset 0 0 0 1px #c89b55}
+  .senha-chip[aria-pressed="true"]::before{content:"✓";font-weight:800;color:#c89b55}
+  .senha-chip:focus-visible{outline:2px solid #c89b55;outline-offset:2px}
+  .senha-resumo{margin:2px 0 0;font-weight:600}
+  .senha-regra{color:#e9d7b2;font-weight:500;line-height:1.45}
   .senha-status{margin-top:8px;padding:22px 20px;border-radius:16px;border:1px solid rgba(200,155,85,.45);background:rgba(200,155,85,.08)}
   .senha-status .rotulo{font-size:.78rem;letter-spacing:.24em;text-transform:uppercase;color:#c89b55;font-weight:700}
   .senha-status .numero{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(4.5rem,22vw,7rem);line-height:.9;letter-spacing:.02em;margin:4px 0 8px}
@@ -61,7 +74,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <form class="senha-form" id="senha-form" novalidate>
       <label>Seu nome<input id="senha-nome" type="text" autocomplete="name" placeholder="Nome e sobrenome" required minlength="2" maxlength="100"></label>
       <label>WhatsApp<input id="senha-telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(11) 99999-9999" required></label>
-      <label>O que você vai fazer<select id="senha-servico" required></select></label>
+      <div class="senha-servicos-bloco">
+        <span class="senha-servicos-titulo">O que você vai fazer <small>(pode escolher mais de um)</small></span>
+        <div id="senha-servicos" class="senha-servicos" role="group" aria-label="Serviços"></div>
+        <p class="senha-resumo" id="senha-resumo" aria-live="polite">Escolha pelo menos um serviço.</p>
+        <small class="senha-regra" id="senha-regra" aria-live="polite" hidden></small>
+      </div>
       <button class="btn primary" id="senha-enviar" type="submit">Pegar minha senha</button>
       <small class="erro" id="senha-erro" role="alert" hidden></small>
     </form>
@@ -101,6 +119,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
 <script src="agenda-config-v6.js?v=28.16.1"></script>
 <script src="services-catalog-v7.js?v=29.194.2"></script>
-<script src="senha-digital-v29.js?v=29.241.0"></script>
+<script type="module" src="senha-digital-v29.js?v=29.242.0"></script>
 <script src="privacy-consent-v22-4.js?v=29.204.0" defer></script>
 </body></html>

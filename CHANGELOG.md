@@ -1,3 +1,23 @@
+## 29.242.0 — Abrir / Fechar a barbearia; senha digital com mais de um serviço (26/09)
+
+**Pedido do Juliano:** *"quando clicarmos abrir, a gente registra a hora que eu comecei a trabalhar, e fechar a hora que eu parei; além de gerar dados, em dias que eu for embora mais cedo, ao fechar tranca automaticamente a agenda"* — e "se você enxergar outras funcionalidades, a gente aplica". Ele aprovou o desenho abaixo.
+
+**Como funciona (tela Hoje, `admin-v15-4-expediente.js`, migração 180):**
+- **Abrir** → `expediente_abrir`: grava `aberto_em`/`aberto_por` na tabela nova `expediente` (uma linha por dia). Se o dia tinha sido fechado mais cedo e ele voltou, o mesmo botão **reabre** (apaga o bloqueio, a agenda volta a receber horário).
+- **Fechar** → antes, `expediente_pendentes` lista quem ainda está marcado pra hoje, com **Cancelar e avisar** (o `setStatus('cancelled')` de sempre, que manda o aviso pelo `admin-booking-status`) ou deixar como está. Depois `expediente_fechar(motivo)`: grava `fechado_em` e cria um `schedule_blocks` **`source='fechamento'`** de agora até 23:59 — site, JuIA e Senha Digital param de oferecer horário na mesma hora; quem já tinha horário continua com ele. Motivo opcional (sem cliente, fui embora mais cedo, emergência, evento, outro).
+- **Callout** no topo da Hoje: "Aberta desde 08:03 · há 3h20" / "Fechada às 17:10 · fui embora mais cedo · aberta das 08:03 às 17:10 = 9h07 · agenda trancada pro resto do dia". Só o dia de hoje tem botão; dias passados mostram o registro.
+- **Histórico (14 dias)**: abriu/fechou, horas, atendimentos, faturado, atendimentos por hora aberta e a média de horas por dia — cruzando `expediente` com os `bookings` já carregados no painel.
+- **Rotina `expediente-dia`** (cron `bdj-expediente`, a cada 15 min, 8h–21h): 8h15–8h59 com cliente marcado e sem Abrir → push "Abrir a barbearia?" (uma vez por dia, `lembrete_abrir_em`); 30 min depois do fim do expediente sem Fechar → `expediente_fechar_automatico` registra a abertura pelo primeiro atendimento concluído e o fechamento pelo fim do último, marcados **`automatico`** — o dado nunca fica vazio, mas fica sinalizado. Dia sem abertura e sem atendimento não vira registro (foi folga).
+- **`expediente_hoje()`** é público (anon): a Senha Digital diz "a barbearia já fechou hoje, às 17:10" em vez de "não há horário"; fica pronto pra JuIA usar.
+
+**Senha digital com mais de um serviço** (pedido dele: *"seguindo o modelo do site padronizamos, fica mais profissional e o cliente mais familiarizado"*): a página `/senha/` trocou o `select` por chips por categoria, com a **mesma regra de famílias do carrinho** (`assets/js/service-rules.js`, `toggleServiceSelection`: 1 corte + 1 barba, combos, pezinho incluso; a mensagem da troca aparece embaixo como no site). Vai `service_name` "A + B", preço e duração somados; a function já validava as famílias no servidor. `senha-digital-v29.js` virou módulo (`?v=29.242.0`).
+
+**Decidido contra o óbvio:** o fechamento não cancela ninguém sozinho (cancelar é decisão dele, um a um, com o aviso normal); o bloqueio vai até 23:59 e não até o fechamento nominal, pra também cobrir o "colado no fim" da agenda; nada de trancar por sensor (a câmera e o alarme estão sem reportar desde 19/09).
+
+**Ficou de fora, anotado:** JuIA responder "fechou mais cedo hoje" (a RPC pública já existe); relatório mensal de horas em `admin-relatorios`; ajuste manual de horário no histórico.
+
+Auditoria mobile (375 px) do que foi feito hoje e nos últimos dias: home, /agendar/, /agendar/horario/, /clube/ e /senha/ sem estouro de largura (`scrollWidth = 375`); campos com fonte ≥ 16 px (o Safari do iPhone dá zoom sozinho abaixo disso). ADMIN_VERSION 29.242.0 (core/dashboard `?v=29.242.0`).
+
 ## 29.241.0 — Senha Digital: quem chega sem agendamento entra na fila pelo QR da parede (26/09)
 
 **Origem (Juliano, sábado 26/09):** atendia o Sérgio com a agenda vazia; entraram o Mateus e o Anderson sem hora e sentaram. *"Se alguém agendar agora, chega e tem os caras para cortar, como eu faço?"* A câmera não resolve: ela vê corpos, não intenção (o acompanhante é o caso clássico). A causa é uma só — **quem entra pela porta não existe pra agenda**, e o site continua oferecendo o horário. Ele pediu a "senha digital": plaquinha com QR, o cliente aponta, faz o que precisa e *"bingo, agenda e a gente chama na sequência"*.

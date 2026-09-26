@@ -150,7 +150,7 @@
   // (busca JS sempre na rede) â€” o problema Ã© a pÃ¡gina que jÃ¡ estÃ¡ aberta hÃ¡ horas.
   // Agora a prÃ³pria tela confere a versÃ£o publicada e se atualiza. SÃ³ recarrega quando nÃ£o
   // hÃ¡ nada aberto na frente do usuÃ¡rio; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.241.0'
+  const ADMIN_VERSION='29.242.0'
   // v29.99.0 â€” TRAVA ANTI-LOOP. Em 29/08 as versÃµes 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caÃ­a direto no location.reload() e recarregava

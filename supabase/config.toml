@@ -208,3 +208,7 @@ verify_jwt = true
 # v29.241.0 — "você é o próximo" (cron bdj-senha-proximo, x-webhook-secret conferido no código).
 [functions.senha-proximo]
 verify_jwt = false
+
+# v29.242.0 — rotina do expediente (cron bdj-expediente, x-webhook-secret conferido no código).
+[functions.expediente-dia]
+verify_jwt = false
