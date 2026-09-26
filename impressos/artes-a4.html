@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barbearia do Ju — placas A4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Papel creme do próprio selo da marca: imprime bem em cor e em preto e branco,
+     e não gasta o toner que um fundo preto gastaria. */
+  :root {
+    --paper: #f3ebdb;
+    --paper-deep: #e9dfc9;
+    --ink: #17140f;
+    --ink-soft: #4a4338;
+    --gold: #b8873f;        /* filetes e ornamentos */
+    --gold-text: #8a6120;   /* dourado em texto: 4,5:1 sobre o papel creme */
+    --gold-soft: #d6b06f;
+    --red: #b8322c;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #888; }
+  body { font-family: Inter, "InterFallback", system-ui, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .page {
+    position: relative;
+    width: 210mm; height: 297mm;
+    margin: 0 auto;
+    background: var(--paper);
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+    display: flex; flex-direction: column;
+    padding: 13mm 16mm 15mm;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  @media screen { .page { margin: 12mm auto; box-shadow: 0 10px 40px rgba(0,0,0,.35); } }
+
+  /* Moldura dupla, fina, como o selo. */
+  .frame {
+    position: absolute; inset: 8mm; pointer-events: none;
+    border: 0.6mm solid var(--ink);
+  }
+  .frame::after {
+    content: ""; position: absolute; inset: 1.6mm;
+    border: 0.25mm solid var(--gold);
+  }
+  .corner { position: absolute; width: 9mm; height: 9mm; pointer-events: none; }
+  .corner::before, .corner::after { content: ""; position: absolute; background: var(--ink); }
+  .corner::before { width: 9mm; height: 0.6mm; }
+  .corner::after { width: 0.6mm; height: 9mm; }
+  .corner.tl { top: 8mm; left: 8mm; }
+  .corner.tr { top: 8mm; right: 8mm; transform: scaleX(-1); }
+  .corner.bl { bottom: 8mm; left: 8mm; transform: scaleY(-1); }
+  .corner.br { bottom: 8mm; right: 8mm; transform: scale(-1); }
+
+  .brand { display: flex; justify-content: center; margin-top: 0; }
+  .brand img { width: 64mm; height: auto; display: block; }
+
+  .headline {
+    font-family: "Bebas Neue", Impact, sans-serif;
+    font-weight: 400; letter-spacing: 0.025em; line-height: 0.9;
+    text-align: center; margin: 8mm 0 0; color: var(--ink);
+    text-wrap: balance;
+  }
+  .headline.xl { font-size: 54pt; }
+  .headline.lg { font-size: 52pt; }
+  .headline .accent { color: var(--gold-text); display: block; }
+  .kicker {
+    text-align: center; margin: 4mm auto 0; max-width: 150mm;
+    font-size: 13pt; font-weight: 500; color: var(--ink-soft); line-height: 1.4;
+    text-wrap: balance;
+  }
+  .kicker b { color: var(--ink); font-weight: 700; }
+
+  .rule { display: flex; align-items: center; gap: 4mm; margin: 6mm 0 6mm; color: var(--gold); }
+  .rule::before, .rule::after { content: ""; flex: 1; height: 0.35mm; background: var(--ink); opacity: .75; }
+  .rule span { font-size: 11pt; letter-spacing: .28em; text-transform: uppercase; font-weight: 700; color: var(--ink-soft); }
+  .stars { display: inline-flex; gap: 2.2mm; }
+  .stars svg { width: 6.5mm; height: 6.5mm; fill: var(--gold); display: block; }
+
+  .qr-wrap { display: flex; justify-content: center; align-items: center; margin: 2mm 0 0; }
+  .qr {
+    padding: 5mm; background: #fff;
+    border: 0.6mm solid var(--ink);
+    box-shadow: 0 2.5mm 6mm rgba(23, 20, 15, 0.16);
+  }
+  .qr img { display: block; width: 74mm; height: 74mm; image-rendering: pixelated; }
+  .qr-caption {
+    text-align: center; margin: 7mm 0 0; font-size: 12.5pt; font-weight: 600; color: var(--ink);
+  }
+  .qr-caption small { display: block; margin-top: 1.5mm; font-weight: 500; color: var(--ink-soft); font-size: 10.5pt; }
+
+  .steps { list-style: none; margin: 6mm 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+  .steps li { text-align: center; padding: 0 2mm; }
+  .steps .n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12mm; height: 12mm; border-radius: 50%;
+    border: 0.5mm solid var(--ink); background: var(--paper);
+    font-family: "Bebas Neue", Impact, sans-serif; font-size: 20pt; line-height: 1; padding-top: 0.8mm;
+    margin-bottom: 2.5mm;
+  }
+  .steps p { margin: 0; font-size: 11.5pt; line-height: 1.35; font-weight: 500; color: var(--ink); }
+
+  .facts { margin: 6mm auto 0; width: 150mm; border-top: 0.35mm solid var(--ink); border-bottom: 0.35mm solid var(--ink); }
+  .facts div { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; padding: 3.5mm 2mm; }
+  .facts div + div { border-top: 0.25mm solid var(--gold-soft); }
+  .facts dt { margin: 0; font-size: 9.5pt; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+  .facts dd { margin: 0; font-family: "Bebas Neue", Impact, sans-serif; font-size: 24pt; letter-spacing: .04em; line-height: 1; text-align: right; }
+  .facts dd.mono { font-family: Inter, sans-serif; font-weight: 700; font-size: 16pt; letter-spacing: 0; overflow-wrap: anywhere; }
+
+  .note { text-align: center; margin: 5mm auto 0; max-width: 150mm; font-size: 11pt; color: var(--ink-soft); line-height: 1.45; text-wrap: balance; }
+  .note b { color: var(--ink); }
+
+  .footer {
+    margin-top: auto; padding-top: 4mm;
+    text-align: center; font-size: 9.5pt; color: var(--ink-soft); line-height: 1.5;
+  }
+  .footer strong { font-family: "Bebas Neue", Impact, sans-serif; font-size: 15pt; letter-spacing: .08em; color: var(--ink); font-weight: 400; }
+  .footer .pole { color: var(--red); }
+  .url { font-weight: 700; color: var(--ink); }
+
+  /* ?only=senha imprime uma placa só (usado pra gerar os PDFs separados). */
+  body[data-only] .page { display: none; }
+  body[data-only="senha"] #senha, body[data-only="avaliar"] #avaliar, body[data-only="wifi"] #wifi,
+  body[data-only="pix"] #pix, body[data-only="agendar"] #agendar { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- 1. SENHA DIGITAL -->
+<section class="page" id="senha">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="brand"><img src="marca-selo.png" alt="Barbearia do Ju"></div>
+  <h1 class="headline xl">Veio sem<br>agendamento?<span class="accent">Pegue sua senha digital</span></h1>
+  <p class="kicker">Aponte a câmera do celular: em <b>30 segundos</b> você entra<br>na fila de hoje e recebe a previsão no seu WhatsApp.</p>
+  <div class="rule"><span>Como funciona</span></div>
+  <div class="qr-wrap"><div class="qr"><img src="qr-senha.png" alt="QR Code da senha digital"></div></div>
+  <ol class="steps">
+    <li><span class="n">1</span><p>Aponte a câmera para o código e toque no link</p></li>
+    <li><span class="n">2</span><p>Diga seu nome, seu WhatsApp e o serviço</p></li>
+    <li><span class="n">3</span><p>Receba a senha e a previsão de horário</p></li>
+  </ol>
+  <p class="note" style="max-width:170mm"><b>Pode dar uma volta no centro:</b> avisamos no WhatsApp quando você for o próximo.<br>Quem tem hora marcada não precisa de senha.</p>
+  <div class="footer"><strong><span class="pole">■</span> Barbearia do Ju</strong><br>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista · <span class="url">barbeariadoju.com.br/senha</span></div>
+</section>
+
+<!-- 2. AVALIAÇÃO NO GOOGLE -->
+<section class="page" id="avaliar">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="brand"><img src="marca-selo.png" alt="Barbearia do Ju"></div>
+  <h1 class="headline xl">Gostou<br>do corte?<span class="accent">Conte no Google</span></h1>
+  <p class="kicker">Sua avaliação leva <b>menos de um minuto</b> e ajuda demais<br>uma barbearia pequena a ser encontrada por quem procura.</p>
+  <div class="rule"><span class="stars" aria-label="cinco estrelas"><svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6.2 6.7.8-4.9 4.6 1.3 6.7L12 17.6 6 20.9l1.3-6.7L2.4 9.6l6.7-.8z"/></svg></span></div>
+  <div class="qr-wrap"><div class="qr"><img src="qr-avaliar.png" alt="QR Code para avaliar no Google"></div></div>
+  <p class="qr-caption">Aponte a câmera do celular<small>abre direto a página de avaliação da Barbearia do Ju no Google</small></p>
+  <p class="note">Toda avaliação é lida e respondida pelo Juliano.<br>Algo não ficou do seu jeito? <b>Fale com ele antes de sair.</b></p>
+  <div class="footer"><strong><span class="pole">■</span> Barbearia do Ju</strong><br>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista · <span class="url">barbeariadoju.com.br/avaliar</span></div>
+</section>
+
+<!-- 3. WI-FI -->
+<section class="page" id="wifi">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="brand"><img src="marca-selo.png" alt="Barbearia do Ju"></div>
+  <h1 class="headline xl">Wi-Fi<span class="accent">para clientes</span></h1>
+  <p class="kicker">Aponte a câmera para o código: <b>conecta sozinho</b>, sem digitar a senha.</p>
+  <div class="rule"><span>Conectar</span></div>
+  <div class="qr-wrap"><div class="qr"><img src="qr-wifi.png" alt="QR Code do Wi-Fi"></div></div>
+  <dl class="facts">
+    <div><dt>Rede</dt><dd class="mono">@barbeariadoju_</dd></div>
+    <div><dt>Senha</dt><dd class="mono">Barbearia_2026</dd></div>
+  </dl>
+  <p class="note">Se preferir digitar, é isso aí em cima. Maiúsculas e o sublinhado fazem diferença.</p>
+  <div class="footer"><strong><span class="pole">■</span> Barbearia do Ju</strong><br>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista · <span class="url">barbeariadoju.com.br</span></div>
+</section>
+
+<!-- 4. PIX -->
+<section class="page" id="pix">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="brand"><img src="marca-selo.png" alt="Barbearia do Ju"></div>
+  <h1 class="headline xl">Pagamento<span class="accent">por Pix</span></h1>
+  <p class="kicker">No app do seu banco, escolha <b>Pagar com QR Code</b><br>e aponte para o código.</p>
+  <div class="rule"><span>Pagar</span></div>
+  <div class="qr-wrap"><div class="qr"><img src="qr-pix.png" alt="QR Code Pix"></div></div>
+  <dl class="facts">
+    <div><dt>Chave Pix</dt><dd class="mono">contato@barbeariadoju.com.br</dd></div>
+    <div><dt>Titular</dt><dd class="mono">Juliano Bruno Lopes Padilha · PicPay</dd></div>
+  </dl>
+  <p class="note">É o nome que vai aparecer no seu banco — pode confirmar tranquilo.<br><b>Também aceitamos dinheiro, débito e crédito.</b></p>
+  <div class="footer"><strong><span class="pole">■</span> Barbearia do Ju</strong><br>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista · <span class="url">barbeariadoju.com.br</span></div>
+</section>
+
+<!-- 5. AGENDAR O PRÓXIMO -->
+<section class="page" id="agendar">
+  <div class="frame"></div>
+  <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+  <div class="brand"><img src="marca-selo.png" alt="Barbearia do Ju"></div>
+  <h1 class="headline xl">Já marque<br>o próximo<span class="accent">antes de sair</span></h1>
+  <p class="kicker">Escolha dia e horário no celular, em um minuto.<br>Você recebe a confirmação e o lembrete no WhatsApp.</p>
+  <div class="rule"><span>Agendar</span></div>
+  <div class="qr-wrap"><div class="qr"><img src="qr-agendar.png" alt="QR Code para agendar"></div></div>
+  <dl class="facts">
+    <div><dt>Horário</dt><dd>Terça a sexta, 8h às 19h</dd></div>
+    <div><dt>Sábado</dt><dd>8h às 15h</dd></div>
+  </dl>
+  <p class="note">Precisa mudar? O mesmo link cancela ou remarca, <b>sem ligar.</b></p>
+  <div class="footer"><strong><span class="pole">■</span> Barbearia do Ju</strong><br>Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista · <span class="url">barbeariadoju.com.br/agendar</span></div>
+</section>
+
+<script>
+  var only = new URLSearchParams(location.search).get('only');
+  if (only) document.body.setAttribute('data-only', only);
+</script>
+</body>
+</html>
