@@ -23,8 +23,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="/style.css?v=29.210.1" rel="stylesheet"/>
+<link href="/style.css?v=29.242.1" rel="stylesheet"/>
 <link href="/juia-chat.css?v=29.205.0" rel="stylesheet"/>
+<link href="/css/07-catalogo-lista.css?v=29.242.1" rel="stylesheet"/>
 <style>
   /* Estados da senha: só o que o style.css não tem. Números grandes em Bebas, como o site. */
   .senha-card{max-width:560px}
@@ -33,18 +34,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .senha-form input,.senha-form select{font:inherit;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:inherit;min-height:52px}
   .senha-form input:focus-visible,.senha-form select:focus-visible{outline:2px solid #c89b55;outline-offset:2px}
   .senha-form small.erro{color:#f2b8b5;font-weight:500}
-  /* Serviços: os mesmos nomes e preços do carrinho do site, em botões de toque (44px+). */
+  /* Serviços: o catálogo do /agendar/ transplantado (mesma linha por serviço, selo, descrição e
+     botão — css/07-catalogo-lista.css). O que segue só neutraliza o .privacy-card (h2 com margem
+     de artigo, p com 34em) e o espaçamento de seção do site dentro do formulário. */
+  .senha-card{max-width:760px}
   .senha-servicos-bloco{display:flex;flex-direction:column;gap:8px;font-weight:600}
   .senha-servicos-titulo small{font-weight:500;color:#b8b2a5}
-  .senha-servicos{display:flex;flex-direction:column;gap:10px}
-  .senha-servicos h3{margin:6px 0 0;font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:#c89b55;font-weight:700}
-  .senha-servicos .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .senha-chip{font:inherit;font-weight:500;text-align:left;min-height:44px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px;max-width:100%}
-  .senha-chip small{color:#b8b2a5;font-weight:500;white-space:nowrap}
-  .senha-chip[aria-pressed="true"]{border-color:#c89b55;background:rgba(200,155,85,.16);box-shadow:inset 0 0 0 1px #c89b55}
-  .senha-chip[aria-pressed="true"]::before{content:"✓";font-weight:800;color:#c89b55}
-  .senha-chip:focus-visible{outline:2px solid #c89b55;outline-offset:2px}
-  .senha-resumo{margin:2px 0 0;font-weight:600}
+  .senha-servicos{display:flex;flex-direction:column;gap:0;font-weight:400}
+  .senha-servicos .service-section{margin:0;padding:10px 0 0;width:auto;max-width:none}
+  .senha-servicos .section-head{margin:0 0 6px;text-align:left}
+  .senha-servicos .section-head h2{font-size:clamp(1.4rem,5vw,1.9rem);margin:.3em 0 .15em;color:#e5b45f}
+  .senha-servicos .section-head p{margin:0 0 4px;color:#b8b2a5;font-size:.92rem;line-height:1.45;max-width:none}
+  .senha-servicos .service-content p{max-width:none}
+  .senha-resumo{margin:10px 0 0;font-weight:600;position:sticky;bottom:0;background:#0c0c0c;padding:10px 0;border-top:1px solid rgba(255,255,255,.12)}
   .senha-regra{color:#e9d7b2;font-weight:500;line-height:1.45}
   .senha-status{margin-top:8px;padding:22px 20px;border-radius:16px;border:1px solid rgba(200,155,85,.45);background:rgba(200,155,85,.08)}
   .senha-status .rotulo{font-size:.78rem;letter-spacing:.24em;text-transform:uppercase;color:#c89b55;font-weight:700}
@@ -119,6 +121,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script>
 <script src="agenda-config-v6.js?v=28.16.1"></script>
 <script src="services-catalog-v7.js?v=29.194.2"></script>
-<script type="module" src="senha-digital-v29.js?v=29.242.0"></script>
+<script type="module" src="senha-digital-v29.js?v=29.242.1"></script>
 <script src="privacy-consent-v22-4.js?v=29.204.0" defer></script>
 </body></html>

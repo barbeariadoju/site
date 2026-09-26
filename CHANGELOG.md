@@ -1,3 +1,13 @@
+## 29.242.1 — Senha com o catálogo do /agendar/; barra "Ver meu pedido" fugindo pra esquerda (26/09)
+
+**Senha digital = mesma lista do site.** O Juliano viu os chips da 29.242.0 ao lado do catálogo do `/agendar/` e preferiu o segundo (*"acho este modelo mais bonito… poderíamos padronizar em todos agendamentos"*). A `/senha/` agora **busca o `/agendar/` e transplanta as seções `.service-section`** (título da categoria, selo "Mais procurado", descrição, duração, preço, botão Adicionar/✓ Adicionado) em vez de manter uma cópia dos 24 serviços; preço e duração que vão pro servidor continuam vindo do `services-catalog` (fonte da vigência). Se o fetch falhar, monta a lista simples a partir do catálogo. Regra de famílias igual à do carrinho (`toggleServiceSelection`). Botão "Pegar minha senha" fica desabilitado sem serviço.
+
+**Padronização começou pelo CSS:** a lista "linha por serviço" vivia num `<style>` inline do `agendar/index.html` — a senha herdava os cards antigos (grade de 3 colunas, preço quebrando "R$ 4|0"). Virou **`css/07-catalogo-lista.css`**, ligada pelo `/agendar/` e pela `/senha/`; qualquer outra tela que ofereça serviço ao cliente liga a folha e fica igual (próximo passo: reagendar / meu-agendamento / balcão do painel). `.senha-card` a 760 px, títulos de categoria à esquerda e menores dentro do formulário, neutralizado o `.privacy-card h2/p` (margem de artigo e 34em).
+
+**Bug do desktop no `/agendar/`:** *"olha a barrinha inferior maluca correndo para esquerda"* — ao passar o mouse na barra "Ver meu pedido (1)" ela deslizava 640 px pra fora da tela. Causa: o hover antigo da pílula (`translateX(-50%) !important`, css/02:524) vencia o `transform:none` sem `!important` da barra de largura total (29.205.3). Medido com Playwright a 1280 px: x = −640 no hover → x = 0 depois da correção (`transform:none!important` em hover/active/focus). `style.css?v=29.242.1` em todas as páginas (o `@import` do css/02 também).
+
+Verificado local (`npx serve`) a 1280 e 375 px: 6 categorias / 23 serviços renderizados na senha, `scrollWidth` = viewport, sem erro de console; `npm test` verde.
+
 ## 29.242.0 — Abrir / Fechar a barbearia; senha digital com mais de um serviço (26/09)
 
 **Pedido do Juliano:** *"quando clicarmos abrir, a gente registra a hora que eu comecei a trabalhar, e fechar a hora que eu parei; além de gerar dados, em dias que eu for embora mais cedo, ao fechar tranca automaticamente a agenda"* — e "se você enxergar outras funcionalidades, a gente aplica". Ele aprovou o desenho abaixo.

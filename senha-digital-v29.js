@@ -38,23 +38,43 @@ function mostrar(secao){
   for(const id of ['senha-form-secao','senha-status-secao','senha-ocupado-secao'])$(id).hidden=id!==secao;
 }
 
-// Chips por categoria; tocar liga/desliga aplicando a regra das famílias (a mensagem da
-// troca aparece embaixo, como no carrinho do site).
-function montarServicos(){
+// v29.242.1 — O MESMO catálogo do /agendar/ (pedido do Juliano: "acho este modelo mais bonito;
+// podíamos padronizar em todos os agendamentos"). Em vez de duplicar os 24 cards, a página busca
+// o /agendar/ e transplanta as seções `.service-section` (título, selos "Mais procurado", descrição,
+// duração, preço e o botão Adicionar/✓ Adicionado, com o CSS do style.css). Preço e duração que
+// vão pro servidor vêm do services-catalog (fonte única da vigência), não do HTML.
+// Se o fetch falhar (offline, cache estranho), monta cards simples a partir do catálogo.
+async function montarServicos(){
   const box=$('senha-servicos');box.innerHTML='';
-  const grupos=new Map();
-  for(const s of catalogo()){if(!grupos.has(s.category))grupos.set(s.category,[]);grupos.get(s.category).push(s)}
-  for(const [cat,itens] of grupos){
-    const h=document.createElement('h3');h.textContent=cat;box.appendChild(h);
-    const chips=document.createElement('div');chips.className='chips';
-    for(const s of itens){
-      const b=document.createElement('button');b.type='button';b.className='senha-chip';b.dataset.nome=s.name;b.setAttribute('aria-pressed','false');
-      b.innerHTML=`${s.name} <small>R$ ${s.price} · ${s.duration} min</small>`;
-      b.addEventListener('click',()=>alternarServico(s.name));
-      chips.appendChild(b);
+  let secoes=[];
+  try{
+    const html=await (await fetch('/agendar/',{credentials:'same-origin'})).text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    secoes=[...doc.querySelectorAll('section.service-section')];
+  }catch(e){console.warn('[senha] catálogo do /agendar/ indisponível, usando o catálogo simples',e)}
+  if(secoes.length){
+    for(const sec of secoes){
+      const clone=document.importNode(sec,true);
+      clone.removeAttribute('id');clone.removeAttribute('style');
+      clone.querySelectorAll('script,a[href]').forEach(el=>el.tagName==='A'?el.replaceWith(...el.childNodes):el.remove());
+      box.appendChild(clone);
     }
-    box.appendChild(chips);
+  }else{
+    const grupos=new Map();
+    for(const s of catalogo()){if(!grupos.has(s.category))grupos.set(s.category,[]);grupos.get(s.category).push(s)}
+    for(const [cat,itens] of grupos){
+      const sec=document.createElement('section');sec.className='section service-section';
+      sec.innerHTML=`<div class="section-head"><h2>${cat}.</h2></div><div class="service-grid">${itens.map(s=>`<article class="service-card"><div class="service-content"><h3>${s.name}</h3><p>${s.description||''}</p></div><div class="service-meta"><span>aproximadamente ${s.duration} min</span><strong>R$ ${s.price}</strong></div><button class="service-btn" data-name="${s.name}" type="button">Adicionar</button></article>`).join('')}</div>`;
+      box.appendChild(sec);
+    }
   }
+  box.querySelectorAll('.service-btn').forEach(b=>{
+    if(!b.dataset.label)b.dataset.label=b.textContent;
+    // Só o que existe no catálogo pode ser pedido (o HTML do /agendar/ pode estar à frente ou atrás).
+    if(!servico(b.dataset.name)){b.closest('.service-card')?.remove();return}
+    b.addEventListener('click',()=>{alternarServico(b.dataset.name);b.classList.add('just-added');setTimeout(()=>b.classList.remove('just-added'),600)});
+  });
+  pintarServicos();
 }
 
 function alternarServico(nome){
@@ -66,11 +86,16 @@ function alternarServico(nome){
   pintarServicos();
 }
 
+// Mesma marcação do carrinho do site (service-cart: is-added + aria-pressed + "✓ Adicionado").
 function pintarServicos(){
-  document.querySelectorAll('.senha-chip').forEach(b=>b.setAttribute('aria-pressed',escolhidos.includes(b.dataset.nome)?'true':'false'));
+  document.querySelectorAll('#senha-servicos .service-btn').forEach(b=>{
+    const on=escolhidos.includes(b.dataset.name||'');
+    b.classList.toggle('is-added',on);b.setAttribute('aria-pressed',on?'true':'false');b.textContent=on?'✓ Adicionado':b.dataset.label;
+  });
   const itens=escolhidos.map(servico).filter(Boolean);
   const total=itens.reduce((a,s)=>a+Number(s.price||0),0),min=itens.reduce((a,s)=>a+Number(s.duration||0),0);
-  $('senha-resumo').textContent=itens.length?`${itens.map(s=>s.name).join(' + ')} · ${money(total)} · ${min} min`:'Escolha pelo menos um serviço.';
+  $('senha-resumo').textContent=itens.length?`Seu pedido: ${itens.map(s=>s.name).join(' + ')} · ${money(total)} · ${min} min`:'Escolha pelo menos um serviço.';
+  const btn=$('senha-enviar');if(btn)btn.disabled=!itens.length;
 }
 
 function erro(texto){const el=$('senha-erro');el.textContent=texto||'';el.hidden=!texto}

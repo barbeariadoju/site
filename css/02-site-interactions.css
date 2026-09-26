@@ -654,7 +654,9 @@ body:has([data-juia-open]) .juia-launcher{display:none!important}
    borda de baixo, com espaço reservado no fim da página — nada da lista fica embaixo dela. */
 .open-cart-btn{left:0;right:0;bottom:0;width:100%!important;border-radius:0;transform:translateY(100%);padding:16px 20px calc(16px + env(safe-area-inset-bottom));font-size:var(--t-lg);box-shadow:0 -10px 30px rgba(var(--black-rgb),.5)}
 .open-cart-btn.show{transform:none}
-.open-cart-btn:hover,.open-cart-btn.show:hover,.open-cart-btn.show:focus-visible{transform:none}
+/* v29.242.1 — o hover/active antigo (acima) tem translateX(-50%) !important: com a barra a 100%
+   de largura, passar o mouse a jogava metade pra fora da tela à esquerda. Só !important vence. */
+.open-cart-btn:hover,.open-cart-btn:active,.open-cart-btn.show:hover,.open-cart-btn.show:focus-visible{transform:none!important}
 body:has(.open-cart-btn.show){padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 body:has(.open-cart-btn.show) .floating{display:none}
 /* WhatsApp flutuante de /agendar/: o verde vivo destoava do resto do site. */
