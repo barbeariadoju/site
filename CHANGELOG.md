@@ -1,3 +1,17 @@
+## 29.243.0 — Uma lista de serviços só: senha, reagendar e vale-presente iguais ao /agendar/ (26/09)
+
+**Pedido do Juliano:** *"poderíamos padronizar em todos agendamentos"* (o modelo do `/agendar/`, que ele achou mais bonito que os chips). Primeira leva, a do cliente.
+
+**Como ficou:** `assets/js/catalogo-lista.js` (módulo) é a única montagem da lista: busca o `/agendar/`, transplanta as `section.service-section` (categoria, selo "Mais procurado", descrição, duração, preço, Adicionar/✓ Adicionado) e, se o fetch falhar, desenha a mesma marcação a partir do `BDJ_SERVICES`. `montarLista(box,{itens,permitidos,aoClicar,aoRemover})` + `pintarLista(box,escolhidos,{quantidades})`. Preço e duração que vão pro servidor continuam saindo do catálogo (vigência do reajuste), nunca do HTML. O visual é o `css/07-catalogo-lista.css` (29.242.1), que ganhou o escopo `.catalogo-lista` (neutraliza margem de seção, `h2` de artigo e `p` de 34em da tela hospedeira) e o contador `− n`.
+
+- **`/senha/`** passou a usar o módulo (era a cópia local da 29.242.1).
+- **`reagendar.html`** (link de reagendamento): serviços em vez dos botões "＋ / ✓" sem categoria; os **produtos da etapa 3** vão na mesma lista (seção "Produtos.", sem duração). Regra de famílias (`applyServiceRule`) e pré-marcação do serviço anterior intactas.
+- **`/vale-presente/`** "monte o seu": mesma lista, só corte/barba/acabamento (como antes), com **"− n" ao lado de "Adicionar mais um"** porque aqui o mesmo serviço pode entrar mais de uma vez; resumo mostra "2× Corte de cabelo" em vez de repetir o nome. O script virou módulo (`type="module"`).
+
+**Testes:** `tests/e2e/catalogo-lista.spec.js` (3 cenários; o reagendar recebe um contexto falso interceptado — nada chega ao Supabase). Conferido a 1280 e 375 px sem estouro nem erro de console. `npm test` verde.
+
+**Fica pra próxima leva (painel):** `admin-balcao` e `admin-agendamento` (mesmo template de checkboxes — manter um checkbox escondido por linha pra não reescrever o `applyToPicker`), modais Concluir/Editar da agenda, clube Sob Medida (serviços vêm do servidor).
+
 ## 29.242.1 — Senha com o catálogo do /agendar/; barra "Ver meu pedido" fugindo pra esquerda (26/09)
 
 **Senha digital = mesma lista do site.** O Juliano viu os chips da 29.242.0 ao lado do catálogo do `/agendar/` e preferiu o segundo (*"acho este modelo mais bonito… poderíamos padronizar em todos agendamentos"*). A `/senha/` agora **busca o `/agendar/` e transplanta as seções `.service-section`** (título da categoria, selo "Mais procurado", descrição, duração, preço, botão Adicionar/✓ Adicionado) em vez de manter uma cópia dos 24 serviços; preço e duração que vão pro servidor continuam vindo do `services-catalog` (fonte da vigência). Se o fetch falhar, monta a lista simples a partir do catálogo. Regra de famílias igual à do carrinho (`toggleServiceSelection`). Botão "Pegar minha senha" fica desabilitado sem serviço.

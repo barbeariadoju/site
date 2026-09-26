@@ -19,3 +19,19 @@
 .service-btn:hover{background:var(--gold2)}
 .service-btn:disabled{opacity:.65;cursor:default}
 @media(max-width:560px){.service-card{padding:14px 2px !important}.service-meta,.service-btn{margin-left:auto}}
+
+/* v29.243.0 — Lista dentro de outra tela (senha, reagendar, vale-presente): o container recebe
+   .catalogo-lista (assets/js/catalogo-lista.js). Aqui só se neutraliza o que a tela hospedeira
+   herda — margem de seção do site, h2 de artigo (.privacy-card), p com 34em — e se desenha o
+   "− n" do vale-presente. */
+.catalogo-lista{display:flex;flex-direction:column;gap:0}
+.catalogo-lista .service-section{margin:0 !important;padding:10px 0 0 !important;width:auto !important;max-width:none !important}
+.catalogo-lista .section-head{margin:0 0 6px !important;text-align:left}
+.catalogo-lista .section-head h2{font-size:clamp(1.4rem,5vw,1.9rem) !important;margin:.3em 0 .15em !important;color:var(--gold2)}
+.catalogo-lista .section-head p{margin:0 0 4px !important;color:var(--muted);font-size:.92rem;line-height:1.45;max-width:none}
+.catalogo-lista .service-card.is-selected{background:rgba(var(--gold2-rgb),.05) !important}
+.service-qty{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;font-variant-numeric:tabular-nums}
+.service-qty b{color:var(--gold2);font-size:1.05rem;min-width:1.2em;text-align:center}
+.service-qty-menos{width:40px;height:40px;border-radius:999px;border:1px solid rgba(var(--gold2-rgb),.6);background:none;color:var(--gold2);font:700 1.2rem/1 inherit;cursor:pointer}
+.service-qty-menos:hover{background:rgba(var(--gold2-rgb),.12)}
+@media(max-width:560px){.service-qty{margin-left:auto}.service-qty ~ .service-btn{margin-left:0}}

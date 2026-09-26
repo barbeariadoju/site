@@ -7,6 +7,7 @@
 // O link do WhatsApp chega como /senha/#c=CODE&t=TOKEN (fragmento: não vai ao servidor).
 // Leitura da URL é idempotente: o sw.js recarrega a página no controllerchange.
 import { toggleServiceSelection } from '/assets/js/service-rules.js';
+import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.243.0';
 
 const $=id=>document.getElementById(id);
 const cfg=window.BDJ_AGENDA_CONFIG||{};
@@ -39,41 +40,11 @@ function mostrar(secao){
 }
 
 // v29.242.1 — O MESMO catálogo do /agendar/ (pedido do Juliano: "acho este modelo mais bonito;
-// podíamos padronizar em todos os agendamentos"). Em vez de duplicar os 24 cards, a página busca
-// o /agendar/ e transplanta as seções `.service-section` (título, selos "Mais procurado", descrição,
-// duração, preço e o botão Adicionar/✓ Adicionado, com o CSS do style.css). Preço e duração que
-// vão pro servidor vêm do services-catalog (fonte única da vigência), não do HTML.
-// Se o fetch falhar (offline, cache estranho), monta cards simples a partir do catálogo.
+// podíamos padronizar em todos os agendamentos"). v29.243.0: a montagem virou o módulo
+// assets/js/catalogo-lista.js, compartilhado com reagendar e vale-presente. Só o que existe no
+// catálogo pode ser pedido (o HTML do /agendar/ pode estar à frente ou atrás).
 async function montarServicos(){
-  const box=$('senha-servicos');box.innerHTML='';
-  let secoes=[];
-  try{
-    const html=await (await fetch('/agendar/',{credentials:'same-origin'})).text();
-    const doc=new DOMParser().parseFromString(html,'text/html');
-    secoes=[...doc.querySelectorAll('section.service-section')];
-  }catch(e){console.warn('[senha] catálogo do /agendar/ indisponível, usando o catálogo simples',e)}
-  if(secoes.length){
-    for(const sec of secoes){
-      const clone=document.importNode(sec,true);
-      clone.removeAttribute('id');clone.removeAttribute('style');
-      clone.querySelectorAll('script,a[href]').forEach(el=>el.tagName==='A'?el.replaceWith(...el.childNodes):el.remove());
-      box.appendChild(clone);
-    }
-  }else{
-    const grupos=new Map();
-    for(const s of catalogo()){if(!grupos.has(s.category))grupos.set(s.category,[]);grupos.get(s.category).push(s)}
-    for(const [cat,itens] of grupos){
-      const sec=document.createElement('section');sec.className='section service-section';
-      sec.innerHTML=`<div class="section-head"><h2>${cat}.</h2></div><div class="service-grid">${itens.map(s=>`<article class="service-card"><div class="service-content"><h3>${s.name}</h3><p>${s.description||''}</p></div><div class="service-meta"><span>aproximadamente ${s.duration} min</span><strong>R$ ${s.price}</strong></div><button class="service-btn" data-name="${s.name}" type="button">Adicionar</button></article>`).join('')}</div>`;
-      box.appendChild(sec);
-    }
-  }
-  box.querySelectorAll('.service-btn').forEach(b=>{
-    if(!b.dataset.label)b.dataset.label=b.textContent;
-    // Só o que existe no catálogo pode ser pedido (o HTML do /agendar/ pode estar à frente ou atrás).
-    if(!servico(b.dataset.name)){b.closest('.service-card')?.remove();return}
-    b.addEventListener('click',()=>{alternarServico(b.dataset.name);b.classList.add('just-added');setTimeout(()=>b.classList.remove('just-added'),600)});
-  });
+  await montarLista($('senha-servicos'),{itens:catalogo(),aoClicar:alternarServico});
   pintarServicos();
 }
 
@@ -88,10 +59,7 @@ function alternarServico(nome){
 
 // Mesma marcação do carrinho do site (service-cart: is-added + aria-pressed + "✓ Adicionado").
 function pintarServicos(){
-  document.querySelectorAll('#senha-servicos .service-btn').forEach(b=>{
-    const on=escolhidos.includes(b.dataset.name||'');
-    b.classList.toggle('is-added',on);b.setAttribute('aria-pressed',on?'true':'false');b.textContent=on?'✓ Adicionado':b.dataset.label;
-  });
+  pintarLista($('senha-servicos'),escolhidos);
   const itens=escolhidos.map(servico).filter(Boolean);
   const total=itens.reduce((a,s)=>a+Number(s.price||0),0),min=itens.reduce((a,s)=>a+Number(s.duration||0),0);
   $('senha-resumo').textContent=itens.length?`Seu pedido: ${itens.map(s=>s.name).join(' + ')} · ${money(total)} · ${min} min`:'Escolha pelo menos um serviço.';

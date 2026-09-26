@@ -4,6 +4,9 @@
 // que nós criamos (pacotes) ou monta o próprio, depois sim com valor total vai pro pagamento".
 // A pessoa que compra pode não conhecer a barbearia — por isso ela vê exatamente o que está
 // levando e quanto custa ANTES de qualquer pedido de Pix.
+// v29.243.0 — "monte o seu" na lista padrão do site (a do /agendar/): assets/js/catalogo-lista.js,
+// com "− n" ao lado do Adicionar porque aqui o mesmo serviço pode entrar mais de uma vez.
+import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.243.0';
 (function () {
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const catalog = window.BDJ_SERVICES || [];
@@ -27,8 +30,11 @@
     const t = total();
     $('vp-total').textContent = money(t);
     $('vp-total-2').textContent = money(t);
+    // "2× Corte de cabelo" em vez de "Corte de cabelo + Corte de cabelo".
+    const contagem = new Map();
+    state.items.forEach((i) => contagem.set(i.name, (contagem.get(i.name) || 0) + 1));
     $('vp-summary').textContent = state.items.length
-      ? state.items.map((i) => i.name).join(' + ')
+      ? [...contagem].map(([n, q]) => (q > 1 ? `${q}× ${n}` : n)).join(' + ')
       : 'nada escolhido ainda';
     $('vp-go-2').disabled = state.items.length === 0;
   }
@@ -59,36 +65,33 @@
     });
   }
 
-  function renderServices() {
-    const box = $('vp-services');
-    // Só serviços de cabelo/barba: química e tratamento dependem de avaliação presencial,
-    // não fazem sentido como presente fechado.
-    const list = catalog.filter((s) => ['Cortes e combos', 'Barba', 'Acabamentos e adicionais'].includes(s.category));
-    box.innerHTML = list.map((s) => {
-      const count = state.items.filter((i) => i.name === s.name).length;
-      return `<div class="vp-item">
-        <div><b>${s.name}</b><small>${s.duration} min · ${money(s.price)}</small></div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${count ? `<button class="btn ghost" data-remove="${s.name}" type="button">−</button><b>${count}</b>` : ''}
-          <button class="btn" data-add="${s.name}" type="button">Adicionar</button>
-        </div>
-      </div>`;
-    }).join('');
-    box.querySelectorAll('[data-add]').forEach((btn) => {
-      btn.onclick = () => {
-        const s = byName(btn.dataset.add);
+  // Só serviços de cabelo/barba: química e tratamento dependem de avaliação presencial,
+  // não fazem sentido como presente fechado.
+  const VENDAVEIS = ['Cortes e combos', 'Barba', 'Acabamentos e adicionais'];
+  let listaPronta = null;
+  function montarListaServicos() {
+    if (!listaPronta) listaPronta = montarLista($('vp-services'), {
+      itens: catalog.filter((s) => VENDAVEIS.includes(s.category)),
+      aoClicar: (nome) => {
+        const s = byName(nome);
         if (!s) return;
         state.kind = 'custom';
         state.items.push({ name: s.name, price: s.price, duration: s.duration });
         renderTotals(); renderServices();
-      };
-    });
-    box.querySelectorAll('[data-remove]').forEach((btn) => {
-      btn.onclick = () => {
-        const idx = state.items.findIndex((i) => i.name === btn.dataset.remove);
+      },
+      aoRemover: (nome) => {
+        const idx = state.items.findIndex((i) => i.name === nome);
         if (idx >= 0) state.items.splice(idx, 1);
         renderTotals(); renderServices();
-      };
+      },
+    });
+    return listaPronta;
+  }
+  function renderServices() {
+    montarListaServicos().then(() => {
+      const quantidades = new Map();
+      state.items.forEach((i) => quantidades.set(i.name, (quantidades.get(i.name) || 0) + 1));
+      pintarLista($('vp-services'), [], { quantidades });
     });
   }
 
@@ -165,7 +168,7 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function iniciar() {
     renderPackages();
     renderServices();
     renderTotals();
@@ -174,5 +177,7 @@
     $('vp-back-2').onclick = () => goTo(2);
     $('vp-go-3').onclick = criarPedido;
     $('vp-copy').onclick = copiarPix;
-  });
+  }
+  // Módulo é adiado: quando roda, o DOM já está pronto; o listener cobre o caso raro do contrário.
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
