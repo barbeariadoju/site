@@ -128,6 +128,26 @@ Deno.serve(async(req:Request)=>{
       }
     }catch(clickErr){console.error('[create-public-booking] clique do anuncio exception',clickErr)}
 
+    // v29.240.0 — sinal de 50% depois de dois cancelamentos em cima da hora (regra do Juliano, 26/09/2026).
+    // O banco decide (sinal_cancelamentos_ativo). Igual ao da JuIA: o horário fica reservado, o sinal vai
+    // pro agendamento com prazo de 1 h (o prepay-deadline libera se não cair), e as instruções saem na
+    // confirmação do WhatsApp (booking-email) e na tela. Nunca derruba o agendamento.
+    let sinal=0
+    try{
+      const {data:ativo}=await admin.rpc('sinal_cancelamentos_ativo',{p_phone:String(body.customer_phone)})
+      if(ativo===true){
+        const {data:clube}=await admin.from('bookings').select('club_subscription_id').eq('id',id).maybeSingle()
+        if(!clube?.club_subscription_id){
+          sinal=Math.round(Number(body.service_price||0)*0.5*100)/100
+          if(sinal>0){
+            const prazo=new Date(Date.now()+60*60*1000).toISOString()
+            await admin.from('bookings').update({prepay_key:'picpay',prepay_amount:sinal,prepay_deadline_at:prazo,updated_at:new Date().toISOString()}).eq('id',id).is('prepay_confirmed_at',null)
+            if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:`Pedi sinal de ${sinal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} (2 cancelamentos em cima da hora)`,body:`${String(body.customer_name).trim()} agendou pelo site ${String(body.booking_date).split('-').reverse().join('/')} às ${String(body.start_time).slice(0,5)}. Sem Pix em 1h, o horário é liberado sozinho. Para dispensar este cliente da regra: CRM, card dele.`,url:'/admin-agenda.html?app=1',tag:`sinal-${id}`}})}).catch(()=>{})
+          }
+        }
+      }
+    }catch(sinalErr){console.error('[create-public-booking] sinal',sinalErr)}
+
     let push={sent:0,failed:0}
     if(pushSecret){
       try{
@@ -165,6 +185,7 @@ Deno.serve(async(req:Request)=>{
       booking_code:record.booking_code,
       management_token:managementToken,
       referral,
+      sinal,
       manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record.booking_code)}&token=${encodeURIComponent(managementToken)}`
     })
   }catch(error){

@@ -384,7 +384,12 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     // v29.22.0 — a oferta agora é o Checkout PagBank (Pix ou cartão, confirmação
     // automática). O HTML da Fase 1 virou pixFallbackHtml() e só entra se a API falhar.
     const payHtml=payOfferHtml(totalPagar);
-    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?payHtml:''}`;
+    // v29.240.0 — sinal de 50% (dois cancelamentos em cima da hora): o servidor devolve o valor; as
+    // instruções do Pix também chegam no WhatsApp. O aviso entra DEPOIS do fire('booking_confirmed'),
+    // que precisa do formulário ainda na tela (conversões otimizadas do Google Ads).
+    const sinalValor=Number(result.sinal||0);
+    const sinalAviso=sinalValor>0?`<span class="booking-sinal-aviso"> Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${sinalValor.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}) pelo Pix em até 1 hora, descontado no dia. As instruções chegaram no seu WhatsApp; sem o sinal, o horário é liberado automaticamente.</span>`:'';
+    $('agenda-status').innerHTML=`<strong>Agendamento confirmado com sucesso!</strong><span> Seu horário já está reservado na Barbearia do Ju.</span>${sinalAviso}${manageUrl?`<div class="booking-success-actions"><a class="btn primary" href="${manageUrl}">Acompanhar ou alterar meu agendamento</a><small>Guarde este link para reagendar ou cancelar, caso necessário.</small></div>`:''}${result.booking_code&&result.management_token?payHtml:''}`;
     if(result.booking_code&&result.management_token)bindPayOffer(result.booking_code,result.management_token,totalPagar);
     const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
     document.body.classList.add('booking-complete');

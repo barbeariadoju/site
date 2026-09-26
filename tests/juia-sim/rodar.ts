@@ -67,6 +67,7 @@ type Cenario = {
   clubeCobre?: boolean // o banco cobriu o horário recém-criado (trg_zz_club_before_insert)
   clubeMotivo?: string // club_quote: motivo de não cobrir
   clubeVendas?: boolean // club_settings.vendas_abertas
+  sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -99,6 +100,7 @@ const turno = async (c: Cenario) => {
     create_public_booking_v15: () => ({ data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: 'Corte de cabelo' }], error: null }),
     waitlist_matches_for_slot: () => [],
+    sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
   }
   const req = new Request('https://simulador.local/functions/v1/ju-ia-site', {
     method: 'POST',
@@ -599,6 +601,19 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     history: [{ role: 'assistant', content: 'Sem problema! Me diz o dia e o horário que ficam melhores pra você que eu já remarco por aqui mesmo.' }],
     ai: { intent: 'reschedule', reply: 'Vou ver.', updates: { time: '15:00' } }, contexto: ctxCliente('Gui Teste'), futuros, vagas: { [dia1]: ['14:00', '14:30'] } })
   checar('40 remarcar só com hora: fica no mesmo dia e oferece o mais próximo', /14:30/.test(r.reply) && !/Confirmo presença/.test(r.reply), r.reply)
+}
+
+// 41. Regra do sinal (Juliano, 26/09/2026): dois últimos = cancelamento em cima da hora ou falta → a reserva
+//     sai com sinal de 50% pelo Pix, prazo de 1 h; sem a regra, reserva normal sem sinal.
+{
+  const base = { msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Caio Teste'), vagas: { [dia1]: ['09:00', '10:00'] } }
+  const r1 = await turno({ ...base, sinalCancel: true })
+  const upd = r1.chamadas.find((x: any) => x.alvo === 'bookings' && x.op === 'update' && x.payload?.prepay_amount)
+  checar('41a regra ativa: reserva e pede sinal de 50% (R$ 20,00)', reservou(r1) && /sinal de 50% \(R\$\s?20,00\)/.test(r1.reply) && /1 hora/.test(r1.reply), r1.reply)
+  checar('41a regra ativa: grava o sinal e o prazo no agendamento', upd?.payload?.prepay_amount === 20 && Boolean(upd?.payload?.prepay_deadline_at), upd?.payload)
+  const r2 = await turno({ ...base, sinalCancel: false })
+  checar('41b sem a regra: reserva sem sinal', reservou(r2) && !/sinal/i.test(r2.reply), r2.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

@@ -5,6 +5,8 @@ import { primeiroNome } from '../_shared/primeiro-nome.ts'
 // v29.200.0 — Prazo do SINAL (regra do Juliano, 17/09/2026): "até 1h pra fazer o sinal; se não
 // fizer, libera o horário. Isto só pra serviços de química, que são mais caros, duradouros e
 // ocupam muito tempo na agenda".
+// v29.240.0: vale também pro sinal de 50% de quem cancelou em cima da hora duas vezes (ju-ia-site e
+// create-public-booking gravam prepay_amount + prepay_deadline_at do mesmo jeito).
 //
 // Quem marca o prazo é a JuIA (ju-ia-site), na hora em que pede o sinal de química em primeira
 // visita: bookings.prepay_deadline_at = agora + 1h. Este cron (a cada 5 min, migration 161) pega

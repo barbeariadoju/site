@@ -1,3 +1,25 @@
+## 29.240.0 — Sinal de 50% depois de dois cancelamentos em cima da hora (26/09)
+
+**Pedido do Juliano (26/09):** *"cliente cancelou 2x seguidas só remarca com pagamento de 50%"*. Dei a opinião com dois ajustes e ele aprovou: *"pode montar do jeito que vc sugeriu"*.
+
+**A regra (fonte: `sinal_cancelamentos_ativo`, migrações 177-178):**
+- Contam só **falta** (`no_show`) e **cancelamento feito pelo cliente com menos de 24 h** (`customer_cancelled_at` — JuIA, "3" da confirmação de presença, link do site). Cancelamento pelo painel, pela falta de sinal ou com 24 h+ de aviso não conta.
+- "Seguidas" = os **dois últimos acontecimentos** do cliente (atendido, falta, cancelamento tardio). **Comparecer zera.**
+- Sinal = **50% do serviço**, Pix (mesma chave do sinal de química), **descontado no dia**, prazo de **1 h** — o `prepay-deadline` que já existia libera o horário se não cair. Assinante do Clube fica fora (o Clube tem regra própria). A lista `blocked_customers` (pagamento integral, 20/08) continua valendo por cima.
+- **Dispensa:** botão **💰 Sinal** no card do CRM confere se o cliente está na regra e, se o Juliano quiser, dispensa (`admin_dispensar_sinal`; o que aconteceu antes deixa de contar).
+
+**Onde age:** JuIA (a confirmação da reserva leva o pedido de sinal, grava `prepay_amount`/`prepay_deadline_at`, push pro Juliano); site (`create-public-booking` faz o mesmo, a confirmação do WhatsApp em `booking-email` leva a instrução do Pix e a tela de sucesso avisa — `agenda-v15.js?v=29.240.0`, o aviso entra depois do `fire('booking_confirmed')`). Agendamento criado pelo painel não pede sinal (decisão do Juliano na hora).
+
+**Achado no caminho — o botão "🗑 Excluir registro" apagava o histórico que a regra lê.** Os cancelamentos de hoje (Lucas 00h49 p/ 08h15, Venilson 08h26 p/ 09h00) já não existiam na tabela: o card cancelado da Agenda faz DELETE. Agora um gatilho (`trg_bookings_arquiva_cancelamento`) guarda o mínimo (chave do telefone, dia, hora, tipo) em `cancelamentos_arquivados` antes de apagar, e a regra lê os dois. "Excluir cliente definitivamente" apaga o arquivo e a dispensa junto (LGPD). Os dois casos de hoje foram lançados no arquivo a partir das mensagens do WhatsApp — cada um está com 1 de 2. **Isso também quer dizer que a estatística de cancelamentos do plano do dia (25 em 90 dias) estava subcontada.**
+
+**Decidido contra o óbvio:**
+- **Não bloquear a remarcação** (o pedido falava em "só remarca com pagamento"): quem já tem horário remarca normal; o sinal vale para o **próximo agendamento**. Travar remarcação empurraria o cliente para o cancelamento — o contrário do que a regra quer.
+- **A JuIA não cita a regra por conta própria** (prompt, regra 13): só explica se o cliente perguntar. Aviso preventivo soa como ameaça pra quem nunca furou.
+
+Também: perguntas frequentes — "É preciso pagar antecipado?" dizia só "Não" (já estava errado desde o sinal de química); agora explica as duas exceções, e entrou "Como cancelar ou remarcar?" (texto e JSON-LD, 25 perguntas). ADMIN_VERSION 29.240.0 (crm/core `?v=29.240.0`).
+
+Testes: simulador cenário 41 (113 ok); e2e `booking-sinal.spec.js` (aviso aparece com sinal, some sem). Gatilho de arquivo testado em transação desfeita (2 arquivados → regra ativa).
+
 ## 29.239.0 — Revisão da JuIA de 26/09: lista de espera de quem já tem horário, remarcar pela confirmação, "Entendi", "até que horas" (26/09)
 
 **Origem:** plano do dia. O Juliano apontou o Sérgio e o Guilherme; a varredura das 40 h achou mais três.

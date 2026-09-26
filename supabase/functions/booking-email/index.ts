@@ -154,9 +154,17 @@ Deno.serve(async (request: Request) => {
     // não dizia como mudar — só a de cancelamento tinha link. Agora toda confirmação/alteração
     // diz que basta responder aqui (a JuIA remarca/cancela) e, quando existe, traz o link.
     const gerenciarLinha = `\n\nPrecisa remarcar ou cancelar? É só me responder aqui mesmo que eu resolvo 😉${managementUrl ? `\nOu, se preferir, pelo link: ${managementUrl}` : ''}`
+    // v29.240.0 — sinal pendente (dois cancelamentos em cima da hora; create-public-booking grava o valor e
+    // o prazo de 1 h): a confirmação leva a instrução do Pix. Mesmo texto da JuIA.
+    const sinalValor = Number(booking.prepay_amount || 0)
+    const sinalLinha = eventType === 'booking_confirmed' && sinalValor > 0 && booking.prepay_deadline_at && !booking.prepay_confirmed_at
+      ? `
+
+Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${brl(sinalValor)}) pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br, no nome de Juliano Bruno Lopes Padilha (PicPay). Assim que cair, me avisa por aqui. O sinal precisa cair em até 1 hora; passado esse prazo, o horário é liberado automaticamente. Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.`
+      : ''
     let waText = `💈 *Barbearia do Ju*\n${customerLead}`
     if (eventType === 'booking_confirmed') {
-      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu horário foi confirmado:\n📅 ${smsDetails}\n📍 ${smsAddress}${gerenciarLinha}`
+      waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu horário foi confirmado:\n📅 ${smsDetails}\n📍 ${smsAddress}${sinalLinha}${gerenciarLinha}`
     } else if (eventType === 'booking_rescheduled') {
       waText = `💈 *Barbearia do Ju*\nOlá, ${booking.customer_name}! Seu agendamento foi alterado:\n📅 Novo horário: ${smsDetails}${gerenciarLinha}`
     } else if (eventType === 'booking_reminder_24h') {

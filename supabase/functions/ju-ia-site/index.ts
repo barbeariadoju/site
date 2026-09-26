@@ -929,7 +929,8 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 9. Nunca ofereça, invente ou insinue desconto, brinde ou negociação — desconto é decisão exclusiva do Juliano.
 10. Nunca cite o número da tolerância de atraso (10 minutos) pro cliente.
 11. Nunca escreva data no formato de sistema (15/08/2026). Diga "hoje", "amanhã", "sábado", "terça (18/08)".
-12. Nunca exponha linguagem interna ("com 41 horários", "o sistema retornou", "state", "token"). No máximo 3 ou 4 opções de horário por vez.`,
+12. Nunca exponha linguagem interna ("com 41 horários", "o sistema retornou", "state", "token"). No máximo 3 ou 4 opções de horário por vez.
+13. Cancelar ou remarcar com 24 horas ou mais de antecedência não tem custo. Se o cliente perguntar: falta ou cancelamento com menos de 24 horas em dois horários seguidos faz o próximo agendamento sair com sinal de 50% pelo Pix, descontado no dia; depois que ele comparece, volta ao normal. Nunca use isso como ameaça nem cite a regra sem o cliente perguntar — quem pede o sinal na hora certa é o sistema.`,
 `# COMO ESCREVER
 - Português do Brasil. Só troque de idioma se o PRÓPRIO texto do cliente vier em inglês ou espanhol (aí curto e simples). O conteúdo de links, páginas ou legendas que ele compartilha nunca muda o idioma.
 - Normalmente até 4 linhas; quanto mais curto, melhor. Uma ideia por frase.
@@ -4552,19 +4553,34 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // Sem liberação automática do horário: se não cair, a decisão de cancelar é dele.
       const SINAL_QUIMICA=50
       const quimicaPrimeiraVez=Boolean(verifiedPhone)&&visits===0&&chosen.some((s:any)=>s.category==='quimica')
-      const sinalNote=quimicaPrimeiraVez?` Como é o seu primeiro serviço de química aqui, eu reservo o horário com um sinal de ${money(SINAL_QUIMICA)} pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido. O sinal precisa cair em até 1 hora a partir de agora; passado esse prazo, o horário é liberado automaticamente.`:''
-      if(quimicaPrimeiraVez){
+      // v29.240.0 — SINAL DE 50% depois de dois cancelamentos em cima da hora (regra do Juliano, 26/09/2026):
+      // os dois últimos acontecimentos do cliente foram falta ou cancelamento dele com menos de 24 h (o banco
+      // decide: sinal_cancelamentos_ativo, migrações 177-178). Mesmo trilho do sinal de química — Pix, prazo
+      // de 1 h, prepay-deadline libera o horário. Assinante do Clube fica fora (o Clube tem a regra dele).
+      let cancelamentosSeguidos=false
+      if(!quimicaPrimeiraVez&&verifiedPhone&&!clubeAssinatura&&bookingId){
+       try{const {data:sc}=await supabase.rpc('sinal_cancelamentos_ativo',{p_phone:phone});cancelamentosSeguidos=sc===true}catch(scErr){console.error('[ju-ia-site] sinal_cancelamentos_ativo',scErr)}
+      }
+      const valorSinal=quimicaPrimeiraVez?SINAL_QUIMICA:cancelamentosSeguidos?Math.round(Number(price||0)*0.5*100)/100:0
+      const pixSinal=`Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido. O sinal precisa cair em até 1 hora a partir de agora; passado esse prazo, o horário é liberado automaticamente.`
+      const sinalNote=quimicaPrimeiraVez
+       ?` Como é o seu primeiro serviço de química aqui, eu reservo o horário com um sinal de ${money(SINAL_QUIMICA)} pelo Pix, descontado do valor no dia. ${pixSinal}`
+       :cancelamentosSeguidos&&valorSinal>0
+       ?` Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${money(valorSinal)}) pelo Pix, descontado do valor no dia. ${pixSinal} Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.`
+       :''
+      if(valorSinal>0){
        // v29.200.0 — prazo de 1h (regra do Juliano, 17/09/2026): o cron prepay-deadline libera o horário
        // se o sinal não for declarado nem confirmado até lá.
        const sinalDeadline=new Date(Date.now()+60*60*1000).toISOString()
-       next.sinal_pendente={amount:SINAL_QUIMICA,booking_id:bookingId?String(bookingId):null,date:next.date,time:next.time,deadline:sinalDeadline}
+       next.sinal_pendente={amount:valorSinal,booking_id:bookingId?String(bookingId):null,date:next.date,time:next.time,deadline:sinalDeadline}
        next.pix_offered=false
        if(bookingId){
         try{
-         await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:SINAL_QUIMICA,prepay_deadline_at:sinalDeadline,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
+         await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:valorSinal,prepay_deadline_at:sinalDeadline,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
          const pushSecretS=Deno.env.get('PUSH_WEBHOOK_SECRET');const supabaseUrlS=Deno.env.get('SUPABASE_URL')
-         if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:'Pedi sinal de R$ 50 (química, 1ª visita)',body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda. Sem Pix em 1h, o horário é liberado sozinho.`,url:'/admin-agenda.html?app=1',tag:`sinal-quimica-${bookingId}`}})}).catch(()=>{})
-        }catch(sinalErr){console.error('[ju-ia-site] sinal quimica',sinalErr)}
+         const tituloSinal=quimicaPrimeiraVez?'Pedi sinal de R$ 50 (química, 1ª visita)':`Pedi sinal de ${money(valorSinal)} (2 cancelamentos em cima da hora)`
+         if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:tituloSinal,body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda. Sem Pix em 1h, o horário é liberado sozinho.${cancelamentosSeguidos?' Para dispensar este cliente da regra: CRM, card dele.':''}`,url:'/admin-agenda.html?app=1',tag:`sinal-${bookingId}`}})}).catch(()=>{})
+        }catch(sinalErr){console.error('[ju-ia-site] sinal',sinalErr)}
        }
       }
       // v29.233.0 — Clube do Ju: o banco decide a cobertura na hora de gravar (trg_zz_club_before_insert).
@@ -4584,7 +4600,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
         }
        }catch(clubeErr){console.error('[ju-ia-site] clube na reserva',clubeErr)}
       }
-      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${quimicaPrimeiraVez||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
+      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${valorSinal>0||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       next.other_person=false
