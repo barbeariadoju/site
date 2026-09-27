@@ -1,3 +1,11 @@
+## 29.258.0 — Auditoria impeccable, onda 9: Balcão no mesmo padrão do Concluir (27/09)
+
+- **Balcão:** Observações, data e horário, caixinha, pontos de fidelidade extra e nº desta visita ficavam sempre abertos (~12 campos antes do "Registrar"). Agora em **"Mais opções"**, o mesmo componente (`.admin-fold`) do modal Concluir, com o mesmo comportamento: aberto no computador, fechado no celular. À vista ficam o que todo atendimento tem: cliente, serviços, produtos, pagamento e "Como foi feito" (que o Juliano pediu logo abaixo do pagamento). Data e hora continuam preenchidas sozinhas com o agora.
+
+**Decidido contra a proposta da auditoria, e por quê:**
+- **Remarcar por um caminho só (trocar serviço dentro do modal): não.** O modal de remarcar muda só data e hora pela RPC de remarcação; trocar serviço muda duração e preço e passa por outra gravação. O caso raro já tem o link "Trocar serviço junto", que leva ao formulário completo.
+- **Balcão = o mesmo Concluir (checkout único): fica para decidir junto com o Juliano.** É o caixa: unificar as duas implementações é reescrita que precisa ser testada na cadeira, atrás de uma chave, e o Clube (cujas visitas passam pelo Concluir) lança em 01/10. A convergência que dava para fazer sem risco — mesmos campos recolhidos, mesmo componente — está nesta versão.
+
 ## 29.257.0 — Auditoria impeccable, onda 8: menu do painel de 18 para 13 (27/09)
 
 **Por quê:** o menu (e a folha "Mais" do celular) tinha 18 destinos. Vários eram a mesma coisa vista por outro ângulo: Fidelidade e Reativação são recortes de clientes; Relatórios repete o período e o faturamento do Financeiro; Avaliações e Conteúdo são outras caixas de entrada ao lado de Mensagens.

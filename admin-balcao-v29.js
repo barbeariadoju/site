@@ -212,6 +212,8 @@
   }
   function setDefaultDateTime() {
     const now = new Date();
+    // v29.258.0 — "Mais opções" como no Concluir: aberto no computador, fechado no celular.
+    { const mais = document.querySelector('[data-balcao-mais]'); if (mais) mais.open = window.innerWidth > 760; }
     $('balcao-date').value = isoLocal(now);
     $('balcao-time').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
