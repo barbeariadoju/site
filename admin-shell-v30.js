@@ -42,7 +42,7 @@
     ]],
   ];
 
-  const loginHtml = '<div class="admin-auth-brand"><img src="assets/icon-192.png" alt="Barbearia do Ju"><div><p class="eyebrow">Área restrita</p><h1>Barbearia OS</h1></div></div>'
+  const loginHtml = '<div class="admin-auth-brand"><img src="assets/icon-192.png" alt="Barbearia do Ju"><div><h1>Barbearia OS</h1></div></div>'
     + '<label>E-mail<input id="admin-email" type="email" autocomplete="email" placeholder="seu@email.com"></label>'
     + '<label>Senha<input id="admin-password" type="password" autocomplete="current-password" placeholder="••••••••"></label>'
     + '<button id="admin-signin" class="btn primary" type="button">Entrar</button><p id="admin-message" class="field-help"></p>';

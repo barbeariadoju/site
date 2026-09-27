@@ -4,6 +4,15 @@
    pode sobrescrever o que veio antes. Ao mexer: bumpar ?v= no @import do style.css
    E no style.css?v= das páginas admin. */
 
+/* v29.249.0 — auditoria de 27/09: o painel aparecia POR TRÁS do cartão de login. No desktop,
+   `.admin-app{display:grid}` (04) vence o [hidden] do navegador; no celular, 04:285 força
+   `display:block!important`. E a barra inferior e a dica "Instale o Barbearia OS" (admin-pwa.js)
+   eram montadas sem esperar o login. Regra única: [hidden] esconde sempre, e barra/dica só
+   existem na tela depois que o cartão de login some. */
+[hidden]{display:none!important}
+body:has(#admin-login:not([hidden])) :is(.admin-mobile-nav,.admin-install-tip,.admin-more-sheet){display:none!important}
+@media(max-width:900px){body[data-admin-page]:has(#admin-login:not([hidden])){padding-bottom:0}}
+
 /* v29.172.0 — Fase 1 da reforma do admin: menu único, em 4 grupos (Dia a dia / Clientes /
    Dinheiro / Comunicação). Rótulo só no desktop; no celular o menu vira faixa rolável e o rótulo some. */
 .admin-sidebar nav .admin-nav-group{display:block;margin:14px 8px 3px;font-size:var(--t-xs);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:800}

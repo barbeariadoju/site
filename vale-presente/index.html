@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="/style.css?v=29.242.1" rel="stylesheet"/>
+<link href="/style.css?v=29.249.0" rel="stylesheet"/>
 <link href="/css/07-catalogo-lista.css?v=29.247.0" rel="stylesheet"/>
 <style>
 .vp-header{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:960px;margin:0 auto;padding:18px;flex-wrap:wrap}
@@ -41,7 +41,11 @@
 .vp-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(240,201,135,.16);border-radius:14px;padding:12px 14px;background:rgba(20,20,20,.7)}
 .vp-item b{display:block;color:#fff;font-size:.98rem}
 .vp-item small{color:var(--muted)}
-.vp-cart{position:sticky;bottom:0;background:rgba(12,12,12,.97);border-top:1px solid rgba(240,201,135,.22);padding:14px 0;margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* v29.249.0 — a barra ficava colada nas bordas, quebrava em 2 linhas (122 px) e deixava o conteúdo
+   aparecer por baixo do botão. Agora: fundo sólido, recuo igual ao da página, uma linha só. */
+.vp-cart{position:sticky;bottom:0;z-index:5;background:var(--bg);border-top:1px solid rgba(240,201,135,.22);box-shadow:0 -14px 28px rgba(0,0,0,.55);padding:12px 18px calc(12px + env(safe-area-inset-bottom));margin:18px -18px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vp-cart>div:first-child{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:480px){.vp-cart{flex-wrap:wrap;row-gap:6px}.vp-cart>div:first-child{flex-basis:100%;font-size:.9rem}.vp-cart>div:last-child{flex:1;justify-content:space-between}}
 .vp-total{font-size:1.25rem;font-weight:900;color:var(--gold2)}
 .vp-form{display:grid;gap:14px;margin:18px 0}
 .vp-form label{display:block;font-weight:700;color:#fff;margin-bottom:6px;font-size:.95rem}
@@ -51,7 +55,6 @@
 .vp-pix code{display:block;word-break:break-all;background:rgba(0,0,0,.55);border-radius:12px;padding:12px;color:var(--gold2);font-size:.78rem;line-height:1.5;margin:10px 0}
 .vp-help{color:var(--muted);font-size:.92rem;line-height:1.6}
 .vp-selected{color:var(--gold2);font-weight:800}
-@media(max-width:620px){.vp-cart{position:sticky}}
 </style>
 </head>
 <body>
@@ -124,7 +127,7 @@
 
 <script src="/products-catalog-v1.js?v=29.34.0"></script>
 <script src="/services-catalog-v7.js?v=29.194.2"></script>
-<script src="/agenda-config-v6.js?v=29.25.0"></script>
+<script src="/agenda-config-v6.js?v=29.249.0"></script>
 <script type="module" src="/vale-presente-v29.js?v=29.245.0"></script>
 </body>
 </html>
