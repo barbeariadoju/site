@@ -1,3 +1,13 @@
+## 29.255.0 — Auditoria impeccable, onda 6: limpeza que não muda nada na tela (27/09)
+
+Tudo nesta versão é invisível de propósito. **Prova:** snapshot do estilo calculado (`tests/estilo/`) de todas as páginas públicas e das 18 telas do painel logadas, em 1280 e 390 px, antes e depois de cada passo — **zero diferença** em 172 capturas, quatro vezes.
+
+- **CSS de dentro das páginas do painel foi para um arquivo** (`css/08-admin-telas.css`, novo): eram 9 blocos `<style>` (28 KB) nas telas Avaliações, Balcão, Conteúdo, Equipe, Espera, Financeiro, Reativação, Relatórios e Vales. Cada bloco entrou no mesmo ponto da cascata (logo depois do 06) e preso à sua tela por `:where([data-admin-page="…"])` — o `:where` não soma especificidade, então quem vencia continua vencendo, e uma regra do Balcão não vaza para a Agenda.
+- **Cores escritas à mão viraram tokens** onde o valor é idêntico ao do token (70 trocas: `#0b0b0b` → `var(--surface-2)`, `rgba(240,201,135,.x)` → `rgba(var(--gold2-rgb),.x)` etc.). Cor fora da paleta ficou como estava — trocar mudaria a tela.
+- **Classes mortas:** 107 classes estilizadas que nenhuma página ou script usa (conferido contra todo HTML/JS do repositório, com os prefixos montados por código — `status-`, `email-status-`, `clube-status--`… — protegidos). Saíram 381 seletores e 304 regras, ~29 KB. **Erro no caminho, registrado:** a lista da auditoria (79 classes) olhou só os arquivos do painel e dava como mortas classes vivas do `/agendar/horario/` (`booking-step-panel`, `booking-upsell-block`…); foi refeita antes de apagar qualquer coisa. Também: `clube-minha.js` não é órfão (a página "minha assinatura" usa); `cliente-v23.js` era, e saiu.
+- **Regras duplicadas idênticas** no mesmo arquivo e no mesmo `@media`: 17; ficou a última cópia (a que já decidia).
+- **Documentação velha:** 43 guias de instalação/atualização das versões 19 a 28 (nenhum citado por nada) foram para `docs/historico/`; o `README.md` (que descrevia a V19.1) virou um guia curto de onde ler e das ferramentas do repositório. Na raiz ficam CLAUDE, PRODUCT, CHANGELOG, VERSAO e os documentos de negócio.
+
 ## 29.254.0 — Auditoria impeccable, onda 5: componentes únicos no painel (27/09)
 
 - **Cartão do cliente** (Clientes): eram 11 ações iguais. À vista: **Agendar**, WhatsApp e Histórico; Editar, E-mail, Outro telefone (era "＋ Telefone"), Sinal, Auditoria, Mesclar, Arquivar e Excluir definitivamente em **"Mais ações"** — o mesmo padrão do cartão de atendimento (29.251.0), mesmo CSS.

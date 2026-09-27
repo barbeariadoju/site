@@ -1,59 +1,19 @@
-## V22.4 — Segurança e experiência
+# Barbearia do Ju — site, agendamento e painel
 
-Inclui CSP, proteção contra clickjacking, consentimento de métricas, Política de Privacidade e feedback visual aprimorado no painel.
+Site estático (sem build) da Barbearia do Ju, em Bragança Paulista/SP, com agendamento online e o painel "Barbearia OS". Publicado pelo GitHub Pages atrás do Cloudflare em https://www.barbeariadoju.com.br.
 
-# Barbearia do Ju — V19.1
+Antes de mexer em qualquer coisa:
 
-Versão auditada e limpa, com painel instalável como PWA no iPhone e Android.
+- **`CLAUDE.md`** — como o projeto funciona, armadilhas que já custaram retrabalho e decisões que não devem ser revertidas.
+- **`PRODUCT.md`** — para quem é, o que o site precisa fazer e o que a marca não faz.
+- **`CHANGELOG.md`** — o que mudou, por quê e o que foi decidido contra o óbvio.
 
-## Melhorias móveis
-- Uma única aplicação para iOS e Android.
-- Barra inferior fixa com Início, Agenda, Agendar, Clientes e JuIA.
-- Instalação orientada no Safari e Chrome.
-- Botões maiores e layout adaptado para uso com uma mão.
-- No Android, os atalhos do painel tentam abrir diretamente o WhatsApp Business, com fallback para o WhatsApp Web/instalado.
-- Área administrativa sem cache persistente.
+Rotina de publicação: `npm test` (unitários + navegador), `CHANGELOG.md`, `git push origin main`.
 
-# Barbearia do Ju — versão auditada V18
+Ferramentas do próprio repositório:
 
-Pacote limpo do site e do Barbearia OS, preparado para publicação no GitHub Pages.
+- `node scripts/casca.mjs` — carimba a barra do topo e o rodapé padrão nas páginas públicas (`--check` só confere).
+- `node scripts/bump-v.mjs <versão> <arquivo...>` — troca o `?v=` de um CSS/JS em todas as referências de uma vez (`--check` lista divergências).
+- `ROTULO=antes npx playwright test -c playwright.estilo.config.js` e `node tests/estilo/comparar.mjs antes depois` — prova, por estilo calculado, que uma mudança de CSS não alterou nada além do pretendido.
 
-## Estrutura
-
-- Páginas públicas: site, serviços, produtos, agenda e páginas auxiliares.
-- Painel administrativo: visão geral, agenda, CRM, novo agendamento e JuIA.
-- `supabase/functions/ju-ia-admin/`: código da Edge Function da assistente.
-- `database/migrations/`: histórico necessário para reconstrução do banco.
-
-## Integrações preservadas
-
-- Google Tag Manager: `GTM-T9KR76KB` somente nas páginas públicas.
-- Supabase: URL e chave pública em `agenda-config-v6.js`.
-- OpenAI: chave mantida exclusivamente nos Secrets do Supabase.
-
-## Links Google padronizados
-
-- Avaliação direta: `https://g.page/r/CaQfC5axIQQIEBM/review`
-- Perfil da empresa: `https://share.google/RA6Z8daPoTwlHb7cW`
-
-## Publicação
-
-Publique o conteúdo desta pasta na raiz da branch `main`. Preserve as configurações do repositório, GitHub Pages, domínio personalizado e Cloudflare.
-
-
-## V19 — App administrativo gratuito para iPhone
-Abra /admin.html no Safari, toque em Compartilhar e escolha Adicionar à Tela de Início.
-
-## Verificação final de domínio — V22.2
-
-Após publicar, confirme que o domínio sem `www` redireciona automaticamente para o endereço canônico:
-
-- origem: `https://barbeariadoju.com.br`
-- destino esperado: `https://www.barbeariadoju.com.br`
-
-Caso não redirecione, configure no Cloudflare uma regra de redirecionamento permanente (301) do domínio raiz para `https://www.barbeariadoju.com.br/$1`.
-
-
-## V22.3
-
-Inclui página 404 personalizada e ação pós-atendimento para enviar agradecimento e pedido de avaliação pelo WhatsApp. Não exige nova migração SQL.
+Documentação de versões antigas (guias de instalação e atualização das versões 19 a 28): `docs/historico/`.

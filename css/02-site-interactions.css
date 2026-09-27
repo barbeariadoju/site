@@ -20,10 +20,7 @@ a.btn,
 .cart-head button,
 .cart-row button,
 .rating-strip a,
-.welcome-box a,
-.floating,
 .back-top,
-.mobile-cta a,
 .info .btn,
 .info-card .btn,
 a[href*="maps.app.goo.gl"],
@@ -41,10 +38,7 @@ a.btn:hover,
 .modal-add:hover,
 .send-cart:hover,
 .rating-strip a:hover,
-.welcome-box a:hover,
-.floating:hover,
 .back-top:hover,
-.mobile-cta a:hover,
 .info .btn:hover,
 .info-card .btn:hover,
 a[href*="maps.app.goo.gl"]:hover,
@@ -60,7 +54,6 @@ button[data-copy]:hover {
 .modal-add:hover,
 .send-cart:hover,
 .rating-strip a:hover,
-.welcome-box a:hover,
 .info .btn:hover,
 .info-card .btn:hover,
 button[data-copy]:hover {
@@ -111,7 +104,7 @@ button[data-copy] {
 :where(a, button, .link-card, .product-photo, .product-card, .info-card a, .rating-strip a, .mobile-cta a, .floating, .back-top, .welcome-close, .product-modal-close, .cart-row button, .copy-line button, [data-copy]):active{
   transform: translateY(-1px) scale(.985) !important;
 }
-.hero-strip a,
+
 footer a,
 .text-link,
 .back-link{
@@ -119,7 +112,7 @@ footer a,
   align-items:center;
   gap:6px;
 }
-.hero-strip a:hover,
+
 footer a:hover,
 .text-link:hover,
 .back-link:hover{
@@ -128,9 +121,9 @@ footer a:hover,
 }
 .product-photo:hover{box-shadow:var(--sh-2) !important;}
 .welcome-pop{z-index:10000 !important;}
-.welcome-box{animation: welcomeIn .42s ease both;}
+
 @keyframes welcomeIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
-.welcome-box a:hover{transform:translateY(-3px) scale(1.015) !important;}
+
 .welcome-close:hover,.product-modal-close:hover{background:rgba(var(--gold2-rgb),.16) !important;border-color:rgba(var(--gold2-rgb),.42) !important;color:var(--gold2) !important;}
 
 /* Versão 1.0 definitiva: hover glow padronizado em todos os elementos clicáveis */
@@ -365,8 +358,8 @@ footer a:hover,
 .faq-list details p{color:var(--muted);margin:0;padding:0 20px 18px;line-height:1.55}
 .faq-list details .text-link{display:inline-flex;margin:0 20px 18px}
 .suggestion-section{display:grid;grid-template-columns:.85fr 1.15fr;gap:22px;align-items:stretch;background:linear-gradient(180deg,var(--panel2),var(--surface-2));border:1px solid var(--line);border-radius:var(--r-xl);padding:28px;position:relative;overflow:hidden}
-.suggestion-copy h2{font-size:clamp(2.5rem,5.7vw,5rem)}
-.suggestion-copy p{color:var(--muted)}
+
+
 .suggestion-form{display:grid;gap:10px;background:rgba(var(--black-rgb),.22);border:1px solid var(--edge);border-radius:var(--r-lg);padding:18px}
 .suggestion-form label{color:var(--gold2);font-size:var(--t-xs);font-weight:900;text-transform:uppercase;letter-spacing:.16em}
 .suggestion-form input,.suggestion-form textarea{width:100%;border:1px solid var(--line);background:var(--surface-1);color:var(--text);border-radius:var(--r-sm);padding:13px 14px;font:inherit;outline:none;transition:.25s}
@@ -379,9 +372,9 @@ footer a:hover,
 
 /* Serviços / agendamento próprio */
 
-.review-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}.btn.ghost{background:rgba(var(--white-rgb),.04)!important;color:var(--gold2)!important;border:1px solid var(--gold-a32)!important}.services-hero{min-height:auto}.schedule-warning{margin-top:18px;border:1px solid var(--line);background:rgba(var(--gold-rgb),.08);border-radius:var(--r-md);padding:14px 16px;color:var(--muted);max-width:860px}.booking-box{padding-top:30px}.booking-form{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.booking-form label{display:flex;flex-direction:column;gap:8px;color:var(--gold2);font-weight:900}.booking-form input,.booking-form textarea{width:100%;border:1px solid var(--line);background:rgba(var(--white-rgb),.055);color:var(--text);border-radius:var(--r-sm);padding:13px 14px;font:inherit;outline:none}.booking-form textarea{resize:vertical}.booking-form label:last-child{grid-column:1/-1}.service-section .section-head p:last-child{max-width:780px;color:var(--muted);line-height:1.65}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.service-grid:not(.compact-services) .service-card{min-height:430px}.compact-services{grid-template-columns:repeat(3,1fr)}.compact-services .service-card{min-height:285px}.service-card{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border:1px solid var(--line);border-radius:var(--r-lg);padding:0;box-shadow:var(--sh-2);display:flex;flex-direction:column;justify-content:space-between}.service-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at var(--mx,50%) var(--my,0%),rgba(var(--gold2-rgb),.14),transparent 35%);opacity:0;transition:.25s;pointer-events:none}.service-card:hover:before{opacity:1}.service-card-photo img{width:100%;height:170px;object-fit:cover;filter:saturate(1.02) contrast(1.04);border-bottom:1px solid rgba(var(--gold2-rgb),.12)}.service-content{position:relative;z-index:1;padding:22px;display:flex;flex-direction:column;gap:12px;flex:1}.service-top{display:block;padding-right:0}.service-top h3,.service-content h3{margin:0;font-size:var(--t-3xl);line-height:1.22}.service-top small{display:block;color:var(--gold2);font-size:var(--t-sm);margin-top:3px}.service-tag{align-self:flex-start;color:var(--gold2);font-weight:900;font-size:var(--t-xs);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 10px;background:rgba(var(--gold-rgb),.08)}.service-tag.hot,.service-tag.premium{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border:0}.service-card p{color:var(--muted);line-height:1.62;margin:0;flex:1}.service-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}.service-meta span{white-space:nowrap;color:#cfc6b8;font-weight:800;font-size:var(--t-md)}.service-meta strong{font-size:var(--t-2xl);color:var(--gold2)}.service-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border:0;border-radius:var(--r-pill);padding:12px 14px;font-weight:900;cursor:pointer;width:100%;white-space:nowrap}.service-cart{z-index:42}.cart-note{margin:8px 0 12px;color:var(--muted);font-size:var(--t-base);line-height:1.45}.service-btn,.service-card,.booking-form input,.booking-form textarea,.review-actions a{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease,filter .25s ease}.service-btn:hover,.review-actions a:hover{transform:translateY(-2px);box-shadow:var(--ring),var(--glow);filter:saturate(1.08)}.service-card:hover{transform:translateY(-4px);border-color:rgba(var(--gold2-rgb),.36);box-shadow:var(--ring),var(--sh-2)}.booking-form input:focus,.booking-form textarea:focus{border-color:var(--gold-a55);box-shadow:var(--ring)}
-@media(max-width:950px){.service-grid,.compact-services{grid-template-columns:1fr 1fr}.booking-form{grid-template-columns:1fr 1fr}.review-actions{justify-content:flex-start}.service-grid:not(.compact-services) .service-card{min-height:410px}}
-@media(max-width:620px){.service-grid,.compact-services,.booking-form{grid-template-columns:1fr}.service-card,.compact-services .service-card,.service-grid:not(.compact-services) .service-card{min-height:auto}.service-card-photo img{height:190px}.service-meta{align-items:flex-start;flex-direction:column;gap:6px}.service-btn{width:100%}.review-actions{display:grid}.review-actions .btn{text-align:center}.service-cart{left:12px;right:12px;bottom:12px;width:auto}.floating{bottom:calc(16px + env(safe-area-inset-bottom))}}
+.review-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}.btn.ghost{background:rgba(var(--white-rgb),.04)!important;color:var(--gold2)!important;border:1px solid var(--gold-a32)!important}.services-hero{min-height:auto}.schedule-warning{margin-top:18px;border:1px solid var(--line);background:rgba(var(--gold-rgb),.08);border-radius:var(--r-md);padding:14px 16px;color:var(--muted);max-width:860px}.service-section .section-head p:last-child{max-width:780px;color:var(--muted);line-height:1.65}.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.service-grid:not(.compact-services) .service-card{min-height:430px}.compact-services{grid-template-columns:repeat(3,1fr)}.compact-services .service-card{min-height:285px}.service-card{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(24,24,24,.94),rgba(12,12,12,.96));border:1px solid var(--line);border-radius:var(--r-lg);padding:0;box-shadow:var(--sh-2);display:flex;flex-direction:column;justify-content:space-between}.service-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at var(--mx,50%) var(--my,0%),rgba(var(--gold2-rgb),.14),transparent 35%);opacity:0;transition:.25s;pointer-events:none}.service-card:hover:before{opacity:1}.service-content{position:relative;z-index:1;padding:22px;display:flex;flex-direction:column;gap:12px;flex:1}.service-content h3{margin:0;font-size:var(--t-3xl);line-height:1.22}.service-tag{align-self:flex-start;color:var(--gold2);font-weight:900;font-size:var(--t-xs);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 10px;background:rgba(var(--gold-rgb),.08)}.service-tag.hot,.service-tag.premium{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border:0}.service-card p{color:var(--muted);line-height:1.62;margin:0;flex:1}.service-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}.service-meta span{white-space:nowrap;color:#cfc6b8;font-weight:800;font-size:var(--t-md)}.service-meta strong{font-size:var(--t-2xl);color:var(--gold2)}.service-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border:0;border-radius:var(--r-pill);padding:12px 14px;font-weight:900;cursor:pointer;width:100%;white-space:nowrap}.service-cart{z-index:42}.cart-note{margin:8px 0 12px;color:var(--muted);font-size:var(--t-base);line-height:1.45}.service-btn,.service-card,.review-actions a{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease,filter .25s ease}.service-btn:hover,.review-actions a:hover{transform:translateY(-2px);box-shadow:var(--ring),var(--glow);filter:saturate(1.08)}.service-card:hover{transform:translateY(-4px);border-color:rgba(var(--gold2-rgb),.36);box-shadow:var(--ring),var(--sh-2)}
+@media(max-width:950px){.service-grid,.compact-services{grid-template-columns:1fr 1fr}.review-actions{justify-content:flex-start}.service-grid:not(.compact-services) .service-card{min-height:410px}}
+@media(max-width:620px){.service-grid,.compact-services{grid-template-columns:1fr}.service-card,.compact-services .service-card,.service-grid:not(.compact-services) .service-card{min-height:auto}.service-meta{align-items:flex-start;flex-direction:column;gap:6px}.service-btn{width:100%}.review-actions{display:grid}.review-actions .btn{text-align:center}.service-cart{left:12px;right:12px;bottom:12px;width:auto}}
 
 /* Ajustes finais solicitados - catálogo de serviços */
 .schedule-warning{
@@ -397,8 +390,7 @@ footer a:hover,
 .compact-services .service-card{
   min-height:285px;
 }
-.service-card img,
-.service-card-photo img{
+.service-card img{
   display:none !important;
 }
 .service-content h3{
@@ -410,16 +402,7 @@ footer a:hover,
   border:1px solid var(--gold-a32) !important;
   margin-top:10px;
 }
-.service-cart .product-suggest{
-  display:block;
-  text-align:center;
-  text-decoration:none;
-  background:rgba(var(--gold-rgb),.12) !important;
-  color:var(--gold2) !important;
-  border:1px solid var(--gold-a32) !important;
-  margin-top:10px;
-  line-height:1.35;
-}
+
 @media(max-width:620px){
   .service-grid,.compact-services{grid-template-columns:1fr}
   .service-grid:not(.compact-services) .service-card,.compact-services .service-card{min-height:auto}
@@ -432,8 +415,7 @@ footer a:hover,
 .cart-row-muted{background:rgba(var(--gold-rgb),.08);border-color:var(--gold-a18)}
 .product-cart-panel .secondary-cart,
 .product-cart-panel .service-suggest,
-.service-cart .secondary-cart,
-.service-cart .product-suggest{
+.service-cart .secondary-cart{
   display:block;
   text-align:center;
   text-decoration:none;
@@ -446,8 +428,7 @@ footer a:hover,
   color:var(--gold2) !important;
   border:1px solid var(--gold-a32) !important;
 }
-.product-cart-panel .service-suggest,
-.service-cart .product-suggest{
+.product-cart-panel .service-suggest{
   background:rgba(var(--gold-rgb),.12) !important;
   color:var(--gold2) !important;
   border:1px solid var(--gold-a32) !important;
@@ -477,11 +458,7 @@ footer a:hover,
   transition:.25s ease;
 }
 .open-cart-btn.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-.view-cart-action{
-  background:linear-gradient(135deg,var(--gold),var(--gold2)) !important;
-  color:var(--ink) !important;
-  border:0 !important;
-}
+
 @media(max-width:620px){.open-cart-btn{bottom:calc(16px + env(safe-area-inset-bottom));width:calc(100% - 28px)}}
 
 
@@ -491,10 +468,7 @@ footer a:hover,
 .cart-panel button.send-cart,
 .product-cart-panel .secondary-cart,
 .product-cart-panel .service-suggest,
-.product-cart-panel .view-cart-action,
-.service-cart .secondary-cart,
-.service-cart .product-suggest,
-.service-cart .view-cart-action{
+.service-cart .secondary-cart{
   display:block !important;
   width:100% !important;
   box-sizing:border-box !important;
@@ -560,7 +534,7 @@ body:has(.page-bar){--bar-h:0px}
 /* Na home o hero ocupa a tela toda: a faixa fica por cima dele, sem empurrar. */
 body:has(.hero) .page-bar{position:fixed;left:0;right:0}
 /* O WhatsApp flutuante e a aba da JuIA viraram botões da barra. */
-body:has(.page-bar) .floating,body:has(.page-bar [data-juia-open]) .juia-launcher{display:none!important}
+body:has(.page-bar [data-juia-open]) .juia-launcher{display:none!important}
 @media(max-width:760px){
   body:has(.page-bar){--bar-h:calc(68px + env(safe-area-inset-bottom));padding-bottom:var(--bar-h)}
   .page-bar,body:has(.hero) .page-bar{position:fixed;top:auto;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-bottom:0;border-top:1px solid var(--edge);background:rgba(var(--black-rgb),.94)}
@@ -571,7 +545,7 @@ body:has(.page-bar) .floating,body:has(.page-bar [data-juia-open]) .juia-launche
   .page-bar-cta{font-size:var(--t-lg);min-height:48px}
   body:has(.page-bar) .back-top{bottom:calc(var(--bar-h) + 12px)}
   body:has(.page-bar) .welcome-pop{padding-bottom:calc(var(--bar-h) + 12px)}
-  body:has(.page-bar) .bottom-back-btn{bottom:calc(var(--bar-h) + 10px)}
+  
   body:has(.page-bar) .open-cart-btn{bottom:calc(var(--bar-h) + 10px)}
   body.juia-open .page-bar,body.cart-open .page-bar{display:none}
 }
@@ -669,9 +643,9 @@ body:has([data-juia-open]) .juia-launcher{display:none!important}
    de largura, passar o mouse a jogava metade pra fora da tela à esquerda. Só !important vence. */
 .open-cart-btn:hover,.open-cart-btn:active,.open-cart-btn.show:hover,.open-cart-btn.show:focus-visible{transform:none!important}
 body:has(.open-cart-btn.show){padding-bottom:calc(64px + env(safe-area-inset-bottom))}
-body:has(.open-cart-btn.show) .floating{display:none}
+
 /* WhatsApp flutuante de /agendar/: o verde vivo destoava do resto do site. */
-.floating{background:var(--surface-3)!important;color:var(--text)!important;border:1px solid rgba(var(--gold2-rgb),.45)!important;box-shadow:0 12px 30px rgba(var(--black-rgb),.5)!important}
+
 
 /* v29.205.3 — Perguntas frequentes das páginas de conteúdo: triângulo padrão do navegador, sem
    acabamento. Mesmo "+" da seção de dúvidas da home, com alvo de 44px. */

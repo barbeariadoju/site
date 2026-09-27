@@ -185,13 +185,13 @@
 
 @media print{
   .page-bar,.bg-grain,.clube-contrato-acoes,.site-footer,.clube-nao-imprime{display:none!important}
-  body{background:#fff!important;color:#000!important;padding:0!important}
+  body{background:var(--white)!important;color:#000!important;padding:0!important}
   .clube{width:100%;padding:0}
   .clube-contrato-texto{font-size:11.5pt;line-height:1.5}
   .clube-contrato-texto h2,.clausula-num,.clube a{color:#000!important}
   .clube-contrato-texto strong{color:#000!important}
   .clausula-destaque{background:none;border:1px solid #000}
-  .clube-hash{background:none;color:#000;border-color:#999}
+  .clube-hash{background:none;color:#000;border-color:var(--grey-3)}
   .clube h1{color:#000}
   .clube-contrato-meta{color:#333}
   .clube-contrato-texto h2{break-after:avoid}

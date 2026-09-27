@@ -1,6 +1,6 @@
 .client-area-page{min-height:100vh;background:var(--surface-1);color:var(--text)}
 .client-area-shell{width:min(980px,calc(100% - 28px));margin:auto;padding:28px 0 60px}
-.client-back{display:inline-flex;margin-bottom:22px;color:#d5b26b}
+
 .client-hero{text-align:center;max-width:720px;margin:0 auto 28px}
 .client-hero img{width:92px;border-radius:var(--r-lg)}
 .client-hero h1{font-size:clamp(2.4rem,7vw,5rem);margin:.2rem 0}.client-hero>p{max-width:34em;margin-inline:auto}
@@ -34,9 +34,6 @@ body.cart-open::before{
 }
 body.cart-open .juia-launcher,
 body.cart-open .juia-chat,
-body.cart-open .floating,
-body.cart-open .bottom-back-btn,
-body.cart-open .mobile-cta,
 body.cart-open .back-top{
   opacity:0 !important;
   visibility:hidden !important;
@@ -199,7 +196,7 @@ body.cart-open .back-top{
   border:1px solid var(--gold-a28)!important;
   box-shadow:var(--sh-2) !important;
 }
-.product-suggest,.service-suggest{
+.service-suggest{
   display:flex;align-items:center;justify-content:center;text-decoration:none;
   background:rgba(var(--gold-rgb),.12)!important;color:var(--gold2)!important;
   border:1px solid rgba(var(--gold2-rgb),.24)!important;box-shadow:var(--sh-2) !important;
@@ -604,20 +601,20 @@ html,body{max-width:100%;overflow-x:hidden}
 #new-slots{margin:1rem 0}
 @media(max-width:640px){.customer-booking-page{padding:.8rem}.customer-booking-details{grid-template-columns:1fr}.customer-booking-actions,.customer-calendar-actions{display:grid}.customer-booking-actions .btn,.customer-calendar-actions .btn{width:100%;text-align:center}}
 /* V26.4 — refinamento responsivo e Central de Comunicação */
-.communication-tabs{display:flex;gap:8px;margin:0 0 18px;padding:5px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);width:max-content;max-width:100%}
-.communication-tabs button{border:0;background:transparent;color:var(--grey-3);padding:10px 14px;border-radius:var(--r-xs);font:inherit;font-weight:800;cursor:pointer}
-.email-log-card{padding:16px}
-.email-status-sent{background:rgba(90,210,150,.14);color:var(--ok)}
+
+
+
+
 .email-status-delivered{background:rgba(90,210,150,.14);color:var(--ok)}
-.email-status-failed{background:rgba(220,80,80,.14);color:var(--danger)}
-.email-status-sending,.email-status-pending{background:rgba(120,170,255,.14);color:#9bc0ff}
-.admin-booking-actions button,.admin-booking-actions a{min-height:38px;display:inline-flex;align-items:center;justify-content:center}
+
+
+
 @media(max-width:760px){
   .admin-sidebar{position:sticky;top:0;padding:8px 10px env(safe-area-inset-bottom);backdrop-filter:blur(14px);background:rgba(10,10,10,.96)}
   .admin-brand{display:none}.admin-sidebar nav{gap:4px;scrollbar-width:none}.admin-sidebar nav::-webkit-scrollbar{display:none}.admin-sidebar nav a{font-size:var(--t-xs);border-radius:var(--r-xs);min-height:42px}.admin-sidebar nav a span{font-size:var(--t-lg)}
   .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:var(--t-4xl);line-height:1.15}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
   .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:44px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
-  .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-booking-time strong{font-size:var(--t-2xl)}.admin-booking-time small{text-transform:uppercase;font-size:var(--t-xs)}.admin-booking-title{gap:6px}.admin-booking-title h3{font-size:var(--t-lg)}.admin-booking-main p{font-size:var(--t-base)}.admin-booking-main small{font-size:var(--t-xs);line-height:1.45}.admin-contact-link{overflow-wrap:anywhere}
+  .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-contact-link{overflow-wrap:anywhere}
   .admin-booking-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.admin-booking-actions>*{width:100%;min-width:0;padding:9px 7px!important}.admin-booking-actions .is-danger{grid-column:auto}
   .communication-tabs{width:100%;overflow:auto}.communication-tabs button{flex:1;white-space:nowrap;font-size:var(--t-xs)}.messages-metrics{gap:8px}.messages-metrics article{padding:12px}.message-card{padding:15px;border-radius:var(--r-sm)}.message-body{padding:13px;margin:14px 0}.message-actions{display:grid;grid-template-columns:1fr 1fr}.message-actions>*{min-width:0!important;width:100%}
   .admin-inline-fields{grid-template-columns:1fr}.block-manager .btn{width:100%}
@@ -636,7 +633,7 @@ html,body{max-width:100%;overflow-x:hidden}
   .admin-brand{display:none}.admin-sidebar nav{gap:4px;scrollbar-width:none}.admin-sidebar nav::-webkit-scrollbar{display:none}.admin-sidebar nav a{font-size:var(--t-xs);border-radius:var(--r-xs);min-height:42px}.admin-sidebar nav a span{font-size:var(--t-lg)}
   .admin-content{padding:16px 12px calc(34px + env(safe-area-inset-bottom))}.admin-page-header{gap:12px;margin-bottom:16px}.admin-page-header h1{font-size:var(--t-4xl);line-height:1.15}.admin-page-header p:not(.eyebrow){font-size:var(--t-base);line-height:1.45;margin-bottom:0}
   .agenda-layout{gap:14px}.admin-surface{padding:14px;border-radius:var(--r-sm)}.calendar-grid{gap:4px}.calendar-day{min-height:44px;aspect-ratio:auto}.calendar-weekday{font-size:var(--t-xs)}.calendar-card{overflow:hidden}
-  .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-booking-time strong{font-size:var(--t-2xl)}.admin-booking-time small{text-transform:uppercase;font-size:var(--t-xs)}.admin-booking-title{gap:6px}.admin-booking-title h3{font-size:var(--t-lg)}.admin-booking-main p{font-size:var(--t-base)}.admin-booking-main small{font-size:var(--t-xs);line-height:1.45}.admin-contact-link{overflow-wrap:anywhere}
+  .admin-booking-card{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:13px}.admin-contact-link{overflow-wrap:anywhere}
   .admin-booking-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.admin-booking-actions>*{width:100%;min-width:0;padding:9px 7px!important}.admin-booking-actions .is-danger{grid-column:auto}
   .communication-tabs{width:100%;overflow:auto}.communication-tabs button{flex:1;white-space:nowrap;font-size:var(--t-xs)}.messages-metrics{gap:8px}.messages-metrics article{padding:12px}.message-card{padding:15px;border-radius:var(--r-sm)}.message-body{padding:13px;margin:14px 0}.message-actions{display:grid;grid-template-columns:1fr 1fr}.message-actions>*{min-width:0!important;width:100%}
   .admin-inline-fields{grid-template-columns:1fr}.block-manager .btn{width:100%}
@@ -705,13 +702,13 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 .rebooking-progress button{background:var(--panel2);color:var(--grey-2);border:1px solid #303030;border-radius:var(--r-sm);padding:12px 8px;font-weight:700}
 .rebooking-progress button span{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:var(--r-circle);background:#282828;margin-right:5px}
 .rebooking-progress button.is-active{color:var(--ink);background:var(--gold);border-color:var(--gold)}
-.rebooking-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
-.rebooking-option{display:flex;text-align:left;align-items:center;gap:12px;background:var(--panel);border:1px solid #303030;color:var(--white);border-radius:var(--r-sm);padding:14px;min-height:74px}
-.rebooking-option span{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:var(--r-circle);background:#272727;color:#e5bd55;font-weight:900}
-.rebooking-option div{display:grid;gap:4px}
-.rebooking-option small{color:var(--grey-2)}
-.rebooking-option.is-selected{border-color:var(--gold);background:#1d190e}
-.rebooking-option.is-selected span{background:var(--gold);color:var(--ink)}
+
+
+
+
+
+
+
 .rebooking-summary{position:sticky;top:18px}
 .rebooking-message{text-align:center;max-width:720px;margin:auto}
 .rebooking-message.is-error{border-color:#7e2d2d}
@@ -721,13 +718,13 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 .rebooking-step h2{font-size:clamp(2rem,5vw,3.3rem);margin:.15em 0}
 .rebooking-step>p:not(.eyebrow){color:var(--grey-2)}
 .rebooking-summary .booking-summary-time strong,.rebooking-summary .booking-summary-date strong{overflow-wrap:anywhere}
-@media(max-width:800px){.rebooking-page{width:min(100% - 18px,680px);padding-top:20px}.rebooking-shell{display:block}.rebooking-summary{position:static;margin-top:14px}.rebooking-progress{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:var(--surface-2);padding:8px 0}.rebooking-progress button{font-size:0;padding:9px 4px}.rebooking-progress button span{font-size:14px;margin:0}.rebooking-options{grid-template-columns:1fr}.rebooking-option{min-height:66px}.rebooking-step,.rebooking-context,.rebooking-summary{padding:18px}.rebooking-hero h1{font-size:var(--t-5xl)}.rebooking-page input,.rebooking-page textarea{font-size:16px!important}}
+@media(max-width:800px){.rebooking-page{width:min(100% - 18px,680px);padding-top:20px}.rebooking-shell{display:block}.rebooking-summary{position:static;margin-top:14px}.rebooking-progress{grid-template-columns:repeat(4,minmax(0,1fr));position:sticky;top:0;z-index:5;background:var(--surface-2);padding:8px 0}.rebooking-progress button{font-size:0;padding:9px 4px}.rebooking-progress button span{font-size:14px;margin:0}.rebooking-step,.rebooking-context,.rebooking-summary{padding:18px}.rebooking-hero h1{font-size:var(--t-5xl)}.rebooking-page input,.rebooking-page textarea{font-size:16px!important}}
 /* V27.1 CRM e experiência */
 /* V28.0.1 — navegação do catálogo */
-.products-nav{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin-bottom:26px}
-.products-nav .back-link{margin-bottom:0}
-.products-nav .back-link+ .back-link{color:var(--muted)}
-@media(max-width:520px){.products-nav{gap:10px 16px}.products-nav .back-link{font-size:var(--t-md)}}
+
+
+
+
 /* V28.0.11 — botão de avanço bloqueado até existir serviço selecionado */
 .booking-actions-v14 .btn:disabled,
 .booking-actions-v14 .btn[aria-disabled="true"]{
@@ -751,8 +748,8 @@ body.booking-complete .booking-success-actions small{text-align:center;line-heig
 @media(max-width:480px){.blog-products-row figure{width:104px}}
 /* Polimento vFinal (28.16.0) — transições consistentes, feedback de interação e acessibilidade */
 :root{--ease-soft:cubic-bezier(.22,1,.36,1)}
-.btn,.link-card,.service-card,.smart-product-card,.contact-channel,.cart-remove,.admin-service-option,.calendar-day,.agenda-service-option,.agenda-slot,.booking-category-card,.booking-service-card,.booking-suggestion-card,.admin-sidebar nav a,.admin-mobile-nav a,.crm-actions button,.crm-actions a,.admin-customer-actions button,.admin-customer-actions a,.admin-booking-actions a,.admin-booking-actions button{transition-timing-function:var(--ease-soft)}
-.service-card,.contact-channel,.cart-remove,.admin-service-option,.calendar-day{transition:border-color .2s var(--ease-soft),background-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft),transform .2s var(--ease-soft)}
+.btn,.link-card,.service-card,.smart-product-card,.contact-channel,.cart-remove,.calendar-day,.agenda-slot,.booking-suggestion-card,.admin-sidebar nav a,.admin-mobile-nav a,.crm-actions button,.crm-actions a,.admin-booking-actions a,.admin-booking-actions button{transition-timing-function:var(--ease-soft)}
+.service-card,.contact-channel,.cart-remove,.calendar-day{transition:border-color .2s var(--ease-soft),background-color .2s var(--ease-soft),box-shadow .2s var(--ease-soft),transform .2s var(--ease-soft)}
 .btn:hover{box-shadow:var(--sh-2)}
 .btn:active{transform:translateY(0);box-shadow:none}
 .btn[disabled],.btn:disabled{opacity:.42;cursor:not-allowed;pointer-events:none;transform:none;box-shadow:none}
@@ -779,7 +776,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
    primeiro e é o único cheio; os outros dois viram contorno. */
 .cart-panel.service-cart.active{display:flex!important;flex-direction:column}
 .service-cart .cart-primary-action{order:1}.service-cart .cart-head,.service-cart .cart-items,.service-cart .cart-total,.service-cart .cart-note{order:0}
-.cart-panel.service-cart .send-cart.secondary-cart,.cart-panel.service-cart .send-cart.product-suggest{order:2;background:transparent!important;color:var(--gold2)!important;border:1px solid rgba(var(--gold2-rgb),.45)!important;box-shadow:none!important}
+.cart-panel.service-cart .send-cart.secondary-cart{order:2;background:transparent!important;color:var(--gold2)!important;border:1px solid rgba(var(--gold2-rgb),.45)!important;box-shadow:none!important}
 
 /* v29.205.4 — 4ª revisão cega do site */
 /* Botão de agendar logo depois da introdução nas páginas de serviço. */
@@ -787,7 +784,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 /* Área do cliente: o campo de WhatsApp era branco, fora do visual do site. */
 .client-login-card input{width:100%;box-sizing:border-box;min-height:52px;padding:12px 16px;border:1px solid rgba(var(--white-rgb),.14);border-radius:var(--r-sm);background:var(--surface-4);color:var(--white);font:inherit;font-size:max(16px,var(--t-xl))}
 .client-login-card input:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
-.products-hero .breadcrumb,.blog-hero-head .breadcrumb{justify-content:center}
+.products-hero .breadcrumb{justify-content:center}
 @media (max-width:760px){
   /* O "voltar ao topo" cobria os controles do vídeo; no celular o Menu da barra já leva a qualquer lugar. */
   .back-top{display:none!important}
@@ -833,7 +830,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 .client-hero h1,.customer-booking-hero h1,.rebooking-hero h1{font-family:Inter,InterFallback,system-ui,sans-serif;font-weight:800;font-size:clamp(2rem,6vw,2.8rem);line-height:1.1;letter-spacing:-.01em;text-transform:none}
 .customer-booking-hero,.rebooking-hero{text-align:center}
 .rebooking-page{padding-inline:max(16px,env(safe-area-inset-left))}
-.customer-booking-hero .back-link,.rebooking-hero .back-link,.client-back{display:inline-flex;margin-bottom:14px}
+.customer-booking-hero .back-link,.rebooking-hero .back-link{display:inline-flex;margin-bottom:14px}
 
 /* v29.252.0 — auditoria impeccable: fluxo de agendar em 3 etapas (agenda-v15.js).
    Horários agrupados por período, sem caixa com rolagem própria e com botões mais baixos:

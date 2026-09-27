@@ -1,95 +1,95 @@
 /* Agenda própria v1 */
-.agenda-shell{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;align-items:start}
-.agenda-form,.agenda-summary{padding:28px}
-.agenda-form>label,.agenda-grid label,.admin-login label{display:block;color:var(--gold2);font-size:var(--t-sm);font-weight:800;margin:16px 0 7px}
-.agenda-form input,.agenda-form select,.agenda-form textarea,.admin-login input,.admin-toolbar input{width:100%;background:var(--surface-1);color:var(--text);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;font:inherit}
-.agenda-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.agenda-slot-head{display:flex;justify-content:space-between;align-items:end;margin-top:18px}
-.agenda-slot-head label{color:var(--gold2);font-weight:800}
-.agenda-slot-head small{color:var(--muted)}
+
+.agenda-summary{padding:28px}
+.admin-login label{display:block;color:var(--gold2);font-size:var(--t-sm);font-weight:800;margin:16px 0 7px}
+.admin-login input{width:100%;background:var(--surface-1);color:var(--text);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;font:inherit}
+
+
+
+
 .agenda-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:10px}
 .agenda-slot{border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--r-xs);padding:11px 8px;font-weight:800;cursor:pointer}
 .agenda-slot:hover,.agenda-slot.selected{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);border-color:transparent}
 .agenda-submit{width:100%;border:0;cursor:pointer;margin-top:18px}
 .agenda-submit:disabled{opacity:.45;cursor:not-allowed}
 .agenda-summary{position:sticky;top:18px}
-.agenda-summary h2,.admin-toolbar h2,.admin-login h2{font-family:'Bebas Neue',Impact,sans-serif;font-size:var(--t-5xl);margin:.1em 0}
+.agenda-summary h2,.admin-login h2{font-family:'Bebas Neue',Impact,sans-serif;font-size:var(--t-5xl);margin:.1em 0}
 .agenda-summary hr{border:0;border-top:1px solid var(--edge);margin:24px 0}
-.admin-toolbar{display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:18px}
-.admin-toolbar>div:last-child{display:flex;gap:10px;align-items:center}
-.admin-booking{display:flex;justify-content:space-between;gap:16px;align-items:center}
-.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
-@media(max-width:850px){.agenda-shell{grid-template-columns:1fr}.agenda-summary{position:static}.agenda-slots{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:520px){.agenda-grid{grid-template-columns:1fr}.agenda-slots{grid-template-columns:repeat(3,1fr)}.admin-toolbar,.admin-booking{align-items:stretch;flex-direction:column}.admin-toolbar>div:last-child{flex-direction:column}.admin-actions>*{flex:1;text-align:center}}
+
+
+
+
+@media(max-width:850px){.agenda-summary{position:static}.agenda-slots{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:520px){.agenda-slots{grid-template-columns:repeat(3,1fr)}}
 /* Agenda V2: múltiplos serviços e seleção bem visível */
-.agenda-services{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-.agenda-service-option{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--r-sm);padding:13px 14px;cursor:pointer;transition:.2s ease}
-.agenda-service-option span,.agenda-service-option strong,.agenda-service-option small{display:block}
-.agenda-service-option small{color:var(--muted);margin-top:3px}
-.agenda-service-option b{white-space:nowrap;color:var(--gold2)}
-.agenda-service-option:hover{border-color:var(--gold-a55);transform:translateY(-1px)}
-.agenda-service-option.is-selected{background:linear-gradient(135deg,var(--gold),var(--gold2))!important;color:var(--ink)!important;border-color:#f7d9a5!important;box-shadow:var(--ring),var(--sh-2)}
-.agenda-service-option.is-selected small,.agenda-service-option.is-selected b{color:var(--ink)!important}
-.agenda-service-option.is-selected strong:before{content:'✓ ';font-weight:1000}
+
+
+
+
+
+
+
+
+
 .agenda-slots .agenda-slot.is-selected,.agenda-slots .agenda-slot[aria-pressed="true"]{background:linear-gradient(135deg,#f7d9a5,var(--gold))!important;color:var(--ink)!important;border-color:#fff0cf!important;box-shadow:var(--ring),var(--sh-2) !important;transform:translateY(-2px)}
 .agenda-slots .agenda-slot.is-selected:after{content:' ✓';font-weight:1000}
 .agenda-summary-services{list-style:none;padding:0;margin:0 0 14px}
 .agenda-summary-services li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(var(--white-rgb),.07)}
 .agenda-summary-services span{color:var(--gold2);white-space:nowrap}
-@media(max-width:650px){.agenda-services{grid-template-columns:1fr}}
+
 /* v16 — Agenda própria no padrão visual premium da Barbearia do Ju */
-.agenda-premium-form{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(24,24,24,.98),rgba(9,9,9,.99));border:1px solid var(--gold-a18);border-radius:var(--r-xl);box-shadow:var(--sh-2)}
-.agenda-premium-form:before{content:"";position:absolute;right:-140px;top:-140px;width:330px;height:330px;border-radius:var(--r-circle);background:radial-gradient(circle,rgba(var(--gold2-rgb),.14),transparent 68%);pointer-events:none}
-.agenda-step-title{display:flex;align-items:center;gap:12px;margin:24px 0 10px}
-.agenda-step-title>span{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:var(--r-circle);background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);font-weight:1000;box-shadow:var(--glow)}
-.agenda-step-title label{display:block!important;margin:0!important;color:var(--text)!important;font-size:var(--t-lg) !important;font-weight:900!important;letter-spacing:.01em}
-.agenda-step-title small{display:block;color:var(--muted);margin-top:2px;font-size:var(--t-sm)}
-.agenda-date-input,.agenda-premium-form input,.agenda-premium-form textarea{background:rgba(4,4,4,.82)!important;border:1px solid var(--gold-a18)!important;border-radius:var(--r-sm) !important;padding:15px 16px!important;box-shadow:var(--sh-2);transition:.2s ease}
-.agenda-premium-form input:focus,.agenda-premium-form textarea:focus{outline:none;border-color:rgba(var(--gold2-rgb),.65)!important;box-shadow:var(--ring)}
-.agenda-services{gap:12px}
-.agenda-service-option{min-height:82px;padding:16px 17px;border-radius:var(--r-md);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(10,10,10,.98));border-color:var(--edge);box-shadow:var(--sh-2)}
-.agenda-service-option strong{font-size:var(--t-lg);line-height:1.25;font-weight:850;letter-spacing:.005em}
-.agenda-service-option small{font-size:var(--t-xs)}
-.agenda-service-option b{font-size:var(--t-md)}
-.agenda-service-option:hover{border-color:rgba(var(--gold2-rgb),.52);box-shadow:var(--sh-2)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .agenda-slots{grid-template-columns:repeat(5,minmax(72px,1fr));gap:10px}
 .agenda-slot{font-family:Inter,InterFallback,sans-serif;font-size:var(--t-md);letter-spacing:.02em;min-height:48px;border-radius:var(--r-sm);background:linear-gradient(180deg,var(--panel2),var(--surface-1));border-color:rgba(var(--white-rgb),.09);box-shadow:var(--sh-2);transition:.18s ease}
 .agenda-slot:hover{border-color:var(--gold-a55);transform:translateY(-1px)}
 .agenda-slots .agenda-slot.is-selected{font-size:var(--t-lg);font-weight:1000}
 .agenda-summary{border-radius:var(--r-xl);border-color:var(--gold-a18);background:linear-gradient(180deg,rgba(25,25,25,.98),rgba(10,10,10,.99));box-shadow:var(--sh-2)}
 /* Painel administrativo */
-.admin-toolbar.panel{padding:24px 26px;border-radius:var(--r-lg);align-items:center;background:linear-gradient(180deg,rgba(22,22,22,.98),rgba(10,10,10,.98));border-color:rgba(var(--gold2-rgb),.15)}
-.admin-toolbar-actions{display:flex;gap:12px;align-items:end}
-.admin-date-label input{display:block;margin-top:6px;min-width:170px}
-.admin-dashboard-grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start}
-.admin-block-panel{padding:24px;border-radius:var(--r-lg);position:sticky;top:18px;background:linear-gradient(180deg,rgba(23,23,23,.98),rgba(9,9,9,.99));border-color:rgba(var(--gold2-rgb),.16)}
-.admin-block-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;transition:.2s ease}
-.admin-booking{display:grid;grid-template-columns:78px 1fr auto;padding:18px;border-radius:var(--r-lg);border-left:4px solid var(--gold);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(10,10,10,.98))}
-.admin-booking-time{font-family:'Bebas Neue',Impact,sans-serif;font-size:var(--t-5xl);color:var(--gold2)}
-.admin-actions{justify-content:flex-end}
-@media(max-width:920px){.admin-dashboard-grid{grid-template-columns:1fr}.admin-block-panel{position:static}.admin-booking{grid-template-columns:64px 1fr}.admin-actions{grid-column:1/-1;justify-content:flex-start}}
-@media(max-width:650px){.agenda-step-title{align-items:flex-start}.agenda-services{grid-template-columns:1fr}.agenda-slots{grid-template-columns:repeat(3,1fr)}.admin-toolbar.panel,.admin-toolbar-actions{align-items:stretch;flex-direction:column}.admin-toolbar-actions{width:100%}.admin-date-label input{min-width:0}.admin-block-grid{grid-template-columns:1fr 1fr}.admin-booking{grid-template-columns:58px 1fr}.admin-booking-time{font-size:var(--t-4xl)}}
+
+
+
+
+
+
+
+
+
+
+@media(max-width:650px){.agenda-slots{grid-template-columns:repeat(3,1fr)}}
 /* Agenda V7 — catálogo sincronizado e encaixe inteligente */
-.agenda-service-option em{display:block;color:var(--gold2);font-size:var(--t-xs);font-style:normal;font-weight:800;margin-top:7px}
-.agenda-service-option.is-selected em{color:var(--ink)!important}
-.agenda-service-option span{min-width:0}
-.agenda-service-option small{line-height:1.35;max-width:560px}
+
+
+
+
 .agenda-slot.is-partial{opacity:.72;border-style:dashed}
 .agenda-slot.is-partial small{display:block;font-size:var(--t-xs);color:var(--gold2);margin-top:3px}
 .agenda-slot-hint{margin:10px 0 4px;padding:12px 14px;border-radius:var(--r-sm);font-size:var(--t-base);font-weight:700}
 .agenda-slot-hint.warning{background:rgba(var(--gold2-rgb),.11);border:1px solid rgba(var(--gold2-rgb),.35);color:#f6ddb0}
 .agenda-slot-hint button{border:0;border-radius:var(--r-xs);padding:6px 10px;margin-left:4px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);font-weight:900;cursor:pointer}
 /* Agenda V8: serviços organizados por categoria */
-.agenda-service-category{margin:0 0 24px}
-.agenda-service-category h3{margin:0 0 12px;font-family:'Bebas Neue',sans-serif;font-size:var(--t-4xl);letter-spacing:.04em;color:var(--gold,#d7ad4a);border-bottom:1px solid rgba(215,173,74,.28);padding-bottom:8px}
-.agenda-service-category-grid{display:grid;gap:12px}
-.agenda-service-category:last-child{margin-bottom:0}
-@media(min-width:820px){.agenda-service-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+
+
+
 /* V9 — status de ausência */
 /* Admin V10 */
-.admin-service-option{display:flex;align-items:flex-start;gap:10px;padding:9px;border-radius:var(--r-xs);cursor:pointer}
+
 /* V11 — CRM de clientes */
-.admin-customer-actions button,.admin-customer-actions a{border:1px solid rgba(214,177,95,.35);background:transparent;color:var(--text);border-radius:var(--r-pill);padding:8px 12px;text-decoration:none;font:inherit;cursor:pointer}
+
 /* ===== Painel administrativo V12 ===== */
 body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:100vh}
 .admin-app{min-height:100vh;display:grid;grid-template-columns:260px minmax(0,1fr)}
@@ -107,7 +107,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .admin-metrics article{padding:18px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--edge);display:grid;gap:4px;min-width:0}
 .admin-metrics strong{font-size:var(--t-4xl);font-variant-numeric:tabular-nums;color:var(--gold2);overflow-wrap:anywhere;line-height:1.15}
 .admin-home-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:18px}
-.admin-shortcuts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+
 .status-pending{background:rgba(247,183,49,.14);color:#ffd06a}
 .status-confirmed{background:rgba(71,190,125,.14);color:var(--ok)}
 .status-completed{background:rgba(80,150,255,.14);color:#8ec0ff}
@@ -144,22 +144,22 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .crm-actions a{color:var(--ok)}
 .crm-history>div{display:grid;grid-template-columns:145px 1fr auto;gap:12px;padding:9px 0;border-bottom:1px solid rgba(var(--white-rgb),.05)}
 .booking-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-.booking-service-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+
 @media(max-width:1100px){.admin-metrics{grid-template-columns:repeat(3,1fr)}.admin-home-grid{grid-template-columns:1fr}.agenda-layout{grid-template-columns:1fr}.calendar-card{position:static}}
-@media(max-width:760px){.admin-app{grid-template-columns:1fr}.admin-sidebar{position:sticky;height:auto;z-index:20;padding:10px;border-right:0;border-bottom:1px solid var(--edge)}.admin-brand{padding:4px 5px 10px}.admin-sidebar nav{display:flex;overflow:auto}.admin-sidebar nav a{white-space:nowrap;padding:10px}.admin-sidebar-footer{display:none}.admin-content{padding:22px 14px 40px}.admin-page-header{display:grid}.admin-page-header .btn{width:100%}.admin-metrics{grid-template-columns:repeat(2,1fr)}.admin-shortcuts{grid-template-columns:1fr}.crm-toolbar{display:grid}.crm-stats{gap:6px}.crm-history>div{grid-template-columns:1fr}.booking-form-grid,.booking-service-group>div{grid-template-columns:1fr}.calendar-day{border-radius:var(--r-xs)}.admin-surface{padding:18px}}
+@media(max-width:760px){.admin-app{grid-template-columns:1fr}.admin-sidebar{position:sticky;height:auto;z-index:20;padding:10px;border-right:0;border-bottom:1px solid var(--edge)}.admin-brand{padding:4px 5px 10px}.admin-sidebar nav{display:flex;overflow:auto}.admin-sidebar nav a{white-space:nowrap;padding:10px}.admin-sidebar-footer{display:none}.admin-content{padding:22px 14px 40px}.admin-page-header{display:grid}.admin-page-header .btn{width:100%}.admin-metrics{grid-template-columns:repeat(2,1fr)}.crm-toolbar{display:grid}.crm-stats{gap:6px}.crm-history>div{grid-template-columns:1fr}.booking-form-grid{grid-template-columns:1fr}.calendar-day{border-radius:var(--r-xs)}.admin-surface{padding:18px}}
 /* Agenda V13 — categorias em faixas horizontais e cartões mais legíveis */
-.agenda-services{display:block!important;margin-top:12px}
-.agenda-service-category{margin:0 0 38px!important;padding:0 0 8px}
-.agenda-service-category h3{font-size:var(--t-5xl) !important;margin:0 0 16px!important;padding-bottom:10px!important}
-.agenda-service-category-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important}
-.agenda-service-option{min-height:0!important;align-items:flex-start!important;padding:18px!important;border-radius:var(--r-md) !important}
-.agenda-service-option span{display:flex!important;flex-direction:column;min-width:0;flex:1}
-.agenda-service-option strong{font-size:var(--t-xl) !important;line-height:1.24!important}
-.agenda-service-option small{font-size:var(--t-base) !important;line-height:1.48!important;margin-top:7px!important;max-width:none!important}
-.agenda-service-option em{margin-top:10px!important;font-size:var(--t-sm) !important}
-.agenda-service-option b{align-self:flex-end;margin-left:10px;font-size:var(--t-lg) !important}
-@media(max-width:1050px){.agenda-service-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media(max-width:680px){.agenda-service-category-grid{grid-template-columns:1fr!important}.agenda-service-category h3{font-size:var(--t-4xl) !important}.agenda-service-option{padding:16px!important}}
+
+
+
+
+
+
+
+
+
+
+
+
 /* Agenda V14 — fluxo em etapas */
 .booking-page-v14{min-height:100vh}
 .booking-hero-v14{padding-bottom:28px}
@@ -179,32 +179,32 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .booking-step-heading .eyebrow{margin-bottom:4px}
 .booking-step-heading h2{font-family:'Bebas Neue',Impact,sans-serif;font-size:clamp(2.3rem,5vw,3.4rem);line-height:.95;margin:.12em 0}
 .booking-step-heading p:last-child{color:var(--muted);max-width:680px}
-.booking-step-heading-row{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+
 .booking-text-button,.booking-back-button{border:0;background:transparent;color:var(--gold2);font:inherit;font-weight:850;cursor:pointer;padding:8px 0}
 .booking-text-button:hover,.booking-back-button:hover{text-decoration:underline}
-.booking-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.booking-category-card{display:grid;grid-template-columns:52px minmax(0,1fr) 20px;align-items:center;gap:14px;text-align:left;padding:19px;border:1px solid rgba(var(--white-rgb),.09);border-radius:var(--r-md);background:linear-gradient(180deg,var(--panel2),var(--surface-2));color:var(--text);cursor:pointer;transition:.2s ease}
-.booking-category-card:hover,.booking-category-card.is-active{border-color:rgba(var(--gold2-rgb),.62);transform:translateY(-2px);box-shadow:var(--sh-2)}
-.booking-category-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:var(--r-sm);background:rgba(var(--gold2-rgb),.1);color:var(--gold2);font-size:var(--t-3xl)}
-.booking-category-card strong,.booking-category-card small{display:block}
-.booking-category-card strong{font-size:var(--t-lg)}
-.booking-category-card small{color:var(--muted);margin-top:4px}
-.booking-category-card i{font-style:normal;color:var(--gold2);font-size:var(--t-4xl)}
-.booking-services-v14{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.booking-service-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;min-height:150px;padding:20px;text-align:left;border:1px solid rgba(var(--white-rgb),.09);border-radius:var(--r-lg);background:linear-gradient(180deg,var(--panel2),var(--surface-1));color:var(--text);cursor:pointer;transition:.2s ease}
-.booking-service-card:hover{border-color:var(--gold-a55);transform:translateY(-2px)}
-.booking-service-copy{display:flex;flex-direction:column;min-width:0}
-.booking-service-copy strong{font-size:var(--t-xl);line-height:1.25}
-.booking-service-copy small{color:var(--muted);line-height:1.48;margin-top:8px}
-.booking-service-copy em{margin-top:auto;padding-top:12px;color:var(--gold2);font-style:normal;font-weight:850}
-.booking-service-card>b{align-self:start;color:var(--gold2);white-space:nowrap}
-.booking-service-check{position:absolute;right:14px;bottom:14px;display:none;place-items:center;width:28px;height:28px;border-radius:var(--r-circle);background:var(--ink);color:var(--gold2);font-weight:1000}
-.booking-service-card.is-selected{background:linear-gradient(135deg,#f4d496,#d8a747);color:var(--ink);border-color:#ffe7b7;box-shadow:var(--ring),var(--sh-2)}
-.booking-service-card.is-selected small,.booking-service-card.is-selected em,.booking-service-card.is-selected>b{color:var(--ink)}
-.booking-service-card.is-selected .booking-service-check{display:grid}
-.booking-selection-bar{position:sticky;bottom:12px;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:24px 0 8px;padding:15px 16px;border:1px solid rgba(var(--gold2-rgb),.24);border-radius:var(--r-md);background:rgba(12,12,12,.94);backdrop-filter:blur(15px);box-shadow:var(--sh-2)}
-.booking-selection-bar strong,.booking-selection-bar small{display:block}
-.booking-selection-bar small{color:var(--muted);margin-top:3px}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .booking-field-v14{display:block;color:var(--gold2);font-size:var(--t-sm);font-weight:850;margin-bottom:16px}
 .booking-field-v14 input,.booking-field-v14 textarea{display:block;width:100%;margin-top:8px;background:var(--surface-1);color:var(--text);border:1px solid var(--gold-a20);border-radius:var(--r-sm);padding:15px 16px;font:inherit}
 .booking-field-v14 input:focus,.booking-field-v14 textarea:focus{outline:none;border-color:rgba(var(--gold2-rgb),.7);box-shadow:var(--ring)}
@@ -216,8 +216,8 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .booking-actions-v14{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:24px}
 .booking-actions-v14 .btn{min-width:180px}
 .booking-summary-v14{top:18px}
-.booking-summary-empty{text-align:center;padding:28px 6px;color:var(--muted)}
-.booking-summary-empty span{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 12px;border-radius:var(--r-circle);background:rgba(var(--gold2-rgb),.1);color:var(--gold2);font-size:var(--t-4xl)}
+
+
 .booking-summary-total,.booking-summary-date,.booking-summary-time{display:flex;justify-content:space-between;gap:16px;padding:13px 0;border-top:1px solid var(--edge)}
 .booking-summary-total strong,.booking-summary-time strong{color:var(--gold2)}
 .booking-summary-date{display:block}
@@ -230,7 +230,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .booking-review-client span{color:var(--muted);font-size:var(--t-xs)}
 .booking-final-submit{width:100%;border:0;margin-top:6px}
 @media(max-width:980px){.booking-shell-v14{grid-template-columns:1fr}.booking-summary-v14{position:static;order:-1}.booking-progress{grid-template-columns:repeat(5,minmax(54px,1fr))}.booking-progress-item small{display:none}}
-@media(max-width:700px){.booking-step-panel{padding:22px 16px}.booking-category-grid,.booking-services-v14,.booking-data-grid{grid-template-columns:1fr}.booking-step-heading-row,.booking-selection-bar,.booking-actions-v14{align-items:stretch;flex-direction:column}.booking-selection-bar{position:static}.booking-selection-bar .btn,.booking-actions-v14 .btn{width:100%}.booking-slots-v14{grid-template-columns:repeat(3,1fr);max-height:none}.booking-progress{gap:5px}.booking-progress-item{min-height:44px;padding:4px}.booking-progress-item span{width:24px;height:24px}.booking-summary-v14{padding:22px}}
+@media(max-width:700px){.booking-step-panel{padding:22px 16px}.booking-data-grid{grid-template-columns:1fr}.booking-actions-v14{align-items:stretch;flex-direction:column}.booking-actions-v14 .btn{width:100%}.booking-slots-v14{grid-template-columns:repeat(3,1fr);max-height:none}.booking-progress{gap:5px}.booking-progress-item{min-height:44px;padding:4px}.booking-progress-item span{width:24px;height:24px}.booking-summary-v14{padding:22px}}
 /* Barbearia OS — jornada de agendamento V15 */
 .booking-page-v15 .booking-main-v14{min-width:0}
 .booking-selected-list{display:grid;gap:12px;margin:18px 0}
@@ -259,19 +259,19 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
    nativo, que não deixava editar com seta-esquerda e não distinguia clientes com nome igual. */
 .admin-header-actions{display:flex;gap:10px;flex-wrap:wrap}
 .btn.secondary{background:var(--panel2);color:#eee;border:1px solid var(--edge-2)}
-.crm-modal[hidden]{display:none}
-.crm-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px}
-.crm-modal-backdrop{position:absolute;inset:0;background:rgba(var(--black-rgb),.78);backdrop-filter:blur(8px)}
-.crm-modal-card{position:relative;z-index:1;width:min(720px,96vw);max-height:90vh;overflow:auto;background:linear-gradient(160deg,var(--panel2),var(--surface-3));border:1px solid rgba(var(--gold2-rgb),.38);border-radius:var(--r-lg);padding:28px;box-shadow:var(--sh-2)}
-.crm-modal-card h2{font-size:clamp(1.8rem,4vw,2.8rem);margin:4px 0 22px}
-.crm-modal-close{position:absolute;right:16px;top:14px;width:40px;height:40px;border-radius:var(--r-circle);border:1px solid var(--edge-2);background:var(--panel2);color:var(--white);font-size:var(--t-4xl);cursor:pointer}
-.crm-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.crm-form-grid label{display:grid;gap:7px;font-weight:700}
-.crm-form-grid input,.crm-form-grid textarea{width:100%;border:1px solid rgba(var(--white-rgb),.13);border-radius:var(--r-sm);background:var(--panel);color:var(--white);padding:14px 15px;font:inherit;outline:none;resize:vertical}
-.crm-form-grid input:focus,.crm-form-grid textarea:focus{border-color:var(--gold);box-shadow:var(--ring)}
-.crm-form-wide{grid-column:1/-1}
-.crm-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
-@media(max-width:760px){.admin-header-actions{display:grid;width:100%}.admin-header-actions .btn{width:100%}.crm-form-grid{grid-template-columns:1fr}.crm-form-wide{grid-column:auto}.crm-modal-card{padding:22px 16px}.admin-products-total{margin-left:0;width:100%}}
+
+
+
+
+
+
+
+
+
+
+
+
+@media(max-width:760px){.admin-header-actions{display:grid;width:100%}.admin-header-actions .btn{width:100%}.admin-products-total{margin-left:0;width:100%}}
 /* Barbearia OS V15.3 — aniversários e cadastro ampliado */
 .modal-open{overflow:hidden}
 .admin-install-tip{position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:99999;display:flex;align-items:center;gap:12px;padding:14px 42px 14px 14px;border:1px solid rgba(229,180,89,.45);border-radius:var(--r-md);background:rgba(19,19,19,.97);box-shadow:var(--sh-2);backdrop-filter:blur(16px);color:var(--text);font-family:Inter,InterFallback,sans-serif}
@@ -291,7 +291,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
   .admin-metrics article,.ai-kpis article{padding:14px!important;min-height:108px}
   .admin-metrics strong,.ai-kpis strong{font-size:var(--t-2xl)!important}
   .admin-home-grid,.agenda-layout,.ai-layout{grid-template-columns:1fr!important}
-  .admin-shortcuts{grid-template-columns:1fr!important}
+  
   .admin-booking-summary{padding:13px 14px!important;flex-wrap:wrap!important;gap:8px 10px!important}
   .admin-booking-summary .admin-status{order:2;margin-left:auto}
   .admin-booking-time-mini{order:1}
@@ -321,7 +321,7 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 }
 /* Barbearia OS V21 */
 /* Barbearia OS Sprint 1 — Modo Atendimento */
-.service-mode-panel{margin-top:20px}
+
 /* V22.4 — privacidade, carregamento e notificações */
 .cookie-banner{position:fixed;left:18px;right:18px;bottom:18px;z-index:10050;margin:auto;max-width:980px;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px 20px;border-radius:var(--r-md);background:rgba(12,12,12,.98);border:1px solid rgba(var(--gold2-rgb),.42);box-shadow:var(--sh-2);backdrop-filter:blur(16px)}
 .cookie-banner strong{display:block;color:var(--white);font-size:var(--t-lg);margin-bottom:4px}
@@ -393,10 +393,10 @@ body[data-admin-page]{background:var(--surface-1);color:var(--text);min-height:1
 .ebook-promo .ebook-badge{display:inline-block;font-family:Arial,sans-serif;font-size:var(--t-xs);text-transform:uppercase;letter-spacing:.04em;color:var(--surface-2);background:var(--gold3);padding:3px 10px;border-radius:var(--r-pill);margin-bottom:10px;font-weight:700}
 .ebook-promo h3{margin:0 0 8px;color:var(--gold2);font-size:var(--t-2xl)}
 .ebook-promo p{margin:0 0 12px;color:#d4d4d4}
-.ebook-promo .ebook-price{font-family:Arial,sans-serif;display:flex;align-items:baseline;gap:10px;margin:0 0 16px;flex-wrap:wrap}
-.ebook-promo .ebook-price .old{text-decoration:line-through;color:var(--grey-4);font-size:var(--t-md)}
-.ebook-promo .ebook-price .new{font-size:var(--t-4xl);font-weight:800;color:var(--gold3)}
-.ebook-promo .ebook-price .tag{font-size:var(--t-xs);background:rgba(216,122,90,.18);color:#e3987a;padding:2px 9px;border-radius:var(--r-pill);font-family:Arial,sans-serif}
+
+
+
+
 /* v29.46.0 — card Cadeira (camera) em alerta quando diverge dos registrados ou contador parado */
 /* v29.98.0 - pergunta 'primeira vez / ja e cliente' no cartao do Atendimento */
 /* v29.151.0 — contador de quantidade nos produtos (Balcão e modal Concluir/Editar da Agenda). Só aparece com o item marcado. */

@@ -1,41 +1,5 @@
-<!doctype html><html lang="pt-BR"><head><title>Lista de espera | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png?v=2"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.253.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.254.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.6"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png?v=2">
-<style>
-.espera-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
-.espera-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
-.espera-tabs button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:var(--t-base);padding:.4rem .9rem;cursor:pointer}
-.espera-tabs button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
-.espera-modes{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
-.espera-modes button{appearance:none;background:transparent;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:var(--t-base);padding:.4rem .9rem;cursor:pointer}
-.espera-modes button.is-active{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206}
-.espera-rangenav{display:flex;align-items:center;gap:.5rem}
-.espera-rangenav strong{min-width:8.5rem;text-align:center;font-size:var(--t-md);color:var(--text)}
-.espera-rangenav .btn{padding:.25rem .7rem;font-size:var(--t-xl);line-height:1}
-.espera-rangenav .btn[disabled]{opacity:.35;cursor:not-allowed}
-.espera-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-.espera-chip-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:14px;background:rgba(240,201,135,.03)}
-.espera-chip-group span{color:var(--muted);font-size:var(--t-xs);margin-right:4px}
-.espera-chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:var(--t-sm);font-weight:600;padding:.3rem .7rem;border-radius:999px;cursor:pointer}
-.espera-chip.is-selected{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
-.espera-card{border:1px solid var(--line);border-radius:16px;background:rgba(240,201,135,.03);margin-bottom:12px;transition:border-color .18s}
-.espera-card:hover{border-color:rgba(240,201,135,.35)}
-.espera-source{flex:0 0 auto;font-size:var(--t-xs);color:var(--muted)}
-.espera-contact{margin:0 0 8px;color:var(--muted);font-size:var(--t-base)}
-.espera-notes{margin:0 0 8px;color:var(--muted);font-size:var(--t-base);font-style:italic}
-.espera-waiting{color:var(--muted);font-size:var(--t-xs)}
-.espera-card-actions{display:flex;flex-wrap:wrap;gap:8px}
-.espera-card-actions a,.espera-card-actions button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;font-size:var(--t-sm);font-weight:600;padding:.4rem .8rem;border-radius:10px;cursor:pointer;text-decoration:none}
-.espera-card-actions .is-primary{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#1a1206;border-color:transparent}
-.espera-card-actions .is-danger{color:#e6a0a0;border-color:rgba(220,100,100,.35)}
-.espera-fit-form{padding:14px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:10px}
-.espera-fit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-.espera-fit-grid label{display:flex;flex-direction:column;gap:4px;font-size:var(--t-xs);color:var(--muted)}
-.espera-fit-grid input{padding:.5rem .6rem;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);font:inherit}
-.espera-fit-actions{display:flex;gap:8px}
-.espera-datemode-row{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0}
-.espera-radio-inline{display:inline-flex!important;gap:6px;align-items:center;font-weight:400!important;color:var(--text)}
-.espera-weekday-picker{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
-@media(max-width:700px){.espera-toolbar{flex-direction:column;align-items:stretch}.espera-card-actions{flex-direction:column}.espera-card-actions a,.espera-card-actions button{width:100%;text-align:center}}
-</style>
+<!doctype html><html lang="pt-BR"><head><title>Lista de espera | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png?v=2"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.255.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.255.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.6"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png?v=2">
+<link rel="stylesheet" href="/css/08-admin-telas.css?v=29.255.0">
 </head><body data-admin-page="espera"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card" data-shell="login"></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar" data-shell="sidebar"></aside><main class="admin-content">
 
 <header class="admin-page-header"><div><h1>Lista de espera</h1><p>Quando alguém cancela, veja aqui quem pode aproveitar — e encaixe com um clique.</p></div><div class="admin-header-actions"><button id="espera-add" class="btn primary" type="button">Adicionar à lista</button></div></header>
