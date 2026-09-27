@@ -23,6 +23,8 @@ test('CRM: outro telefone aparece no card, entra na busca e pode ser adicionado'
 
   await card.locator('.crm-alias-line').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/admin-screens/crm-outro-telefone.png' });
+  // v29.254.0: \"Outro telefone\" mora em \"Mais ações\" no cartão do cliente
+  await card.locator('.admin-acoes-mais > summary').click();
   await card.locator('[data-add-phone]').click();
   const campo = page.locator('.admin-dialog-card input').first();
   await campo.fill('11 97777-6666');

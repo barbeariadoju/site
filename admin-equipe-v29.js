@@ -71,7 +71,7 @@
   // ---------------------------------------------------------------- profissionais
   async function loadProfessionals() {
     const { data, error } = await sb.rpc('admin_list_professionals', { p_include_inactive: true });
-    if (error) { $('eq-list').innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { $('eq-list').innerHTML = `${BDJ_UX.falha(error)}`; return; }
     professionals = data || [];
 
     const parceiros = professionals.filter(p => !p.is_owner);

@@ -68,7 +68,7 @@
 
   async function load() {
     const { data, error } = await sb.from('waitlist').select('*').order('created_at', { ascending: true });
-    if (error) { console.error(error); $('espera-list').innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { console.error(error); $('espera-list').innerHTML = `${BDJ_UX.falha(error)}`; return; }
     rows = data || [];
     render();
   }

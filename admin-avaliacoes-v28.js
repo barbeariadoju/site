@@ -36,7 +36,7 @@
 
   async function load() {
     const { data, error } = await sb.from('google_reviews').select('*').order('created_at', { ascending: false });
-    if (error) { console.error(error); $('avaliacoes-list').innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { console.error(error); $('avaliacoes-list').innerHTML = `${BDJ_UX.falha(error)}`; return; }
     rows = data || [];
     render();
   }

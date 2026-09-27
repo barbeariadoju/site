@@ -223,7 +223,7 @@
       .select('id,customer_name,service_name,service_price,products_price,selected_products,start_time,payment_method,products_payment_method')
       .eq('channel', 'balcao').eq('booking_date', today)
       .order('start_time', { ascending: true });
-    if (error) { box.innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { box.innerHTML = `${BDJ_UX.falha(error)}`; return; }
     if (!data || !data.length) { box.innerHTML = '<div class="admin-empty">Nenhum atendimento de balcão registrado hoje ainda.</div>'; return; }
     box.innerHTML = data.map(x => {
       const products = Array.isArray(x.selected_products) ? x.selected_products : [];

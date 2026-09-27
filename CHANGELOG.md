@@ -1,3 +1,12 @@
+## 29.254.0 — Auditoria impeccable, onda 5: componentes únicos no painel (27/09)
+
+- **Cartão do cliente** (Clientes): eram 11 ações iguais. À vista: **Agendar**, WhatsApp e Histórico; Editar, E-mail, Outro telefone (era "＋ Telefone"), Sinal, Auditoria, Mesclar, Arquivar e Excluir definitivamente em **"Mais ações"** — o mesmo padrão do cartão de atendimento (29.251.0), mesmo CSS.
+- **Um controle de abas e uma navegação de período.** Eram 6 implementações de abas (Mensagens, Financeiro, Relatórios, Espera, Clube, "já cortou aqui?") e 4 de período, cada uma com CSS próprio. Agora um visual só, aplicado às classes que já existiam (o JS das telas não mudou: estado ativo continua `.is-active`/`.is-on`). No celular, abas curtas (Dia/Semana/Mês) numa linha; longas (4 status da Espera, 6 do Clube) em 2 colunas — como a correção antiga da Espera ("Cancela…" cortado), que agora vale para as duas; as 3 de Mensagens quebram o texto dentro de 3 colunas. Setas "‹ ›" com 44 px; as do calendário da Agenda ganharam nome para leitor de tela ("Mês anterior" / "Próximo mês").
+- **Erro ao carregar lista em português** (`BDJ_UX.falha`): 8 telas mostravam a mensagem crua do banco ("JWT expired", "permission denied…"). Agora: "Não foi possível carregar agora. Confira a internet e tente de novo…" + botão **Tentar de novo**; o detalhe técnico vai para o console.
+- **Espera:** os 7 filtros de dia da semana e turno ficavam sempre abertos junto com as abas; foram para "Filtrar por dia e turno", recolhido.
+
+**Decidido contra a proposta:** a auditoria sugeria reduzir a Espera a 2 abas (Esperando / Resolvidos). Ficaram as 4 — a diferença entre "avisado", "encaixado" e "cancelado" é informação que o Juliano usa, e com a grade de 2 colunas elas cabem. Teste do "Outro telefone" passou a abrir "Mais ações" antes (o caminho real).
+
 ## 29.253.0 — Auditoria impeccable, onda 4: site público sóbrio (27/09)
 
 - **Sem emoji na interface do site** (38 tirados, pedido do Juliano: *"ambiente sóbrio e formal"*): botões da home ("Montar meu vale-presente", "Guia Definitivo da Barba", "Enviar mensagem"), selos dos produtos, selo "E-book" dos artigos, botões do Pix e do vale-presente, avaliação, carrinho. Onde o emoji era o único conteúdo virou ícone em traço (SVG): os 4 canais de contato da home, o botão, o avatar e o "enviar" da JuIA; o 🛒 do botão "Adicionar" dos produtos saiu. **Fica o 🙏** dos agradecimentos — é o único que a regra da casa permite.

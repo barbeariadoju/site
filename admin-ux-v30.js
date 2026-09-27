@@ -70,8 +70,13 @@
   const confirmDialog = (message, opts = {}) => dialog({ message, ...opts });
   const promptDialog = (message, value = '', opts = {}) => dialog({ message, ok: 'OK', ...opts, input: { value, ...(opts.input || {}) } });
   const empty = (text = 'Nada por aqui.') => `<div class="admin-empty">${esc(text)}</div>`;
+  // v29.254.0 — erro ao carregar lista: 8 telas mostravam a mensagem crua do banco ("JWT expired",
+  // "permission denied for table…"). Agora uma frase em português e "Tentar de novo"; o detalhe
+  // técnico vai para o console.
+  const falha = (erro) => { if (erro) console.error(erro); return '<div class="admin-empty is-error" role="alert"><strong>Não foi possível carregar agora.</strong><span>Confira a internet e tente de novo. Se continuar, saia e entre de novo no painel.</span><button type="button" class="btn ghost" data-recarregar>Tentar de novo</button></div>'; };
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-recarregar]')) location.reload(); });
 
-  window.BDJ_UX = { toast, setBusy, withTimeout, confirm: confirmDialog, prompt: promptDialog, dialog, empty };
+  window.BDJ_UX = { toast, setBusy, withTimeout, confirm: confirmDialog, prompt: promptDialog, dialog, empty, falha };
   window.alert = (message) => toast(message, /erro|falha|negado|inválid|não foi possível|nao foi possivel/i.test(String(message)) ? 'error' : 'info', 4200);
   window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast(e.reason?.message || 'Não foi possível concluir a operação.', 'error', 5000); });
   window.addEventListener('error', (e) => { console.error(e.error || e.message); toast('Ocorreu um erro inesperado. Atualize a página e tente novamente.', 'error', 5000); });

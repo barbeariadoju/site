@@ -38,7 +38,7 @@
 
   async function load() {
     const { data, error } = await sb.from('conversation_leads_scored').select('*').order('last_message_at', { ascending: false });
-    if (error) { console.error(error); $('leads-list').innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { console.error(error); $('leads-list').innerHTML = `${BDJ_UX.falha(error)}`; return; }
     rows = data || [];
     render();
   }

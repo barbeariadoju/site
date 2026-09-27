@@ -46,7 +46,7 @@
 
   async function load() {
     const { data, error } = await sb.from('gift_cards').select('*').order('created_at', { ascending: false });
-    if (error) { console.error(error); $('vales-list').innerHTML = `<div class="admin-empty">${esc(error.message)}</div>`; return; }
+    if (error) { console.error(error); $('vales-list').innerHTML = `${BDJ_UX.falha(error)}`; return; }
     rows = data || [];
     metrics();
     render();

@@ -661,8 +661,6 @@ html{color-scheme:dark}
 @media (max-width:900px) and (min-width:761px){.balcao-submit-row,.booking-submit-row{margin:20px -18px -18px;padding-inline:18px}}
 /* Espera no celular: as 4 abas de status passavam da tela ("Cancela…" cortado). 2×2. */
 @media (max-width:760px){
-  .espera-tabs,.espera-modes{display:grid!important;grid-template-columns:1fr 1fr;width:100%;border-radius:var(--r-sm)!important}
-  .espera-tabs button,.espera-modes button{min-height:44px}
 }
 /* Calendário: legenda completa (antes explicava só Hoje e Selecionado) e, no celular, célula
    mais alta e contagem menor — o número do dia ficava coberto pela contagem. */
@@ -843,7 +841,7 @@ html{color-scheme:dark}
 
 /* v29.251.0 — cartão de atendimento: ações do momento à vista + "Mais ações" (admin-v15-4-agenda.js,
    bookingActionsHtml). O menu ocupa a linha inteira; o que é destrutivo fica por último, sozinho. */
-.admin-booking-actions .admin-acoes-mais{grid-column:1/-1;flex-basis:100%;padding:0!important}
+:is(.admin-booking-actions,.crm-actions) .admin-acoes-mais{grid-column:1/-1;flex-basis:100%;width:100%;padding:0!important}
 .admin-acoes-mais>summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid var(--edge-2);border-radius:var(--r-xs);color:var(--muted);font-weight:700;cursor:pointer}
 .admin-acoes-mais>summary::-webkit-details-marker{display:none}
 .admin-acoes-mais>summary::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}
@@ -854,7 +852,7 @@ html{color-scheme:dark}
 .admin-acoes-menu>*{min-height:44px}
 .admin-acoes-menu>.is-danger{grid-column:1/-1;margin-top:4px}
 .admin-booking-actions>a,.admin-booking-actions>button{min-height:44px}
-.admin-booking-actions :is(a,button,summary){font:700 var(--t-sm)/1.2 Inter,InterFallback,system-ui,sans-serif}
+:is(.admin-booking-actions,.crm-actions) :is(a,button,summary){font:700 var(--t-sm)/1.2 Inter,InterFallback,system-ui,sans-serif}
 
 /* v29.251.0 — Hoje: o cabeçalho tinha 7 botões (setas, voltar, atualizar, balcão, expediente,
    novo). Agora: 3 ações no cabeçalho e uma faixa própria para trocar de dia, com o rótulo
@@ -906,3 +904,44 @@ html{color-scheme:dark}
 .admin-booking-summary-main>strong>.admin-nome{min-width:0;overflow-wrap:anywhere}
 .admin-booking-summary-main>strong>span:not(.admin-nome){flex-shrink:0}
 .calendar-legend>span{white-space:nowrap}
+
+/* v29.254.0 — auditoria impeccable: 6 implementações de abas/controle segmentado (Mensagens,
+   Financeiro, Relatórios, Espera, Clube, "já cortou aqui?") e 4 de navegação de período, cada uma
+   com CSS próprio. Um visual só, aplicado às classes que já existem (o JS de cada tela continua
+   igual: estado ativo é .is-active ou .is-on). */
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts){display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:0;border:1px solid var(--edge-2);border-radius:var(--r-md);background:rgba(var(--white-rgb),.03);width:auto;max-width:100%}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button{flex:0 0 auto;min-height:40px;min-width:0;padding:0 14px;border:0!important;border-radius:var(--r-sm)!important;background:transparent!important;color:var(--muted)!important;box-shadow:none!important;font:700 var(--t-sm)/1.1 Inter,InterFallback,system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:hover{color:var(--text)!important}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:is(.is-active,.is-on,[aria-selected="true"]){background:var(--gold)!important;color:var(--ink)!important}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+[data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav){display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+[data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav)>.btn{min-width:44px;min-height:44px;padding:0;display:inline-grid;place-items:center;font-size:var(--t-xl);line-height:1}
+[data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav)>strong{min-width:8em;text-align:center;font-weight:800;color:var(--text)}
+@media (max-width:760px){
+  /* curtas (Dia/Semana/Mês, Semana/Mês, abas de Mensagens): uma linha, partes iguais */
+  [data-admin-page] :is(.communication-tabs,.rel-modes,.espera-modes){display:flex;width:100%;flex-wrap:nowrap}
+  [data-admin-page] :is(.communication-tabs,.rel-modes,.espera-modes)>button{flex:1 1 0;padding:0 8px}
+  /* longas (Espera: 4 status; Clube: 6): 2 colunas — em linha única "Cancelados" saía da tela */
+  [data-admin-page] :is(.espera-tabs,.clube-tabs){display:grid;grid-template-columns:1fr 1fr;width:100%}
+  [data-admin-page] :is(.espera-tabs,.clube-tabs)>button{white-space:normal;min-height:44px}
+  [data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav){display:grid;grid-template-columns:44px 1fr 44px;width:100%}
+  [data-admin-page] :is(.fin-rangenav,.rel-monthnav)>:is(.communication-tabs,.rel-modes){grid-column:1/-1}
+}
+@media (max-width:760px){
+  /* Mensagens: rótulos longos ("E-mails automáticos") quebram dentro de 3 colunas iguais */
+  [data-admin-page] .communication-tabs:not(.fin-mode){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  [data-admin-page] .communication-tabs:not(.fin-mode)>button{white-space:normal;min-height:48px;padding:4px 6px;line-height:1.15}
+}
+.admin-empty.is-error{display:grid;gap:8px;justify-items:center;text-align:center;border-color:rgba(var(--danger-rgb,230,160,160),.35)}
+.admin-empty.is-error strong{color:var(--text)}
+.admin-empty.is-error .btn{min-height:44px;margin-top:4px}
+/* v29.254.0 — Espera: os 7 filtros de dia e turno ficavam sempre abertos (13 alternadores à vista
+   com as abas); agora recolhidos em "Filtrar por dia e turno". */
+.espera-filtros{margin:10px 0 16px}
+.espera-filtros>summary{list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid var(--edge-2);border-radius:var(--r-pill);color:var(--muted);font-weight:700;cursor:pointer}
+.espera-filtros>summary::-webkit-details-marker{display:none}
+.espera-filtros>summary::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.espera-filtros[open]>summary{color:var(--gold2);border-color:rgba(var(--gold2-rgb),.5)}
+.espera-filtros[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
+.espera-filtros>summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.espera-filtros>.espera-chips{margin-top:10px}
