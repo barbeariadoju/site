@@ -1,3 +1,14 @@
+## 29.253.0 — Auditoria impeccable, onda 4: site público sóbrio (27/09)
+
+- **Sem emoji na interface do site** (38 tirados, pedido do Juliano: *"ambiente sóbrio e formal"*): botões da home ("Montar meu vale-presente", "Guia Definitivo da Barba", "Enviar mensagem"), selos dos produtos, selo "E-book" dos artigos, botões do Pix e do vale-presente, avaliação, carrinho. Onde o emoji era o único conteúdo virou ícone em traço (SVG): os 4 canais de contato da home, o botão, o avatar e o "enviar" da JuIA; o 🛒 do botão "Adicionar" dos produtos saiu. **Fica o 🙏** dos agradecimentos — é o único que a regra da casa permite.
+- **Painel do pedido (`/agendar/`):** "Continuar para data e horário" primeiro e único em destaque; "Adicionar mais serviços" virou link; **"Adicionar produtos (opcional)" saiu** — levava para outra página no meio do fluxo, e desde a 29.252.0 os produtos ficam na confirmação do agendamento.
+- **Chamadas repetidas:** saiu o botão flutuante de WhatsApp de 51 páginas (o CSS já o escondia em toda página com a barra; era peso morto no HTML) e o par "Agendar / WhatsApp" do topo de `servicos.html` e das perguntas frequentes (a barra fixa e o par do fim já cobrem).
+- **"Pular para o conteúdo"** em todas as páginas públicas (pela casca, `scripts/casca.mjs`): primeiro item do Tab, aparece só com foco, vai para o `<main>` (que ganhou `id="conteudo"`; no `/clube/` usa o `id="clube"` que já existia).
+
+**Decidido contra a recomendação da auditoria:**
+- **Título principal todo em Bebas: não.** A auditoria contou "50% Bebas, 50% Inter" como inconsistência, mas é o sistema decidido na 29.205.0: Bebas na vitrine (home, agendar, produtos, blog), Inter nas páginas de leitura e de ferramenta. Fica.
+- **Movimento reduzido já estava coberto** (regra geral em `css/05` e a revelação das seções desligada em `css/01`); a medição automática não tinha visto. Nada a fazer.
+
 ## 29.252.0 — Auditoria impeccable, onda 3: agendar em 3 etapas, horários por período (27/09)
 
 **Por quê:** na jornada do agendamento, o ponto mais fundo era a antiga **Etapa 1** do `/agendar/horario/`: o cliente acabava de montar o pedido no `/agendar/` e a primeira coisa que via era "Confira os serviços escolhidos" + 4 sugestões, antes de poder escolher o horário. Depois, uma parede de até **45 botões iguais** ("08:00 disponível") numa caixa de 420 px que rolava sozinha, seguida de 4 produtos na mesma etapa.

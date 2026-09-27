@@ -71,3 +71,4 @@ body.juia-open{overflow:hidden!important;overscroll-behavior:none}
   .juia-input{font-size:16px;min-height:48px}
   .juia-send{width:50px;min-height:48px}
 }
+.juia-launcher span:first-child{display:grid;place-items:center}.juia-avatar{display:grid;place-items:center;color:var(--juia-gold,#d9ad55)}.juia-send svg{display:block;margin:auto}

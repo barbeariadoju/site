@@ -708,3 +708,6 @@ body:has(.open-cart-btn.show) .floating{display:none}
 .day-chip.is-selected{background:linear-gradient(135deg,var(--gold),var(--gold2));border-color:transparent;color:var(--ink)}
 .day-chip.is-selected small{color:var(--ink)}
 .day-chip:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+/* v29.253.0 — "Pular para o conteúdo" (scripts/casca.mjs): fora da tela até receber foco. */
+.pular-conteudo{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;border-radius:var(--r-pill);background:var(--gold2);color:var(--ink);font-weight:800;text-decoration:none}
+.pular-conteudo:focus{top:12px;outline:2px solid var(--white);outline-offset:2px}

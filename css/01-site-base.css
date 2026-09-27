@@ -328,7 +328,7 @@ button#modal-add.modal-add:hover{
   filter:brightness(1.04) !important;
 }
 .product-modal-info .modal-add::before,
-button#modal-add.modal-add::before{content:"🛒";font-size:var(--t-xl);line-height:1;}
+button#modal-add.modal-add::before{content:none}
 .product-card img[src$="pasta-matte.jpg"],
 .product-card img[src$="fibra-capilar.jpg"]{
   padding:2px !important;

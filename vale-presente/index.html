@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="/style.css?v=29.252.0" rel="stylesheet"/>
+<link href="/style.css?v=29.253.0" rel="stylesheet"/>
 <link href="/css/07-catalogo-lista.css?v=29.247.0" rel="stylesheet"/>
 <style>
 .vp-wrap{max-width:960px;margin:0 auto;padding:8px 18px 90px}
@@ -53,9 +53,9 @@
 </style>
 </head>
 <body>
-<nav class="page-bar is-fluxo" id="barra-agendar" aria-label="Principal"><a class="page-bar-brand" href="/">Barbearia do Ju</a><div class="page-bar-links"><a class="page-bar-link" href="/servicos.html">Serviços e preços</a><a class="page-bar-link" href="/perguntas-frequentes.html">Dúvidas</a><a class="page-bar-link" href="/blog.html">Blog</a></div><div class="page-bar-actions"><details class="page-bar-menu"><summary>Menu</summary><nav aria-label="Menu"><a href="/">Início</a><a href="/servicos.html">Serviços e preços</a><a href="/perguntas-frequentes.html">Dúvidas</a><a href="/blog.html">Blog</a><a href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a></nav></details><a class="page-bar-alt" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a></div></nav>
+<a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a><nav class="page-bar is-fluxo" id="barra-agendar" aria-label="Principal"><a class="page-bar-brand" href="/">Barbearia do Ju</a><div class="page-bar-links"><a class="page-bar-link" href="/servicos.html">Serviços e preços</a><a class="page-bar-link" href="/perguntas-frequentes.html">Dúvidas</a><a class="page-bar-link" href="/blog.html">Blog</a></div><div class="page-bar-actions"><details class="page-bar-menu"><summary>Menu</summary><nav aria-label="Menu"><a href="/">Início</a><a href="/servicos.html">Serviços e preços</a><a href="/perguntas-frequentes.html">Dúvidas</a><a href="/blog.html">Blog</a><a href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a></nav></details><a class="page-bar-alt" href="https://wa.me/5511967073038" rel="noopener" target="_blank">WhatsApp</a></div></nav>
 
-<main class="vp-wrap">
+<main id="conteudo" class="vp-wrap">
 <section class="section-head" style="text-align:center">
 <h1>Vale-presente: presenteie com um momento de cuidado.</h1>
 <p class="vp-help">Escolha um vale pronto ou monte o seu com os serviços que quiser. No fim você paga por Pix e recebe o código para entregar a quem vai ganhar.</p>
@@ -90,7 +90,7 @@
 <div><label for="vp-buyer">Seu nome *</label><input autocomplete="name" id="vp-buyer" type="text"/></div>
 <div><label for="vp-phone">Seu WhatsApp * <small class="vp-help">(é nele que o código chega)</small></label><input autocomplete="tel" id="vp-phone" inputmode="tel" placeholder="11 90000-0000" type="tel"/></div>
 <div><label for="vp-recipient">Nome de quem vai ganhar</label><input id="vp-recipient" type="text"/></div>
-<div><label for="vp-message">Mensagem no vale (opcional)</label><textarea id="vp-message" maxlength="300" placeholder="Parabéns! Aproveite 💈"></textarea></div>
+<div><label for="vp-message">Mensagem no vale (opcional)</label><textarea id="vp-message" maxlength="300" placeholder="Parabéns! Aproveite"></textarea></div>
 </div>
 <p class="vp-help" id="vp-form-status" role="status"></p>
 <div class="vp-cart">
@@ -106,13 +106,13 @@
 <div class="vp-pix">
 <p class="vp-help">Copie o código abaixo e cole no seu aplicativo do banco, na opção <b>Pix copia e cola</b>. O valor já vai preenchido.</p>
 <code id="vp-pix-code">…</code>
-<button class="btn primary" id="vp-copy" type="button">📋 Copiar código Pix</button>
+<button class="btn primary" id="vp-copy" type="button">Copiar código Pix</button>
 <p class="vp-help" style="margin-top:12px">No banco vai aparecer <b>Juliano Bruno Lopes Padilha</b> — é o titular da Barbearia do Ju.</p>
 </div>
 <p class="vp-help">Depois de pagar, toque no botão abaixo para nos enviar o comprovante. Assim que confirmarmos (geralmente em minutos, no horário de atendimento), <b>o código do vale chega no seu WhatsApp</b>.</p>
 <div class="vp-cart">
 <button class="btn ghost" id="vp-back-2" type="button">Voltar</button>
-<a class="btn primary" href="#" id="vp-whats" rel="noopener" target="_blank">✅ Já paguei — enviar comprovante</a>
+<a class="btn primary" href="#" id="vp-whats" rel="noopener" target="_blank">Já paguei — enviar comprovante</a>
 </div>
 </section>
 </main>
@@ -121,6 +121,6 @@
 <script src="/products-catalog-v1.js?v=29.34.0"></script>
 <script src="/services-catalog-v7.js?v=29.194.2"></script>
 <script src="/agenda-config-v6.js?v=29.249.0"></script>
-<script type="module" src="/vale-presente-v29.js?v=29.245.0"></script>
+<script type="module" src="/vale-presente-v29.js?v=29.253.0"></script>
 </body>
 </html>

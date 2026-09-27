@@ -873,3 +873,8 @@ details.booking-product-offer[open]>.booking-suggestion-grid{margin-top:12px}
 .booking-pedido .booking-suggestion-card small{margin:0;white-space:nowrap;font-size:var(--t-sm)}
 .booking-pedido .booking-selected-item{padding:12px 14px}
 @media (max-width:700px){.booking-pedido{padding:14px 12px}.booking-pedido .booking-suggestion-grid{grid-template-columns:1fr}}
+/* v29.253.0 — painel do pedido: um botão principal (primeiro) e o resto como link. "Adicionar
+   produtos" saiu daqui (levava para outra página no meio do fluxo; os produtos agora ficam na
+   confirmação do agendamento). */
+.cart-panel.service-cart .cart-primary-action{order:1}
+.cart-panel.service-cart #continue-services.secondary-cart{order:2;background:none!important;border:0!important;box-shadow:none!important;color:var(--gold2)!important;text-decoration:underline;text-underline-offset:3px;min-height:44px;font-weight:700}

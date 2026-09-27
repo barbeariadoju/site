@@ -282,3 +282,6 @@
 @media (max-width:760px),(pointer:coarse){.vp-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}}
 /* Campo com menos de 16px faz o iPhone dar zoom sozinho ao tocar. */
 @media (max-width:760px),(pointer:coarse){#duration-service-select{font-size:16px}}
+
+/* v29.253.0 — canais de contato da home com ícones em traço (eram emoji). */
+.contact-channel>span{color:var(--gold2)}.contact-channel>span svg{display:block}

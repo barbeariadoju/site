@@ -44,6 +44,6 @@
     }catch(err){
       console.error(err);
       setStatus('Não foi possível enviar agora. Use o WhatsApp ao lado para falar conosco.','error');
-    }finally{button.disabled=false;button.textContent='📩 Enviar mensagem'}
+    }finally{button.disabled=false;button.textContent='Enviar mensagem'}
   });
 })();

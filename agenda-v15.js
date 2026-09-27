@@ -272,7 +272,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
       try{ await navigator.clipboard.writeText(texto); ok=true; }
       catch{ try{ const ta=document.createElement('textarea'); ta.value=texto; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); document.body.removeChild(ta); }catch{ ok=false } }
       const antes=botao.querySelector('small').textContent;
-      botao.querySelector('small').textContent=ok?'copiado ✅':'copie manualmente';
+      botao.querySelector('small').textContent=ok?'copiado':'copie manualmente';
       botao.classList.toggle('is-copied',ok);
       setTimeout(()=>{botao.querySelector('small').textContent=antes;botao.classList.remove('is-copied')},2600);
       if(ok){fire('pix_key_copied',{value:valor});avisarCopia(texto);}
@@ -280,7 +280,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     box.querySelectorAll('[data-pix-copy]').forEach(b=>b.onclick=()=>copiar(b.dataset.pixCopy,b));
     $('pix-later').onclick=()=>{
       fire('pix_declined',{value:valor});
-      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve! 💈</p>';
+      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve!</p>';
     };
     // v29.3.0 — passa pela function em vez da RPC direta: ela registra E dispara o push
     // pro Juliano na hora, dizendo pra qual chave conferir. Antes a declaração morria no
@@ -302,7 +302,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
         return;
       }
       fire('pix_declared',{value:valor,chave});
-      box.innerHTML='<strong class="pix-offer-title">Recebemos seu aviso! 🙏</strong><p class="pix-offer-lead">Seu horário está garantido. O Juliano confere o Pix e te avisa por aqui quando o pagamento cair — se faltar alguma coisa, a gente fala com você antes. Não precisa fazer mais nada. 💈</p>';
+      box.innerHTML='<strong class="pix-offer-title">Recebemos seu aviso! 🙏</strong><p class="pix-offer-lead">Seu horário está garantido. O Juliano confere o Pix e te avisa por aqui quando o pagamento cair — se faltar alguma coisa, a gente fala com você antes. Não precisa fazer mais nada.</p>';
     };
     // A chave de e-mail (PicPay) é a primeira opção por decisão do Juliano em 08/08/2026,
     // então é ela que o botão principal declara. Quem preferiu o celular usa o link abaixo.
@@ -319,7 +319,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     return `<div class="pix-offer" id="pix-offer">
         <strong class="pix-offer-title">Quer já deixar pago?</strong>
         <p class="pix-offer-lead">Adiantando agora pelo Pix, quando terminar o corte é só levantar da cadeira e seguir seu dia — sem parar pra pagar, sem fila no balcão.</p>
-        <p class="pix-offer-note">💳 O pagamento com <b>cartão online</b> está chegando — por enquanto é Pix pela chave abaixo, ou pague no local (lá o cartão passa normal na maquininha).</p>
+        <p class="pix-offer-note">O pagamento com <b>cartão online</b> está chegando — por enquanto é Pix pela chave abaixo, ou pague no local (lá o cartão passa normal na maquininha).</p>
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
         <div class="pix-keys">
           <button type="button" class="pix-key" data-pix-copy="contato@barbeariadoju.com.br"><span>Chave Pix · e-mail</span><b>contato@barbeariadoju.com.br</b><small>toque para copiar</small></button>
@@ -327,7 +327,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
         </div>
         <p class="pix-offer-note">No seu banco vai aparecer <b>Juliano Bruno Lopes Padilha</b>, no <b>PicPay</b> — é o titular da Barbearia do Ju. Pode confirmar tranquilo.<br>Depois de pagar, toque abaixo — o Juliano confere e já deixa registrado.</p>
         <div class="pix-offer-actions">
-          <button type="button" class="btn primary" id="pix-done">✅ Já fiz o Pix</button>
+          <button type="button" class="btn primary" id="pix-done">Já fiz o Pix</button>
           <button type="button" class="btn ghost" id="pix-later">Prefiro pagar no local</button>
         </div>
         <p class="pix-offer-status" id="pix-status" role="status"></p>
@@ -341,7 +341,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
         <div class="pix-offer-total">Total: <b>${money(totalPagar)}</b></div>
         <p class="pix-offer-note">Você paga na página segura do <b>PagBank</b> — Pix, crédito ou débito — e a confirmação chega no seu WhatsApp na hora, automática.</p>
         <div class="pix-offer-actions">
-          <button type="button" class="btn primary" id="pay-now">💳 Pagar agora — Pix ou cartão</button>
+          <button type="button" class="btn primary" id="pay-now">Pagar agora — Pix ou cartão</button>
           <button type="button" class="btn ghost" id="pay-later">Prefiro pagar no local</button>
         </div>
         <p class="pix-offer-status" id="pay-status" role="status"></p>
@@ -351,7 +351,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     const box=$('pay-offer'); if(!box)return;
     $('pay-later').onclick=()=>{
       fire('pix_declined',{value:valor});
-      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve! 💈</p>';
+      box.innerHTML='<p class="pix-offer-lead">Sem problema — é só pagar na barbearia depois do atendimento. Até breve!</p>';
     };
     $('pay-now').onclick=async(e)=>{
       const b=e.target; b.disabled=true; b.textContent='Abrindo pagamento…';
@@ -364,7 +364,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
         resp=await r.json().catch(()=>null);
       }catch{ resp=null }
       if(resp&&resp.ok&&resp.pay_url){ fire('checkout_opened',{value:valor}); location.href=resp.pay_url; return }
-      if(resp&&resp.ok&&resp.already_paid){ box.innerHTML='<strong class="pix-offer-title">Pagamento já confirmado ✅</strong><p class="pix-offer-lead">Está tudo certo — não precisa fazer mais nada. 💈</p>'; return }
+      if(resp&&resp.ok&&resp.already_paid){ box.innerHTML='<strong class="pix-offer-title">Pagamento já confirmado</strong><p class="pix-offer-lead">Está tudo certo — não precisa fazer mais nada.</p>'; return }
       // Fase 1 como fallback: troca o bloco inteiro pela chave copiável.
       box.outerHTML=pixFallbackHtml(valor);
       bindPixOffer(bookingCode,managementToken,valor);

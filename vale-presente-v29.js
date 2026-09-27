@@ -152,8 +152,8 @@ import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.245.
   function copiarPix() {
     const btn = $('vp-copy');
     const done = (ok) => {
-      btn.textContent = ok ? '✅ Código copiado!' : 'Copie manualmente acima';
-      setTimeout(() => { btn.textContent = '📋 Copiar código Pix'; }, 2600);
+      btn.textContent = ok ? 'Código copiado!' : 'Copie manualmente acima';
+      setTimeout(() => { btn.textContent = 'Copiar código Pix'; }, 2600);
       if (ok) fire('gift_pix_copied', { value: total() });
     };
     // Fallback pro execCommand: em WebView de app (Instagram, por exemplo) o clipboard costuma vir bloqueado.

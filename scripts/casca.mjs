@@ -35,12 +35,14 @@ export const FORA = new Set([
 const ATUAL = { 'index.html': '/', 'servicos.html': '/servicos.html', 'perguntas-frequentes.html': '/perguntas-frequentes.html', 'blog.html': '/blog.html' };
 const cur = (href, atual) => (href === atual ? ' aria-current="page"' : '');
 
-export function barra({ modo, atual = null, juia = false, cta = null }) {
+export function barra({ modo, atual = null, juia = false, cta = null, alvo = 'conteudo' }) {
   const links = LINKS.map(([h, t]) => `<a class="page-bar-link" href="${h}"${cur(h, atual)}>${t}</a>`).join('');
   const menu = [['/', 'Início'], ...LINKS].map(([h, t]) => `<a href="${h}"${cur(h, atual)}>${t}</a>`).join('')
     + `<a href="${WA}" rel="noopener" target="_blank">WhatsApp</a>`;
   const ctaHtml = modo === 'completo' ? `<a class="page-bar-cta" href="${(cta || {}).href || '/agendar/#servicos'}">${(cta || {}).label || 'Agendar horário'}</a>` : '';
-  return `<nav class="page-bar${modo === 'fluxo' ? ' is-fluxo' : ''}" id="barra-agendar" aria-label="Principal">`
+  // v29.253.0 — link para pular a barra (teclado e leitor de tela): primeiro item da página, só aparece com foco.
+  return `<a class="pular-conteudo" href="#${alvo}">Pular para o conteúdo</a>`
+    + `<nav class="page-bar${modo === 'fluxo' ? ' is-fluxo' : ''}" id="barra-agendar" aria-label="Principal">`
     + `<a class="page-bar-brand" href="/">Barbearia do Ju</a><div class="page-bar-links">${links}</div>`
     + `<div class="page-bar-actions"><details class="page-bar-menu"><summary>Menu</summary><nav aria-label="Menu">${menu}</nav></details>`
     + `<a class="page-bar-alt" href="${WA}" rel="noopener" target="_blank">WhatsApp</a>`
@@ -92,6 +94,12 @@ export function carimbar(rel, html) {
   const modo = FLUXO.has(rel) ? 'fluxo' : 'completo';
   const juia = /juia-chat\.js/.test(s);
   let cta = null;
+  // Destino do "Pular para o conteúdo": o id que o <main> já tiver, ou "conteudo".
+  const main = s.match(/<main(?=[\s>])[^>]*>/);
+  const idMain = main && (main[0].match(/\sid="([^"]+)"/) || [])[1];
+  const alvo = idMain || 'conteudo';
+  if (main && !idMain) s = s.replace(main[0], main[0].replace('<main', '<main id="conteudo"'));
+  s = s.replace(/<a class="pular-conteudo" href="#[^"]*">Pular para o conteúdo<\/a>\s*/, '');
   const i = s.indexOf('<nav class="page-bar');
   if (i >= 0) {
     const [a, b] = blocoNav(s, i);
@@ -99,9 +107,9 @@ export function carimbar(rel, html) {
     const m = velho.match(/<a class="page-bar-cta" href="([^"]+)">([^<]+)<\/a>/);
     // Mantém o CTA contextual (?servico=, e "Ver os planos" do contrato do Clube); /clube/ volta ao padrão.
     if (m && (m[1].includes('?servico=') || (rel === 'clube/contrato/index.html'))) cta = { href: m[1], label: m[2] };
-    s = s.slice(0, a) + barra({ modo, atual: ATUAL[rel] || null, juia, cta }) + s.slice(b);
+    s = s.slice(0, a) + barra({ modo, atual: ATUAL[rel] || null, juia, cta, alvo }) + s.slice(b);
   } else {
-    const nova = barra({ modo, atual: ATUAL[rel] || null, juia, cta });
+    const nova = barra({ modo, atual: ATUAL[rel] || null, juia, cta, alvo });
     const grain = '<div class="bg-grain"></div>';
     if (s.includes(grain)) s = s.replace(grain, grain + '\n' + nova);
     else s = s.replace(/<body([^>]*)>/, (t) => t + '\n' + nova);
