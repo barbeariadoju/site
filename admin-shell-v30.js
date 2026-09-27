@@ -43,6 +43,15 @@
     alerta: 'M12 4 2.5 20h19zM12 10v4M12 17h.01',
   };
   const icone = (nome) => `<svg class="admin-ico" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="${P[nome]}"/></svg>`;
+  // v29.257.0 — auditoria impeccable: o menu tinha 18 destinos. Agora mostra só a tela principal de
+  // cada assunto (13); as telas irmãs viram abas no topo da seção (SECOES), sem juntar código:
+  // Clientes · Fidelidade · Reativação / Financeiro · Relatórios / Mensagens · Avaliações · Conteúdo.
+  const SECOES = {
+    clientes: [['clientes', 'admin-clientes.html', 'Clientes'], ['fidelidade', 'admin-fidelidade.html', 'Fidelidade'], ['leads', 'admin-leads.html', 'Reativação']],
+    financeiro: [['financeiro', 'admin-financeiro.html', 'Financeiro'], ['relatorios', 'admin-relatorios.html', 'Relatórios']],
+    mensagens: [['mensagens', 'admin-mensagens.html', 'Mensagens'], ['avaliacoes', 'admin-avaliacoes.html', 'Avaliações'], ['conteudo', 'admin-conteudo.html', 'Conteúdo']],
+  };
+  const pai = Object.keys(SECOES).find((k) => SECOES[k].some((x) => x[0] === page)) || null;
   const GROUPS = [
     ['Dia a dia', [
       ['dashboard', 'admin.html', icone('hoje'), 'Hoje'],
@@ -53,22 +62,19 @@
     ]],
     ['Clientes', [
       ['clientes', 'admin-clientes.html', icone('clientes'), 'Clientes'],
-      ['fidelidade', 'admin-fidelidade.html', icone('fidelidade'), 'Fidelidade'],
       ['vales', 'admin-vales.html', icone('vales'), 'Vales-presente', 'Vales'],
       ['clube', 'admin-clube.html', icone('clube'), 'Clube'], // v29.233.0
-      ['leads', 'admin-leads.html', icone('reativar'), 'Reativação'],
     ]],
     ['Dinheiro', [
       ['financeiro', 'admin-financeiro.html', icone('financeiro'), 'Financeiro'],
-      ['relatorios', 'admin-relatorios.html', icone('relatorios'), 'Relatórios'],
       ['equipe', 'admin-equipe.html', icone('equipe'), 'Equipe'],
     ]],
     ['Comunicação', [
       ['mensagens', 'admin-mensagens.html', icone('mensagens'), 'Mensagens'],
-      ['notificacoes', 'admin-notificacoes.html', icone('notificacoes'), 'Notificações'],
       ['assistente', 'admin-assistente.html', icone('assistente'), 'Assistente'],
-      ['avaliacoes', 'admin-avaliacoes.html', icone('avaliacoes'), 'Avaliações'],
-      ['conteudo', 'admin-conteudo.html', icone('conteudo'), 'Conteúdo'],
+    ]],
+    ['Ajustes', [
+      ['notificacoes', 'admin-notificacoes.html', icone('notificacoes'), 'Notificações'],
     ]],
   ];
 
@@ -79,7 +85,7 @@
 
   const navHtml = '<nav>' + GROUPS.map(([label, items]) =>
     `<small class="admin-nav-group">${label}</small>` + items.map(([key, href, icon, text]) =>
-      `<a data-admin-nav="${key}"${key === page ? ' class="is-active"' : ''} href="${href}"><span>${icon}</span>${text}</a>`).join('')
+      `<a data-admin-nav="${key}"${key === page || key === pai ? ' class="is-active"' : ''}${key === page ? ' aria-current="page"' : ''} href="${href}"><span>${icon}</span>${text}</a>`).join('')
   ).join('') + '</nav>';
 
   const sidebarHtml = '<a class="admin-brand" href="admin.html"><img src="assets/icon-192.png" alt=""><span><strong>Barbearia do Ju</strong><small>Barbearia OS</small></span></a>'
@@ -94,5 +100,16 @@
   // v29.179.0 — modo embutido (?embed=1): a tela abre dentro de um modal de outra tela (caso: Balcão
   // dentro da Hoje). Some menu, barra do celular e cabeçalho; o conteúdo fica sozinho.
   if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('is-embed');
-  window.BDJ_SHELL = { page, groups: GROUPS, icone };
+  // Abas da seção no topo do conteúdo (fora do modo embutido).
+  if (pai && !document.body.classList.contains('is-embed')) {
+    const main = document.querySelector('.admin-content');
+    if (main && !main.querySelector('.admin-subnav')) {
+      const sub = document.createElement('nav');
+      sub.className = 'admin-subnav';
+      sub.setAttribute('aria-label', 'Telas da seção');
+      sub.innerHTML = SECOES[pai].map(([k, href, t]) => `<a href="${href}"${k === page ? ' class="is-active" aria-current="page"' : ''}>${t}</a>`).join('');
+      main.prepend(sub);
+    }
+  }
+  window.BDJ_SHELL = { page, groups: GROUPS, icone, pai };
 })();

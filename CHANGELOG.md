@@ -1,3 +1,11 @@
+## 29.257.0 — Auditoria impeccable, onda 8: menu do painel de 18 para 13 (27/09)
+
+**Por quê:** o menu (e a folha "Mais" do celular) tinha 18 destinos. Vários eram a mesma coisa vista por outro ângulo: Fidelidade e Reativação são recortes de clientes; Relatórios repete o período e o faturamento do Financeiro; Avaliações e Conteúdo são outras caixas de entrada ao lado de Mensagens.
+
+**Como ficou:** o menu mostra só a tela principal de cada assunto — **Dia a dia** (Hoje, Agenda, Novo agendamento, Balcão, Lista de espera), **Clientes** (Clientes, Vales-presente, Clube), **Dinheiro** (Financeiro, Equipe), **Comunicação** (Mensagens, Assistente) e **Ajustes** (Notificações). As telas irmãs viram **abas no topo da seção** (`SECOES` em `admin-shell-v30.js`): Clientes · Fidelidade · Reativação / Financeiro · Relatórios / Mensagens · Avaliações · Conteúdo. Numa tela irmã, o item do menu, a barra do celular e a folha "Mais" acendem a tela principal da seção.
+
+**Decidido contra a proposta original:** a auditoria sugeria fundir as telas no código (Hoje + Agenda numa tela com modo Dia/Mês; Financeiro + Relatórios numa "Números"). Isso reescreveria os scripts maiores do painel (a Agenda tem 94 KB) em produção, durante o atendimento. As abas de seção entregam o menu enxuto sem mexer na lógica de nenhuma tela; nenhuma URL mudou. Hoje e Agenda continuam separadas (a Agenda é o calendário do mês; a Hoje é a fila do dia) — o menu já as mostra lado a lado.
+
 ## 29.256.0 — Auditoria impeccable, onda 7: vale, campos de WhatsApp e alvos de toque (27/09)
 
 - **Vale-presente:** o "monte o seu" (≈20 serviços) ficava sempre aberto logo abaixo dos 3 vales prontos. Agora recolhido em "Ou monte o seu vale — com os serviços que quiser"; quem veio por um vale pronto não rola a lista inteira.

@@ -46,15 +46,15 @@
     const nav=document.createElement('nav');
     nav.className='admin-mobile-nav is-six';
     nav.setAttribute('aria-label','Navegação do painel');
-    const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:todos.find(x=>x[0]===current);
+    const chave=shell.pai||current;const noMenu=items.some(i=>i[0]===chave);const atual=noMenu?null:todos.find(x=>x[0]===chave);
     /* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual em vez de "Mais" aceso — continua abrindo a lista de telas */
-    nav.innerHTML=items.map(x=>`<a href="${x[1]}?app=1" class="${current===x[0]?'is-active':''}"${current===x[0]?' aria-current="page"':''}><span>${x[2]}</span><small>${curto(x)}</small></a>`).join('')
+    nav.innerHTML=items.map(x=>`<a href="${x[1]}?app=1" class="${chave===x[0]?'is-active':''}"${current===x[0]?' aria-current="page"':''}><span>${x[2]}</span><small>${curto(x)}</small></a>`).join('')
       +`<a href="#" data-more-open aria-label="Todas as telas" class="${noMenu?'':'is-active'}"><span>${atual?atual[2]:shell.icone('menu')}</span><small>${atual?curto(atual):'Mais'}</small></a>`;
     document.body.appendChild(nav);
     const groups=shell.groups;
     const sheet=document.createElement('div');
     sheet.className='admin-more-sheet';sheet.hidden=true;
-    sheet.innerHTML=`<div class="admin-more-backdrop" data-more-close></div><section class="admin-more-card" role="dialog" aria-modal="true" aria-label="Todas as telas do painel"><header><strong>Todas as telas</strong><button type="button" data-more-close aria-label="Fechar">×</button></header>${groups.map(([label,list])=>`<small>${label}</small><div class="admin-more-grid">${list.map(([key,url,icon,text])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><b>${text}</b></a>`).join('')}</div>`).join('')}</section>`;
+    sheet.innerHTML=`<div class="admin-more-backdrop" data-more-close></div><section class="admin-more-card" role="dialog" aria-modal="true" aria-label="Todas as telas do painel"><header><strong>Todas as telas</strong><button type="button" data-more-close aria-label="Fechar">×</button></header>${groups.map(([label,list])=>`<small>${label}</small><div class="admin-more-grid">${list.map(([key,url,icon,text])=>`<a href="${url}?app=1" class="${(shell.pai||current)===key?'is-active':''}"><span>${icon}</span><b>${text}</b></a>`).join('')}</div>`).join('')}</section>`;
     document.body.appendChild(sheet);
     const openMore=e=>{e.preventDefault();sheet.hidden=false;document.body.classList.add('admin-more-open')};
     const closeMore=()=>{sheet.hidden=true;document.body.classList.remove('admin-more-open')};

@@ -944,3 +944,17 @@ html{color-scheme:dark}
 .espera-filtros[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
 .espera-filtros>summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
 .espera-filtros>.espera-chips{margin-top:10px}
+
+/* v29.257.0 — abas da seção (admin-shell-v30.js, SECOES): Clientes · Fidelidade · Reativação,
+   Financeiro · Relatórios, Mensagens · Avaliações · Conteúdo. Mesmo visual das abas das telas. */
+.admin-subnav{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:0 0 20px;border:1px solid var(--edge-2);border-radius:var(--r-md);background:rgba(var(--white-rgb),.03);max-width:100%}
+.admin-subnav a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border-radius:var(--r-sm);color:var(--muted);font:700 var(--t-sm)/1.1 Inter,InterFallback,system-ui,sans-serif;text-decoration:none;white-space:nowrap}
+.admin-subnav a:hover{color:var(--text)}
+.admin-subnav a[aria-current="page"]{background:var(--gold);color:var(--ink)}
+.admin-subnav a:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+@media (max-width:760px){
+  .admin-subnav{display:flex;width:100%;margin:0 0 16px}
+  .admin-subnav a{flex:1 1 0;padding:0 6px;min-height:44px}
+  [data-admin-page] .admin-content>.admin-subnav{order:-3}
+}
+.is-embed .admin-subnav{display:none}
