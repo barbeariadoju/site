@@ -149,11 +149,11 @@
     $('ai-birthdays').textContent = s.birthdays.length;
     $('ai-noshow').textContent = s.noShows;
     const insights = [];
-    if (s.pending) insights.push({icon:'⏰',title:`${s.pending} confirmação${s.pending>1?'ões':''} pendente${s.pending>1?'s':''} hoje`,text:'Use a agenda para abrir o WhatsApp e confirmar os horários.'});
-    if (s.inactive.length) insights.push({icon:'↩',title:`${s.inactive.length} clientes há mais de 30 dias sem voltar`,text:`Prioridade: ${s.inactive.slice(0,3).map(c=>`${c.name} (${c.days_away} dias)`).join(', ')}.`});
-    if (s.birthdays.length) insights.push({icon:'🎂',title:`${s.birthdays.length} aniversário${s.birthdays.length>1?'s':''} nos próximos 7 dias`,text:s.birthdays.slice(0,4).map(c=>`${c.name} (${c.days===0?'hoje':`em ${c.days} dias`})`).join(', ')+'.'});
-    if (s.repeatNoShows.length) insights.push({icon:'⚠',title:'Ausências reincidentes',text:s.repeatNoShows.slice(0,4).map(c=>`${c.name}: ${c.count}`).join(' • ')+'.'});
-    if (!s.todayRows.length) insights.push({icon:'📣',title:'Agenda de hoje sem horários ativos',text:'Pode ser um bom momento para divulgar os horários vagos ou recuperar clientes inativos.'});
+    if (s.pending) insights.push({icon:BDJ_SHELL.icone('espera'),title:`${s.pending} confirmação${s.pending>1?'ões':''} pendente${s.pending>1?'s':''} hoje`,text:'Use a agenda para abrir o WhatsApp e confirmar os horários.'});
+    if (s.inactive.length) insights.push({icon:BDJ_SHELL.icone('reativar'),title:`${s.inactive.length} clientes há mais de 30 dias sem voltar`,text:`Prioridade: ${s.inactive.slice(0,3).map(c=>`${c.name} (${c.days_away} dias)`).join(', ')}.`});
+    if (s.birthdays.length) insights.push({icon:BDJ_SHELL.icone('vales'),title:`${s.birthdays.length} aniversário${s.birthdays.length>1?'s':''} nos próximos 7 dias`,text:s.birthdays.slice(0,4).map(c=>`${c.name} (${c.days===0?'hoje':`em ${c.days} dias`})`).join(', ')+'.'});
+    if (s.repeatNoShows.length) insights.push({icon:BDJ_SHELL.icone('alerta'),title:'Ausências reincidentes',text:s.repeatNoShows.slice(0,4).map(c=>`${c.name}: ${c.count}`).join(' • ')+'.'});
+    if (!s.todayRows.length) insights.push({icon:BDJ_SHELL.icone('agenda'),title:'Agenda de hoje sem horários ativos',text:'Pode ser um bom momento para divulgar os horários vagos ou recuperar clientes inativos.'});
     if (s.forecast >= 380) insights.push({icon:'✓',title:'Meta diária prevista alcançada',text:`A agenda ativa soma ${money(s.forecast)}, acima da meta de R$ 380,00.`});
     else if (s.todayRows.length) insights.push({icon:'◎',title:'Espaço para elevar o ticket',text:`Faltam ${money(380-s.forecast)} em receita prevista para a meta diária de R$ 380,00.`});
     $('ai-insights').innerHTML = insights.length ? insights.map(x=>`<div class="ai-insight"><i>${x.icon}</i><div><strong>${esc(x.title)}</strong><p>${esc(x.text)}</p></div></div>`).join('') : '<div class="admin-empty">Nenhuma atenção especial neste momento.</div>';

@@ -145,12 +145,12 @@
   // errada de barbearia vazia toda manhã). O rótulo agora só diz o TEMA do post.
   function contextLabel(ctx) {
     if (!ctx) return '';
-    if (ctx.tipo === 'vaga_aberta') return '📅 Tema: convite pra agendar hoje';
-    if (ctx.tipo === 'reta_final') return '🔥 Tema: agenda de hoje quase cheia (procura alta)';
-    if (ctx.tipo === 'campanha') return `📣 Tema: campanha ativa`;
-    if (ctx.tipo === 'experiencia') return '💈 Tema: experiência na barbearia';
-    if (ctx.tipo === 'fidelidade') return '🎁 Tema: cartão fidelidade';
-    if (ctx.tipo === 'servico_destaque') return `✂️ Serviço em destaque: ${ctx.servico}`;
+    if (ctx.tipo === 'vaga_aberta') return 'Tema: convite pra agendar hoje';
+    if (ctx.tipo === 'reta_final') return 'Tema: agenda de hoje quase cheia (procura alta)';
+    if (ctx.tipo === 'campanha') return `Tema: campanha ativa`;
+    if (ctx.tipo === 'experiencia') return 'Tema: experiência na barbearia';
+    if (ctx.tipo === 'fidelidade') return 'Tema: cartão fidelidade';
+    if (ctx.tipo === 'servico_destaque') return `Serviço em destaque: ${ctx.servico}`;
     return '';
   }
 
@@ -198,8 +198,8 @@
       // imagem) — o campo de texto aqui é só anotação interna, não sai publicado.
       const isStoryPlatform = r.platform === 'facebook_story' || r.platform === 'instagram_story';
       return `<article class="conteudo-card" data-id="${r.id}" data-platform="${esc(r.platform)}" data-carousel="${carouselUrls.length || ''}" data-scheduled="${r.status === 'agendado' && r.scheduled_for ? esc(r.scheduled_for) : ''}">
-        <span class="badge ${r.status === 'aprovado' || r.status === 'agendado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'agendado' ? `⏰ Agendado — sai sozinho ${esc(scheduledLabel)}` : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
-        ${scheduleError && r.status === 'rascunho' ? `<p class="meta">⚠️ A publicação agendada falhou e voltou pra fila: ${esc(scheduleError)}</p>` : ''}
+        <span class="badge ${r.status === 'aprovado' || r.status === 'agendado' ? 'rascunho' : esc(r.status)}">${r.status === 'rascunho' ? 'Pendente de aprovação' : r.status === 'aprovado' ? 'Publicando… (se travar, tente de novo em 3 min)' : r.status === 'agendado' ? `Agendado — sai sozinho ${esc(scheduledLabel)}` : r.status === 'publicado' ? 'Publicado' : 'Rejeitado'}</span>
+        ${scheduleError && r.status === 'rascunho' ? `<p class="meta">A publicação agendada falhou e voltou pra fila: ${esc(scheduleError)}</p>` : ''}
         <p class="meta"><strong>${esc(platformLabel)}</strong></p>
         ${contextText ? `<p class="meta">${esc(contextText)}</p>` : ''}
         ${carouselUrls.length
@@ -211,11 +211,11 @@
         ${isStoryPlatform ? '<p class="meta">Esse texto é só anotação interna — o Story não tem legenda, sai só a imagem.</p>' : ''}
         <p class="meta">${esc(meta)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          ${(videoUrl || carouselUrls.length) ? '' : !imageUrl ? `<button type="button" data-action="generate-image">🎨 Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">🔄 Gerar outra imagem com IA</button>`}
-          <button type="button" class="is-primary" data-action="publish">✅ ${r.status === 'agendado' ? 'Publicar agora' : 'Aprovar e publicar'} no ${esc(platformLabel)}</button>
+          ${(videoUrl || carouselUrls.length) ? '' : !imageUrl ? `<button type="button" data-action="generate-image">Gerar imagem com IA</button>` : `<button type="button" data-action="generate-image">Gerar outra imagem com IA</button>`}
+          <button type="button" class="is-primary" data-action="publish">${r.status === 'agendado' ? 'Publicar agora' : 'Aprovar e publicar'} no ${esc(platformLabel)}</button>
           ${r.status === 'agendado'
             ? `<button type="button" data-action="unschedule">Cancelar agendamento</button>`
-            : r.status === 'rascunho' ? `<button type="button" data-action="schedule">⏰ Agendar</button>` : ''}
+            : r.status === 'rascunho' ? `<button type="button" data-action="schedule">Agendar</button>` : ''}
           <button type="button" class="is-danger" data-action="reject">Rejeitar</button>
         </div>` : ''}
       </article>`;
@@ -415,11 +415,11 @@ Publicar agora mesmo assim? Ele sai na hora e não sai de novo na data marcada.`
         <span class="badge ${r.status === 'enviado' ? 'publicado' : r.status === 'rascunho' ? 'rascunho' : 'rejeitado'}">${esc(SOCIAL_PLATFORM_LABEL[r.platform] || r.platform)} · ${esc(SOCIAL_KIND_LABEL[r.kind] || r.kind)}${r.status === 'enviado' ? ' · enviado automaticamente' : ''}</span>
         <p class="meta"><strong>${esc(r.sender_name || 'Cliente (a Meta não informou o nome)')}</strong> disse:</p>
         <p class="meta is-text">${r.original_text ? esc(r.original_text) : '<em>(mensagem sem texto — provavelmente figurinha, áudio, foto ou reação; abra o Direct/Messenger pra ver o conteúdo antes de responder)</em>'}</p>
-        ${editable && !semTexto ? `<p class="meta is-warn">⚠️ A JuIA tentou responder sozinha e não conseguiu enviar — escreva/ajuste a resposta e aprove manualmente abaixo.</p>` : ''}
+        ${editable && !semTexto ? `<p class="meta is-warn">A JuIA tentou responder sozinha e não conseguiu enviar — escreva/ajuste a resposta e aprove manualmente abaixo.</p>` : ''}
         <textarea data-role="social-reply" ${editable ? '' : 'readonly'}>${esc(r.reply_text || r.ai_draft || '')}</textarea>
         <p class="meta">Recebido em ${esc(created)}</p>
         ${editable ? `<div class="conteudo-card-actions">
-          <button type="button" class="is-primary" data-action="social-send">✅ Aprovar e enviar</button>
+          <button type="button" class="is-primary" data-action="social-send">Aprovar e enviar</button>
           <button type="button" data-action="social-ignore">Ignorar</button>
           <button type="button" class="is-danger" data-action="social-reject">Rejeitar</button>
         </div>` : ''}

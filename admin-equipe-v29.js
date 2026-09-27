@@ -211,7 +211,7 @@
         `A pagar: ${money(r?.net_amount)}`,
         `Espécie que ele deveria ter entregue: ${money(r?.cash_expected)}`,
         `Espécie conferida: ${money(r?.cash_received)}`,
-        Number(r?.pending_count) ? `\n⚠ ${r.pending_count} lançamento(s) sem cálculo (produto sem custo cadastrado).` : '',
+        Number(r?.pending_count) ? `\n${r.pending_count} lançamento(s) sem cálculo (produto sem custo cadastrado).` : '',
       ].filter(Boolean).join('\n');
       alert(conferencia);
       await loadStatement();

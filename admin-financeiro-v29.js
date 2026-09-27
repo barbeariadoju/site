@@ -236,8 +236,8 @@
     $('fin-metric-revenue').textContent = money(t.revenue);
     // v29.20.0: caixinhas (fora do faturamento) e cortesias aparecem no detalhe da receita
     const extraBits = [];
-    if (t.tips > 0) extraBits.push(`💰 ${money(t.tips)} em caixinhas`);
-    if (t.courtesyCount > 0) extraBits.push(`🎁 ${t.courtesyCount} cortesia${t.courtesyCount === 1 ? '' : 's'} (${money(t.courtesyValue)} não cobrados)`);
+    if (t.tips > 0) extraBits.push(`${money(t.tips)} em caixinhas`);
+    if (t.courtesyCount > 0) extraBits.push(`${t.courtesyCount} cortesia${t.courtesyCount === 1 ? '' : 's'} (${money(t.courtesyValue)} não cobrados)`);
     $('fin-metric-revenue-detail').textContent = `${t.count} atendimento${t.count === 1 ? '' : 's'} concluído${t.count === 1 ? '' : 's'}${extraBits.length ? ' · ' + extraBits.join(' · ') : ''}`;
     $('fin-metric-expense').textContent = money(t.expenses);
     $('fin-metric-expense-detail').textContent = `${money(t.fixo)} fixos · ${money(t.variavel)} variáveis`;

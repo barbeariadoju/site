@@ -18,7 +18,7 @@
     const box=$('service-mode-list');
     if(!box)return;
     box.innerHTML=rows.length?rows.map(x=>{
-      const actionsHtml=`${primeiraVezHtml(x)}<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button class="is-primary" data-status="completed" data-id="${x.id}">Concluir</button><button data-reschedule="${x.id}">Remarcar</button><button data-status="no_show" data-id="${x.id}">Ausência</button>`:''}<button data-edit="${x.id}">✎ Editar</button><button data-return="${x.id}">Retorno</button>`;
+      const actionsHtml=`${primeiraVezHtml(x)}<a href="${whatsappLink(x)}" target="_blank" rel="noopener">WhatsApp</a>${x.status==='pending'?`<button data-status="confirmed" data-id="${x.id}">Confirmar</button>`:''}${['pending','confirmed'].includes(x.status)?`<button class="is-primary" data-status="completed" data-id="${x.id}">Concluir</button><button data-reschedule="${x.id}">Remarcar</button><button data-status="no_show" data-id="${x.id}">Ausência</button>`:''}<button data-edit="${x.id}">Editar</button><button data-return="${x.id}">Retorno</button>`;
       return bookingCardHtml(x,actionsHtml)
     }).join(''):'<div class="admin-empty">Nenhum atendimento para hoje.</div>';
     bindBookingActions(box);

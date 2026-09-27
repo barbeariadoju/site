@@ -86,8 +86,8 @@
         Pedido em ${dateLabel(c.created_at)}${c.paid_at ? ` · Pago em ${dateLabel(c.paid_at)}` : ''}${c.used_at ? ` · Usado em ${dateLabel(c.used_at)}` : ''} · Vence ${dateLabel(c.expires_at)}
       </p>
       <div class="vale-actions">
-        ${isPending ? `<button class="is-primary" data-confirm="${c.id}" type="button">✅ Confirmar Pix e liberar código</button>` : ''}
-        <a href="${wa}" target="_blank" rel="noopener">💬 Abrir WhatsApp</a>
+        ${isPending ? `<button class="is-primary" data-confirm="${c.id}" type="button">Confirmar Pix e liberar código</button>` : ''}
+        <a href="${wa}" target="_blank" rel="noopener">Abrir WhatsApp</a>
         ${isPending ? `<button class="is-danger" data-cancel="${c.id}" type="button">Cancelar pedido</button>` : ''}
       </div>
     </article>`;
@@ -123,8 +123,8 @@
       return;
     }
     alert(resp.notified
-      ? `Código ${resp.code} liberado e enviado no WhatsApp do comprador. ✅`
-      : `Código ${resp.code} liberado. ⚠️ Não consegui avisar por WhatsApp — mande o código manualmente.`);
+      ? `Código ${resp.code} liberado e enviado no WhatsApp do comprador. `
+      : `Código ${resp.code} liberado. Não consegui avisar por WhatsApp — mande o código manualmente.`);
     await load();
   }
 
@@ -143,7 +143,7 @@
     const { data, error } = await sb.rpc('redeem_gift_card', { p_code: code, p_booking_id: null });
     const row = Array.isArray(data) ? data[0] : data;
     if (error || !row?.ok) { msg.textContent = row?.message || error?.message || 'Não foi possível validar.'; return; }
-    msg.textContent = `Vale de ${money(row.amount_cents)} baixado com sucesso. ✅`;
+    msg.textContent = `Vale de ${money(row.amount_cents)} baixado com sucesso. `;
     $('vale-redeem-code').value = '';
     await load();
   }

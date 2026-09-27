@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><title>Lista de espera | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png?v=2"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.250.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.249.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.6"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png?v=2">
+<!doctype html><html lang="pt-BR"><head><title>Lista de espera | Barbearia OS</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b0b0b"><link rel="icon" href="assets/icon-192.png?v=2"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css?v=29.250.0"><link rel="stylesheet" href="/css/06-admin-reforma.css?v=29.251.0"><link rel="manifest" href="admin-manifest.webmanifest?v=29.205.6"><link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png?v=2">
 <style>
 .espera-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
 .espera-tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
@@ -38,7 +38,7 @@
 </style>
 </head><body data-admin-page="espera"><div class="bg-grain"></div><section id="admin-login" class="admin-auth-card" data-shell="login"></section><div id="admin-app" class="admin-app" hidden><aside class="admin-sidebar" data-shell="sidebar"></aside><main class="admin-content">
 
-<header class="admin-page-header"><div><p class="eyebrow">Lista de espera</p><h1>Quem está esperando vaga.</h1><p>Quando alguém cancela, veja aqui quem pode aproveitar — e encaixe com um clique.</p></div><div class="admin-header-actions"><button id="espera-add" class="btn primary" type="button">＋ Adicionar à lista</button></div></header>
+<header class="admin-page-header"><div><h1>Lista de espera</h1><p>Quando alguém cancela, veja aqui quem pode aproveitar — e encaixe com um clique.</p></div><div class="admin-header-actions"><button id="espera-add" class="btn primary" type="button">Adicionar à lista</button></div></header>
 
 <section class="admin-metrics"><article><span>Esperando</span><strong id="espera-metric-waiting">0</strong><small>pedidos ativos</small></article><article><span>Encaixados</span><strong id="espera-metric-fitted">0</strong><small>este mês</small></article><article><span>Taxa de conversão</span><strong id="espera-metric-conversion">—</strong><small id="espera-metric-conversion-detail">de pedidos já resolvidos</small></article></section>
 
@@ -57,7 +57,7 @@
 
 </main></div>
 
-<div id="espera-modal" class="admin-modal" hidden><div class="admin-modal-backdrop" data-close-espera-modal></div><section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="espera-modal-title"><button class="admin-modal-close" type="button" data-close-espera-modal aria-label="Fechar">×</button><p class="eyebrow">Lista de espera</p><h2 id="espera-modal-title">Adicionar à lista de espera</h2><input id="espera-entry-id" type="hidden">
+<div id="espera-modal" class="admin-modal" hidden><div class="admin-modal-backdrop" data-close-espera-modal></div><section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="espera-modal-title"><button class="admin-modal-close" type="button" data-close-espera-modal aria-label="Fechar">×</button><h2 id="espera-modal-title">Adicionar à lista de espera</h2><input id="espera-entry-id" type="hidden">
 <div class="admin-inline-fields">
 <label>Nome completo<input id="espera-entry-name" type="text" autocomplete="name"></label>
 <label>WhatsApp<input id="espera-entry-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
@@ -66,7 +66,7 @@
 <label>Valor (R$) <small>opcional</small><input id="espera-entry-price" type="number" inputmode="decimal" min="0" step="0.5"></label>
 <label>Duração (min) <small>opcional</small><input id="espera-entry-duration" type="number" inputmode="numeric" min="10" max="240"></label>
 </div>
-<p class="eyebrow" style="margin-top:18px">Quando prefere?</p>
+
 <div class="espera-datemode-row">
 <label class="espera-radio-inline"><input type="radio" name="espera-entry-date-mode" value="any" checked> Qualquer dia</label>
 <label class="espera-radio-inline"><input type="radio" name="espera-entry-date-mode" value="date"> Dia específico</label>
@@ -86,4 +86,4 @@
 <div class="admin-modal-actions"><button type="button" data-close-espera-modal>Cancelar</button><button id="espera-form-save" class="btn primary" type="button">Salvar</button></div>
 </section></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.249.0"></script><script src="admin-shell-v30.js?v=29.249.0"></script><script src="admin-ux-v30.js?v=29.179.0"></script><script src="services-catalog-v7.js?v=29.194.2"></script><script src="admin-espera-v28.js?v=29.179.0"></script><script src="admin-pwa.js?v=29.206.1"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js" integrity="sha384-iLddHTLokph6Omwoyid4XKxHaWa6w41BnoEj0q5oOrzmYPpHIKt1wyjReA7s//pP" crossorigin="anonymous"></script><script src="agenda-config-v6.js?v=29.249.0"></script><script src="admin-shell-v30.js?v=29.251.0"></script><script src="admin-ux-v30.js?v=29.251.0"></script><script src="services-catalog-v7.js?v=29.194.2"></script><script src="admin-espera-v28.js?v=29.251.0"></script><script src="admin-pwa.js?v=29.251.0"></script><script src="admin-push-runtime-v24-6.js?v=28.17.1"></script></body></html>

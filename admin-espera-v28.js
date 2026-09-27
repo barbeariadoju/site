@@ -189,9 +189,9 @@
       <button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="${isOpen}">
         <span class="admin-booking-summary-main">
           <strong>${esc(row.customer_name)}</strong>
-          <small>📅 ${esc(whenLabel(row))} • 🕐 ${esc(timeRangeLabel(row))}${row.service_name ? ` • ✂ ${esc(row.service_name)}` : ''}</small>
+          <small>${esc(whenLabel(row))} • ${esc(timeRangeLabel(row))}${row.service_name ? ` • ${esc(row.service_name)}` : ''}</small>
         </span>
-        <span class="espera-source">${row.source === 'site' ? '🌐 site' : row.source === 'whatsapp' ? '💬 whatsapp' : '✍ admin'}</span>
+        <span class="espera-source">${row.source === 'site' ? 'site' : row.source === 'whatsapp' ? 'whatsapp' : 'admin'}</span>
         <span class="admin-booking-chevron">⌄</span>
       </button>
       <div class="admin-booking-detail${isOpen ? ' is-open' : ''}">

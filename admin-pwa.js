@@ -37,19 +37,21 @@
     // Balcão, Financeiro, Equipe, Espera, Vales… não existiam no celular. Agora são 5 atalhos do dia
     // + "Mais", que abre uma folha com TODOS os destinos, nos mesmos 4 grupos do menu (vem da casca,
     // window.BDJ_SHELL.groups — uma lista só pra desktop e celular).
-    const items=[
-      ['dashboard','admin.html','⌂','Hoje'],
-      ['agenda','admin-agenda.html','▦','Agenda'],
-      ['agendamento','admin-agendamento.html','＋','Agendar'],
-      ['clientes','admin-clientes.html','👥','Clientes'],
-      ['balcao','admin-balcao.html','🚶','Balcão']
-    ];
+    // v29.251.0 — ícones e nomes vêm da casca (window.BDJ_SHELL): um nome só por tela, no menu e na barra.
+    const shell=window.BDJ_SHELL||{groups:[],icone:()=>''};
+    const todos=shell.groups.flatMap(g=>g[1]);
+    const achar=k=>todos.find(x=>x[0]===k)||[k,'#','',k];
+    const curto=x=>x[4]||x[3];
+    const items=['dashboard','agenda','agendamento','clientes','balcao'].map(achar);
     const nav=document.createElement('nav');
     nav.className='admin-mobile-nav is-six';
     nav.setAttribute('aria-label','Navegação do painel');
-    nav.innerHTML=items.map(([key,url,icon,label])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><small>${label}</small></a>`).join('')+(()=>{const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:((window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[]).flatMap(g=>g[1]).find(x=>x[0]===current);/* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual ("Financeiro") em vez de "Mais" aceso — continua abrindo a lista de telas */const curto={financeiro:'Finanças',relatorios:'Números',espera:'Espera',fidelidade:'Pontos',vales:'Vales',leads:'Reativar',equipe:'Equipe',mensagens:'Recados',notificacoes:'Avisos',assistente:'IA',avaliacoes:'Google',conteudo:'Conteúdo'};/* nome curto: a célula da barra tem ~60px */return `<a href="#" data-more-open aria-label="Mais telas" class="${noMenu?'':'is-active'}"><span>☰</span><small>${atual?(curto[current]||atual[3]):'Mais'}</small></a>`})();
+    const noMenu=items.some(i=>i[0]===current);const atual=noMenu?null:todos.find(x=>x[0]===current);
+    /* v29.205.4: fora dos 5 atalhos, o último botão mostra a tela atual em vez de "Mais" aceso — continua abrindo a lista de telas */
+    nav.innerHTML=items.map(x=>`<a href="${x[1]}?app=1" class="${current===x[0]?'is-active':''}"${current===x[0]?' aria-current="page"':''}><span>${x[2]}</span><small>${curto(x)}</small></a>`).join('')
+      +`<a href="#" data-more-open aria-label="Todas as telas" class="${noMenu?'':'is-active'}"><span>${atual?atual[2]:shell.icone('menu')}</span><small>${atual?curto(atual):'Mais'}</small></a>`;
     document.body.appendChild(nav);
-    const groups=(window.BDJ_SHELL&&window.BDJ_SHELL.groups)||[];
+    const groups=shell.groups;
     const sheet=document.createElement('div');
     sheet.className='admin-more-sheet';sheet.hidden=true;
     sheet.innerHTML=`<div class="admin-more-backdrop" data-more-close></div><section class="admin-more-card" role="dialog" aria-modal="true" aria-label="Todas as telas do painel"><header><strong>Todas as telas</strong><button type="button" data-more-close aria-label="Fechar">×</button></header>${groups.map(([label,list])=>`<small>${label}</small><div class="admin-more-grid">${list.map(([key,url,icon,text])=>`<a href="${url}?app=1" class="${current===key?'is-active':''}"><span>${icon}</span><b>${text}</b></a>`).join('')}</div>`).join('')}</section>`;

@@ -284,8 +284,8 @@
     box.innerHTML = `
       <div class="rel-split">
         <div class="rel-split-nums">
-          <article><strong>${satisfied}</strong><small>😊 Satisfeitos</small></article>
-          <article><strong>${suggestions}</strong><small>💬 Deram sugestão</small></article>
+          <article><strong>${satisfied}</strong><small>Satisfeitos</small></article>
+          <article><strong>${suggestions}</strong><small>Deram sugestão</small></article>
         </div>
         ${answered ? `<div class="rel-bar-track"><i class="rel-bar-fill" style="width:${rate}%"></i></div><p class="rel-note"><b>${rate}%</b> de quem respondeu ficou satisfeito.</p>` : ''}
         <p class="rel-note">${sent} pesquisa(s) enviada(s) · ${answered} resposta(s) recebida(s).</p>
@@ -304,8 +304,8 @@
     box.innerHTML = `
       <div class="rel-split">
         <div class="rel-split-nums">
-          <article><strong>${site}</strong><small>💻 Site / WhatsApp</small></article>
-          <article><strong>${balcao}</strong><small>🚶 Direto na porta</small></article>
+          <article><strong>${site}</strong><small>Site / WhatsApp</small></article>
+          <article><strong>${balcao}</strong><small>Direto na porta</small></article>
         </div>
         <div class="rel-dualbar"><i class="is-gold" style="width:${Math.round(site / total * 100)}%"></i><i class="is-blue" style="width:${Math.round(balcao / total * 100)}%"></i></div>
         <div class="rel-legend"><span><i class="rel-dot is-gold"></i>Site / WhatsApp</span><span><i class="rel-dot is-blue"></i>Direto na porta</span></div>
@@ -343,8 +343,8 @@
     box.innerHTML = `
       <div class="rel-split">
         <div class="rel-split-nums">
-          <article><strong>${a.conversaram}</strong><small>💬 Conversaram (14d)</small></article>
-          <article><strong>${a.agendaram}</strong><small>✅ Agendaram</small></article>
+          <article><strong>${a.conversaram}</strong><small>Conversaram (14d)</small></article>
+          <article><strong>${a.agendaram}</strong><small>Agendaram</small></article>
         </div>
         <div class="rel-bar-track"><i class="rel-bar-fill" style="width:${Math.max(2, Math.min(100, Math.round(pct)))}%"></i></div>
         <p class="rel-note"><b>${pct}%</b> de quem escreveu no WhatsApp acabou agendando${b ? ` · em 30 dias: <b>${b.taxa_conversao}%</b>` : ''}.</p>
@@ -361,8 +361,8 @@
     box.innerHTML = `
       <div class="rel-split">
         <div class="rel-split-nums">
-          <article><strong>${money(revenueServ)}</strong><small>✂ Serviços</small></article>
-          <article><strong>${money(revenueProd)}</strong><small>🛍 Produtos</small></article>
+          <article><strong>${money(revenueServ)}</strong><small>Serviços</small></article>
+          <article><strong>${money(revenueProd)}</strong><small>Produtos</small></article>
         </div>
         <div class="rel-dualbar"><i class="is-gold" style="width:${Math.round(ps)}%"></i><i class="is-gold2" style="width:${Math.round(pp)}%"></i></div>
         <p class="rel-note">Total do período: <b>${money(revenue)}</b>. Só entram atendimentos marcados como <b>concluídos</b>.</p>

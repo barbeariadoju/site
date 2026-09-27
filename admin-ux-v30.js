@@ -75,6 +75,64 @@
   window.alert = (message) => toast(message, /erro|falha|negado|inválid|não foi possível|nao foi possivel/i.test(String(message)) ? 'error' : 'info', 4200);
   window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast(e.reason?.message || 'Não foi possível concluir a operação.', 'error', 5000); });
   window.addEventListener('error', (e) => { console.error(e.error || e.message); toast('Ocorreu um erro inesperado. Atualize a página e tente novamente.', 'error', 5000); });
+  // v29.251.0 — auditoria impeccable (27/09/2026): o painel tinha 5 jeitos de abrir modal e só o
+  // diálogo da casa fechava com Esc e levava o foco para dentro (Concluir, Editar, Remarcar,
+  // Expediente, Balcão, Clientes, Espera não). Em vez de mexer em cada um: todo .admin-modal que
+  // aparece ganha o mesmo comportamento — foco no primeiro campo, Tab preso dentro, Esc = clicar
+  // no fundo escuro (que em todos eles já é "cancelar"), e o foco volta para quem abriu. O
+  // diálogo da casa (.admin-dialog) continua cuidando de si mesmo.
+  (() => {
+    const FOCAVEL = 'input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+    const origem = new WeakMap();
+    const aberto = () => [...document.querySelectorAll('.admin-modal:not([hidden]):not(.admin-dialog)')].pop();
+    const visiveis = (m) => [...m.querySelectorAll(FOCAVEL)].filter((el) => el.offsetParent !== null);
+    const preparar = (m) => {
+      const card = m.querySelector('.admin-modal-card');
+      if (card && !card.hasAttribute('aria-labelledby')) {
+        const h = card.querySelector('h2,h3');
+        if (h) { h.id = h.id || `modal-titulo-${Math.random().toString(36).slice(2, 8)}`; card.setAttribute('aria-labelledby', h.id); }
+      }
+      m.querySelectorAll('.admin-modal-close:not([aria-label])').forEach((b) => b.setAttribute('aria-label', 'Fechar'));
+    };
+    const abriu = (m) => {
+      if (m.classList.contains('admin-dialog') || m.dataset.focoFeito === '1') return;
+      m.dataset.focoFeito = '1';
+      origem.set(m, document.activeElement);
+      preparar(m);
+      requestAnimationFrame(() => {
+        if (m.contains(document.activeElement)) return;
+        const alvo = m.querySelector('[autofocus]') || visiveis(m).find((el) => el.matches('input,select,textarea')) || visiveis(m).find((el) => !el.matches('.admin-modal-close'));
+        alvo?.focus({ preventScroll: true });
+      });
+    };
+    const fechou = (m) => {
+      if (m.dataset.focoFeito !== '1') return;
+      m.dataset.focoFeito = '0';
+      const volta = origem.get(m);
+      if (volta && document.contains(volta)) volta.focus({ preventScroll: true });
+    };
+    new MutationObserver((lista) => {
+      for (const r of lista) {
+        if (r.type === 'attributes' && r.target.classList?.contains('admin-modal')) (r.target.hidden ? fechou : abriu)(r.target);
+        if (r.type === 'childList') r.addedNodes.forEach((n) => { if (n.nodeType === 1 && n.classList.contains('admin-modal') && !n.hidden) abriu(n); });
+      }
+    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+    document.addEventListener('keydown', (e) => {
+      const m = aberto();
+      if (!m || e.defaultPrevented) return;
+      if (e.key === 'Escape') {
+        const fundo = m.querySelector('.admin-modal-backdrop');
+        if (fundo) { e.preventDefault(); fundo.click(); }
+      } else if (e.key === 'Tab') {
+        const els = visiveis(m);
+        if (!els.length) return;
+        const [primeiro, ultimo] = [els[0], els[els.length - 1]];
+        if (!m.contains(document.activeElement)) { e.preventDefault(); primeiro.focus(); }
+        else if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+        else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+      }
+    });
+  })();
   document.documentElement.classList.add('admin-loading');
   window.addEventListener('load', () => document.documentElement.classList.remove('admin-loading'));
 })();

@@ -82,7 +82,7 @@
     // v29.188.0 — quem tem prêmio de fidelidade pra usar aparece em cima da fila (caso Juliano
     // Prando, 15/09: fechou 10 pontos na sexta, ninguém viu, e a barba de terça saiu de cabeça).
     const premioHoje=fila.filter(x=>['pending','confirmed'].includes(x.status)&&(typeof loyaltyFor==='function')&&loyaltyFor(x.customer_phone).rewards>0);
-    const premioHtml=premioHoje.length?`<div class="admin-day-callout">🎁 <b>Prêmio de fidelidade pra usar ${ehHoje?'hoje':'nesse dia'}:</b> ${premioHoje.map(x=>`${esc(x.customer_name)} (${String(x.start_time).slice(0,5)})`).join(', ')} — 1 serviço por nossa conta. No Concluir, "Bônus de fidelidade" já vem marcado.</div>`:'';
+    const premioHtml=premioHoje.length?`<div class="admin-day-callout"><b>Prêmio de fidelidade pra usar ${ehHoje?'hoje':'nesse dia'}:</b> ${premioHoje.map(x=>`${esc(x.customer_name)} (${String(x.start_time).slice(0,5)})`).join(', ')} — 1 serviço por nossa conta. No Concluir, "Bônus de fidelidade" já vem marcado.</div>`:'';
     list.innerHTML=premioHtml+(fila.length?fila.map(x=>{
       let pre='';
       if(!marcado&&String(x.start_time).slice(0,5)>nowHM){marcado=true;pre=`<div class="admin-now-line"><span>agora · ${nowHM}</span></div>`}

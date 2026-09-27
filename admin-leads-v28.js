@@ -80,8 +80,8 @@
           <p class="leads-meta">${esc(row.phone)}${row.date_interest ? ` • dia desejado: ${dateLabel(row.date_interest)}` : ''} • última mensagem: ${dateLabel(row.last_message_at)}</p>
           ${row.last_message_text ? `<p class="leads-meta">"${esc(row.last_message_text)}"</p>` : ''}
           ${row.reason ? `<p class="leads-reason-tag">Motivo: ${esc(REASON_LABEL[row.reason] || row.reason)}${row.reason_detail ? ` — "${esc(row.reason_detail)}"` : ''}</p>` : ''}
-          ${row.slot_reopened_at ? `<p class="leads-reason-tag">🎉 Vaga reaberta${row.slot_reopened_notified_at ? ' — cliente já avisado' : ' — aviso pendente'}</p>` : ''}
-          ${row.campaign_sent_at ? `<p class="leads-reason-tag">📣 Campanha enviada em ${dateLabel(row.campaign_sent_at)}</p>` : ''}
+          ${row.slot_reopened_at ? `<p class="leads-reason-tag">Vaga reaberta${row.slot_reopened_notified_at ? ' — cliente já avisado' : ' — aviso pendente'}</p>` : ''}
+          ${row.campaign_sent_at ? `<p class="leads-reason-tag">Campanha enviada em ${dateLabel(row.campaign_sent_at)}</p>` : ''}
         </div>
       </div>
     </article>`;

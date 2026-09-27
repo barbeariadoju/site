@@ -44,14 +44,14 @@ async function renderExpediente(today,ehHoje){
   let texto='',acao='';
   if(!e||!e.aberto_em){
     texto=ehHoje?'<b>Barbearia ainda não aberta hoje.</b> Toque em Abrir quando começar o expediente — é o que registra suas horas.':'<b>Sem registro de expediente neste dia.</b>';
-    acao='🔓 Abrir a barbearia';
+    acao='Abrir a barbearia';
   }else if(!e.fechado_em){
     texto=`<b>Aberta desde ${expedienteHora(e.aberto_em)}</b>${expedienteOrigem(e.aberto_por)} · há ${expedienteDuracao(e.aberto_em)}${e.observacao?` · <i>${esc(e.observacao)}</i>`:''}`;
-    acao='🔒 Fechar a barbearia';
+    acao='Fechar a barbearia';
   }else{
     const motivo=e.motivo?` · ${esc(EXPEDIENTE_MOTIVO_LABEL[e.motivo]||e.motivo)}`:'';
     texto=`<b>Fechada às ${expedienteHora(e.fechado_em)}</b>${expedienteOrigem(e.fechado_por)}${motivo} · aberta das ${expedienteHora(e.aberto_em)} às ${expedienteHora(e.fechado_em)} = <b>${expedienteDuracao(e.aberto_em,e.fechado_em)}</b>${e.bloqueio_id?' · agenda trancada pro resto do dia':''}`;
-    acao='🔓 Reabrir';
+    acao='Reabrir';
   }
   btn.textContent=acao;btn.dataset.acao=acao.includes('Fechar')?'fechar':'abrir';
   box.innerHTML=`<span>${texto}</span> <button type="button" class="booking-text-button" data-expediente-historico>Histórico →</button>`;
@@ -89,7 +89,7 @@ async function abrirModalFechar(){
   const lista=pendentes.length
     ?`<p><b>Ainda tem gente marcada pra hoje.</b> Resolva um por um antes de fechar — quem ficar continua com o horário garantido; só não entra mais ninguém novo.</p><div class="admin-expediente-pendentes">${pendentes.map(p=>`<div class="admin-alert-row" data-pendente="${p.id}"><span><b>${p.start_time.slice(0,5)}</b> ${esc(p.customer_name)}<br><small>${esc(p.service_name)}${p.channel==='porta'?' · senha digital':''}</small></span><span><button type="button" class="btn ghost is-danger" data-cancelar="${p.id}">Cancelar e avisar</button></span></div>`).join('')}</div>`
     :'<p>Ninguém mais marcado pra hoje. Pode fechar tranquilo.</p>';
-  const modal=expedienteModal('expediente-fechar-modal',`<h2>Fechar a barbearia</h2>${lista}<label class="booking-field-v14">Motivo (opcional)<select id="expediente-motivo">${EXPEDIENTE_MOTIVOS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label><p class="field-help">Ao fechar, a agenda de hoje fica trancada pro resto do dia: site, JuIA e senha digital param de oferecer horário. Se voltar, toque em Reabrir.</p><div class="admin-booking-actions"><button type="button" class="btn primary" data-fechar-agora>🔒 Fechar agora</button><button type="button" class="btn ghost" data-modal-close>Cancelar</button></div>`);
+  const modal=expedienteModal('expediente-fechar-modal',`<h2>Fechar a barbearia</h2>${lista}<label class="booking-field-v14">Motivo (opcional)<select id="expediente-motivo">${EXPEDIENTE_MOTIVOS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label><p class="field-help">Ao fechar, a agenda de hoje fica trancada pro resto do dia: site, JuIA e senha digital param de oferecer horário. Se voltar, toque em Reabrir.</p><div class="admin-booking-actions"><button type="button" class="btn primary" data-fechar-agora>Fechar agora</button><button type="button" class="btn ghost" data-modal-close>Cancelar</button></div>`);
   modal.querySelectorAll('[data-cancelar]').forEach(b=>b.addEventListener('click',async ev=>{
     const id=ev.currentTarget.dataset.cancelar,row=modal.querySelector(`[data-pendente="${id}"]`);
     // setStatus já pergunta (BDJ_UX.confirm) e manda o aviso ao cliente pela function admin-booking-status.

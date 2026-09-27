@@ -68,7 +68,7 @@
     if(before>0)return false;
     return !(Number(customerProfiles.find(p=>phoneKey(p.phone)===ph)?.prior_visits||0)>0)
   }
-  function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">⭐ Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
+  function visitBadgeHtml(x){const n=visitNumber(x);if(n>=6)return `<span class="admin-visit-badge is-recurring" title="${n}ª visita ou mais">Cliente recorrente</span>`;return `<span class="admin-visit-badge is-new">${n}ª visita</span>`}
   // v29.188.0 — fidelidade visível onde o Juliano decide (caso Juliano Prando, 15/09/2026:
   // fechou 10 pontos na sexta, ninguém viu, e a barba de terça saiu "na fidelidade" de cabeça).
   // Cadastro pelo telefone (mesma chave do visitNumber), conta de fidelidade pelo id do cadastro.
@@ -85,10 +85,10 @@
   function loyaltyBadgeHtml(x){
     if(x.status==='completed'){
       const ld=Number(x.loyalty_discount||0);
-      return ld>0?`<span class="admin-visit-badge is-reward" title="Prêmio do cartão fidelidade usado neste atendimento">🎁 Prêmio usado${x.loyalty_free_service?` · ${esc(x.loyalty_free_service)}`:''}</span>`:'';
+      return ld>0?`<span class="admin-visit-badge is-reward" title="Prêmio do cartão fidelidade usado neste atendimento">Prêmio usado${x.loyalty_free_service?` · ${esc(x.loyalty_free_service)}`:''}</span>`:'';
     }
     const lo=loyaltyFor(x.customer_phone);if(!lo.found)return '';
-    if(lo.rewards>0){const vence=lo.expires?` · vence ${new Date(lo.expires).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`:'';return `<span class="admin-visit-badge is-reward" title="Fechou 10 pontos: 1 serviço por nossa conta. No Concluir, Bônus de fidelidade já vem marcado.">🎁 Prêmio pra usar: 1 serviço por nossa conta${vence}</span>`}
+    if(lo.rewards>0){const vence=lo.expires?` · vence ${new Date(lo.expires).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`:'';return `<span class="admin-visit-badge is-reward" title="Fechou 10 pontos: 1 serviço por nossa conta. No Concluir, Bônus de fidelidade já vem marcado.">Prêmio pra usar: 1 serviço por nossa conta${vence}</span>`}
     return `<span class="admin-visit-badge is-points" title="Pontos do cartão fidelidade (10 = 1 serviço por nossa conta)">${lo.points}/10 pontos${lo.points>=8?' · quase lá':''}</span>`;
   }
   // v29.195.0 — "Como foi feito" (pedido do Juliano, 16/09/2026, caso Tatiane: dois cortes pra
@@ -103,7 +103,7 @@
   function styleReminderHtml(x){
     if(x.status==='cancelled'||x.status==='no_show')return '';
     const t=styleTextFor(x.customer_phone);
-    return t?`<small class="admin-style-reminder" title="Como foi feito da última vez — anotado no Concluir ou em Clientes › Preferências de estilo">✂️ ${esc(t)}</small>`:'';
+    return t?`<small class="admin-style-reminder" title="Como foi feito da última vez — anotado no Concluir ou em Clientes › Preferências de estilo">${esc(t)}</small>`:'';
   }
   function statusLabel(s){return({pending:'Aguardando',confirmed:'Confirmado',cancelled:'Cancelado',completed:'Concluído',no_show:'Ausência'})[s]||s}
   function statusClass(s){return `status-${s||'pending'}`}
@@ -116,7 +116,7 @@
   function whatsappBusinessUrl(phone,msg=''){const digits=`55${phoneDigits(phone)}`;const web=`https://wa.me/${digits}${msg?`?text=${encodeURIComponent(msg)}`:''}`;if(/Android/i.test(navigator.userAgent)){const fallback=encodeURIComponent(web);return `intent://send?phone=${digits}${msg?`&text=${encodeURIComponent(msg)}`:''}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${fallback};end`}return web}
   function whatsappLink(x,type='confirm'){const when=formatDate(x.booking_date,{weekday:'long',day:'2-digit',month:'2-digit'});const msg=type==='reminder'?`Olá, ${x.customer_name}! Lembrete do seu horário amanhã, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`:`Olá, ${x.customer_name}! Seu horário está marcado para ${when}, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`;return whatsappBusinessUrl(x.customer_phone,msg)}
   function parseProducts(x){const p=Array.isArray(x.selected_products)?x.selected_products:[];return p.filter(i=>i&&i.name)}
-  function productsHtml(x){const items=parseProducts(x);if(!items.length)return '';return `<div class="admin-products"><span class="admin-products-label">🛍 Produtos vendidos</span>${items.map(p=>`<span class="admin-product-chip"><b>${esc(p.name)}</b><small>${money(p.price)}</small></span>`).join('')}<strong class="admin-products-total">${money(x.products_price||items.reduce((a,p)=>a+Number(p.price||0),0))}</strong></div>`}
+  function productsHtml(x){const items=parseProducts(x);if(!items.length)return '';return `<div class="admin-products"><span class="admin-products-label">Produtos vendidos</span>${items.map(p=>`<span class="admin-product-chip"><b>${esc(p.name)}</b><small>${money(p.price)}</small></span>`).join('')}<strong class="admin-products-total">${money(x.products_price||items.reduce((a,p)=>a+Number(p.price||0),0))}</strong></div>`}
   const PAYMENT_LABELS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
   // Linha única e compacta (texto discreto, sem caixas) com serviço/produtos/total e a(s)
   // forma(s) de pagamento — pedido do Juliano depois que a 1ª versão (3 caixas + chips de
@@ -130,18 +130,18 @@
       const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
       const serviceLabel=esc(PAYMENT_LABELS[x.payment_method]||x.payment_method);
       pay=hasSplit
-        ? ` · 💳 Serviço ${serviceLabel} / Produtos ${esc(PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method)}`
-        : ` · 💳 ${serviceLabel}`;
+        ? ` · Serviço ${serviceLabel} / Produtos ${esc(PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method)}`
+        : ` · ${serviceLabel}`;
     }
     // v29.160.0 (pedido do Juliano, 09/09): a caixinha aparece no card, mas FORA do total —
     // é dinheiro do barbeiro, não faturamento, e o cupom do cliente diz o mesmo ("à parte").
     const tip=Number(x.tip_amount||0);
-    const tipHtml=tip>0?` · 💰 Caixinha ${money(tip)} <i>(à parte)</i>`:'';
+    const tipHtml=tip>0?` · Caixinha ${money(tip)} <i>(à parte)</i>`:'';
     // v29.162.0 — desconto manual (migration 147): service_price já é o líquido; o card
     // mostra o preço de tabela ao lado e o motivo, pra ele lembrar o que combinou.
     const disc=Number(x.discount_amount||0);
-    const discHtml=disc>0?` · 🏷️ Desconto ${money(disc)}${x.discount_reason?` <i>(${esc(x.discount_reason)})</i>`:''}`:'';
-    return `<small class="admin-price-summary">Serviços ${money(s)}${disc>0?` <i>(tabela ${money(s+disc)})</i>`:''}${ld>0?` · 🎁 Fidelidade −${money(ld)}${x.loyalty_free_service?` <i>(${esc(x.loyalty_free_service)})</i>`:''}`:''} · Produtos ${money(p)} · <b>Total ${money(s-ld+p)}</b>${pay}${discHtml}${tipHtml}</small>`;
+    const discHtml=disc>0?` · Desconto ${money(disc)}${x.discount_reason?` <i>(${esc(x.discount_reason)})</i>`:''}`:'';
+    return `<small class="admin-price-summary">Serviços ${money(s)}${disc>0?` <i>(tabela ${money(s+disc)})</i>`:''}${ld>0?` · Fidelidade −${money(ld)}${x.loyalty_free_service?` <i>(${esc(x.loyalty_free_service)})</i>`:''}`:''} · Produtos ${money(p)} · <b>Total ${money(s-ld+p)}</b>${pay}${discHtml}${tipHtml}</small>`;
   }
   // v29.12.0 — o admin fica aberto o dia inteiro no celular do Juliano e NUNCA recarrega
   // sozinho. Em 11/08/2026 isso custou caro: três correções foram publicadas de manhã e à
@@ -150,7 +150,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.249.0'
+  const ADMIN_VERSION='29.251.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
@@ -178,7 +178,7 @@
     const b=document.createElement('button')
     b.id='admin-update-banner'
     b.type='button'
-    b.textContent='🔄 Nova versão disponível — toque para atualizar'
+    b.textContent='Nova versão disponível — toque para atualizar'
     b.style.cssText='position:fixed;left:12px;right:12px;bottom:88px;z-index:9999;padding:14px;border:none;border-radius:14px;background:var(--gold2,#c9a227);color:#111;font:inherit;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.45)'
     b.addEventListener('click',()=>location.reload())
     document.body.appendChild(b)

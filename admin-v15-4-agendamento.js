@@ -185,7 +185,7 @@ Prosseguir com o encaixe?`
     // comecou a digitar outro numero, para nao atropelar o que esta digitando.
     if(porNome&&phoneDigits($('booking-phone').value).length<3){$('booking-name').value=porNome.name;$('booking-phone').value=porNome.phone}
   }
-  function avisoTelefoneRepetido(nomeSalvo){const el=$('booking-phone-warning');if(!el)return;if(!nomeSalvo){el.hidden=true;el.textContent='';return}el.textContent='⚠ Esse WhatsApp já está cadastrado como '+nomeSalvo+'. Usei o nome do cadastro para não criar uma segunda ficha do mesmo cliente. Se for mesmo outra pessoa, confira o número.';el.hidden=false}
+  function avisoTelefoneRepetido(nomeSalvo){const el=$('booking-phone-warning');if(!el)return;if(!nomeSalvo){el.hidden=true;el.textContent='';return}el.textContent='Esse WhatsApp já está cadastrado como '+nomeSalvo+'. Usei o nome do cadastro para não criar uma segunda ficha do mesmo cliente. Se for mesmo outra pessoa, confira o número.';el.hidden=false}
   function selectedServices(){return [...document.querySelectorAll('input[name="booking-service"]:checked')].map(i=>catalog.find(s=>s.name===i.value)).filter(Boolean)}
   function selectServicesByNames(text=''){const names=text.split(' + ').map(s=>s.trim());document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.name===i.value);i.checked=!!s&&names.includes(s.name);i.dispatchEvent(new Event('change',{bubbles:true}))})}
   function prefillReturnStorage(x){if(!x)return;const d=new Date(x.booking_date+'T12:00:00');d.setDate(d.getDate()+15);sessionStorage.setItem('bdj-prefill-booking',JSON.stringify({name:x.customer_name,phone:x.customer_phone,date:isoLocal(d),time:x.start_time.slice(0,5),services:x.service_name,notes:'Retorno'}))}
