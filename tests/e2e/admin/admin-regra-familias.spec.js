@@ -15,7 +15,7 @@ test('Novo agendamento: marcar Barba na navalha desmarca a Barba Express e expli
 
   const cb = (name) => page.locator(`#booking-services input[name="booking-service"][value="${name}"]`);
   // o input é invisível (opacity 0) e o clique real é no cartão, como o Juliano faz
-  const tap = (name) => page.locator('#booking-services label.booking-service-option', { has: page.locator(`input[value="${name}"]`) }).locator('strong').click();
+  const tap = (name) => page.locator('#booking-services label.service-btn', { has: page.locator(`input[value="${name}"]`) }).click();
   await tap('Corte de cabelo');
   await tap('Barba Express');
   await expect(cb('Barba Express')).toBeChecked();
@@ -43,7 +43,7 @@ test('Balcão: combo "Corte + Barba Express" desmarca corte e barba soltos', asy
   await page.waitForFunction(() => !!window.BDJ_SERVICE_RULES?.applyToPicker, null, { timeout: 10000 });
 
   const cb = (name) => page.locator(`#balcao-services input[name="balcao-service"][value="${name}"]`);
-  const tap = (name) => page.locator('#balcao-services label.booking-service-option', { has: page.locator(`input[value="${name}"]`) }).locator('strong').click();
+  const tap = (name) => page.locator('#balcao-services label.service-btn', { has: page.locator(`input[value="${name}"]`) }).click();
   await tap('Corte de cabelo');
   await tap('Barba Express');
   await tap('Corte + Barba Express');

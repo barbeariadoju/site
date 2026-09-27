@@ -272,9 +272,9 @@
   }
   function serviceChecklistHtml(currentServiceName=''){
     const selectedNames=new Set(matchCurrentServiceNames(currentServiceName))
-    const groups={}
-    catalog.forEach(s=>(groups[s.category]??=[]).push(s))
-    return Object.entries(groups).map(([cat,items])=>`<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s=>`<label class="booking-service-option"><input type="checkbox" data-service-name="${esc(s.name)}" data-service-price="${s.price}" data-service-duration="${s.duration}" ${selectedNames.has(s.name)?'checked':''}><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('')+'<small class="field-help checkout-help" data-service-rule-msg hidden></small>'
+    // v29.244.0 — mesma lista do site (admin-catalogo-lista-v30.js + css/07-catalogo-lista.css);
+    // os data-service-* continuam no checkbox, então readChecklistServices e a regra não mudam.
+    return '<div class="catalogo-lista">'+window.BDJ_LISTA.html(catalog,{attrs:s=>`data-service-name="${esc(s.name)}" data-service-price="${s.price}" data-service-duration="${s.duration}"`,marcados:selectedNames})+'</div><small class="field-help checkout-help" data-service-rule-msg hidden></small>'
   }
   function readChecklistServices(modal){
     return [...modal.querySelectorAll('[data-service-name]:checked')].map(i=>({name:i.dataset.serviceName,price:Number(i.dataset.servicePrice),duration:Number(i.dataset.serviceDuration)}))

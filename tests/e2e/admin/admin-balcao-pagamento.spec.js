@@ -14,7 +14,7 @@ test('Balcão: pagamento em botões, total e forma escolhida no rodapé', async 
   const footer = page.locator('.balcao-submit-row');
   await expect(footer.locator('#balcao-payment-label')).toHaveText('escolha a forma de pagamento');
 
-  await page.locator('#balcao-services label.booking-service-option', { has: page.locator('input[value="Corte de cabelo"]') }).locator('strong').click();
+  await page.locator('#balcao-services label.service-btn', { has: page.locator('input[value="Corte de cabelo"]') }).click();
   await expect(footer.locator('#balcao-total')).toHaveText(/R\$\s?40,00/);
 
   const pix = page.locator('#balcao-payment-grid [data-payment-option="pix"]');
@@ -42,7 +42,7 @@ test('Balcão: sem forma de pagamento, o aviso aparece junto dos botões', async
   await expect(page.locator('#admin-app')).toBeVisible();
   await page.fill('#balcao-name', 'Cliente Fictício');
   await page.fill('#balcao-phone', '11999990000');
-  await page.locator('#balcao-services label.booking-service-option', { has: page.locator('input[value="Corte de cabelo"]') }).locator('strong').click();
+  await page.locator('#balcao-services label.service-btn', { has: page.locator('input[value="Corte de cabelo"]') }).click();
   await page.click('#balcao-save');
   await expect(page.locator('#balcao-payment-wrap #balcao-field-error')).toHaveText('Selecione a forma de pagamento.');
   await page.locator('#balcao-payment-grid [data-payment-option="dinheiro"]').click();

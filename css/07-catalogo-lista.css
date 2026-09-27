@@ -27,7 +27,7 @@
 .catalogo-lista{display:flex;flex-direction:column;gap:0}
 .catalogo-lista .service-section{margin:0 !important;padding:10px 0 0 !important;width:auto !important;max-width:none !important}
 .catalogo-lista .section-head{margin:0 0 6px !important;text-align:left}
-.catalogo-lista .section-head h2{font-size:clamp(1.4rem,5vw,1.9rem) !important;margin:.3em 0 .15em !important;color:var(--gold2)}
+.catalogo-lista .section-head h2{font-family:"Bebas Neue",Impact,sans-serif !important;font-weight:400 !important;letter-spacing:.02em;font-size:clamp(1.4rem,5vw,1.9rem) !important;margin:.3em 0 .15em !important;color:var(--gold2)}
 .catalogo-lista .section-head p{margin:0 0 4px !important;color:var(--muted);font-size:.92rem;line-height:1.45;max-width:none}
 .catalogo-lista .service-card.is-selected{background:rgba(var(--gold2-rgb),.05) !important}
 .service-qty{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;font-variant-numeric:tabular-nums}
@@ -35,3 +35,18 @@
 .service-qty-menos{width:40px;height:40px;border-radius:999px;border:1px solid rgba(var(--gold2-rgb),.6);background:none;color:var(--gold2);font:700 1.2rem/1 inherit;cursor:pointer}
 .service-qty-menos:hover{background:rgba(var(--gold2-rgb),.12)}
 @media(max-width:560px){.service-qty{margin-left:auto}.service-qty ~ .service-btn{margin-left:0}}
+
+/* v29.244.0 — Variante do painel (admin-catalogo-lista-v30.js): o botão é um <label> com o
+   checkbox escondido dentro; marcado/desmarcado é só CSS. O contador − n + de produto (.qty-step,
+   base no css/06) aparece quando o item está marcado. */
+label.service-btn{display:inline-flex;align-items:center;justify-content:center;position:relative;line-height:1.2}
+.service-check input{position:absolute;width:1px;height:1px;opacity:0;margin:0;pointer-events:none}
+.service-check .service-check-on{display:none}
+.service-check:has(input:checked){background:rgba(var(--gold2-rgb),.1)!important;color:var(--gold2)!important;border:1px solid rgba(var(--gold2-rgb),.6)!important;box-shadow:none!important}
+.service-check:has(input:checked) .service-check-off{display:none}
+.service-check:has(input:checked) .service-check-on{display:inline}
+.service-check:has(input:focus-visible){outline:2px solid var(--gold2);outline-offset:2px}
+.service-card:has(.service-check input:checked){background:rgba(var(--gold2-rgb),.05)!important}
+.service-card .qty-step{display:none;margin:0;flex:0 0 auto}
+.service-card:has(.service-check input:checked) .qty-step{display:inline-flex}
+@media(max-width:560px){.service-card .qty-step{margin-left:auto}.qty-step ~ .service-btn{margin-left:0}}

@@ -1,3 +1,18 @@
+## 29.244.0 — Painel na mesma lista: Balcão, Novo agendamento e Concluir/Editar da agenda (26/09)
+
+Segunda leva da padronização (*"padronizar em todos agendamentos"*): os pickers do painel deixam a grade de caixinhas e usam a lista do site.
+
+**Como:** os scripts do admin são clássicos (sem `import`), então `admin-catalogo-lista-v30.js` é a versão em `<script>` comum da marcação de `assets/js/catalogo-lista.js` (`window.BDJ_LISTA.html(itens,{name,attrs,marcados,quantidade,titulo})`). A diferença é o botão: um `<label class="service-btn service-check">` com o **checkbox escondido dentro** — tudo o que o painel já fazia continua igual (ler `input:checked`, `applyToPicker` da regra das famílias, pré-marcar pelo `service_name`, rascunho, contador de produto), e marcado/desmarcado é só CSS (`:has(input:checked)` → "✓ Adicionado"). Nada de reescrever a lógica; os testes existentes dos pickers só trocaram o seletor.
+
+- **Balcão** (`admin-balcao-v29.js`): serviços e **produtos** na lista; o contador `− n +` do produto fica no cartão, antes do botão, e aparece ao marcar.
+- **Novo agendamento** (`admin-v15-4-agendamento.js`): lista + resumo "N serviços · min · R$" de sempre; o handler de clique da caixinha antiga saiu (o label nativo já alterna e dispara `change`).
+- **Concluir / Editar atendimento** (`admin-v15-4-agenda.js`, `serviceChecklistHtml`): mesma lista dentro do modal, com os `data-service-*` no checkbox — `readChecklistServices`, a regra e o prêmio da fidelidade que marca a caixinha não mudaram.
+- `css/07-catalogo-lista.css` ligado em toda página que carrega esses scripts (agenda, agendamento, balcão, clientes, mensagens, notificações, Hoje); título de categoria em Bebas também dentro do modal. ADMIN_VERSION 29.244.0.
+
+**Conferido** com o mock do Supabase (nada sai pra internet) a 1280 e 390 px: balcão com serviço + produto ×2, novo agendamento, modal Concluir; sem erro de página nem estouro de largura. Suíte completa verde.
+
+**Fica:** clube Sob Medida (os serviços vêm do servidor e o card é de duas colunas — precisa de desenho próprio); lista de espera continua texto livre (é anotação, não pedido).
+
 ## 29.243.0 — Uma lista de serviços só: senha, reagendar e vale-presente iguais ao /agendar/ (26/09)
 
 **Pedido do Juliano:** *"poderíamos padronizar em todos agendamentos"* (o modelo do `/agendar/`, que ele achou mais bonito que os chips). Primeira leva, a do cliente.

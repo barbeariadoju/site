@@ -44,6 +44,9 @@
   async function show() {
     $('admin-login').hidden = true; $('admin-app').hidden = false;
     $('admin-signout').onclick = () => sb.auth.signOut().then(() => location.reload());
+    // v29.244.0 — mesma lista do site (admin-catalogo-lista-v30.js + css/07-catalogo-lista.css).
+    $('balcao-services').classList.add('catalogo-lista');
+    $('balcao-products').classList.add('catalogo-lista');
     $('balcao-services').innerHTML = renderServicePicker();
     $('balcao-products').innerHTML = renderProductPicker();
     bindServicePicker();
@@ -66,9 +69,7 @@
   }
 
   function renderServicePicker() {
-    const groups = {};
-    catalog.forEach(s => (groups[s.category] ??= []).push(s));
-    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(s => `<label class="booking-service-option"><input type="checkbox" name="balcao-service" value="${esc(s.name)}"><span><strong>${esc(s.name)}</strong><small>${s.duration} min • ${money(s.price)}</small><i>✓</i></span></label>`).join('')}</div></section>`).join('') + '<small class="field-help" data-service-rule-msg hidden></small>';
+    return window.BDJ_LISTA.html(catalog, { name: 'balcao-service' }) + '<small class="field-help" data-service-rule-msg hidden></small>';
   }
   function selectedServices() { return [...document.querySelectorAll('input[name="balcao-service"]:checked')].map(i => catalog.find(s => s.name === i.value)).filter(Boolean); }
   function bindServicePicker() {
@@ -94,7 +95,8 @@
     // colocar quantidade"). Cada produto ganha um contador − 1 + que aparece ao marcar. A
     // quantidade vira o mesmo item repetido na lista enviada — é o formato que a RPC soma
     // e que o cupom já agrupa ("2 x R$ 8,00"), então banco e comprovante não mudam.
-    return Object.entries(groups).map(([cat, items]) => `<section class="booking-service-group"><h3>${esc(cat)}</h3><div>${items.map(p => `<label class="booking-service-option"><input type="checkbox" name="balcao-product" value="${esc(p.name)}" data-qty="1"><span><strong>${esc(p.name)}</strong><small>${money(p.price)}</small><i>✓</i><b class="qty-step"><button type="button" data-qty-dec aria-label="Menos um">−</button><span data-qty-view>1</span><button type="button" data-qty-inc aria-label="Mais um">+</button></b></span></label>`).join('')}</div></section>`).join('');
+    // v29.244.0 — na lista do site o contador fica no cartão, antes do botão (não dentro do label).
+    return window.BDJ_LISTA.html(productCatalog, { name: 'balcao-product', titulo: 'Produtos', quantidade: true });
   }
   function productQty(input) { return Math.max(1, Math.floor(Number(input.dataset.qty) || 1)); }
   function selectedProducts() {
@@ -105,7 +107,7 @@
   }
   function setProductQty(input, qty) {
     input.dataset.qty = String(Math.max(1, Math.min(99, qty)));
-    const view = input.parentElement?.querySelector('[data-qty-view]');
+    const view = input.closest('.service-card')?.querySelector('[data-qty-view]');
     if (view) view.textContent = input.dataset.qty;
   }
   function bindProductPicker() {
@@ -119,7 +121,7 @@
       const btn = e.target.closest('[data-qty-inc],[data-qty-dec]');
       if (!btn) return;
       e.preventDefault();
-      const input = btn.closest('label')?.querySelector('input[name="balcao-product"]');
+      const input = btn.closest('.service-card')?.querySelector('input[name="balcao-product"]');
       if (!input) return;
       if (btn.hasAttribute('data-qty-inc')) {
         if (!input.checked) { input.checked = true; setProductQty(input, 1); } else setProductQty(input, productQty(input) + 1);
