@@ -1534,9 +1534,381 @@
   "conteudo": "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"utf-8\">\n<title>Tabela de preços | Barbearia do Ju</title>\n<meta name=\"robots\" content=\"noindex,follow\">\n<link rel=\"canonical\" href=\"https://www.barbeariadoju.com.br/precos/\">\n<meta http-equiv=\"refresh\" content=\"0; url=/precos/\">\n</head>\n<body>\n<p><a href=\"/precos/\">Ver a tabela de preços</a></p>\n</body>\n</html>\n"
  },
  {
+  "arquivo": "404.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/horario/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "agendar/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "beneficios.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-barba-encravada-ressecada.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-barba-falhada.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-barboterapia.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-como-funciona-agendamento-juia.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-cuidados-barba-pele-inverno.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-fade-baixo-ou-alto.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-formato-barba-ideal.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-ingredientes-produtos-barba-cabelo.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-melhor-corte-rosto-redondo.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-pigmentacao-barba-como-funciona.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-platinado-masculino-o-que-acontece-com-o-fio.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-produtos-profissionais-caseiros.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quanto-custa-corte-braganca-paulista.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-quimica-capilar-masculina-seguranca.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-reduzir-irritacao-depois-de-barbear.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-sobrancelha-masculina.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog-tendencias-corte-2026.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "blog.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "cliente.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "clube/contrato/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "clube/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "clube/minha-assinatura/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "guia-barba-masculina.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
   "arquivo": "index.html",
-  "de": "<a href=\"sobre-o-juliano.html\">Sobre o Juliano</a> • <a href=\"blog.html\">Blog</a>",
-  "para": "<a href=\"sobre-o-juliano.html\">Sobre o Juliano</a> • <a href=\"/clube/\">Clube do Ju</a> • <a href=\"blog.html\">Blog</a>",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "meu-agendamento.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "na-barbearia.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "perguntas-frequentes.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "privacidade.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "produtos.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "reagendar.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "senha/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-alisamento-relaxamento.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-aparacao-corporal.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-express.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barba-na-navalha.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-barboterapia.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-degrade.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-infantil.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barba-express.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-barboterapia.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-mais-lavagem.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-masculino.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-corte-social.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-nasal.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-depilacao-orelhas.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-freestyle-risquinho.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-hidratacao-capilar.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-luzes-masculinas.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pezinho.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-barba.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-capilar.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-pigmentacao-sobrancelha.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-platinado-masculino.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-raspar-a-cabeca.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-reconstrucao-pos-alisamento.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servico-sobrancelha-masculina.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "servicos.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "sobre-o-juliano.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "n": 1
+ },
+ {
+  "arquivo": "vale-presente/index.html",
+  "de": "<a href=\"/blog.html\">Blog</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
+  "para": "<a href=\"/blog.html\">Blog</a><a href=\"/clube/\">Clube do Ju</a><a href=\"/sobre-o-juliano.html\">Sobre o Juliano</a>",
   "n": 1
  }
 ]

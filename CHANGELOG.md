@@ -1,3 +1,21 @@
+## 29.250.0 — Auditoria impeccable, onda 1: uma casca só para o site (27/09)
+
+**Por quê:** a auditoria contou 9 variantes da barra do topo e 7 de rodapé nas páginas públicas, e o pior: `/agendar/`, `/agendar/horario/`, a área do cliente, `meu-agendamento`, `reagendar` e o vale-presente não tinham nenhuma das duas. O cliente clicava em "Agendar horário" e "saía do site" (sumia a marca, o menu e o rodapé; ficava só uma pílula "← Voltar ao site"). 404, benefícios e privacidade não tinham rodapé.
+
+**Como ficou (`scripts/casca.mjs`, novo):** a barra e o rodapé saem de um lugar só e são carimbados nas 63 páginas públicas (`node scripts/casca.mjs`). Dois modos de barra:
+- **completo** (conteúdo): links, Menu, WhatsApp, JuIA onde o chat carrega e "Agendar horário" — mantendo o `?servico=` das páginas de serviço e dos artigos, e o "Ver os planos" do contrato do Clube. O `/clube/` voltou ao botão padrão (o hero já tem "Ver os planos", estava repetido na mesma dobra).
+- **fluxo** (agendar, horário, área do cliente, meu agendamento, reagendar, vale, senha, minha assinatura): **sem** o botão de agendar (o cliente já está agendando) e, no celular, **fina no topo** em vez de fixa embaixo — a zona do polegar fica com o botão da etapa ("Ver meu pedido", "Continuar"). O Menu abre para baixo.
+- A navegação principal passou a se chamar "Principal" para o leitor de tela (era "Agendar").
+- Rodapé padrão (endereço, horário, telefone, 6 links) em todas, inclusive a home (que tinha um rodapé próprio sem endereço, só o slogan).
+- Saíram as pílulas "← Voltar ao site" / "← Barbearia do Ju" (a marca na barra faz isso) e o cabeçalho próprio do vale-presente (com emoji). "← Alterar serviços" fica: é contextual.
+- **Teste novo `tests/unit/casca.spec.js`:** página editada à mão fora do padrão quebra o `npm test`.
+
+**Fora de propósito:** `/precos/` (única página sem o CSS do site; vira redirecionamento para `servicos.html` depois de 01/10), recibo, página offline, pontes de QR (WhatsApp, Instagram, salvar contato), avaliação e redirecionamentos.
+
+**Decidido contra o óbvio — o link do Clube no rodapé:** o rodapé padrão teria "Clube do Ju", mas nenhuma página pública linkava o Clube antes, e o plano da virada de 01/10 (`scripts/reajuste-2026-10/plano.json`) punha o link no rodapé da home **na estreia**. Mantido o lançamento em 01/10: o link só entra no rodapé padrão quando a virada grava `APLICADO`, e a entrada única da home no plano virou 63 entradas (uma por página com o rodapé padrão). Ensaio numa cópia: plano aplicado (319 trechos, 65 arquivos) e casca continua no padrão. **Aprendizado para as próximas ondas:** até 01/10, qualquer página com preço mexida precisa manter o plano válido (`node scripts/reajuste-2026-10/aplicar.mjs --conferir`); por isso a home, `servicos.html` e o catálogo do `/agendar/` ficam para depois da virada.
+
+**Prova:** snapshot do estilo calculado (ferramenta nova, `tests/estilo/` + `playwright.estilo.config.js`, fora do `npm test`: todas as páginas públicas e as 18 telas do painel logadas pelo mock, em 1280 e 390 px). Duas rodadas sem mudança = idênticas (só `/avaliar/` varia, porque redireciona sozinha; saiu da comparação). Depois da casca: diferença **só** nas 12 páginas que deviam mudar; as 26 de serviço e os 17 artigos, cuja barra já era a padrão, ficaram idênticos nas duas larguras.
+
 ## 29.249.0 — Auditoria impeccable, onda 0: consertos que estavam no ar (27/09)
 
 **Pedido do Juliano:** auditoria completa com a skill impeccable em todo o site, agendamento e painel, *"visando simplificar e padronizar tudo o que for possível"*; depois de ver as propostas, *"faz tudo"*, com a interface *"sóbria e formal"*. Síntese, relatórios e capturas fora do repo, em `Documents\Auditoria-Impeccable-2026-09-27\`. Esta é a onda 0: só defeitos que já estavam em produção, sem mudança de desenho.

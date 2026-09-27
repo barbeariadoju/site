@@ -648,6 +648,17 @@ body:has([data-juia-open]) .juia-launcher{display:none!important}
   .page-bar-actions>.page-bar-alt[href^="https://wa.me"]{display:none}
   .page-bar-actions{grid-template-columns:auto auto minmax(0,1fr)}
 }
+/* v29.250.0 — barra em modo fluxo (scripts/casca.mjs): agendar, horário, área do cliente,
+   reagendar, vale, senha e minha assinatura. Sem o botão "Agendar horário" (o cliente já está
+   agendando) e, no celular, fina no TOPO em vez de fixa embaixo: a zona do polegar fica com o
+   botão da etapa ("Ver meu pedido", "Continuar"). O Menu abre para baixo. */
+@media (max-width:760px){
+  html body:has(.page-bar.is-fluxo){--bar-h:0px;padding-bottom:0}
+  html body .page-bar.is-fluxo{position:sticky;top:0;bottom:auto;padding:8px 12px;border-top:0;border-bottom:1px solid var(--edge)}
+  html body .page-bar.is-fluxo .page-bar-brand{display:inline-flex;font-size:var(--t-2xl);min-height:40px}
+  html body .page-bar.is-fluxo .page-bar-actions{flex:0 0 auto;display:flex;gap:8px}
+  html body .page-bar.is-fluxo .page-bar-menu nav{bottom:auto;top:calc(100% + 10px);left:auto;right:0}
+}
 
 /* v29.205.3 — "Ver meu pedido" era uma pílula flutuando no meio da lista: cobria o "✓ Adicionado"
    recém-tocado (celular) e o meio das linhas (desktop). Virou barra de largura total colada na

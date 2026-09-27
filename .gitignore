@@ -28,3 +28,6 @@ artes/.render-*.html
 
 # impeccable: cache do hook é estado local da máquina
 .impeccable/hook.cache.json
+
+# snapshot de estilo calculado (tests/estilo/)
+.estilo/
