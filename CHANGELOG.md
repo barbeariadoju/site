@@ -1,3 +1,15 @@
+## 29.256.0 — Auditoria impeccable, onda 7: vale, campos de WhatsApp e alvos de toque (27/09)
+
+- **Vale-presente:** o "monte o seu" (≈20 serviços) ficava sempre aberto logo abaixo dos 3 vales prontos. Agora recolhido em "Ou monte o seu vale — com os serviços que quiser"; quem veio por um vale pronto não rola a lista inteira.
+- **Campo de WhatsApp igual em todo o site:** rótulo "WhatsApp com DDD" e exemplo "(11) 99999-9999" no agendamento, na lista de espera, na senha digital, no vale-presente (era "11 90000-0000") e no contato da home. Os `id` não mudaram (o `#agenda-phone` é lido pelo GTM).
+- **Alvo de toque de 44 px:** botão "Adicionar" da lista de serviços (36–38 px no computador) e os botões do aviso de cookies (33 px no celular).
+
+**Decidido contra a proposta da auditoria, e por quê:**
+- **Clube "Sob Medida" recolhido atrás de "Montar meu plano": não agora.** Foi redesenhado a pedido do Juliano na 29.245.0 (25/09) e o Clube lança em 01/10; mexer na tela de venda às vésperas é risco sem ganho claro. Reavaliar com os primeiros assinantes.
+- **Senha digital com lista curta: não.** O catálogo completo do `/agendar/` na senha foi pedido do Juliano na 29.242.1 (26/09).
+- **Redirecionar `meu-agendamento`/`reagendar` sem link para a área do cliente: não.** As duas já explicam ("Este endereço precisa do link completo…") e dão três saídas, uma delas a área do cliente; um redirecionamento mudo confundiria mais.
+- **Fim dos artigos (afiliado, e-book, série) num bloco só: não.** São fontes de receita; reordenar sem dado de clique pode derrubar o que funciona.
+
 ## 29.255.0 — Auditoria impeccable, onda 6: limpeza que não muda nada na tela (27/09)
 
 Tudo nesta versão é invisível de propósito. **Prova:** snapshot do estilo calculado (`tests/estilo/`) de todas as páginas públicas e das 18 telas do painel logadas, em 1280 e 390 px, antes e depois de cada passo — **zero diferença** em 172 capturas, quatro vezes.

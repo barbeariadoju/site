@@ -685,3 +685,6 @@ body:has(.open-cart-btn.show){padding-bottom:calc(64px + env(safe-area-inset-bot
 /* v29.253.0 — "Pular para o conteúdo" (scripts/casca.mjs): fora da tela até receber foco. */
 .pular-conteudo{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;border-radius:var(--r-pill);background:var(--gold2);color:var(--ink);font-weight:800;text-decoration:none}
 .pular-conteudo:focus{top:12px;outline:2px solid var(--white);outline-offset:2px}
+
+/* v29.256.0 — alvo de toque: os botões do aviso de cookies tinham 33 px de altura no celular. */
+.cookie-actions button{min-height:44px}

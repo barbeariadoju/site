@@ -65,3 +65,6 @@ label.service-btn{display:inline-flex;align-items:center;justify-content:center;
 .service-card .qty-step{display:none;margin:0;flex:0 0 auto}
 .service-card:has(.service-check input:checked) .qty-step{display:inline-flex}
 @media(max-width:560px){.service-card .qty-step{margin-left:auto}.qty-step ~ .service-btn{margin-left:0}}
+
+/* v29.256.0 — alvo de toque: "Adicionar" media 36–38 px de altura no computador. */
+.service-btn{min-height:44px}

@@ -32,6 +32,8 @@ test.describe('lista de serviços padrão', () => {
   test('/vale-presente/ "monte o seu" usa a lista com quantidade', async ({ page }) => {
     await aceitaCookies(page);
     await page.goto('/vale-presente/');
+    // v29.256.0: "monte o seu" fica recolhido abaixo dos vales prontos
+    await page.locator('.vp-montar > summary').click();
     const box = page.locator('#vp-services');
     await expect(box.locator('.service-card').first()).toBeVisible();
     // Só corte, barba e acabamentos entram como presente.
