@@ -7,7 +7,7 @@
 // O link do WhatsApp chega como /senha/#c=CODE&t=TOKEN (fragmento: não vai ao servidor).
 // Leitura da URL é idempotente: o sw.js recarrega a página no controllerchange.
 import { toggleServiceSelection } from '/assets/js/service-rules.js';
-import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.243.0';
+import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.245.0';
 
 const $=id=>document.getElementById(id);
 const cfg=window.BDJ_AGENDA_CONFIG||{};

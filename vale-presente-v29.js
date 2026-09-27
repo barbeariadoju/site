@@ -6,7 +6,7 @@
 // levando e quanto custa ANTES de qualquer pedido de Pix.
 // v29.243.0 — "monte o seu" na lista padrão do site (a do /agendar/): assets/js/catalogo-lista.js,
 // com "− n" ao lado do Adicionar porque aqui o mesmo serviço pode entrar mais de uma vez.
-import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.243.0';
+import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.245.0';
 (function () {
   const cfg = window.BDJ_AGENDA_CONFIG || {};
   const catalog = window.BDJ_SERVICES || [];

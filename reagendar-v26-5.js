@@ -7,7 +7,7 @@
 // esta página tinha ficado de fora.
 import { applyServiceRule, normalizeServiceSet, splitServiceNames } from './assets/js/service-rules.js?v=29.165.0';
 // v29.243.0 — serviços e produtos na lista padrão do site (a do /agendar/), via assets/js/catalogo-lista.js.
-import { montarLista, pintarLista } from './assets/js/catalogo-lista.js?v=29.243.0';
+import { montarLista, pintarLista } from './assets/js/catalogo-lista.js?v=29.245.0';
 const cfg=window.BDJ_AGENDA_CONFIG||{},sb=(cfg.supabaseUrl&&cfg.supabaseAnonKey)?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null,$=id=>document.getElementById(id),money=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),params=new URLSearchParams(location.search),code=params.get('code')||'',token=params.get('token')||'';
 // Catálogo único em products-catalog-v1.js — só entram aqui os produtos com `for`
 // não-vazio (mesmo recorte de agenda-v15.js), catálogo completo (bebidas etc.) fica

@@ -1,8 +1,13 @@
 /* v29.233.0 — Clube do Ju: página de venda e assinatura (/clube/) e botão Imprimir do contrato.
    Fala com a Edge Function `clube` (fonte da verdade de preço, vagas, horários da Cativa e contrato).
    Nada de preço fixo aqui: tudo vem de {action:'planos'} e {action:'cotar'}.
-   dataLayer SEM dado pessoal: nunca nome, telefone ou e-mail. */
-(() => {
+   dataLayer SEM dado pessoal: nunca nome, telefone ou e-mail.
+   v29.245.0 — virou módulo: o Sob Medida monta os serviços na lista padrão do site
+   (assets/js/catalogo-lista.js, a mesma do /agendar/, da senha, do reagendar e do vale) e usa a
+   regra das famílias (1 corte + 1 barba por visita) em vez de caixinhas soltas. */
+import { montarLista, pintarLista } from '/assets/js/catalogo-lista.js?v=29.245.0'
+import { toggleServiceSelection } from '/assets/js/service-rules.js'
+;(() => {
   'use strict'
 
   // Contrato: botão Imprimir (esta mesma folha é usada em /clube/contrato/).
@@ -117,23 +122,34 @@
     </article>`
   }
 
+  // Sob Medida: a lista padrão do site à esquerda (o cliente já a conhece do /agendar/) e, à
+  // direita, o plano se montando: visitas por mês, o que entra em cada visita, a conta e o Assinar.
+  // No celular a coluna da direita se desmonta: visitas antes da lista, resumo depois, e uma
+  // barra grudada embaixo com a mensalidade e o Assinar para não ter que rolar de volta.
   const cardSobMedida = (p) => {
     const sm = estado.dados.sob_medida || { servicos: [], visitas: { min: 2, max: 4 } }
     const vmin = Number(sm.visitas?.min || 2), vmax = Number(sm.visitas?.max || 4)
-    const servicos = (sm.servicos || []).map((s, i) => `<label class="clube-check"><input type="checkbox" value="${esc(s.name)}" data-sm-item id="sm-${i}"><span>${esc(nomeServico(s.name))}</span><em>${money(s.price)}</em></label>`).join('')
     const visitas = []
     for (let v = vmin; v <= vmax; v++) visitas.push(`<label><input type="radio" name="sm-visitas" value="${v}"${v === estado.sob.visitas ? ' checked' : ''}><span>${v}</span></label>`)
-    return `<article class="clube-card clube-card--largo" data-plano="${esc(p.id)}">
+    const sit = situacaoDo(p)
+    return `<article class="clube-card clube-card--largo clube-sm" data-plano="${esc(p.id)}">
       <h3>${esc(p.name)}</h3>
-      <p>${esc(p.summary)}. O desconto segue a tabela do mês: 15% até ${money(119)}, 20% de ${money(120)} a ${money(199)} e 25% a partir de ${money(200)}.</p>
-      <div class="clube-montador">
-        <fieldset class="clube-servicos"><legend>Serviços de cada visita (preço de tabela)</legend>${servicos}</fieldset>
-        <div>
-          <fieldset class="clube-visitas"><legend>Visitas por mês</legend><div class="clube-seg">${visitas.join('')}</div></fieldset>
-          <div class="clube-cota" id="sm-cota" aria-live="polite"><p>Escolha os serviços de cada visita.</p></div>
+      <p>${esc(p.summary)}. Os preços da lista são os de tabela; o desconto segue o total do mês: 15% até ${money(119)}, 20% de ${money(120)} a ${money(199)} e 25% a partir de ${money(200)}.</p>
+      <div class="clube-sm-grid">
+        <fieldset class="clube-visitas clube-sm-visitas"><legend>Visitas por mês</legend><div class="clube-seg">${visitas.join('')}</div></fieldset>
+        <div class="clube-sm-lista">
+          <p class="clube-sm-legenda" id="sm-legenda">Serviços de cada visita</p>
+          <div id="sm-lista" aria-labelledby="sm-legenda"></div>
         </div>
+        <div class="clube-sm-resumo">
+          <p class="clube-sm-escolha" id="sm-escolha" aria-live="polite">Nenhum serviço escolhido ainda.</p>
+          <p class="clube-regra" id="sm-regra" role="status" hidden></p>
+          <div class="clube-cota" id="sm-cota" aria-live="polite"><p>Escolha os serviços de cada visita.</p></div>
+          <div id="sm-dica"></div>
+          ${botaoDoPlano(p, sit)}
+        </div>
+        ${sit === 'aberto' ? `<div class="clube-sm-barra" id="sm-barra" hidden><div><strong id="sm-barra-preco">—</strong><small id="sm-barra-sub">por mês</small></div><button type="button" class="btn primary" data-assinar="${esc(p.id)}" disabled>Assinar</button></div>` : ''}
       </div>
-      ${botaoDoPlano(p, situacaoDo(p))}
     </article>`
   }
 
@@ -142,9 +158,61 @@
     raiz.innerHTML = planos.map((p) => (p.kind === 'sob_medida' ? cardSobMedida(p) : cardFixo(p))).join('')
     raiz.querySelectorAll('[data-assinar]').forEach((b) => b.addEventListener('click', () => abrirAssinatura(b.dataset.assinar)))
     raiz.querySelectorAll('[data-espera]').forEach((b) => b.addEventListener('click', () => abrirEspera(b.dataset.espera, b.dataset.motivo)))
-    raiz.querySelectorAll('[data-sm-item]').forEach((c) => c.addEventListener('change', onSobMedidaMudou))
     raiz.querySelectorAll('input[name="sm-visitas"]').forEach((r) => r.addEventListener('change', onSobMedidaMudou))
+    montarSobMedida()
     observarCards()
+  }
+
+  const montarSobMedida = async () => {
+    const box = $('sm-lista')
+    if (!box) return
+    const servicos = ((estado.dados.sob_medida || {}).servicos || []).map((s) => ({ name: s.name, price: s.price }))
+    await montarLista(box, { itens: servicos, aoClicar: alternarSobMedida })
+    pintarSobMedida()
+    observarBarraSM()
+  }
+
+  // Regra das famílias ao escolher (1 corte + 1 barba por visita; combo desmonta as partes; pezinho
+  // já vem no corte): a mesma do carrinho do site. Desmarcar nunca mexe nos outros.
+  const alternarSobMedida = (nome) => {
+    const regra = $('sm-regra')
+    if (estado.sob.itens.includes(nome)) {
+      estado.sob.itens = estado.sob.itens.filter((n) => n !== nome)
+      regra.hidden = true; regra.textContent = ''
+    } else {
+      const r = toggleServiceSelection(estado.sob.itens, nome)
+      estado.sob.itens = r.services
+      regra.textContent = r.message || ''; regra.hidden = !r.message
+    }
+    pintarSobMedida()
+    onSobMedidaMudou()
+  }
+  const pintarSobMedida = () => {
+    const box = $('sm-lista')
+    if (box) pintarLista(box, estado.sob.itens)
+    const escolha = $('sm-escolha')
+    if (escolha) escolha.innerHTML = estado.sob.itens.length ? `Cada visita: <strong>${estado.sob.itens.map((n) => esc(nomeServico(n))).join(' + ')}</strong>` : 'Nenhum serviço escolhido ainda.'
+  }
+  const botoesAssinarSM = () => [...raiz.querySelectorAll('[data-assinar="' + (planoSobMedida()?.id || '') + '"]')]
+  // Barra do celular: só enquanto o resumo (com o Assinar) e o controle de visitas estão fora da
+  // tela — senão empilharia dois Assinar no fim do card ou cobriria o 2/3/4 no começo.
+  const visivel = { resumo: false, visitas: false }
+  const barraSM = (cota) => {
+    const barra = $('sm-barra')
+    if (!barra) return
+    if (cota) { $('sm-barra-preco').textContent = money(cota.preco); $('sm-barra-sub').textContent = `por mês · ${cota.visitas} visitas` }
+    barra.dataset.cota = cota ? '1' : ''
+    barra.hidden = !cota || visivel.resumo || visivel.visitas
+  }
+  const observarBarraSM = () => {
+    if (!('IntersectionObserver' in window)) return
+    const alvo = { resumo: raiz.querySelector('.clube-sm-resumo'), visitas: raiz.querySelector('.clube-sm-visitas') }
+    const io = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => { if (e.target === alvo.resumo) visivel.resumo = e.isIntersecting; if (e.target === alvo.visitas) visivel.visitas = e.isIntersecting })
+      const barra = $('sm-barra')
+      if (barra) barra.hidden = !barra.dataset.cota || visivel.resumo || visivel.visitas
+    }, { threshold: 0 })
+    Object.values(alvo).forEach((el) => { if (el) io.observe(el) })
   }
 
   const observarCards = () => {
@@ -164,17 +232,18 @@
   const planoSobMedida = () => (estado.dados.planos || []).find((p) => p.kind === 'sob_medida')
 
   const onSobMedidaMudou = () => {
-    estado.sob.itens = [...raiz.querySelectorAll('[data-sm-item]:checked')].map((c) => c.value)
     const r = raiz.querySelector('input[name="sm-visitas"]:checked')
     estado.sob.visitas = r ? Number(r.value) : estado.sob.visitas
     estado.sob.cota = null
     if (estado.plano && estado.plano.kind === 'sob_medida' && !secAssinar.hidden && !estado.enviando) secAssinar.hidden = true
-    const botao = raiz.querySelector('[data-assinar="' + (planoSobMedida()?.id || '') + '"]')
-    if (botao) botao.disabled = true
+    botoesAssinarSM().forEach((b) => { b.disabled = true })
+    barraSM(null)
     const box = $('sm-cota')
     clearTimeout(estado.sob.timer)
-    if (!estado.sob.itens.length) { box.innerHTML = '<p>Escolha os serviços de cada visita.</p>'; return }
+    if (!estado.sob.itens.length) { box.innerHTML = '<p>Escolha os serviços de cada visita.</p>'; const d = $('sm-dica'); if (d) d.innerHTML = ''; return }
     box.innerHTML = '<p>Calculando...</p>'
+    // A dica antiga sai junto: um "Trocar pelo combo" de outra combinação não pode ficar clicável.
+    const d = $('sm-dica'); if (d) d.innerHTML = ''
     estado.sob.timer = setTimeout(cotar, 250)
   }
 
@@ -197,23 +266,26 @@
     let r
     try { r = await api({ action: 'cotar', itens, visitas }) } catch (e) { r = { error: 'Sem conexão para calcular agora. Tente de novo em instantes.' } }
     if (seq !== estado.sob.seq) return // resposta velha
-    const botao = raiz.querySelector('[data-assinar="' + (planoSobMedida()?.id || '') + '"]')
+    const dica = $('sm-dica')
     if (r.error || !r.ok) {
-      box.innerHTML = `<p class="clube-erro">${esc(r.error || 'Não foi possível calcular.')}</p>${dicaCombo()}`
+      box.innerHTML = `<p class="clube-erro">${esc(r.error || 'Não foi possível calcular.')}</p>`
+      barraSM(null)
     } else {
       estado.sob.cota = r
       const economia = Math.max(0, Number(r.tabelaMensal) - Number(r.preco))
       box.innerHTML = `<p class="clube-tabela">Tabela no mês: <s>${money(r.tabelaMensal)}</s> (${visitas} visitas de ${money(r.porVisita)})</p>
         <p class="clube-economia">Desconto de ${r.pct}%: economia de ${money(economia)} por mês</p>
-        <p class="clube-preco"><strong>${money(r.preco)}</strong><small>por mês</small></p>${dicaCombo()}`
-      if (botao) botao.disabled = false
+        <p class="clube-preco"><strong>${money(r.preco)}</strong><small>por mês</small></p>`
+      botoesAssinarSM().forEach((b) => { b.disabled = false })
+      barraSM(r)
     }
-    const troca = box.querySelector('[data-trocar-combo]')
+    // A dica do combo mora fora da caixa da conta (irmã, não caixa dentro de caixa).
+    if (dica) dica.innerHTML = dicaCombo()
+    const troca = (dica || box).querySelector('[data-trocar-combo]')
     if (troca) troca.addEventListener('click', () => {
-      raiz.querySelectorAll('[data-sm-item]').forEach((c) => {
-        if (c.value === 'Corte de cabelo' || c.value === troca.dataset.barba) c.checked = false
-        if (c.value === troca.dataset.trocarCombo) c.checked = true
-      })
+      estado.sob.itens = estado.sob.itens.filter((n) => n !== 'Corte de cabelo' && n !== troca.dataset.barba).concat(troca.dataset.trocarCombo)
+      $('sm-regra').hidden = true
+      pintarSobMedida()
       onSobMedidaMudou()
     })
   }

@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
+import { montarMensagemReativacao } from '../_shared/reativacao.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -52,9 +53,11 @@ Deno.serve(async (request: Request) => {
 
   const body = await request.json().catch(() => ({}))
   const dryRun = body?.dry_run === true
-  const defaultDays = Number(body?.default_days ?? 45)
-  const graceDays = Number(body?.grace_days ?? 10)
-  const cooldownDays = Number(body?.cooldown_days ?? 40)
+  // v29.246.0 — a régua de etapas (30/45/60/75/90/105/120, depois a cada 30 até 365) vive na função
+  // SQL customers_due_for_reactivation (migração 181); aqui só o cooldown de segurança (14 dias).
+  const defaultDays = Number(body?.default_days ?? 30)
+  const graceDays = Number(body?.grace_days ?? 0)
+  const cooldownDays = Number(body?.cooldown_days ?? 14)
   // Parâmetro de teste: quando definido, restringe o envio a um único telefone,
   // permitindo testar o fluxo real sem atingir clientes de verdade.
   const onlyPhone = canonicalPhone(String(body?.only_phone || ''))
@@ -77,7 +80,7 @@ Deno.serve(async (request: Request) => {
       ok: true,
       dry_run: true,
       would_message: candidates.length,
-      customers: candidates.map((c: any) => ({ name: c.name, phone: c.phone, last_visit: c.last_visit, days_since: c.days_since })),
+      customers: candidates.map((c: any) => ({ name: c.name, phone: c.phone, last_visit: c.last_visit, days_since: c.days_since, stage: c.stage })),
     })
   }
 
@@ -136,14 +139,11 @@ Deno.serve(async (request: Request) => {
       : nomeBase
     const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|conta)$/i.test(nomeBase) || nomeBase.length < 3 ? '' : nomeCase
     const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
-    const tempo = c.days_since >= 60 ? 'mais de dois meses' : c.days_since >= 45 ? 'mais de um mês e meio' : c.days_since >= 35 ? 'mais de um mês' : 'um mês'
-    // v29.71.1 (25/08, pedido do Juliano no ensaio): "me diz o dia que eu confiro" soava
-    // burocrático. CTA novo: pergunta direta + exemplo de resposta + "já deixo reservado"
-    // (o mesmo verbo que converte no lead-followup desde a v29.51.0).
-    // v29.208.0 (revisão de textos, 19/09): saiu "Aqui é a JuIA" — o remetente é o Juliano e o
-    // cliente não sabe que é IA (regra de 01/09) — e o "deve estar na hora de dar um trato, né?",
-    // palpite sobre a aparência de quem lê. Mantido o CTA que converte (responder com o dia).
-    const text = `Olá${nome ? `, ${nome}` : ''}. Aqui é da Barbearia do Ju. Já faz ${tempo} do seu último atendimento com o Juliano (${servico}).\n\nSe quiser deixar o próximo reservado, é só me responder com o dia que fica melhor para você (pode ser "quinta à tarde") que eu já deixo reservado, com hora marcada e sem espera. Se preferir, também dá para agendar pelo site: https://www.barbeariadoju.com.br/agendar/`
+    const stage = Number(c.stage || 1)
+    // v29.246.0 (26/09, Juliano): "mensagem curta, breve; o objetivo é lembrar, não incomodar".
+    // Texto em _shared/reativacao.ts (testado no vitest): duas frases, sem pergunta, sem palpite
+    // sobre a aparência (v29.208.0), link do site sempre; muda com a etapa para não repetir.
+    const text = montarMensagemReativacao({ nome, servico, dias: Number(c.days_since) || 0, stage })
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
@@ -156,7 +156,7 @@ Deno.serve(async (request: Request) => {
 
       await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
       await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
-      await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'reactivation', channel: 'whatsapp', details: { last_visit: c.last_visit, days_since: c.days_since } })
+      await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'reactivation', channel: 'whatsapp', details: { last_visit: c.last_visit, days_since: c.days_since, stage } })
       await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', c.customer_id)
       sent++
     } catch (sendError) {

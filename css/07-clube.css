@@ -34,15 +34,33 @@
 .clube-card .clube-card-estado{color:var(--gold2);font-weight:700;font-size:.95rem}
 .clube-carregando,.clube-erro-geral{padding:22px;border:1px dashed var(--line);border-radius:var(--r-lg);color:var(--muted)}
 
-/* Montador do Sob Medida */
-.clube-montador{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;margin-top:4px}
-.clube-servicos{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;border:0;padding:0;margin:0}
-.clube-servicos legend,.clube-visitas legend{font-weight:700;margin:0 0 8px;padding:0;color:var(--text)}
-.clube-check{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border:1px solid var(--edge-2);border-radius:var(--r-sm);background:rgba(var(--white-rgb),.03);cursor:pointer;color:var(--text);font-size:1rem}
-.clube-check:has(input:checked){border-color:var(--gold-a55);background:rgba(var(--gold-rgb),.12)}
-.clube-check input{width:20px;height:20px;accent-color:var(--gold);flex:none}
-.clube-check span{flex:1}
-.clube-check em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Montador do Sob Medida — v29.245.0: a lista padrão do site (css/07-catalogo-lista.css) à
+   esquerda e o plano se montando à direita, grudado no topo enquanto a lista rola. */
+.clube-sm>h3{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+/* linhas auto 1fr: a linha 1 tem só a altura do controle de visitas, o resumo entra logo abaixo e
+   gruda no topo (78px: a barra do site fica fixa no alto no desktop; --bar-h só vale no celular). */
+.clube-sm-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);grid-template-rows:auto 1fr;gap:8px 28px;align-items:start;margin-top:6px}
+.clube-sm-visitas{grid-column:2;grid-row:1}
+.clube-sm-lista{grid-column:1;grid-row:1/3}
+.clube-sm-resumo{grid-column:2;grid-row:2;position:sticky;top:78px;display:flex;flex-direction:column;gap:12px}
+/* Legenda só para leitor de tela: em negrito acima do primeiro título de categoria lia como kicker. */
+.clube-sm-legenda{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;margin:0!important}
+.clube-sm-lista{position:relative}
+.clube-sm .catalogo-lista .service-section{padding-top:6px!important}
+.clube-sm .catalogo-lista .section-head h2{font-size:1.2rem!important;letter-spacing:.04em}
+.clube-sm .catalogo-lista .section-head p{display:none}
+/* Um momento de motion no card: a mensalidade assenta quando a conta chega. */
+@keyframes clube-assenta{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.clube-cota .clube-preco strong{animation:clube-assenta .24s cubic-bezier(.22,1,.36,1) both}
+@media (prefers-reduced-motion:reduce){.clube-cota .clube-preco strong{animation:none}}
+#sm-dica:empty{display:none}
+.clube-sm-escolha{color:var(--muted);line-height:1.45}
+.clube-sm-escolha strong{color:var(--text)}
+.clube-regra{margin:0!important;padding:10px 14px;border:1px solid rgba(var(--gold-rgb),.35);border-radius:var(--r-xs);background:rgba(var(--gold-rgb),.08);color:var(--text)!important;line-height:1.45;font-size:.95rem}
+.clube-regra[hidden]{display:none}
+.clube-sm-resumo .btn{margin-top:0}
+.clube-sm-barra{display:none}
+.clube-visitas legend{font-weight:700;margin:0 0 8px;padding:0;color:var(--text)}
 .clube-visitas{border:0;padding:0;margin:0 0 14px}
 .clube-seg{display:flex;gap:8px}
 .clube-seg label{flex:1}
@@ -140,8 +158,18 @@
 
 @media (max-width:760px){
   .clube{padding-top:18px}
-  .clube-montador{grid-template-columns:1fr}
-  .clube-servicos,.clube-regras,.clube-planos{grid-template-columns:1fr}
+  /* Sob Medida no celular: visitas, depois a lista, depois o resumo; barra grudada embaixo com a
+     mensalidade e o Assinar enquanto a lista rola. */
+  .clube-sm-grid{grid-template-columns:1fr;gap:12px}
+  .clube-sm-visitas,.clube-sm-lista,.clube-sm-resumo{grid-column:1;grid-row:auto}
+  .clube-sm-resumo{position:static}
+  /* bottom deixa livre a barra de navegação fixa do site (--bar-h, css/02). */
+  .clube-sm-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;bottom:calc(var(--bar-h,64px) + 8px);z-index:5;margin:0 -14px -18px;padding:12px 14px;background:rgba(12,12,12,.96);border:1px solid var(--gold-a28);border-radius:var(--r-md)}
+  .clube-sm-barra[hidden]{display:none}
+  .clube-sm-barra strong{display:block;font-size:1.35rem;color:var(--gold2);font-variant-numeric:tabular-nums;line-height:1.1}
+  .clube-sm-barra small{color:var(--muted);font-size:.85rem}
+  .clube-sm-barra .btn{width:auto;min-width:140px;margin:0}
+  .clube-regras,.clube-planos{grid-template-columns:1fr}
   .clube-resumo dl{grid-template-columns:1fr;gap:0}
   .clube-resumo dd{margin-bottom:8px}
   .clube-hero-actions .btn,.clube-acoes .btn{width:100%}

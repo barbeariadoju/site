@@ -26,7 +26,7 @@
       const checked = marcados && marcados.has(s.name) ? ' checked' : '';
       const extra = attrs ? ' ' + attrs(s) : '';
       const qty = quantidade ? '<b class="qty-step"><button type="button" data-qty-dec aria-label="Menos um">−</button><span data-qty-view>1</span><button type="button" data-qty-inc aria-label="Mais um">+</button></b>' : '';
-      return `<article class="service-card"><div class="service-content"><h3>${esc(s.name)}</h3>${s.description ? `<p>${esc(s.description)}</p>` : ''}</div><div class="service-meta">${s.duration ? `<span>aproximadamente ${Number(s.duration)} min</span>` : ''}<strong>${precoCurto(s.price)}</strong></div>${qty}<label class="service-btn service-check"><input type="checkbox"${name ? ` name="${esc(name)}"` : ''} value="${esc(s.name)}"${quantidade ? ' data-qty="1"' : ''}${extra}${checked}><span class="service-check-off">Adicionar</span><span class="service-check-on">✓ Adicionado</span></label></article>`;
+      return `<article class="service-card"><div class="service-content"><h3>${esc(s.name)}</h3>${s.description ? `<p>${esc(s.description)}</p>` : ''}</div><div class="service-meta">${s.duration ? `<span><span class="dur-longa">aproximadamente</span><span class="dur-curta">aprox.</span> ${Number(s.duration)} min</span>` : ''}<strong>${precoCurto(s.price)}</strong></div>${qty}<label class="service-btn service-check"><input type="checkbox"${name ? ` name="${esc(name)}"` : ''} value="${esc(s.name)}"${quantidade ? ' data-qty="1"' : ''}${extra}${checked}><span class="service-check-off">Adicionar</span><span class="service-check-on">✓ Adicionado</span></label></article>`;
     }).join('')}</div></section>`).join('');
   }
 

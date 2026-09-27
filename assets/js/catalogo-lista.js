@@ -64,6 +64,17 @@ export async function montarLista(box,{itens,fonte='agendar',permitidos,aoClicar
       if(!nomes.has(nome)||(permitidos&&!permitidos(nome))){b.closest('.service-card')?.remove();return}
       if(!b.dataset.label)b.dataset.label=b.textContent.trim()||'Adicionar';
       b.setAttribute('aria-pressed','false');
+      // `itens` é a verdade: o preço desenhado segue o item (o Clube usa a tabela do servidor,
+      // que pode ser diferente da que o HTML do /agendar/ mostra hoje).
+      const item=lista.find(s=>s.name===nome);
+      const preco=b.closest('.service-card')?.querySelector('.service-meta strong');
+      if(item&&preco&&item.price!=null&&item.price!=='')preco.textContent=precoCurto(item.price);
+    });
+    // "aproximadamente 45 min" vira "aprox. 45 min" no celular (css/07): assim a duração, o preço e
+    // o botão "✓ Adicionado" cabem na mesma linha a 390px.
+    sec.querySelectorAll('.service-meta span').forEach(s=>{
+      const m=/^aproximadamente\s+(.+)$/i.exec(s.textContent.trim());
+      if(m)s.innerHTML=`<span class="dur-longa">aproximadamente</span><span class="dur-curta">aprox.</span> ${esc(m[1])}`;
     });
     if(sec.querySelector('.service-card'))box.appendChild(sec);
   }

@@ -1,3 +1,29 @@
+## 29.246.0 — Reativação em etapas (30, 45, 60, 75, 90, 105, 120… dias) com lembrete curto (26/09)
+
+**Pedido do Juliano:** *"Crie reativação para clientes também com 45/60/75/90/105/120/etc."* e *"mensagem curta, breve, simplificar; o objetivo é lembrar, não incomodar."*
+
+**Antes (v29.66.0):** um toque aos 30 dias sem voltar e, depois, o mesmo texto longo a cada 40 dias, sem fim. Resultado medido em `customer_outreach_log` (24/08 → 26/09): 90 lembretes, 14 clientes agendaram em até 7 dias (16%).
+
+**Agora (migração 181, `customers_due_for_reactivation` + cron job 6):** cada cliente tem uma **etapa** = quantos lembretes já recebeu desde a última visita. Etapa 1 aos 30 dias (ou no ritmo próprio, `return_interval_days`); etapas 2–7 a cada 15 dias (45, 60, 75, 90, 105, 120); depois a cada 30 (150, 180…) **até 365 dias, e para** — quem não respondeu a 15 lembretes num ano não quer o 16º; volta pelo balcão, site ou JuIA. Cooldown de 14 dias como rede de segurança. Continuam fora: horário futuro, bloqueado, SAIR (`marketing_opt_out_at`), sem pesquisa, arquivado, conversa nos últimos 7 dias, contato adiado. A etapa vai no log (`details.stage`). Primeira rodada com a régua nova (terça 29/09, 14h): 5 clientes na etapa 1 e 35 na etapa 2 (45–75 dias, que só tinham recebido o primeiro toque).
+
+**Mensagem (`_shared/reativacao.ts`, 5 testes no vitest):** duas frases, sem pergunta (a resposta cai na JuIA como pedido de horário), sem emoji, sem palpite sobre a aparência, link do site sempre. Etapa 1: *"Olá, Marcos. Aqui é da Barbearia do Ju. Já faz um mês do seu último corte de cabelo com o Juliano. Quando quiser marcar o próximo, é só responder aqui com o dia ou agendar em …/agendar/"*. Etapa 2: *"…passando só para lembrar: já faz um mês e meio…"*. Etapa 3+: *"Só um lembrete da Barbearia do Ju: já faz dois meses desde o seu último…"* — daí em diante só o tempo muda ("três meses", "quatro meses"… "um ano"). Saiu o parágrafo com o exemplo "quinta à tarde" e o "com hora marcada e sem espera": lembrar, não vender.
+
+**Também hoje:** cadastro do Dr. Pedro arquivado a pedido do Juliano (faleceu) — `archived`, `survey_opt_out`, `marketing_opt_out_at` e nota no perfil; nenhuma rotina (reativação, pesquisa, convite de retorno, Clube, aniversário) o alcança mais. Sobre *"quem tem mais de 30 dias, agenda e cancela nunca mais recebe mensagem"*: conferido no banco — só um cliente se encaixa (última visita 12/08, cancelou 13/08) e ele recebeu o lembrete em 11/09; quem nunca teve visita concluída (só agendou e cancelou) está fora da reativação por desenho — esse é o caso do Funil de Reativação de leads, manual.
+
+## 29.245.0 — Clube Sob Medida na lista padrão, com o plano se montando ao lado (26/09)
+
+**Pedido do Juliano:** *"O Clube Sob Medida seria legal a gente redesenhar seguindo a mesma skill… vamos padronizar."* Última tela de escolha de serviço fora do padrão.
+
+**Como ficou (`assets/js/clube.js`, agora módulo; `css/07-clube.css`):** o cartão Sob Medida usa a **mesma lista do `/agendar/`** (`assets/js/catalogo-lista.js`) à esquerda — categorias, selos, descrição, duração — e, à direita, o plano se montando: **Visitas por mês** (2/3/4), "Cada visita: A + B", a conta (tabela riscada, desconto e economia, mensalidade grande), a dica do combo e o **Assinar**. A coluna da direita fica grudada no topo enquanto a lista rola. No celular: visitas → lista → resumo, com uma **barra grudada embaixo** (mensalidade · N visitas · Assinar) acima da barra de navegação do site.
+
+- **Preço é o do servidor:** só os 12 serviços que a function `clube` libera entram, com o preço de tabela dela (o `catalogo-lista.js` agora sobrescreve o preço desenhado pelo item recebido — o Clube já usa a tabela de outubro, o `/agendar/` ainda não). Duração e descrição vêm do `/agendar/`.
+- **Regra das famílias** (`toggleServiceSelection`) ao montar a visita: segunda barba troca a primeira e explica; combo desmonta as partes; pezinho já vem no corte. Antes eram caixinhas livres e o servidor recusava depois. "Trocar pelo combo" continua.
+- `clube.js` virou `type="module"` em `/clube/` e `/clube/contrato/` (importa a lista e a regra); `catalogo-lista.js?v=29.245.0` em senha, reagendar e vale-presente.
+
+**Craft (impeccable):** revisão de acabamento com um agente fresco sobre os prints de 1440 e 390 px (veredito inicial: *fix*, 7 pontos). Aplicados: resumo visível desde o primeiro viewport do card (`grid-template-rows:auto 1fr`); barra do celular só quando o resumo e o controle de visitas estão fora da tela (IntersectionObserver); dica do combo fora da caixa da conta (caixa dentro de caixa); legenda-kicker virou só-leitor-de-tela; "Sob Medida" 1.5rem acima dos títulos de categoria (1.2rem); no celular a linha fecha sempre igual (conteúdo em cima; "aprox. N min · preço" e o botão na mesma linha — `.dur-longa/.dur-curta` no `catalogo-lista.js` e no `admin-catalogo-lista-v30.js`); um só momento de motion (a mensalidade assenta ao chegar). Duas rodadas de pontuação; o último item (linhas selecionadas quebrando a 390 px) fechou com a abreviação, medido: 12 de 12 linhas com duração, preço e botão na mesma linha. Detector mecânico rodado uma vez (4 avisos de contraste "#000 sobre #181818" são falso positivo estático — o único texto escuro está sobre o degradê dourado dos botões).
+
+**Testes:** cenário novo em `tests/e2e/catalogo-lista.spec.js` com a function `clube` interceptada (`tests/e2e/_clube-mock.js`, dados reais de 26/09 e a régua de desconto): 12 serviços, preço R$ 50 do servidor, cota R$ 136, troca de barba pela regra, "Trocar pelo combo", 4 visitas recalcula. Nada chega ao Supabase.
+
 ## 29.244.0 — Painel na mesma lista: Balcão, Novo agendamento e Concluir/Editar da agenda (26/09)
 
 Segunda leva da padronização (*"padronizar em todos agendamentos"*): os pickers do painel deixam a grade de caixinhas e usam a lista do site.

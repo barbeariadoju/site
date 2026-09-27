@@ -18,7 +18,10 @@
 .service-btn{flex:0 0 auto !important;width:auto !important;padding:10px 20px !important;border-radius:999px !important;border:0;background:var(--gold);color:#191400;font-weight:700;cursor:pointer;white-space:nowrap;font-size:.92rem}
 .service-btn:hover{background:var(--gold2)}
 .service-btn:disabled{opacity:.65;cursor:default}
-@media(max-width:560px){.service-card{padding:14px 2px !important}.service-meta,.service-btn{margin-left:auto}}
+/* v29.245.0 — no celular a linha fecha sempre igual: conteúdo em cima, "aproximadamente N min · preço"
+   à esquerda e o botão à direita numa só linha (antes ora cabiam juntos, ora quebravam em três). */
+@media(max-width:560px){.service-card{padding:14px 2px !important}.service-content{flex:1 1 100% !important}.service-meta{flex:1 1 auto !important;min-width:max-content;justify-content:flex-start;gap:8px !important}.service-meta span{font-size:.72rem}.service-btn{margin-left:auto;padding:10px 16px !important}.service-btn.is-added,.service-check:has(input:checked){padding:10px 12px !important}.dur-longa{display:none}.dur-curta{display:inline}}
+.dur-curta{display:none}
 
 /* v29.243.0 — Lista dentro de outra tela (senha, reagendar, vale-presente): o container recebe
    .catalogo-lista (assets/js/catalogo-lista.js). Aqui só se neutraliza o que a tela hospedeira
