@@ -19,7 +19,7 @@ test.describe('rotas de agendamento', () => {
   test('/agendar/horario/ carrega direto, sem serviço selecionado', async ({ page }) => {
     await page.goto('/agendar/horario/');
     await expect(page).toHaveTitle(/Agendamento Online/);
-    await expect(page.getByText('Nenhum serviço selecionado.')).toBeVisible();
+    await expect(page.getByText('Nenhum serviço escolhido')).toBeVisible();
   });
 
   test('/agendar.html (URL antiga) redireciona para /agendar/horario/', async ({ page }) => {
@@ -33,9 +33,12 @@ test.describe('rotas de agendamento', () => {
     await expect(page).toHaveTitle(/Agendamento Online/);
   });
 
-  test('link "Ir direto à agenda" no catálogo aponta pra rota nova', async ({ page }) => {
+  test('"Continuar meu pedido" só aparece com serviço no pedido e aponta pra rota nova', async ({ page }) => {
     await page.goto('/agendar/');
-    const link = page.getByRole('link', { name: 'Ir direto à agenda' });
+    await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+    await expect(page.locator('#continuar-pedido')).toBeHidden();
+    await page.locator('.service-card', { hasText: 'Corte de cabelo' }).first().getByRole('button', { name: 'Adicionar' }).click();
+    const link = page.getByRole('link', { name: /Continuar meu pedido \(1\)/ });
     await expect(link).toHaveAttribute('href', '/agendar/horario/');
   });
 });

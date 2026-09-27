@@ -834,3 +834,42 @@ input:not([type="checkbox"]):not([type="radio"]):focus,select:focus,textarea:foc
 .customer-booking-hero,.rebooking-hero{text-align:center}
 .rebooking-page{padding-inline:max(16px,env(safe-area-inset-left))}
 .customer-booking-hero .back-link,.rebooking-hero .back-link,.client-back{display:inline-flex;margin-bottom:14px}
+
+/* v29.252.0 — auditoria impeccable: fluxo de agendar em 3 etapas (agenda-v15.js).
+   Horários agrupados por período, sem caixa com rolagem própria e com botões mais baixos:
+   eram até 45 botões de 72px "08:00 disponível" numa caixa de 420px que rolava sozinha. */
+.booking-slots-v14:has(.agenda-slot-periodo){display:block;max-height:none;overflow:visible;padding-right:0}
+.agenda-slot-periodo+.agenda-slot-periodo{margin-top:18px}
+.agenda-slot-periodo-titulo{margin:0 0 8px;font-weight:800;color:var(--text)}
+.agenda-slot-periodo-titulo small{font-weight:600;color:var(--muted);margin-left:6px}
+.agenda-slot-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.agenda-slot-grade .agenda-slot{min-height:48px;padding:8px 6px}
+@media (max-width:700px){
+  .agenda-slot-grade{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  .booking-slots-v14 .agenda-slot-grade .agenda-slot{min-height:48px;padding:8px 4px}
+  .booking-slots-v14 .agenda-slot-grade .agenda-slot strong{font-size:var(--t-lg)}
+}
+/* "Seu pedido" + "Costuma combinar" no topo da etapa de horário (a antiga Etapa 1). */
+.booking-pedido{margin:4px 0 26px;padding:16px;border:1px solid var(--line);border-radius:var(--r-md);background:rgba(var(--white-rgb),.02)}
+.booking-pedido>.booking-slot-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.booking-pedido .booking-upsell-block{margin-top:16px;padding-top:14px}
+.booking-pedido .booking-suggestion-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px}
+.booking-rule-notice{margin:0 0 .75rem;padding:.65rem .9rem;border-radius:var(--r-sm);background:rgba(var(--gold2-rgb),.1);color:var(--text);border:1px solid rgba(var(--gold2-rgb),.35);line-height:1.4}
+/* Produtos: opcionais e recolhidos na confirmação (não mudam a duração do atendimento). */
+details.booking-product-offer{margin:18px 0;padding:0;border-top:0}
+details.booking-product-offer>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 16px;border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;font-weight:700;color:var(--text)}
+details.booking-product-offer>summary::-webkit-details-marker{display:none}
+details.booking-product-offer>summary small{color:var(--muted);font-weight:500}
+details.booking-product-offer>summary::after{content:"";width:7px;height:7px;flex-shrink:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
+details.booking-product-offer[open]>summary::after{transform:rotate(-135deg)}
+details.booking-product-offer>summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+details.booking-product-offer[open]>.booking-suggestion-grid{margin-top:12px}
+#continuar-pedido[hidden]{display:none}
+/* Sugestões compactas dentro de "Seu pedido": uma linha baixa cada, sem subir no hover. */
+.booking-pedido .booking-suggestion-card{grid-template-columns:24px 1fr auto;grid-template-rows:auto;align-items:center;padding:9px 12px;min-height:48px;border-radius:var(--r-sm)}
+.booking-pedido .booking-suggestion-card:hover{transform:none}
+.booking-pedido .booking-suggestion-card span{grid-row:auto;width:24px;height:24px;font-size:var(--t-base);background:transparent;border:1px solid var(--gold);color:var(--gold2)}
+.booking-pedido .booking-suggestion-card strong{font-size:var(--t-base);line-height:1.25}
+.booking-pedido .booking-suggestion-card small{margin:0;white-space:nowrap;font-size:var(--t-sm)}
+.booking-pedido .booking-selected-item{padding:12px 14px}
+@media (max-width:700px){.booking-pedido{padding:14px 12px}.booking-pedido .booking-suggestion-grid{grid-template-columns:1fr}}

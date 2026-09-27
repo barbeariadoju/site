@@ -40,7 +40,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   // Aviso da regra das famílias logo acima das sugestões ("Corte + Barboterapia já inclui a barba").
   function ruleNotice(message){
     let el=$('service-rule-notice-v15');
-    if(!el){el=document.createElement('p');el.id='service-rule-notice-v15';el.setAttribute('role','status');el.style.cssText='margin:0 0 .75rem;padding:.65rem .9rem;border-radius:10px;background:#fff7e6;color:#5a3d00;border:1px solid #f0d9a6;font-size:.95rem;line-height:1.35';$('service-suggestions-v15')?.insertAdjacentElement('beforebegin',el);}
+    if(!el){el=document.createElement('p');el.id='service-rule-notice-v15';el.setAttribute('role','status');el.className='booking-rule-notice';$('service-suggestions-v15')?.insertAdjacentElement('beforebegin',el);}
     el.textContent=message||'';el.hidden=!message;
   }
   function serviceIndex(name){return allServices.findIndex(s=>s.name===name)}
@@ -69,13 +69,14 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     if(/Corte|Lavagem|Luzes|Platinado|Relaxamento/.test(names)){add('Sobrancelha Masculina');add('Barba Express');add('Depilação nasal (cera quente)');add('Hidratação / Reconstrução Capilar')}
     if(/Barba|Barboterapia/.test(names)){add('Pigmentação de Barba');add('Depilação nasal (cera quente)');add('Sobrancelha Masculina')}
     if(!suggestions.length){add('Sobrancelha Masculina');add('Depilação nasal (cera quente)')}
-    $('service-suggestions-v15').innerHTML=suggestions.slice(0,4).map(i=>{const s=allServices[i];return `<button type="button" class="booking-suggestion-card" data-add-service="${i}"><span>＋</span><strong>${s.name}</strong><small>+ ${fmtDuration(s.duration)} · ${money(s.price)}</small></button>`}).join('');
+    $('service-suggestions-v15').innerHTML=suggestions.slice(0,3).map(i=>{const s=allServices[i];return `<button type="button" class="booking-suggestion-card" data-add-service="${i}"><span>+</span><strong>${s.name}</strong><small>+ ${fmtDuration(s.duration)} · ${money(s.price)}</small></button>`}).join('');
     renderProducts();updateSummary();saveState();
   }
+  function pedidoMudou(){if(!services.length){go(1);return}if(step===2)loadSlots({autoAdvance:true,reason:'initial'})}
   function renderProducts(){
     const names=services.map(s=>s.name).join(' ');
     let list=productCatalog.filter(p=>p.for.some(k=>names.includes(k))).slice(0,4);if(!list.length)list=productCatalog.slice(0,4);
-    $('product-suggestions-v15').innerHTML=list.map(p=>{const active=products.some(x=>x.name===p.name);return `<button type="button" class="booking-suggestion-card ${active?'is-selected':''}" data-product="${p.name}"><span>${active?'✓':'＋'}</span><strong>${p.name}</strong><small>${money(p.price)}</small></button>`}).join('');
+    $('product-suggestions-v15').innerHTML=list.map(p=>{const active=products.some(x=>x.name===p.name);return `<button type="button" class="booking-suggestion-card ${active?'is-selected':''}" data-product="${p.name}"><span>${active?'✓':'+'}</span><strong>${p.name}</strong><small>${money(p.price)}</small></button>`}).join('');
   }
   function updateSummary(){
     const t=total(),dSel=chosenDate(); let html=services.length?`<ul class="agenda-summary-services">${services.map(s=>`<li><span>${s.name}</span><b>${money(priceOn(s,dSel))}</b></li>`).join('')}</ul>`:'<p>Escolha seus serviços.</p>';
@@ -222,15 +223,26 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
       box.innerHTML='<div class="booking-empty-note"><strong>Essa data ficou sem vagas.</strong><small>Escolha outra data no calendário para consultar novos horários.</small></div>';
       return;
     }
-    slots.forEach(time=>{
-      const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong><small>disponível</small>`;
-      b.onclick=()=>{
-        document.querySelectorAll('.agenda-slot').forEach(x=>x.classList.remove('is-selected'));
-        b.classList.add('is-selected');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary();
-        const action=document.querySelector('[data-step="2"] .booking-actions-v14');
-        if(action&&window.innerWidth<=700)setTimeout(()=>action.scrollIntoView({behavior:'smooth',block:'end'}),120);
-      };
-      box.appendChild(b)
+    // v29.252.0 — auditoria impeccable: eram até 45 botões iguais ("08:00 disponível") num bloco só.
+    // Agora em três grupos (Manhã / Tarde / Fim do dia), só o horário no botão, e o escolhido
+    // anunciado para leitor de tela (aria-pressed). Classe e evento time_selected são os mesmos.
+    const periodos=[['Manhã',t=>t<'12:00'],['Tarde',t=>t>='12:00'&&t<'17:00'],['Fim do dia',t=>t>='17:00']];
+    periodos.forEach(([nome,cabe])=>{
+      const lista=slots.filter(cabe);if(!lista.length)return;
+      const grupo=document.createElement('div');grupo.className='agenda-slot-periodo';grupo.setAttribute('role','group');grupo.setAttribute('aria-label',nome);
+      grupo.innerHTML=`<p class="agenda-slot-periodo-titulo">${nome} <small>${lista.length} horário${lista.length===1?'':'s'}</small></p>`;
+      const grade=document.createElement('div');grade.className='agenda-slot-grade';
+      lista.forEach(time=>{
+        const b=document.createElement('button');b.type='button';b.className='agenda-slot';b.innerHTML=`<strong>${time}</strong>`;b.setAttribute('aria-pressed','false');
+        b.onclick=()=>{
+          document.querySelectorAll('.agenda-slot').forEach(x=>{x.classList.remove('is-selected');x.setAttribute('aria-pressed','false')});
+          b.classList.add('is-selected');b.setAttribute('aria-pressed','true');selectedTime=time;fire('time_selected',{booking_time:time});updateSummary();
+          const action=document.querySelector('[data-step="2"] .booking-actions-v14');
+          if(action&&window.innerWidth<=700)setTimeout(()=>action.scrollIntoView({behavior:'smooth',block:'end'}),120);
+        };
+        grade.appendChild(b);
+      });
+      grupo.appendChild(grade);box.appendChild(grupo);
     });
   }
   // v28.68.0 — Pix antecipado. "Já fiz o Pix" NÃO confirma pagamento: só sinaliza pro
@@ -393,15 +405,15 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     if(result.booking_code&&result.management_token)bindPayOffer(result.booking_code,result.management_token,totalPagar);
     const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
     document.body.classList.add('booking-complete');
-    $('agenda-status').classList.add('is-success');
+    $('agenda-status').hidden=false;$('agenda-status').classList.add('is-success');
     const viewport=document.querySelector('meta[name="viewport"]');
     if(viewport){viewport.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1');setTimeout(()=>viewport.setAttribute('content','width=device-width,initial-scale=1'),450)}
     requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'smooth'}));
     $('agenda-submit').textContent='Agendamento confirmado';
   }
   document.addEventListener('click',e=>{
-    const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();return}
-    const add=e.target.closest('[data-add-service]');if(add){const s=allServices[Number(add.dataset.addService)];const rule=applyServiceRule(services.map(x=>x.name),s.name);ruleNotice(rule.message);if(!rule.added)return;services=services.filter(x=>rule.services.includes(x.name));services.push({name:s.name,price:s.price,duration:s.duration});selectedTime='';fire('upsell_service_added',{item_name:s.name,value:s.price});renderSelected();return}
+    const rm=e.target.closest('[data-remove-service]');if(rm){services.splice(Number(rm.dataset.removeService),1);selectedTime='';renderSelected();pedidoMudou();return}
+    const add=e.target.closest('[data-add-service]');if(add){const s=allServices[Number(add.dataset.addService)];const rule=applyServiceRule(services.map(x=>x.name),s.name);ruleNotice(rule.message);if(!rule.added)return;services=services.filter(x=>rule.services.includes(x.name));services.push({name:s.name,price:s.price,duration:s.duration});selectedTime='';fire('upsell_service_added',{item_name:s.name,value:s.price});renderSelected();pedidoMudou();return}
     const prod=e.target.closest('[data-product]');if(prod){const p=productCatalog.find(x=>x.name===prod.dataset.product);const i=products.findIndex(x=>x.name===p.name);if(i>=0)products.splice(i,1);else{products.push({name:p.name,price:p.price});fire('product_added_booking',{item_name:p.name,value:p.price})}renderProducts();updateSummary();saveState();return}
   });
   document.querySelectorAll('[data-next-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.nextStep)));document.querySelectorAll('[data-prev-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.prevStep)));document.querySelectorAll('[data-progress-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.progressStep);if(n<=step)go(n)});
@@ -409,5 +421,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   $('waitlist-open-form')?.addEventListener('click',()=>{$('agenda-waitlist-form').hidden=false;$('waitlist-name')?.focus()});
   $('waitlist-submit')?.addEventListener('click',submitWaitlist);
   const now=spNow();$('agenda-date').min=`${now.year}-${now.month}-${now.day}`;
-  renderSelected();$('agenda-status').innerHTML=configured?'<strong>Agenda online.</strong> Confira seu atendimento e escolha o melhor horário.':'<strong>Configuração pendente.</strong> O banco ainda precisa ser conectado.';go(1);
+  renderSelected();{const st=$('agenda-status');st.hidden=configured;st.innerHTML=configured?'':'<strong>Configuração pendente.</strong> O banco ainda precisa ser conectado.'}
+  // v29.252.0 — auditoria impeccable: a antiga Etapa 1 ("confira o que você acabou de montar") saiu; com pedido, o fluxo abre direto no horário. A Etapa 1 só aparece para quem chega sem serviço.
+  go(services.length?2:1);
 })();

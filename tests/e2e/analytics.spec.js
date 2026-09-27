@@ -66,7 +66,9 @@ test.describe('eventos de funil no dataLayer', () => {
     await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
 
     await page.route('**/agendar/horario/**', route => route.abort());
-    await page.getByRole('link', { name: 'Ir direto à agenda' }).click({ noWaitAfter: true });
+    // v29.252.0: o antigo "Ir direto à agenda" virou "Continuar meu pedido" e só aparece com serviço no pedido
+    await page.locator('.service-card', { hasText: 'Corte de cabelo' }).first().getByRole('button', { name: 'Adicionar' }).click();
+    await page.locator('#continuar-pedido').dispatchEvent('click');
 
     // dá tempo de um push errado acontecer antes de afirmar que não aconteceu
     await page.waitForTimeout(500);

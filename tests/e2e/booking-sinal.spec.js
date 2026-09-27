@@ -13,7 +13,8 @@ async function agendar(page, resposta) {
   await page.locator('#open-service-cart').click();
   await page.locator('#send-services').click();
   await page.waitForURL(/\/agendar\/horario\/?$/);
-  await page.locator('[data-next-step="2"]').click();
+  // v29.252.0: com pedido montado, o fluxo já abre na etapa de horário (a antiga Etapa 1 saiu)
+  await expect(page.locator('[data-step=\"2\"]')).toBeVisible();
   const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await page.locator('#agenda-date').fill(future);
   const slot = page.locator('#agenda-slots .agenda-slot').first();

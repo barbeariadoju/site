@@ -114,6 +114,10 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     }
 
     totalEl.textContent = money(total);
+    // v29.252.0 — "Ir direto à agenda" levava quem chegava pela primeira vez a uma tela vazia
+    // ("Nenhum serviço selecionado"). Agora só aparece com pedido montado, e diz o que faz.
+    const continuar = document.getElementById('continuar-pedido');
+    if(continuar){ continuar.hidden = !selectedServices.size; continuar.textContent = `Continuar meu pedido (${selectedServices.size})`; }
     const qty = count();
     const isOpen = qty > 0 && !panelHidden;
     panel?.classList.toggle('active', isOpen);

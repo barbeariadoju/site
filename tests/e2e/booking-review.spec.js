@@ -16,7 +16,9 @@ test('preenche o fluxo até a revisão sem confirmar', async ({ page }) => {
   await page.locator('#send-services').click();
   await page.waitForURL(/\/agendar\/horario\/?$/);
 
-  await page.locator('[data-next-step="2"]').click();
+  // v29.252.0: com pedido montado, o fluxo já abre na etapa de horário (a antiga Etapa 1 saiu)
+
+  await expect(page.locator('[data-step=\"2\"]')).toBeVisible();
 
   // escolhe uma data alguns dias à frente; o site pula sozinho pro próximo
   // dia com vaga se essa não tiver horário (ver agenda-v15.js loadSlots()).

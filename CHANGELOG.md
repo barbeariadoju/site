@@ -1,3 +1,17 @@
+## 29.252.0 — Auditoria impeccable, onda 3: agendar em 3 etapas, horários por período (27/09)
+
+**Por quê:** na jornada do agendamento, o ponto mais fundo era a antiga **Etapa 1** do `/agendar/horario/`: o cliente acabava de montar o pedido no `/agendar/` e a primeira coisa que via era "Confira os serviços escolhidos" + 4 sugestões, antes de poder escolher o horário. Depois, uma parede de até **45 botões iguais** ("08:00 disponível") numa caixa de 420 px que rolava sozinha, seguida de 4 produtos na mesma etapa.
+
+**Como ficou:**
+- **3 etapas: Horário → Seus dados → Confirmar.** Com pedido montado, a página abre direto no horário. A Etapa 1 só existe para quem chega sem serviço ("Nenhum serviço escolhido" + "Ver serviços"). A barra de progresso mostra 1-2-3; saíram os rótulos "Etapa N" (a barra já diz) e o rótulo "Agenda própria • rápido e seguro" do topo. A caixa "Agenda online. Confira seu atendimento…" nasce escondida: só aparece na confirmação (ou se a agenda não estiver configurada).
+- **"Seu pedido" + "Costuma combinar" no topo da etapa de horário.** As sugestões de serviço (o que sobe o ticket médio) não sumiram: continuam antes do horário — têm de vir antes, porque um serviço a mais muda a duração e zera o horário escolhido. Viraram linhas baixas, no máximo 3. Tirar ou pôr um serviço ali recalcula os horários na hora; tirar o último volta ao estado vazio.
+- **Horários em Manhã / Tarde / Fim do dia**, só o horário no botão (48 px, 4 por linha no celular), sem caixa com rolagem própria; o escolhido é anunciado ao leitor de tela (`aria-pressed`). Classe `.agenda-slot` e o evento `time_selected` iguais.
+- **Produtos foram para a confirmação**, recolhidos em "Levar um produto (opcional)" — não mudam a duração, então não precisam atrapalhar a escolha do horário.
+- **"Ir direto à agenda" → "Continuar meu pedido (N)"**, e só aparece com serviço no pedido (antes levava quem chegava pela primeira vez a "Nenhum serviço selecionado").
+- O aviso da regra das famílias tinha fundo creme claro num site escuro; agora no tom do site.
+
+**O que não mudou de propósito:** `fire('booking_confirmed')` continua disparando com o formulário na tela e os ids `#agenda-email`/`#agenda-phone` intactos (conversões otimizadas do Google Ads, CLAUDE.md §5); `checkout_step_horario` continua nascendo no envio do carrinho do `/agendar/`. Plano da virada de 01/10 conferido (319 trechos). Testes do agendamento atualizados (não clicam mais "Escolher horário" — o fluxo já abre nele) e um novo para o "Continuar meu pedido".
+
 ## 29.251.0 — Auditoria impeccable, onda 2: painel mais enxuto e sóbrio (27/09)
 
 **Pedido do Juliano:** executar a auditoria com a interface *"sóbria e formal"*. Esta onda é só do painel (não tem preço escrito à mão, então não esbarra na virada de 01/10).
