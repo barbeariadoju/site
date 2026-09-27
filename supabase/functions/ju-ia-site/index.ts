@@ -860,6 +860,12 @@ Deno.serve(async req=>{
  const closureWindowEnd=(()=>{const d=new Date(today()+'T12:00:00-03:00');d.setDate(d.getDate()+21);return d.toISOString().slice(0,10)})()
  const {data:closuresData}=await supabase.from('schedule_blocks').select('block_date,reason').eq('all_day',true).gte('block_date',today()).lte('block_date',closureWindowEnd).order('block_date')
  const closures=(closuresData||[]).map((c:any)=>({date:formatDateBR(c.block_date),reason:c.reason||null}))
+ // v29.247.0 — Abrir/Fechar a barbearia (migração 180): quando o Juliano fechou o dia mais cedo,
+ // a agenda de hoje está encerrada mesmo antes das 19h. A JuIA diz só isso — "por hoje a agenda já
+ // está encerrada" — e oferece o próximo dia. Nunca "fechou mais cedo" nem o motivo: não é
+ // profissional expor o expediente do dono ao cliente (pedido do Juliano, 26/09/2026).
+ let encerradoPeloExpediente=false
+ try{const {data:exp}=await supabase.rpc('expediente_hoje');encerradoPeloExpediente=Boolean((exp as any)?.fechado_em)}catch(e){console.error('[ju-ia-site] expediente_hoje',e)}
  // v29.217.0 — pedido do Juliano (22/09/2026). Duas situações OPOSTAS saíam com a mesma frase:
  //   a) dia aberto e lotado  → "não tenho horário" (soa a recusa; o certo é "não tenho mais vaga");
  //   b) dia fechado o dia inteiro (domingo, segunda, viagem, folga, feriado) → "não temos horários
@@ -3484,6 +3490,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   if(fechadoHoje)aviso='Hoje estamos excepcionalmente fechados.'
   else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h.'
   else if(hourNow>=limite)aviso=`Hoje já encerramos — atendemos até ${limite}h.`
+  else if(encerradoPeloExpediente)aviso='Por hoje já encerramos o atendimento.'
   else aviso=/ate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
   avisoAbertoHoje=aviso
  }
@@ -3789,7 +3796,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // mais horário" — o horário que faltava era o DELE. Dia cheio em que o próprio cliente já tem
   // reserva = lembrar a reserva, nunca negar o dia.
   const ownSameDay=!allSlots.length?upcomingBookings.find((b:any)=>b.booking_date===next.date):null
-  const hojeEncerrado=(()=>{if(next.date!==today())return false;const wd=new Date(today()+'T12:00:00-03:00').getUTCDay();const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));return h>=(wd===6?15:19)})()
+  const hojeEncerrado=(()=>{if(next.date!==today())return false;if(encerradoPeloExpediente)return true;const wd=new Date(today()+'T12:00:00-03:00').getUTCDay();const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));return h>=(wd===6?15:19)})()
   if(!allSlots.length&&ownSameDay){
    reply=`Você já está reservado ${emDia(next.date)} às ${String(ownSameDay.start_time).slice(0,5)} (${ownSameDay.service_name}). Se quiser mudar o horário ou o serviço, é só me dizer.`
    actions=[]
@@ -3818,7 +3825,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=jaDisseQueNaoTem
      ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Ou te aviso se abrir vaga ${emDia(waitlistOffer.date)}, ou já reservo ${emDia(nextAvail.date)} (${slotsPhrase(nextAvail.slots)}). Qual prefere?`
      :hojeEncerrado
-     ?`Hoje já encerramos (atendemos até ${new Date(today()+'T12:00:00-03:00').getUTCDay()===6?'15h':'19h'}). ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
+     ?(encerradoPeloExpediente
+       ?`Por hoje a agenda já está encerrada. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
+       :`Hoje já encerramos (atendemos até ${new Date(today()+'T12:00:00-03:00').getUTCDay()===6?'15h':'19h'}). ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`)
      :fechadoNoDia.fechado
      ?`${naoAbreFrase(next.date)}, mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um?`
      :`${emDiaCap(next.date)} não tenho ${restricaoFalada?'':'mais '}vaga para ${serviceNames}${restricaoFalada}. ${emDiaCap(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}. Quer que eu reserve um? Se preferir, te aviso assim que abrir vaga ${emDia(waitlistOffer.date)}.`

@@ -15,18 +15,15 @@
 //   Histórico -> últimos 14 dias: abriu, fechou, horas, atendimentos e faturado.
 // O cron bdj-expediente (function expediente-dia) lembra de abrir às 8h15 e fecha sozinho
 // 30 min depois do expediente se ninguém clicou — registro marcado "automático".
+// v29.247.0: motivos, formatação e a conta do histórico vivem em admin-expediente-calc.js
+// (window.BDJ_EXPEDIENTE), compartilhado com Relatórios > Horas trabalhadas. Carregar antes.
 
-const EXPEDIENTE_MOTIVOS=[['','Sem motivo especial'],['sem_cliente','Sem cliente marcado'],['mais_cedo','Fui embora mais cedo'],['emergencia','Emergência / imprevisto'],['evento','Evento / compromisso'],['outro','Outro']];
-const EXPEDIENTE_MOTIVO_LABEL=Object.fromEntries(EXPEDIENTE_MOTIVOS);
+const EXPEDIENTE_MOTIVOS=BDJ_EXPEDIENTE.MOTIVOS;
+const EXPEDIENTE_MOTIVO_LABEL=BDJ_EXPEDIENTE.MOTIVO_LABEL;
 let expedienteCache={};
 
-function expedienteHora(ts){return ts?new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''}
-function expedienteDuracao(a,b){
-  if(!a)return '';
-  const ms=(b?new Date(b):new Date())-new Date(a);if(!(ms>0))return '0min';
-  const m=Math.round(ms/60000),h=Math.floor(m/60),r=m%60;
-  return h?`${h}h${String(r).padStart(2,'0')}`:`${r}min`;
-}
+function expedienteHora(ts){return BDJ_EXPEDIENTE.hora(ts)}
+function expedienteDuracao(a,b){return BDJ_EXPEDIENTE.duracao(a,b)}
 function expedienteOrigem(por){return por==='automatico'?' <small title="Registrado pelo fechamento automático, não pelo botão">(automático)</small>':''}
 
 async function carregarExpediente(dia){
@@ -118,17 +115,15 @@ async function abrirHistoricoExpediente(){
   if(error){alert(error.message);return}
   const porDia=Object.fromEntries((data||[]).map(e=>[e.dia,e]));
   const dias=[];for(let d=new Date(fim);d>=ini;d.setDate(d.getDate()-1))dias.push(isoLocal(d));
-  let somaMin=0,somaAt=0,somaFat=0,diasComHoras=0;
-  const linhas=dias.map(dia=>{
-    const e=porDia[dia],rows=(allBookings||[]).filter(x=>x.booking_date===dia&&x.status==='completed');
-    const at=rows.length,fat=rows.reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)))+Number(x.products_price||0),0);
-    const min=e?.aberto_em&&e?.fechado_em?Math.round((new Date(e.fechado_em)-new Date(e.aberto_em))/60000):0;
-    if(min>0){somaMin+=min;diasComHoras++}somaAt+=at;somaFat+=fat;
-    const dow=new Date(dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
-    const horas=e?.aberto_em?`${expedienteHora(e.aberto_em)}–${e.fechado_em?expedienteHora(e.fechado_em):'…'}${e.fechado_por==='automatico'||e.aberto_por==='automatico'?' <small>(auto)</small>':''}`:'<small>—</small>';
-    const porHora=min>0&&at?` · ${(at/(min/60)).toFixed(1)}/h`:'';
-    return `<div class="admin-alert-row"><span><b>${dow}</b><br><small>${horas}${e?.motivo?` · ${esc(EXPEDIENTE_MOTIVO_LABEL[e.motivo]||e.motivo)}`:''}</small></span><strong>${min?expedienteDuracao(e.aberto_em,e.fechado_em):'—'}<br><small>${at} atend. · ${money(fat)}${porHora}</small></strong></div>`;
+  // Mesma conta dos Relatórios (admin-expediente-calc.js): atendimentos/hora só dos dias com
+  // horas registradas — antes o numerador levava atendimento de dia sem registro.
+  const {linhas:calc,totais:t}=BDJ_EXPEDIENTE.resumo(dias,porDia,allBookings);
+  const linhas=calc.map(l=>{
+    const e=l.e;
+    const dow=new Date(l.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+    const horas=l.registro?`${expedienteHora(e.aberto_em)}–${e.fechado_em?expedienteHora(e.fechado_em):'…'}${l.automatico?' <small>(auto)</small>':''}`:'<small>—</small>';
+    const porHora=l.min>0&&l.at?` · ${(l.at/(l.min/60)).toFixed(1)}/h`:'';
+    return `<div class="admin-alert-row"><span><b>${dow}</b><br><small>${horas}${e?.motivo?` · ${esc(EXPEDIENTE_MOTIVO_LABEL[e.motivo]||e.motivo)}`:''}</small></span><strong>${l.min?BDJ_EXPEDIENTE.fmtMin(l.min):'—'}<br><small>${l.at} atend. · ${money(l.fat)}${porHora}</small></strong></div>`;
   }).join('');
-  const media=diasComHoras?Math.round(somaMin/diasComHoras):0;
-  expedienteModal('expediente-historico-modal',`<h2>Expediente — últimos 14 dias</h2><p>${diasComHoras} dia${diasComHoras===1?'':'s'} com horas registradas · média <b>${Math.floor(media/60)}h${String(media%60).padStart(2,'0')}</b> por dia · ${somaAt} atendimentos · ${money(somaFat)}${somaMin?` · <b>${(somaAt/(somaMin/60)).toFixed(1)} atendimentos por hora aberta</b>`:''}</p>${linhas}<div class="admin-booking-actions"><button type="button" class="btn ghost" data-modal-close>Fechar</button></div>`);
+  expedienteModal('expediente-historico-modal',`<h2>Expediente — últimos 14 dias</h2><p>${t.diasComHoras} dia${t.diasComHoras===1?'':'s'} com horas registradas · média <b>${BDJ_EXPEDIENTE.fmtMin(t.mediaMinPorDia)}</b> por dia · ${t.somaAt} atendimentos · ${money(t.somaFat)}${t.atPorHora!=null?` · <b>${t.atPorHora.toFixed(1)} atendimentos por hora aberta</b>`:''}</p>${linhas}<div class="admin-booking-actions"><button type="button" class="btn ghost" data-modal-close>Fechar</button></div>`);
 }

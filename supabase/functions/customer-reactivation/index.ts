@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
-import { montarMensagemReativacao } from '../_shared/reativacao.ts'
+import { montarMensagemReativacao, montarMensagemFollowupCancelado } from '../_shared/reativacao.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
@@ -30,6 +30,26 @@ const canonicalPhone = (value = '') => {
 }
 
 const firstName = (value: string) => primeiroNome(value, 'tudo bem')
+
+// Nome como vai no vocativo ("Olá, Marcos.") — ou vazio, quando é melhor não usar nome nenhum.
+// v29.66.0: nome que parece empresa/título (Espaço, Salão, Dr…) não vira vocativo.
+// v29.71.2 (25/08): a 1a leva saiu com "Oi, MOISES!" — 5 dos 141 cadastros estao em CAIXA ALTA e o
+// nome ia cru pro vocativo, denunciando texto de robo. Nome todo maiusculo (ou todo minusculo) vira
+// Capitalizado; nome ja bem escrito (Vinícius, McCarthy) fica intacto.
+// v29.190.0 — "Sr Magno" saía "Oi!" sem nome (15/09): título na frente usa a palavra seguinte.
+// v29.248.0 — virou função para o laço dos leads (agendou e cancelou) usar a mesma regra.
+const nomeParaVocativo = (raw: unknown): string => {
+  const nomeCru = firstName(String(raw || ''))
+  const partesNome = String(raw || '').trim().split(/\s+/)
+  const nomeBase = /^(dr|dra|sr|sra|prof|seu|dona)\.?$/i.test(partesNome[0] || '') && partesNome[1] ? partesNome[1] : nomeCru
+  const nomeCase = (nomeBase === nomeBase.toUpperCase() || nomeBase === nomeBase.toLowerCase())
+    ? nomeBase.charAt(0).toUpperCase() + nomeBase.slice(1).toLowerCase()
+    : nomeBase
+  return /^(espaco|espaço|salao|salão|studio|outlet|loja|conta)$/i.test(nomeBase) || nomeBase.length < 3 ? '' : nomeCase
+}
+
+// "Corte + Barba" → "corte"; vazio → "atendimento".
+const servicoCurto = (raw: unknown): string => String(raw || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
 
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
@@ -75,12 +95,32 @@ Deno.serve(async (request: Request) => {
   let candidates = (due || []).filter((row: any) => canonicalPhone(row.phone))
   if (onlyPhone) candidates = candidates.filter((row: any) => canonicalPhone(row.phone) === onlyPhone)
 
+  // v29.248.0 — segundo grupo: quem agendou e cancelou (ou faltou) sem nunca ter vindo. A regra
+  // (7 e 30 dias, nunca uma 3ª, sem cancelamento feito pelo painel, sem 'porta') vive na função SQL
+  // leads_cancelled_due_for_followup (migração 182); mesmo cooldown. Se a RPC falhar (migração ainda
+  // não aplicada, por exemplo), a reativação de sempre continua — o erro vai pro log e pro JSON.
+  let leads: any[] = []
+  let followupError: string | null = null
+  {
+    const { data: leadsDue, error: leadsError } = await admin.rpc('leads_cancelled_due_for_followup', { p_cooldown_days: cooldownDays })
+    if (leadsError) {
+      followupError = leadsError.message
+      console.error('[customer-reactivation] leads_cancelled_due_for_followup', leadsError)
+    } else {
+      leads = (leadsDue || []).filter((row: any) => canonicalPhone(row.phone))
+      if (onlyPhone) leads = leads.filter((row: any) => canonicalPhone(row.phone) === onlyPhone)
+    }
+  }
+
   if (dryRun) {
     return json({
       ok: true,
       dry_run: true,
       would_message: candidates.length,
       customers: candidates.map((c: any) => ({ name: c.name, phone: c.phone, last_visit: c.last_visit, days_since: c.days_since, stage: c.stage })),
+      would_followup: leads.length,
+      leads: leads.map((l: any) => ({ name: l.name, phone: l.phone, last_booking_date: l.last_booking_date, days_since_cancel: l.days_since_cancel, service_name: l.service_name, stage: l.stage })),
+      ...(followupError ? { followup_error: followupError } : {}),
     })
   }
 
@@ -116,6 +156,22 @@ Deno.serve(async (request: Request) => {
     return null
   }
 
+  // Manda pela Evolution e registra em whatsapp_messages/whatsapp_conversations (o mesmo par que a
+  // JuIA lê para saber que a conversa existe). Lança erro quando o envio falha; quem chama conta.
+  const enviarTexto = async (phone: string, text: string) => {
+    const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
+      body: JSON.stringify({ number: phone, text: semEmoji(text) }),
+    })
+    if (!sendResponse.ok) throw new Error(`sendText ${sendResponse.status}`)
+    const sendData = await sendResponse.json().catch(() => ({}))
+    const sentMessageId = String(sendData?.key?.id || '') || null
+
+    await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
+    await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+  }
+
   let sent = 0
   let failed = 0
   let skipped = 0
@@ -126,36 +182,16 @@ Deno.serve(async (request: Request) => {
     // v29.66.0 (22/08/2026, Juliano ligou a reativação de 30 dias): texto genérico "sentimos
     // sua falta" virou mensagem com o que ele fez e há quanto tempo, e o CTA é o mesmo que
     // já converte no lead-followup ("me diz o dia") — a resposta cai na JuIA como pedido de
-    // horário. Nome que parece empresa/título (Espaço, Salão, Dr…) não vira vocativo.
-    const nomeCru = firstName(c.name)
-    // v29.71.2 (25/08): a 1a leva saiu com "Oi, MOISES!" — 5 dos 141 cadastros estao em
-    // CAIXA ALTA e o nome ia cru pro vocativo, denunciando texto de robo. Nome todo maiusculo
-    // (ou todo minusculo) vira Capitalizado; nome ja bem escrito (Vinícius, McCarthy) fica intacto.
-    // v29.190.0 — "Sr Magno" saía "Oi!" sem nome (15/09): título na frente usa a palavra seguinte.
-    const partesNome = String(c.name || '').trim().split(/\s+/)
-    const nomeBase = /^(dr|dra|sr|sra|prof|seu|dona)\.?$/i.test(partesNome[0] || '') && partesNome[1] ? partesNome[1] : nomeCru
-    const nomeCase = (nomeBase === nomeBase.toUpperCase() || nomeBase === nomeBase.toLowerCase())
-      ? nomeBase.charAt(0).toUpperCase() + nomeBase.slice(1).toLowerCase()
-      : nomeBase
-    const nome = /^(espaco|espaço|salao|salão|studio|outlet|loja|conta)$/i.test(nomeBase) || nomeBase.length < 3 ? '' : nomeCase
-    const servico = String(c.last_service || '').split(/\s*\+\s*/)[0].trim().toLowerCase() || 'atendimento'
+    // horário. Regras do nome em nomeParaVocativo (v29.71.2, v29.190.0).
+    const nome = nomeParaVocativo(c.name)
+    const servico = servicoCurto(c.last_service)
     const stage = Number(c.stage || 1)
     // v29.246.0 (26/09, Juliano): "mensagem curta, breve; o objetivo é lembrar, não incomodar".
     // Texto em _shared/reativacao.ts (testado no vitest): duas frases, sem pergunta, sem palpite
     // sobre a aparência (v29.208.0), link do site sempre; muda com a etapa para não repetir.
     const text = montarMensagemReativacao({ nome, servico, dias: Number(c.days_since) || 0, stage })
     try {
-      const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: phone, text: semEmoji(text) }),
-      })
-      if (!sendResponse.ok) throw new Error(`sendText ${sendResponse.status}`)
-      const sendData = await sendResponse.json().catch(() => ({}))
-      const sentMessageId = String(sendData?.key?.id || '') || null
-
-      await admin.from('whatsapp_messages').insert({ phone, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: sentMessageId })
-      await admin.from('whatsapp_conversations').upsert({ phone, human_takeover: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { onConflict: 'phone' })
+      await enviarTexto(phone, text)
       await admin.from('customer_outreach_log').insert({ customer_id: c.customer_id, phone, kind: 'reactivation', channel: 'whatsapp', details: { last_visit: c.last_visit, days_since: c.days_since, stage } })
       await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', c.customer_id)
       sent++
@@ -165,5 +201,49 @@ Deno.serve(async (request: Request) => {
     }
   }
 
-  return json({ ok: true, dry_run: false, eligible: candidates.length, sent, failed, skipped })
+  // v29.248.0 — Segundo laço: quem agendou e cancelou (ou faltou) sem nunca ter vindo. Mesmas
+  // proteções do laço de cima (conversa nos últimos 7 dias, contato adiado). O lead pode não ter
+  // cadastro: customer_id vai null no log (a coluna aceita, migração 036) e o last_contact_at só é
+  // marcado quando há perfil. O dedup da etapa é pelo telefone (phone_match_key), na função SQL.
+  let followupSent = 0
+  let followupFailed = 0
+  let followupSkipped = 0
+  for (const l of leads) {
+    const phone = canonicalPhone(l.phone)
+    const motivoPular = await conversouRecente(phone)
+    if (motivoPular) { followupSkipped++; console.log('[customer-reactivation] followup pulado', motivoPular, phone.slice(-4)); continue }
+    const nome = nomeParaVocativo(l.name)
+    const servico = servicoCurto(l.service_name)
+    const stage = Number(l.stage || 1)
+    const text = montarMensagemFollowupCancelado({ nome, servico, stage })
+    try {
+      await enviarTexto(phone, text)
+      await admin.from('customer_outreach_log').insert({
+        customer_id: l.customer_id || null,
+        phone,
+        kind: 'followup_cancelado',
+        channel: 'whatsapp',
+        details: { last_booking_date: l.last_booking_date, days_since_cancel: l.days_since_cancel, service_name: l.service_name, stage },
+      })
+      if (l.customer_id) await admin.from('customer_profiles').update({ last_contact_at: new Date().toISOString() }).eq('id', l.customer_id)
+      followupSent++
+    } catch (sendError) {
+      followupFailed++
+      console.error('[customer-reactivation] followup envio falhou', phone, sendError)
+    }
+  }
+
+  return json({
+    ok: true,
+    dry_run: false,
+    eligible: candidates.length,
+    sent,
+    failed,
+    skipped,
+    followup_eligible: leads.length,
+    followup_sent: followupSent,
+    followup_failed: followupFailed,
+    followup_skipped: followupSkipped,
+    ...(followupError ? { followup_error: followupError } : {}),
+  })
 })

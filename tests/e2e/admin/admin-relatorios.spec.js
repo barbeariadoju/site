@@ -42,3 +42,48 @@ test('Relatórios calculam faturamento, ticket, clientes, faltas e satisfação'
 
   await page.screenshot({ path: 'test-results/admin-screens/admin-relatorios-numeros.png', fullPage: true });
 });
+
+// v29.247.0 — Horas trabalhadas cruza a tabela expediente com os concluídos (contas em
+// _fixtures.js, bloco `expediente`). Como o resto deste spec, supõe que hoje é dia 8 ou mais.
+test('Relatórios mostram horas trabalhadas a partir do expediente', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin-relatorios.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+
+  const horas = page.locator('#rel-horas');
+  // 9h00 (dia 3) + 1h30 (dia 5) = 10h30 em 2 dias → média 5h15
+  await expect(page.locator('#rel-horas-abertas')).toHaveText('10h30');
+  await expect(page.locator('#rel-horas-media')).toHaveText('5h15');
+  // em atendimento: 30 + 60 + 30 min de TODOS os concluídos do período (inclui o dia sem registro)
+  await expect(page.locator('#rel-horas-atendimento')).toHaveText('2h00');
+  // ocupação só dos dias com registro: (30 + 60) / 630 = 14%
+  await expect(page.locator('#rel-horas-ocupacao')).toHaveText('14%');
+  // R$ 125 (40 + 85) em 10,5 h = R$ 11,90/h; 2 atendimentos em 10,5 h = 0,2/h
+  await expect(page.locator('#rel-horas-fat-hora')).toHaveText(/R\$\s?11,90/);
+  await expect(page.locator('#rel-horas-at-hora')).toHaveText('0,2');
+  // abre em média (09:00 + 14:00) / 2 = 11:30; fecha (18:00 + 15:30) / 2 = 16:45
+  await expect(page.locator('#rel-horas-abre-fecha')).toHaveText('11:30 · 16:45');
+  await expect(page.locator('#rel-horas-extremos')).toHaveText('1h30 – 9h00');
+
+  // tabela por dia: selo "automático" na abertura do dia 5, motivo do fechamento, e o dia 8
+  // com atendimento mas sem linha no expediente aparece como "sem registro" (nunca inventa hora)
+  const tabela = horas.locator('table.rel-horas-table');
+  await expect(tabela.locator('tbody tr')).toHaveCount(3);
+  await expect(tabela).toContainText('automático');
+  await expect(tabela).toContainText('Fui embora mais cedo');
+  await expect(tabela).toContainText('sem registro');
+  await expect(tabela.locator('tfoot')).toContainText('10h30');
+  await expect(horas).toContainText('1 dia com atendimento mas sem registro');
+});
+
+// Tabela expediente vazia (o registro só existe desde 26/09/2026): a tela avisa em vez de
+// mostrar zero como se fosse dado.
+test('Relatórios avisam quando não há expediente registrado no período', async ({ page }) => {
+  await mockAdmin(page, { tables: { expediente: [] } });
+  await page.goto('/admin-relatorios.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+  const horas = page.locator('#rel-horas');
+  await expect(page.locator('#rel-horas-abertas')).toHaveText('—');
+  await expect(horas.locator('table.rel-horas-table tbody tr')).toHaveCount(3);
+  await expect(horas).toContainText('3 dias com atendimento mas sem registro');
+});

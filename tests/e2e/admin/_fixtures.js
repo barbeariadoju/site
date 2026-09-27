@@ -11,7 +11,7 @@ const today = new Date();
 // Dia N do mês atual, mas nunca no futuro (se hoje for dia 2, "dia 8" vira dia 2).
 // Garante que os concluídos fiquem sempre dentro do período corrente dos relatórios.
 const dayOfMonth = (n) => iso(new Date(today.getFullYear(), today.getMonth(), Math.min(Math.max(n, 1), today.getDate())));
-const tsOfMonth = (n, h = 10) => new Date(today.getFullYear(), today.getMonth(), Math.min(Math.max(n, 1), today.getDate()), h, 0, 0).toISOString();
+const tsOfMonth = (n, h = 10, min = 0) => new Date(today.getFullYear(), today.getMonth(), Math.min(Math.max(n, 1), today.getDate()), h, min, 0).toISOString();
 const lastMonth = iso(new Date(today.getFullYear(), today.getMonth() - 1, 15));
 
 const ANA = { id: 'aaaaaaaa-0000-4000-8000-000000000001', name: 'Ana Fictícia', phone: '5511987654321', email: 'ana.ficticia@example.com' };
@@ -35,7 +35,7 @@ export function makeFixtures(overrides = {}) {
     // Futuro próximo: 1 confirmado e 1 pendente (aparecem na agenda).
     bookings: [
       booking({}), // Ana, Corte, 40+0
-      booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Corte + Barba', service_price: 60, products_price: 25, selected_products: [{ name: 'Água', price: 25 }], booking_date: dayOfMonth(5), start_time: '14:00:00', end_time: '15:00:00', channel: 'balcao', payment_method: 'pix', products_payment_method: 'debito' }),
+      booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Corte + Barba', service_price: 60, products_price: 25, selected_products: [{ name: 'Água', price: 25 }], booking_date: dayOfMonth(5), start_time: '14:00:00', end_time: '15:00:00', duration_minutes: 60, channel: 'balcao', payment_method: 'pix', products_payment_method: 'debito' }),
       booking({ booking_date: dayOfMonth(8), products_price: 10, start_time: '11:00:00', end_time: '11:30:00' }),
       booking({ booking_date: lastMonth, created_at: new Date(today.getFullYear(), today.getMonth() - 1, 15, 10, 0, 0).toISOString() }),
       booking({ customer_name: CARLA.name, customer_phone: CARLA.phone, customer_email: null, status: 'no_show', booking_date: dayOfMonth(6), start_time: '16:00:00', end_time: '16:30:00' }),
@@ -96,6 +96,18 @@ export function makeFixtures(overrides = {}) {
 
     schedule_blocks: [
       { id: 'mock-blk-1', block_date: iso(addDays(today, 1)), all_day: false, start_time: '12:00:00', end_time: '13:00:00', reason: 'Almoço prolongado (teste)', created_at: tsOfMonth(1) },
+    ],
+
+    // v29.247.0 — expediente (Abrir/Fechar da tela Hoje, migração 180) para Relatórios > Horas
+    // trabalhadas. Casa com os bookings acima:
+    //   dia 3: abriu 09:00 e fechou 18:00 pelo painel → 9h00; 1 atendimento de 30 min, R$ 40.
+    //   dia 5: ninguém clicou em Abrir (abertura 'automatico' = primeiro atendimento, 14:00) e
+    //          fechou pelo painel às 15:30 com motivo "mais cedo" → 1h30; 1 de 60 min, R$ 85.
+    //   dia 8: tem concluído (R$ 50) mas não tem linha aqui → "sem registro".
+    // Totais: 10h30 abertas em 2 dias (média 5h15), ocupação 90/630 = 14%, R$ 125 / 10,5h = R$ 11,90/h.
+    expediente: [
+      { dia: dayOfMonth(3), aberto_em: tsOfMonth(3, 9), aberto_por: 'painel', fechado_em: tsOfMonth(3, 18), fechado_por: 'painel', motivo: null, observacao: null, bloqueio_id: null, lembrete_abrir_em: null, created_at: tsOfMonth(3, 9), updated_at: tsOfMonth(3, 18) },
+      { dia: dayOfMonth(5), aberto_em: tsOfMonth(5, 14), aberto_por: 'automatico', fechado_em: tsOfMonth(5, 15, 30), fechado_por: 'painel', motivo: 'mais_cedo', observacao: null, bloqueio_id: 'mock-blk-fechamento', lembrete_abrir_em: tsOfMonth(5, 8, 15), created_at: tsOfMonth(5, 8, 15), updated_at: tsOfMonth(5, 15, 30) },
     ],
 
     loyalty_accounts: [

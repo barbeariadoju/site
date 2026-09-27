@@ -20,8 +20,20 @@
 .service-btn:disabled{opacity:.65;cursor:default}
 /* v29.245.0 — no celular a linha fecha sempre igual: conteúdo em cima, "aproximadamente N min · preço"
    à esquerda e o botão à direita numa só linha (antes ora cabiam juntos, ora quebravam em três). */
-@media(max-width:560px){.service-card{padding:14px 2px !important}.service-content{flex:1 1 100% !important}.service-meta{flex:1 1 auto !important;min-width:max-content;justify-content:flex-start;gap:8px !important}.service-meta span{font-size:.72rem}.service-btn{margin-left:auto;padding:10px 16px !important}.service-btn.is-added,.service-check:has(input:checked){padding:10px 12px !important}.dur-longa{display:none}.dur-curta{display:inline}}
+@media(max-width:560px){.service-card{padding:14px 2px !important}.service-content{flex:1 1 100% !important}.service-meta{flex:1 1 auto !important;min-width:max-content;justify-content:flex-start;gap:8px !important}.service-meta span{font-size:.78rem}.service-btn{margin-left:auto;padding:10px 16px !important}.service-btn.is-added,.service-check:has(input:checked){padding:10px 12px !important}.dur-longa{display:none}.dur-curta{display:inline}}
 .dur-curta{display:none}
+
+/* v29.247.0 — Dentro dos modais Concluir/Editar do painel a lista fica compacta: sem descrição,
+   título de categoria menor, linha mais baixa. O modal já era alto; 24 linhas com descrição
+   empurravam o "Concluir" para três telas abaixo no celular. */
+[data-service-slot] .catalogo-lista .service-content p{display:none}
+[data-service-slot] .catalogo-lista .service-tag{display:none}
+[data-service-slot] .catalogo-lista .service-card{padding:9px 2px !important;gap:6px 12px !important}
+[data-service-slot] .catalogo-lista .service-section{padding-top:2px !important}
+[data-service-slot] .catalogo-lista .section-head{margin:0 0 2px !important}
+[data-service-slot] .catalogo-lista .section-head h2{font-size:1rem !important;margin:.6em 0 .1em !important}
+[data-service-slot] .catalogo-lista .service-meta strong{font-size:1.25rem}
+[data-service-slot] .catalogo-lista .service-btn{padding:8px 14px !important;font-size:.85rem}
 
 /* v29.243.0 — Lista dentro de outra tela (senha, reagendar, vale-presente): o container recebe
    .catalogo-lista (assets/js/catalogo-lista.js). Aqui só se neutraliza o que a tela hospedeira

@@ -32,3 +32,16 @@ export function montarMensagemReativacao(opts: { nome?: string; servico: string;
   if (stage === 2) return `${saud}Aqui é da Barbearia do Ju, passando só para lembrar: já faz ${tempo} do seu último ${servico}. Se quiser marcar, responda aqui com o dia ou agende em ${LINK_AGENDAR}`
   return `${saud}Só um lembrete da Barbearia do Ju: já faz ${tempo} desde o seu último ${servico}. Quando quiser, é só responder com o dia ou agendar em ${LINK_AGENDAR}`
 }
+
+// v29.248.0 — Lembrete para quem agendou e cancelou (ou faltou) sem nunca ter vindo
+// (leads_cancelled_due_for_followup, migração 182). Mesma régua: duas frases, sem pergunta, sem emoji,
+// sem falar da aparência, link sempre. "Acabou não acontecendo" serve tanto para o cancelamento quanto
+// para a falta, sem cobrar ninguém. Só existem duas etapas: a 2ª só lembra que a agenda está aberta.
+export function montarMensagemFollowupCancelado(opts: { nome?: string; servico: string; stage: number }): string {
+  const nome = String(opts.nome || '').trim()
+  const servico = String(opts.servico || '').trim() || 'atendimento'
+  const saud = `Olá${nome ? `, ${nome}` : ''}. `
+  const stage = Number(opts.stage) || 1
+  if (stage <= 1) return `${saud}Aqui é da Barbearia do Ju. Seu horário de ${servico} acabou não acontecendo; quando quiser remarcar, é só responder aqui com o dia ou agendar em ${LINK_AGENDAR}`
+  return `${saud}Aqui é da Barbearia do Ju, passando só para lembrar que a agenda continua aberta para você. Para marcar o ${servico}, é só responder aqui com o dia ou agendar em ${LINK_AGENDAR}`
+}

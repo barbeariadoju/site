@@ -15,7 +15,8 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const ddmm = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-  let bookings = [], surveys = [], profiles = [];
+  let bookings = [], surveys = [], profiles = [], expediente = [];
+  let expedienteErro = ''; // v29.247.0: mensagem do Supabase se a tabela expediente não puder ser lida
   let mode = 'month';            // 'month' | 'week' | 'day'
   let ref = new Date(); ref.setHours(0, 0, 0, 0); // data de referência dentro do período exibido
 
@@ -84,15 +85,20 @@
     await load();
   }
   async function load() {
-    const [{ data: b, error: be }, { data: s, error: se }, { data: p, error: pe }] = await Promise.all([
-      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,status,channel,loyalty_discount,courtesy').order('booking_date', { ascending: true }).limit(5000),
+    // v29.247.0: start_time/end_time/duration_minutes entram pras horas em atendimento; a tabela
+    // expediente (abrir/fechar, migração 180) é pequena — uma linha por dia trabalhado — então vem inteira.
+    const [{ data: b, error: be }, { data: s, error: se }, { data: p, error: pe }, { data: x, error: xe }] = await Promise.all([
+      sb.from('bookings').select('customer_phone,service_name,service_price,products_price,booking_date,start_time,end_time,duration_minutes,status,channel,loyalty_discount,courtesy').order('booking_date', { ascending: true }).limit(5000),
       sb.from('experience_requests').select('answer,status,created_at').order('created_at', { ascending: false }).limit(5000),
-      sb.from('customer_profiles').select('phone,prior_visits').limit(5000)
+      sb.from('customer_profiles').select('phone,prior_visits').limit(5000),
+      sb.from('expediente').select('dia,aberto_em,aberto_por,fechado_em,fechado_por,motivo,observacao').order('dia', { ascending: true }).limit(2000)
     ]);
     if (be) console.error(be);
     if (se) console.warn('Pesquisa de satisfação indisponível:', se.message);
     if (pe) console.warn('Cadastro de clientes indisponível:', pe.message);
-    bookings = b || []; surveys = s || []; profiles = p || [];
+    if (xe) console.warn('Expediente indisponível:', xe.message);
+    bookings = b || []; surveys = s || []; profiles = p || []; expediente = x || [];
+    expedienteErro = xe ? (xe.message || 'erro') : '';
     render();
   }
 
@@ -162,6 +168,75 @@
     renderRevenue({ revenueServ, revenueProd, revenue });
     renderChannel(completed);
     renderJuia();
+    renderHoras(start, end);
+  }
+
+  // v29.247.0 — Horas trabalhadas: cruza a tabela expediente (Abrir/Fechar na tela Hoje, desde
+  // 26/09/2026) com os atendimentos concluídos do período. A conta é a de admin-expediente-calc.js
+  // (a mesma do Histórico dos 14 dias); aqui só se desenha. Dia com atendimento e sem registro
+  // aparece como "sem registro" e fica fora das médias — nunca se inventa hora.
+  function renderHoras(start, end) {
+    const box = $('rel-horas');
+    if (!box) return;
+    const X = window.BDJ_EXPEDIENTE;
+    if (!X) { box.innerHTML = '<div class="admin-empty">Cálculo do expediente indisponível (admin-expediente-calc.js não carregou).</div>'; return; }
+    if (expedienteErro) { box.innerHTML = `<div class="admin-empty">Não consegui ler o expediente agora (${esc(expedienteErro)}).</div>`; return; }
+
+    const porDia = Object.fromEntries(expediente.filter(e => e.dia >= start && e.dia <= end).map(e => [e.dia, e]));
+    const dias = [];
+    for (let d = new Date(start + 'T12:00:00'); iso(d) <= end; d.setDate(d.getDate() + 1)) dias.push(iso(d));
+    const { linhas, totais: t } = X.resumo(dias, porDia, bookings);
+    const uteis = linhas.filter(l => l.registro || l.at); // domingo/segunda e folga não viram linha
+
+    const notas = [];
+    if (start < X.INICIO) notas.push(`O registro de abrir/fechar existe desde ${X.INICIO.split('-').reverse().join('/')}; dias anteriores aparecem sem horas.`);
+    if (t.semRegistro) notas.push(`${t.semRegistro} dia${t.semRegistro === 1 ? '' : 's'} com atendimento mas sem registro de abrir/fechar: as horas desse${t.semRegistro === 1 ? '' : 's'} dia${t.semRegistro === 1 ? '' : 's'} não entram nas médias.`);
+    if (!uteis.length) {
+      box.innerHTML = `<div class="admin-empty">Nenhum dia com expediente registrado ou atendimento neste período.</div>${notas.map(n => `<p class="rel-note">${n}</p>`).join('')}`;
+      return;
+    }
+
+    // "qui., 03/09" → "Qui 03/09" (o ponto da abreviação atrapalha na tabela)
+    const dowLong = (dia) => cap(new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(/\.,?/, ''));
+    const traco = '—';
+    const badgeAuto = (titulo) => `<span class="admin-visit-badge is-new" title="${titulo}">automático</span>`;
+    const extremos = t.menor ? (t.menor.dia === t.maior.dia
+      ? `${X.fmtMin(t.menor.min)}`
+      : `${X.fmtMin(t.menor.min)} – ${X.fmtMin(t.maior.min)}`) : traco;
+    const extremosNota = t.menor ? (t.menor.dia === t.maior.dia ? `único dia com horas (${dowLong(t.menor.dia)})` : `menor ${dowLong(t.menor.dia)} · maior ${dowLong(t.maior.dia)}`) : 'sem dia com horas';
+
+    const cards = `
+      <section class="admin-metrics is-compact" aria-label="Resumo das horas trabalhadas">
+        <article><span>Horas abertas</span><strong id="rel-horas-abertas">${t.somaMin ? X.fmtMin(t.somaMin) : traco}</strong><small>${t.diasComHoras} dia${t.diasComHoras === 1 ? '' : 's'} com abrir e fechar</small></article>
+        <article><span>Média por dia aberto</span><strong id="rel-horas-media">${t.diasComHoras ? X.fmtMin(t.mediaMinPorDia) : traco}</strong><small>do Abrir ao Fechar, nos dias com registro</small></article>
+        <article><span>Em atendimento</span><strong id="rel-horas-atendimento">${t.somaMinAtend ? X.fmtMin(t.somaMinAtend) : traco}</strong><small>soma da duração dos ${t.somaAt} concluído${t.somaAt === 1 ? '' : 's'}</small></article>
+        <article><span>Ocupação</span><strong id="rel-horas-ocupacao">${t.ocupacao == null ? traco : pct(t.ocupacao * 100)}</strong><small>atendimento ÷ horas abertas</small></article>
+        <article><span>Faturado por hora aberta</span><strong id="rel-horas-fat-hora">${t.fatPorHora == null ? traco : money(t.fatPorHora)}</strong><small>${t.somaMin ? `${money(t.fatComHoras)} em ${X.fmtMin(t.somaMin)}` : 'sem horas registradas'}</small></article>
+        <article><span>Atendimentos por hora aberta</span><strong id="rel-horas-at-hora">${t.atPorHora == null ? traco : t.atPorHora.toFixed(1).replace('.', ',')}</strong><small>${t.somaMin ? `${t.atComHoras} em ${X.fmtMin(t.somaMin)}` : 'sem horas registradas'}</small></article>
+        <article><span>Abre · fecha (média)</span><strong id="rel-horas-abre-fecha">${t.aberturaMedia == null ? traco : `${X.horaDeMinuto(t.aberturaMedia)} · ${X.horaDeMinuto(t.fechamentoMedia)}`}</strong><small>horário médio de abertura e fechamento</small></article>
+        <article><span>Menor e maior dia</span><strong id="rel-horas-extremos">${extremos}</strong><small>${extremosNota}</small></article>
+      </section>`;
+
+    const rows = uteis.map(l => {
+      const e = l.e;
+      const dia = `<th scope="row"><b>${dowLong(l.dia)}</b></th>`;
+      if (!l.registro) return `<tr>${dia}<td colspan="2" class="is-muted">sem registro</td><td class="num is-muted">${traco}</td><td class="num">${l.at}</td><td class="num">${money(l.fat)}</td><td class="num is-muted">${traco}</td></tr>`;
+      const abriu = `${X.hora(e.aberto_em)}${e.aberto_por === 'automatico' ? badgeAuto('Ninguém clicou em Abrir: a abertura foi preenchida pelo primeiro atendimento do dia') : ''}`;
+      const motivo = e.motivo ? `<small>${esc(X.MOTIVO_LABEL[e.motivo] || e.motivo)}</small>` : '';
+      const fechou = l.aberta
+        ? '<span class="is-muted">em andamento</span>'
+        : `${X.hora(e.fechado_em)}${e.fechado_por === 'automatico' ? badgeAuto('Ninguém clicou em Fechar: fechado sozinho 30 min depois do fim do expediente') : ''}${motivo}`;
+      return `<tr>${dia}<td>${abriu}</td><td>${fechou}</td><td class="num">${l.min ? X.fmtMin(l.min) : `<span class="is-muted">${traco}</span>`}</td><td class="num">${l.at}</td><td class="num">${money(l.fat)}</td><td class="num">${l.min ? money(l.fat / (l.min / 60)) : `<span class="is-muted">${traco}</span>`}</td></tr>`;
+    }).join('');
+
+    box.innerHTML = `${cards}
+      <div class="clube-table-wrap"><table class="clube-table rel-horas-table" aria-label="Expediente por dia">
+        <thead><tr><th scope="col">Dia</th><th scope="col">Abriu</th><th scope="col">Fechou</th><th scope="col" class="num">Horas</th><th scope="col" class="num">Atend.</th><th scope="col" class="num">Faturado</th><th scope="col" class="num">R$/hora</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>Total</td><td colspan="2" class="is-muted">${t.diasComHoras} dia${t.diasComHoras === 1 ? '' : 's'} com horas</td><td class="num">${t.somaMin ? X.fmtMin(t.somaMin) : traco}</td><td class="num">${t.somaAt}</td><td class="num">${money(t.somaFat)}</td><td class="num">${t.fatPorHora == null ? traco : money(t.fatPorHora)}</td></tr></tfoot>
+      </table></div>
+      <p class="rel-note">Horas abertas = do Abrir ao Fechar na tela Hoje. Em atendimento = soma da duração dos atendimentos concluídos. Ocupação, R$/hora e atendimentos/hora consideram só os dias com abrir e fechar registrados.</p>
+      ${notas.map(n => `<p class="rel-note">${n}</p>`).join('')}`;
   }
 
   function renderServices(completed) {
