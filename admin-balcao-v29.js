@@ -207,7 +207,7 @@
   }
   function renderCustomerTag(name) {
     const tag = $('balcao-customer-tag');
-    tag.innerHTML = name ? `<span class="balcao-customer-tag">✓ Cliente do CRM: ${esc(name)}<button type="button" data-clear-customer>×</button></span>` : '';
+    tag.innerHTML = name ? `<span class="balcao-customer-tag">✓ Cliente cadastrado: ${esc(name)}<button type="button" data-clear-customer>×</button></span>` : '';
     tag.querySelector('[data-clear-customer]')?.addEventListener('click', () => { linkedCustomerId = null; renderCustomerTag(null); });
   }
   function setDefaultDateTime() {
@@ -295,15 +295,15 @@
       }
 
       const row = Array.isArray(data) ? data[0] : data;
-      let note = ' Cliente já estava no CRM — histórico atualizado.';
+      let note = ' Cliente já estava cadastrado — histórico atualizado.';
       if (row?.is_new_customer) {
         try {
           const { data: wa } = await sb.functions.invoke('send-walkin-welcome', { body: { name, phone } });
           note = wa?.sent
             ? ' Cliente novo — mensagem de boas-vindas enviada por WhatsApp.'
-            : ' Cliente novo, salvo no CRM — a mensagem de boas-vindas não pôde ser enviada agora.';
+            : ' Cliente novo, cadastrado — a mensagem de boas-vindas não pôde ser enviada agora.';
         } catch {
-          note = ' Cliente novo, salvo no CRM — a mensagem de boas-vindas não pôde ser enviada agora.';
+          note = ' Cliente novo, cadastrado — a mensagem de boas-vindas não pôde ser enviada agora.';
         }
       }
       // Extras opcionais (v29.9.0, campo de nº da visita em v29.15.0): pontos de fidelidade

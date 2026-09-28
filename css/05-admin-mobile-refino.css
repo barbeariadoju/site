@@ -863,11 +863,12 @@ details.booking-product-offer>summary:focus-visible{outline:2px solid var(--gold
 details.booking-product-offer[open]>.booking-suggestion-grid{margin-top:12px}
 #continuar-pedido[hidden]{display:none}
 /* Sugestões compactas dentro de "Seu pedido": uma linha baixa cada, sem subir no hover. */
-.booking-pedido .booking-suggestion-card{grid-template-columns:24px 1fr auto;grid-template-rows:auto;align-items:center;padding:9px 12px;min-height:48px;border-radius:var(--r-sm)}
+.booking-pedido .booking-suggestion-card{grid-template-columns:24px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:10px;row-gap:2px;padding:10px 12px;min-height:48px;min-width:0;border-radius:var(--r-sm)}
 .booking-pedido .booking-suggestion-card:hover{transform:none}
-.booking-pedido .booking-suggestion-card span{grid-row:auto;width:24px;height:24px;font-size:var(--t-base);background:transparent;border:1px solid var(--gold);color:var(--gold2)}
+.booking-pedido .booking-suggestion-card span{grid-row:1/3;width:24px;height:24px;font-size:var(--t-base);background:transparent;border:1px solid var(--gold);color:var(--gold2)}
 .booking-pedido .booking-suggestion-card strong{font-size:var(--t-base);line-height:1.25}
-.booking-pedido .booking-suggestion-card small{margin:0;white-space:nowrap;font-size:var(--t-sm)}
+.booking-pedido .booking-suggestion-card strong,.booking-pedido .booking-suggestion-card small{grid-column:2;min-width:0;overflow-wrap:anywhere}
+.booking-pedido .booking-suggestion-card small{margin:0;font-size:var(--t-sm)}
 .booking-pedido .booking-selected-item{padding:12px 14px}
 @media (max-width:700px){.booking-pedido{padding:14px 12px}.booking-pedido .booking-suggestion-grid{grid-template-columns:1fr}}
 /* v29.253.0 — painel do pedido: um botão principal (primeiro) e o resto como link. "Adicionar
@@ -875,3 +876,4 @@ details.booking-product-offer[open]>.booking-suggestion-grid{margin-top:12px}
    confirmação do agendamento). */
 .cart-panel.service-cart .cart-primary-action{order:1}
 .cart-panel.service-cart #continue-services.secondary-cart{order:2;background:none!important;border:0!important;box-shadow:none!important;color:var(--gold2)!important;text-decoration:underline;text-underline-offset:3px;min-height:44px;font-weight:700}
+.booking-pedido>.booking-slot-header{margin-top:0}

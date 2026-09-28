@@ -908,11 +908,11 @@ html{color-scheme:dark}
    Financeiro, Relatórios, Espera, Clube, "já cortou aqui?") e 4 de navegação de período, cada uma
    com CSS próprio. Um visual só, aplicado às classes que já existem (o JS de cada tela continua
    igual: estado ativo é .is-active ou .is-on). */
-[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts){display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:0;border:1px solid var(--edge-2);border-radius:var(--r-md);background:rgba(var(--white-rgb),.03);width:auto;max-width:100%}
-[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button{flex:0 0 auto;min-height:40px;min-width:0;padding:0 14px;border:0!important;border-radius:var(--r-sm)!important;background:transparent!important;color:var(--muted)!important;box-shadow:none!important;font:700 var(--t-sm)/1.1 Inter,InterFallback,system-ui,sans-serif;white-space:nowrap;cursor:pointer}
-[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:hover{color:var(--text)!important}
-[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:is(.is-active,.is-on,[aria-selected="true"]){background:var(--gold)!important;color:var(--ink)!important}
-[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.admin-firsttime-opts)>button:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.conteudo-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs,.admin-firsttime-opts){display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;margin:0;border:1px solid var(--edge-2);border-radius:var(--r-md);background:rgba(var(--white-rgb),.03);width:auto;max-width:100%}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.conteudo-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs,.admin-firsttime-opts)>button{flex:0 0 auto;min-height:40px;min-width:0;padding:0 14px;border:0!important;border-radius:var(--r-sm)!important;background:transparent!important;color:var(--muted)!important;box-shadow:none!important;font:700 var(--t-sm)/1.1 Inter,InterFallback,system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.conteudo-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs,.admin-firsttime-opts)>button:hover{color:var(--text)!important}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.conteudo-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs,.admin-firsttime-opts)>button:is(.is-active,.is-on,[aria-selected="true"]){background:var(--gold)!important;color:var(--ink)!important}
+[data-admin-page] :is(.communication-tabs,.rel-modes,.espera-tabs,.espera-modes,.clube-tabs,.conteudo-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs,.admin-firsttime-opts)>button:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
 [data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav){display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 [data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav)>.btn{min-width:44px;min-height:44px;padding:0;display:inline-grid;place-items:center;font-size:var(--t-xl);line-height:1}
 [data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav)>strong{min-width:8em;text-align:center;font-weight:800;color:var(--text)}
@@ -921,8 +921,8 @@ html{color-scheme:dark}
   [data-admin-page] :is(.communication-tabs,.rel-modes,.espera-modes){display:flex;width:100%;flex-wrap:nowrap}
   [data-admin-page] :is(.communication-tabs,.rel-modes,.espera-modes)>button{flex:1 1 0;padding:0 8px}
   /* longas (Espera: 4 status; Clube: 6): 2 colunas — em linha única "Cancelados" saía da tela */
-  [data-admin-page] :is(.espera-tabs,.clube-tabs){display:grid;grid-template-columns:1fr 1fr;width:100%}
-  [data-admin-page] :is(.espera-tabs,.clube-tabs)>button{white-space:normal;min-height:44px}
+  [data-admin-page] :is(.espera-tabs,.clube-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs){display:grid;grid-template-columns:1fr 1fr;width:100%}
+  [data-admin-page] :is(.espera-tabs,.clube-tabs,.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs)>button{white-space:normal;min-height:44px}
   [data-admin-page] :is(.fin-rangenav,.rel-monthnav,.espera-rangenav){display:grid;grid-template-columns:44px 1fr 44px;width:100%}
   [data-admin-page] :is(.fin-rangenav,.rel-monthnav)>:is(.communication-tabs,.rel-modes){grid-column:1/-1}
 }
@@ -958,3 +958,28 @@ html{color-scheme:dark}
   [data-admin-page] .admin-content>.admin-subnav{order:-3}
 }
 .is-embed .admin-subnav{display:none}
+
+/* v29.259.0 — revisão visual em 7 larguras: (1) as abas da Central de Conteúdo eram uma 7ª
+   implementação, fora da unificação da 29.254.0, e passavam da tela no celular; (2) o cartão de
+   aniversários de Clientes pedia 746px e, a 1024px com o menu lateral, vazava 23px. */
+[data-admin-page] .conteudo-tabs{margin-bottom:18px}
+@media (max-width:760px){
+  [data-admin-page] .conteudo-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  [data-admin-page] .conteudo-tabs>button{white-space:normal;min-height:48px;padding:4px 6px;line-height:1.15}
+}
+@media (max-width:1180px) and (min-width:761px){
+  .crm-birthday-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .crm-birthday-grid>.crm-birthday-next{grid-column:1/-1}
+}
+/* v29.259.0 — revisão visual: mais 4 implementações de abas (Avaliações, Equipe, Reativação,
+   Vales) entraram no visual comum acima; as abas da seção ficam sempre no topo (Clientes ordena
+   o conteúdo com flex e as jogava para baixo da busca); na Hoje, sem dado da câmera da cadeira,
+   os 3 números ocupam a linha inteira em vez de deixar um buraco. */
+.admin-content>.admin-subnav{order:-10}
+@media (max-width:760px){
+  [data-admin-page="dashboard"] .admin-content>.admin-metrics.is-primary:has(#metric-cadeira-card[hidden]){grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr)!important}
+}
+[data-admin-page] :is(.avaliacoes-tabs,.eq-tabs,.leads-tabs,.vales-tabs){margin-bottom:18px}
+.admin-content>.admin-subnav{align-self:flex-start}
+@media (max-width:760px){.admin-content>.admin-subnav{align-self:stretch}}
+.admin-modal-card:focus:not(:focus-visible){outline:none}

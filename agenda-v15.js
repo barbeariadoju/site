@@ -120,7 +120,7 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
       const flowStart=document.querySelector('.booking-progress');
       const target=flowStart||panel;
       if(target){
-        const top=target.getBoundingClientRect().top+window.scrollY-(window.innerWidth<=700?6:12);
+        const barra=document.querySelector('.page-bar');const fixa=barra&&['sticky','fixed'].includes(getComputedStyle(barra).position)&&barra.getBoundingClientRect().top<=1?barra.offsetHeight:0;/* v29.259.0: a barra do topo cobria o indicador de etapas */const top=target.getBoundingClientRect().top+window.scrollY-fixa-(window.innerWidth<=700?6:12);
         window.scrollTo({top:Math.max(0,top),behavior:'smooth'});
       }
       if(panel)setTimeout(()=>panel.focus({preventScroll:true}),420);

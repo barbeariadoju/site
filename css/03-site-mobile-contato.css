@@ -285,3 +285,8 @@
 
 /* v29.253.0 — canais de contato da home com ícones em traço (eram emoji). */
 .contact-channel>span{color:var(--gold2)}.contact-channel>span svg{display:block}
+
+/* v29.259.0 — o formulário "Envie uma mensagem" saiu da home (tabela contact_messages vazia desde
+   sempre: ninguém usava; WhatsApp e JuIA já cobrem). A seção fica numa coluna, com os 4 canais lado a lado no computador. */
+.contact-premium{grid-template-columns:1fr}
+@media (min-width:851px){.contact-premium .contact-channels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}

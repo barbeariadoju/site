@@ -77,7 +77,18 @@
   document.addEventListener('click', (e) => { if (e.target.closest('[data-recarregar]')) location.reload(); });
 
   window.BDJ_UX = { toast, setBusy, withTimeout, confirm: confirmDialog, prompt: promptDialog, dialog, empty, falha };
-  window.alert = (message) => toast(message, /erro|falha|negado|inválid|não foi possível|nao foi possivel/i.test(String(message)) ? 'error' : 'info', 4200);
+  // v29.259.0 — 17 pontos do painel fazem alert(error.message): a mensagem crua do banco ("JWT
+  // expired", "Failed to fetch", "violates row-level security…") aparecia como aviso azul e sumia.
+  // Mensagem técnica em inglês vira uma frase em português, como erro, e o original vai pro console.
+  const TECNICO = /(failed|fetch|jwt|expired|violates|permission|denied|constraint|duplicate key|null value|syntax|function|network|timeout|unauthorized|forbidden|not found|non-2xx|row-level|column|relation|invalid input)/i;
+  window.alert = (message) => {
+    const texto = String(message ?? '');
+    if (TECNICO.test(texto) && !/[ãõçáéíóúâêô]/i.test(texto)) {
+      console.error('[painel]', texto);
+      return toast('Não foi possível concluir agora. Confira a internet e tente de novo; se continuar, saia e entre de novo no painel.', 'error', 6000);
+    }
+    return toast(texto, /erro|falha|negado|inválid|não foi possível|nao foi possivel/i.test(texto) ? 'error' : 'info', 4200);
+  };
   window.addEventListener('unhandledrejection', (e) => { console.error(e.reason); toast(e.reason?.message || 'Não foi possível concluir a operação.', 'error', 5000); });
   window.addEventListener('error', (e) => { console.error(e.error || e.message); toast('Ocorreu um erro inesperado. Atualize a página e tente novamente.', 'error', 5000); });
   // v29.251.0 — auditoria impeccable (27/09/2026): o painel tinha 5 jeitos de abrir modal e só o
@@ -106,7 +117,13 @@
       preparar(m);
       requestAnimationFrame(() => {
         if (m.contains(document.activeElement)) return;
-        const alvo = m.querySelector('[autofocus]') || visiveis(m).find((el) => el.matches('input,select,textarea')) || visiveis(m).find((el) => !el.matches('.admin-modal-close'));
+        // Foco no primeiro campo de digitar (data, nome…); se o modal começa por caixinhas (Concluir,
+        // Editar), o foco vai para o próprio modal — antes caía na 1ª caixinha de serviço.
+        const card = m.querySelector('.admin-modal-card');
+        const campo = visiveis(m).find((el) => el.matches('input:not([type=checkbox]):not([type=radio]),select,textarea'));
+        const primeiroCampoAntesDeCaixinha = campo && !visiveis(m).slice(0, visiveis(m).indexOf(campo)).some((el) => el.matches('input[type=checkbox],input[type=radio]'));
+        let alvo = m.querySelector('[autofocus]') || (primeiroCampoAntesDeCaixinha ? campo : null);
+        if (!alvo && card) { if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '-1'); alvo = card; }
         alvo?.focus({ preventScroll: true });
       });
     };

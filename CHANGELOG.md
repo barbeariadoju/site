@@ -1,3 +1,29 @@
+## 29.259.0 — Revisão visual em 7 larguras, Fibra só como produto, sem formulário de contato (27–28/09)
+
+**Pedido do Juliano:** *"visual estourado, já revisa tudo pra garantir que ficou bom desktop e mobile"* (print do `/agendar/horario/` numa tela de ~1195 px); *"fibra pode remover este serviço, eu não aplico, só vendo"*; Balcão, Clube e formulário: *"faz o que você achar melhor"*.
+
+**O estouro:** as sugestões "Costuma combinar" (29.252.0) tinham o preço em `white-space:nowrap`; em telas médias o texto vazava do cartão e alargava a coluna, cortando a marca e o resumo. Agora nome em cima, "+ 30 min · R$ 25,00" embaixo, quebrando dentro do cartão.
+
+**A revisão (ferramenta local, fora do repo):** todas as páginas públicas, os 4 estados do agendamento (pedido aberto, horário, dados, confirmar) e as 18 telas do painel logadas pelo mock, em 360, 390, 768, 1024, 1195, 1280 e 1440 px — 637 medições de página mais larga que a tela e de elemento passando da borda — e folhas de captura das telas principais a 1280 e 390. Achados e correções:
+- Senha digital: a faixa "Escolha pelo menos um serviço." ficava **por baixo** dos cartões da lista (sem camada própria); ganhou `z-index` e recuo.
+- Abas da Central de Conteúdo, Avaliações, Equipe, Reativação e Vales: eram mais 5 implementações fora da unificação da 29.254.0 (as de Conteúdo passavam da tela no celular). Entraram no visual comum.
+- Clientes a 1024 px: o cartão de aniversários pedia 746 px e vazava 23 px; grade compacta até 1180 px. As abas da seção ficavam abaixo da busca (a tela ordena o conteúdo com flex) e esticadas; agora no topo e do tamanho do conteúdo.
+- Hoje no celular: sem dado da câmera da cadeira, os 3 números ocupam a linha (sobrava um buraco).
+- `/agendar/horario/`: espaço sobrando acima de "Seu pedido"; e a rolagem automática da etapa não descontava a barra fixa do topo, que cobria o indicador de etapas.
+- Resultado: 0 problemas nas 637 medições.
+
+**Da reavaliação de design (agente independente, mesma régua):** "CRM" saiu da interface ("Ver clientes", "Buscar cliente ou cadastrar", "cadastrados"); `alert(error.message)` com mensagem técnica em inglês ("JWT expired", "Failed to fetch"…) vira frase em português e erro, com o original no console; o foco inicial do Concluir/Editar ia para a 1ª caixinha de serviço — agora vai para o modal (campos de digitar, como no Remarcar, continuam recebendo o foco).
+
+**Central de Conteúdo no celular** (pergunta do Juliano: *"onde foi parar?"*): desde a 29.257.0 ela é aba de Mensagens. A folha "Todas as telas" do celular voltou a listar **todas** — Conteúdo, Avaliações, Fidelidade, Reativação e Relatórios aparecem logo depois da tela principal da seção. O menu lateral do computador segue com 13.
+
+**Fibra Capilar só como produto** (migração 183): o serviço "Aplicação de Fibra Capilar" foi desativado no banco (`services.active = false`; nenhum agendamento com ele), o reajuste de 01/10 dele foi apagado, e ele saiu de `services-catalog-v7.js` e das tabelas `/precos/` e `/precos/setembro/`. Os 3 produtos de fibra continuam à venda.
+
+**Formulário "Envie uma mensagem" saiu da home:** a tabela `contact_messages` nunca recebeu uma mensagem (0 linhas). A seção de contato ficou com os 4 canais (WhatsApp, e-mail, como chegar, salvar contato). A function `contact-form` continua publicada, sem uso.
+
+**Decidido (Juliano: "faça o que achar melhor"):**
+- **Balcão ≠ Concluir por enquanto.** Já dividem a lista de serviços, o componente de "Mais opções" e as regras; unificar o caixa inteiro é reescrita sem ganho visível para o cliente, com o Clube lançando em 01/10. Reabrir se uma regra nova tiver de ser escrita duas vezes.
+- **Clube Sob Medida fica aberto.** A tela foi refeita há 3 dias a pedido do Juliano; recolher antes de ver o comportamento dos primeiros assinantes seria mudar sem dado.
+
 ## 29.258.0 — Auditoria impeccable, onda 9: Balcão no mesmo padrão do Concluir (27/09)
 
 - **Balcão:** Observações, data e horário, caixinha, pontos de fidelidade extra e nº desta visita ficavam sempre abertos (~12 campos antes do "Registrar"). Agora em **"Mais opções"**, o mesmo componente (`.admin-fold`) do modal Concluir, com o mesmo comportamento: aberto no computador, fechado no celular. À vista ficam o que todo atendimento tem: cliente, serviços, produtos, pagamento e "Como foi feito" (que o Juliano pediu logo abaixo do pagamento). Data e hora continuam preenchidas sozinhas com o agora.

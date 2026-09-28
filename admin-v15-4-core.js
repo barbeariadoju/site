@@ -150,7 +150,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.258.0'
+  const ADMIN_VERSION='29.259.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
@@ -218,7 +218,7 @@
     // (admin_sync_customer_profiles, migration 158) com `on conflict do nothing`, sem inferência.
     if(!pe && allBookings.length){
       const {data:synced,error:syncError}=await sb.rpc('admin_sync_customer_profiles');
-      if(syncError)console.error('Falha ao sincronizar clientes do CRM:',syncError);
+      if(syncError)console.error('Falha ao sincronizar o cadastro de clientes:',syncError);
       else if(Number(synced?.created||0)>0){
         const {data:refreshed,error:refreshError}=await sb.from('customer_profiles').select('*').order('name',{ascending:true});
         if(!refreshError)customerProfiles=refreshed||[];

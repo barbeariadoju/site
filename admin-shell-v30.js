@@ -111,5 +111,8 @@
       main.prepend(sub);
     }
   }
-  window.BDJ_SHELL = { page, groups: GROUPS, icone, pai };
+  // Ícone de cada tela irmã, para a folha "Todas as telas" do celular (v29.259.0).
+  const ICONE_IRMA = { fidelidade: 'fidelidade', leads: 'reativar', relatorios: 'relatorios', avaliacoes: 'avaliacoes', conteudo: 'conteudo' };
+  const secoes = Object.fromEntries(Object.entries(SECOES).map(([k, l]) => [k, l.map(([kk, href, t]) => [kk, href, icone(ICONE_IRMA[kk] || 'menu'), t])]));
+  window.BDJ_SHELL = { page, groups: GROUPS, icone, pai, secoes };
 })();
