@@ -61,9 +61,17 @@ Deno.serve(async (req) => {
     if (!targets || targets.length === 0) return json({ ok: true, sent: 0, message: 'ninguém na fila' })
 
     let sent = 0
+    // v29.260.0 — cliente final 1386 (28/09/2026, 12h00): dois atendimentos no mesmo dia viraram duas
+    // pesquisas pendentes, e a recuperação mandou a mesma mensagem duas vezes no mesmo minuto. Um
+    // telefone recebe uma mensagem por rodada; a pesquisa repetida é só marcada como tentada.
+    const jaTocados = new Set<string>()
     for (const t of targets) {
       const phone = toWhatsNumber(t.phone)
       if (!phone) continue
+      if (jaTocados.has(phone.slice(-8))) {
+        await admin.from('experience_requests').update({ recovery_attempts: 1, last_recovery_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', t.id)
+        continue
+      }
       // v29.43.0 — fila unica de perguntas numeradas: com convite/confirmacao/follow-up
       // pendente para este telefone, a recuperacao espera a varredura seguinte.
       {
@@ -73,6 +81,7 @@ Deno.serve(async (req) => {
           continue
         }
       }
+      jaTocados.add(phone.slice(-8))
 
       // Tom: curto, humilde, com a saída explícita. Nada de "sua opinião é muito importante
       // para nós" — soa a robô de call center. E promete não insistir de novo, porque é verdade.

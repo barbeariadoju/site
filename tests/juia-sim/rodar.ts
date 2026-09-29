@@ -616,6 +616,67 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('41b sem a regra: reserva sem sinal', reservou(r2) && !/sinal/i.test(r2.reply), r2.reply)
 }
 
+// 42. Caso Murillo (28/09/2026): último atendimento Corte + Nevou/Platinado. Química não entra no "de
+//     sempre", a duração da suposição não aparece, e "2 / Raspar / Careca" vale SÓ o raspar.
+{
+  const ctx = ctxCliente('Murillo Teste', { last_services: 'Corte de cabelo + Nevou / Platinado' })
+  const r1 = await turno({ msg: 'Tem horário sexta a tarde ?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctx,
+    vagas: { [dia1]: ['12:00', '13:15', '14:30', '15:45', '17:00'] } })
+  const durDaConsulta = r1.chamadas.filter((x: any) => x.tipo === 'rpc' && /get_available_slots/.test(x.alvo)).map((x: any) => x.args?.p_duration_minutes)
+  checar('42a platinado fora da suposição (consulta com a duração do corte, não 175 min)', durDaConsulta.length > 0 && durDaConsulta.every((d: number) => d < 100), durDaConsulta)
+  checar('42a resposta não fala em "aproximadamente N minutos"', !/aproximadamente \d+ min/.test(r1.reply), r1.reply)
+  const st = { services: ['Corte de cabelo', 'Nevou / Platinado'], usual_assumed: true, usual_origem: 'historico', pending_usual_confirm: { date: dia1, time: '12:00' }, date: dia1, time: '12:00', upsell_offer_done: true, upsell_services_done: true }
+  const r2 = await turno({ msg: '2\nRaspar\nCareca', state: st, ai: { intent: 'book', reply: 'Reservado', updates: { services: ['Raspar a cabeça', 'Nevou / Platinado'], date: dia1, time: '12:00' } }, contexto: ctx,
+    vagas: { [dia1]: ['12:00'] } })
+  const criado = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('42b fica só Raspar a cabeça (sem platinado)', !/Platinado/.test(r2.reply) && !/Platinado/.test(JSON.stringify(criado?.args || {})) && (r2.state?.services || []).join() === 'Raspar a cabeça', { reply: r2.reply, services: r2.state?.services })
+  checar('42b sem "Anotado: X no lugar de Y"', !/no lugar de/.test(r2.reply), r2.reply)
+}
+
+// 43. Caso José Carlos (29/09/2026): histórico "Corte de cabelo + Barba na navalha com toalha quente"
+//     (nome do painel) vira o COMBO do catálogo (70 min), não os dois avulsos (85 min).
+{
+  const ctx = ctxCliente('Jose Teste', { last_services: 'Corte de cabelo + Barba na navalha com toalha quente' })
+  const r = await turno({ msg: 'Tem horário amanhã?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } }, contexto: ctx,
+    vagas: { [amanha]: ['09:15', '11:15'] } })
+  checar('43a suposição = combo "Corte + Barba na navalha com toalha quente"', (r.state?.services || []).join() === 'Corte + Barba na navalha com toalha quente', r.state?.services)
+  const r2 = await turno({ msg: 'Não tem mais cedo??', state: { ...r.state, date: amanha }, history: [{ role: 'assistant', content: 'Amanhã o primeiro horário livre é 11:15.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha, time: '11:15' } }, contexto: ctx, vagas: { [amanha]: ['11:15'] } })
+  checar('43b "mais cedo?" nunca é respondido com "Sim"', !/^Sim\b/.test(r2.reply), r2.reply)
+}
+
+// 44. Caso Ana (29/09/2026): "Hoje" (dia sem hora) mostra os horários, não "Corte sai R$ 40. Me diz o horário".
+{
+  const ctx = ctxCliente('Ana Teste', { last_services: 'Corte de cabelo' })
+  const r = await turno({ msg: 'Amanhã', state: {}, ai: { intent: 'book', reply: 'Vamos marcar!', updates: { date: amanha } }, contexto: ctx,
+    vagas: { [amanha]: ['08:00', '09:00', '10:30', '14:00'] } })
+  checar('44a dia sem hora mostra horários', /10:30|08:00/.test(r.reply) && !reservou(r), r.reply)
+  checar('44a sem o preço do serviço suposto', !/R\$/.test(r.reply), r.reply)
+}
+
+// 45. Caso Paulo (29/09/2026): oferta da lavagem depois da reserva respondida com "2 / somente corte"
+//     (juntos no buffer) não inclui a lavagem.
+{
+  const ctx = ctxCliente('Paulo Teste', { last_services: 'Corte de cabelo' })
+  const st = { services: ['Corte de cabelo'], date: dia1, time: '18:00', completed: true, upsell_offer_options: ['Corte + Lavagem', '__none__'], upsell_post_booking: { id: 'b9', date: dia1, time: '18:00', services: ['Corte de cabelo'] } }
+  const r = await turno({ msg: '2\nsomente corte', state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
+  const trocou = r.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service')
+  checar('45a "2 / somente corte" não inclui a lavagem', !trocou && !/Incluído/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: '1', state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
+  checar('45b "1" continua incluindo', r2.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service'), r2.reply)
+}
+
+// 46. Caso Paulo (29/09/2026): "dia 15 as 18:00" (sem mês) — o dia do cliente manda; o modelo não pode
+//     pular pra outro dia e reservar em silêncio.
+{
+  const [y, m, d] = hoje.split('-').map(Number)
+  const alvoDia = d <= 15 ? `${y}-${String(m).padStart(2, '0')}-15` : (m === 12 ? `${y + 1}-01-15` : `${y}-${String(m + 1).padStart(2, '0')}-15`)
+  const outroDia = alvoDia.slice(0, 8) + '20'
+  const r = await turno({ msg: 'dia 15 as 18:00\nvc teria', state: { services: ['Corte de cabelo'], upsell_offer_done: true }, ai: { intent: 'book', reply: 'Reservado', updates: { date: outroDia, time: '18:00' } },
+    contexto: ctxCliente('Paulo Teste', { last_services: 'Corte de cabelo' }), vagas: { [alvoDia]: [], [outroDia]: ['18:00'] } })
+  checar('46a "dia 15" não reserva outro dia sem perguntar', !reservou(r), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

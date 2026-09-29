@@ -154,6 +154,10 @@ const semServicoSuposto=(reply:string,nomes:string)=>{
   .replace(new RegExp(`\\bPara ${n}${dur},?\\s+(\\S)`,'g'),(_m,c)=>c.toUpperCase())
   .replace(new RegExp(`\\s+(?:para|pra|pro) ${n}${dur}`,'gi'),'')
   .replace(new RegExp(`\\s*\\(aproximadamente \\d+ min\\)`,'g'),'')
+  // v29.260.0 (caso Murillo): "tenho horários entre 12:00 e 17:00 para aproximadamente 175 minutos" —
+  // a duração do serviço suposto também entrega a suposição.
+  .replace(/\s+(?:para|pra) aproximadamente \d+ minutos/g,'')
+  .replace(new RegExp(`(?:^|\\s)${n} sai \\*?R\\$ ?[\\d.,]+\\*?\\.?`,'g'),'')
  return r.replace(/\s+([.,?!])/g,'$1').replace(/ {2,}/g,' ').trim()
 }
 const perguntaServicoSuposto=(nomes:string,origem?:string)=>origem==='padrao'
@@ -220,6 +224,18 @@ const diaPedidoNaMensagem=(text:string):string|null=>{
    const chk=new Date(iso+'T12:00:00-03:00')
    if(!isNaN(chk.getTime())&&chk.toISOString().slice(0,10)===iso)return iso
   }
+ }
+ // v29.260.0 — caso Paulo (29/09/2026, 10h02): "dia 15 as 18:00" (sem mês) não era lido, o modelo
+ // saltou o dia 15 (fechado pela viagem) e reservou terça 20/10 sem dizer nada. "dia N" = a próxima
+ // vez que o dia N chega (este mês se ainda não passou, senão o mês seguinte).
+ const dN=q.match(/\bdia\s+(\d{1,2})\b(?!\s*[\/:h-]|\s*(de|do)\s)/)
+ if(dN){
+  const dd=Number(dN[1]),t=today(),pad=(n:number)=>String(n).padStart(2,'0')
+  let y=Number(t.slice(0,4)),mo=Number(t.slice(5,7))
+  if(dd<Number(t.slice(8,10))){mo+=1;if(mo>12){mo=1;y+=1}}
+  const iso=`${y}-${pad(mo)}-${pad(dd)}`
+  const chk=new Date(iso+'T12:00:00-03:00')
+  if(dd>=1&&dd<=31&&!isNaN(chk.getTime())&&chk.toISOString().slice(0,10)===iso)return iso
  }
  const wds=weekdayDatesMentioned(q,today())
  return wds.length===1?wds[0]:null
@@ -1558,6 +1574,22 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   return normalizeServiceFamilies(found).items
  })()
  if(usualServices.some((s:any)=>/\bcorte\b/i.test(s.name))){const i=usualServices.findIndex((s:any)=>/pezinho/i.test(s.name));if(i>=0)usualServices.splice(i,1)}
+ // v29.260.0 — caso Murillo (28/09/2026, 19h49): o último atendimento dele foi Corte + Nevou/Platinado
+ // e a JuIA assumiu os dois como "o de sempre" — ofereceu horários "para aproximadamente 175 minutos"
+ // a quem só queria raspar a cabeça. Química (platinado, luzes, alisamento, pigmentação, hidratação,
+ // fibra) é pontual, não se repete a cada visita: nunca entra na suposição. Se só sobrar química, a
+ // JuIA pergunta o serviço.
+ for(let i=usualServices.length-1;i>=0;i--)if(/platinad|nevou|luzes|alisa|relaxa|pigment|hidrata|reconstru|fibra/i.test(String(usualServices[i].name)))usualServices.splice(i,1)
+ // v29.260.0 — caso José Carlos (29/09/2026, 09h00): o histórico gravou "Corte de cabelo + Barba na
+ // navalha com toalha quente" (nome do painel, não do catálogo), o split virou os dois avulsos (45 + 40
+ // = 85 min) em vez do combo "Corte + Barba na navalha com toalha quente" (70 min). Com 85 min o 09:15
+ // não cabia antes das 10:30 e a JuIA disse que o primeiro horário era 11:15 — o Juliano estava livre.
+ {
+  const iCorte=usualServices.findIndex((s:any)=>s.name==='Corte de cabelo')
+  const barba=usualServices.find((s:any)=>s.name!=='Corte de cabelo'&&familiesOfService(s.name).has('barba')&&!familiesOfService(s.name).has('corte'))
+  const combo=iCorte>=0&&barba?services.find(s=>normalize(s.name)===normalize('Corte + '+barba.name)):null
+  if(combo){const resto=usualServices.filter((s:any)=>s.name!=='Corte de cabelo'&&s!==barba);usualServices.splice(0,usualServices.length,combo,...resto)}
+ }
  const usualIsOnlyAddon=usualServices.length>0&&usualServices.every((s:any)=>Number(s.duration)<=15)
  // v29.142.0 (bateria W9/W10): "tem 14h quinta?" — o modelo devolvia intent 'other' com a
  // pergunta "É corte de cabelo?", e o serviço de sempre não era assumido. Pergunta de agenda
@@ -2961,7 +2993,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(puc&&puc.time&&verifiedPhone){
   next.pending_usual_confirm=null
   const bareUc=normalizedQuestion.trim().replace(/[\s!.,]+$/,'')
-  const nomeouServico=findServicesLoose(message).length>0
+  // v29.260.0 (caso Murillo): "Raspar" / "Careca" não casam no leitor solto — só o modelo reconhece
+  // "Raspar a cabeça". Conta também o serviço que o modelo trouxe de NOVO nesta mensagem (fora da
+  // suposição), desde que ela tenha palavra além do número.
+  const doModeloNovoUc=(Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(String(x))?.name).filter((n:any)=>n&&!(Array.isArray(state?.services)?state.services:[]).includes(n)) as string[]
+  const nomeadosUc=[...new Set([...findServicesLoose(message).map((s:any)=>s.name),...(/[a-zà-ú]{4,}/i.test(message)?doModeloNovoUc:[])])]
+  const nomeouServico=nomeadosUc.length>0
   if(!nomeouServico&&(bareUc==='1'||(simpleYes&&!simpleNo))){
    next.usual_assumed=false
    next.date=puc.date;next.time=puc.time
@@ -2987,6 +3024,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // ter confirmado nada (ele fez a de R$ 40). Mudar de assunto não confirma o serviço assumido: a
    // marca fica, e a reserva volta a perguntar antes de fechar (trava do intent 'book').
    if(nomeouServico){next.usual_assumed=false;next.date=next.date||puc.date;next.time=next.time||puc.time}
+   // v29.260.0 — caso Murillo (28/09/2026, 20h11): "Reservo Corte + Nevou/Platinado, como da última
+   // vez?" → "2", "Raspar", "Careca" (o buffer juntou as três). A troca dentro da família trocou só o
+   // corte e manteve o platinado: "Fica Raspar a cabeça + Nevou / Platinado (R$ 190)" — platinar o couro
+   // cabeludo. Quem responde à suposição com outro serviço (sem dizer sim) está dizendo O QUE QUER:
+   // vale só o que ele nomeou, e a suposição inteira sai. "Sim, e a sobrancelha" continua somando.
+   const disseSim=/^(1|sim|isso|pode|ok|beleza|confirm\w*|claro|fechado)\b/.test(bareUc)
+   if(nomeouServico&&!disseSim){
+    next.services=normalizeServiceFamilies(nomeadosUc.map((n:string)=>({name:n,price:findService(n)?.price||0}))).items.map((x:any)=>x.name)
+    chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+    next.usual_rejected=true
+    serviceRuleNote=''
+   }
   }
  }
  const pfc=state?.pending_fit_choice
@@ -3042,11 +3091,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(pendingOffer&&postBooking&&verifiedPhone&&!['cancel','reschedule','change_service','update_products'].includes(intent)){
   const bareResp=normalizedQuestion.trim().replace(/[\s!.,]+$/,'')
   const addName=String(pendingOffer[0]||'')
-  const addKey=normalize(addName).split(' ')[0]
-  const negou=/(^|\s)(nao|n)(\s|$)/.test(normalizedQuestion)
-  const disse1=bareResp==='1'||(!negou&&(simpleYes||(addKey&&normalizedQuestion.includes(addKey))))
-  const disse2=bareResp==='2'||simpleNo||negou
   const baseNames=(Array.isArray(postBooking.services)?postBooking.services:[]) as string[]
+  // v29.260.0 — caso Paulo (29/09/2026, 10h03): "2" + "somente corte" (o buffer juntou) virou "Incluído.
+  // Fica Corte + Lavagem". A chave do item oferecido era a 1ª palavra do nome — "corte" —, que está em
+  // "somente corte"; e o "2" não era mais a mensagem inteira. A chave agora é a palavra que o item
+  // oferecido traz de NOVO (em "Corte + Lavagem", "lavagem"), e o número vale quando abre a resposta.
+  const addKey=normalize(addName).split(/[\s+]+/).filter(w=>w.length>3&&!baseNames.some(b=>normalize(b).includes(w)))[0]||''
+  const primeiroToken=bareResp.split(/\s+/)[0]
+  const negou=/(^|\s)(nao|n)(\s|$)/.test(normalizedQuestion)
+  const soOQueTinha=/\b(somente|so|apenas|soh)\b/.test(normalizedQuestion)&&!(addKey&&normalizedQuestion.includes(addKey))
+  const disse2=primeiroToken==='2'||simpleNo||negou||soOQueTinha
+  const disse1=!disse2&&(primeiroToken==='1'||simpleYes||Boolean(addKey&&normalizedQuestion.includes(addKey)))
   const quando=`${emDia(String(postBooking.date||''))} às ${String(postBooking.time||'')}`
   next.upsell_offer_options=null
   next.upsell_post_booking=null
@@ -3057,7 +3112,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const fam=normalizeServiceFamilies(names.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
    names=fam.items.map((x:any)=>x.name)
    const newChosen=names.map(n=>findService(n)).filter(Boolean)
-   const total=newChosen.reduce((a:number,s:any)=>a+s.price,0),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
+   // v29.260.0 (caso Paulo): preço da DATA do atendimento — em 20/10 vale a tabela de outubro.
+   const total=totalOn(newChosen,String(postBooking.date||'')||null),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
    const {data:chRows,error:chErr}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:postBooking.id,p_service_name:names.join(' + '),p_service_price:total,p_duration_minutes:dur})
    const ch=Array.isArray(chRows)?chRows[0]:chRows
    if(chErr||!ch){
@@ -3577,6 +3633,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // ficou guardada no estado — quem responde "segunda, terça e quarta" está escolhendo entre
  // esses dias, não confirmando o dia que a JuIA sugeriu antes. Zerar a data aqui é o que
  // deixa a varredura de dias (logo abaixo) entrar em vez do fluxo de um dia só.
+ // v29.260.0 — caso Ana (29/09/2026, 07h53): "Pra quando?" → "Hoje" recebeu "Vamos marcar! Corte de
+ // cabelo sai R$ 40,00. Me diz o horário" — o dia estava dito, e em vez dos horários livres ela teve
+ // que chutar um. Dia sem hora (e sem pergunta pendente) é consulta de agenda daquele dia.
+ if(intent==='book'&&next.date&&!next.time&&chosen.length&&!extractRequestedTime(message)&&!Object.keys(next||{}).some(k=>k.startsWith('pending_')&&(next as any)[k]))intent='availability'
  if(intent==='availability'&&!extractRequestedTime(message)&&weekdayDatesMentioned(normalizedQuestion,today()).length>1)next.date=null
  // v29.72.0 — caso Bruno (25/08, 11h14): cliente NOVO perguntou "tem horário livre às 13:00
  // ou 14:00?" e recebeu "qual serviço você tem interesse?" — sumiu, e nem o Juliano na mão
@@ -3924,8 +3984,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      const optionLabel=(n:string)=>{
       const s=findService(n)
       if(!s)return n
-      if(n==='Corte + Lavagem')return `Corte + Lavagem (vira ${money(s.price)}, com lavagem profissional)`
-      return `${n} (+ ${money(s.price)})`
+      if(n==='Corte + Lavagem')return `Corte + Lavagem (vira ${money(svcPriceOn(s,next.date))}, com lavagem profissional)`
+      return `${n} (+ ${money(svcPriceOn(s,next.date))})`
      }
      const lines=offerOpts.map((n,i)=>`*${i+1}* — ${optionLabel(n)}`).join('\n')
      const noneNumber=offerOpts.length+1
@@ -4526,8 +4586,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       if(upsellAfter&&findService(upsellAfter)&&bookingId){
        const sAdd=findService(upsellAfter)!
        const rotulo=upsellAfter==='Corte + Lavagem'
-        ?`a lavagem profissional (Corte + Lavagem, vira ${money(sAdd.price)})`
-        :`${upsellAfter} (+ ${money(sAdd.price)})`
+        ?`a lavagem profissional (Corte + Lavagem, vira ${money(svcPriceOn(sAdd,next.date))})`
+        :`${upsellAfter} (+ ${money(svcPriceOn(sAdd,next.date))})`
        upsellAsk=`\n\nQuer aproveitar e incluir ${rotulo}? Digite *1* para sim ou *2* para não.`
        next.upsell_offer_options=[upsellAfter,'__none__']
        next.upsell_post_booking={id:String(bookingId),date:next.date,time:next.time,services:chosen.map((s:any)=>s.name)}
@@ -4933,6 +4993,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // suposto não reserva sem a pergunta que fecha — e é nela, uma vez só, que o serviço aparece.
  if(next.usual_assumed&&chosen.length&&!handoff&&!next.pending_usual_confirm){
   reply=semServicoSuposto(reply,chosen.map((s:any)=>s.name).join(' + '))
+ }
+ // v29.260.0 — caso José Carlos (29/09/2026, 09h01): "Não tem mais cedo??" depois de "o primeiro
+ // horário livre é 11:15" recebeu "Sim, hoje às 11:15 está livre" — um "sim" pra quem perguntou se
+ // havia algo antes. Quando a resposta volta com o mesmo horário, é porque mais cedo não tem.
+ if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/^Sim, /.test(reply)&&/está livre/.test(reply)){
+  reply=reply.replace(/^Sim, (.+?) às (\d\d:\d\d) está livre/,(_m,dia,hora)=>`Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
  }
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`
