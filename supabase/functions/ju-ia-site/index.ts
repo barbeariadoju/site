@@ -507,6 +507,17 @@ const findProduct=(name:string)=>products.find(p=>normalize(p.name)===normalize(
 // v29.212.0 — `filtro` aplica ao próximo dia a mesma restrição que o cliente deu ("antes das 11h",
 // "depois das 18h"). Caso Rossano (18/09): hoje não tinha nada antes das 11 e o dia seguinte
 // oferecido tinha que respeitar o mesmo teto, senão a resposta ignora o pedido de novo.
+// v29.260.0 — pedido do Juliano (29/09/2026, caso Paulo, dia 15 na viagem): dia fechado oferece o dia
+// aberto mais próximo ANTES e o DEPOIS. Este olha pra trás (até 6 dias, nunca antes de hoje).
+async function diaAbertoAntes(supabase:any,iso:string,durationMinutes:number,hojeISO:string,maxDays=6){
+ for(let k=1;k<=maxDays;k++){
+  const d=addDaysISO(iso,-k)
+  if(d<hojeISO)return null
+  const {data}=await supabase.rpc('get_available_slots',{p_date:d,p_duration_minutes:durationMinutes})
+  if(Array.isArray(data)&&data.length)return {date:d,slots:data.map((r:any)=>String(r.slot_time).slice(0,5))}
+ }
+ return null
+}
 async function findNextAvailableDate(supabase:any,fromISO:string,durationMinutes:number,maxDays=21,filtro:((slots:string[])=>string[])|null=null){
  const d=new Date(fromISO+'T12:00:00-03:00')
  for(let i=1;i<=maxDays;i++){
@@ -3694,8 +3705,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      // v29.217.0: dia fechado é "não estamos abertos" + o próximo dia em que dá pra atender —
      // nunca "não temos horários disponíveis", que lê como agenda cheia e faz o cliente vir à toa.
      const fech=diaFechadoInfo(next.date)
+     const antes=fech.fechado?await diaAbertoAntes(supabase,next.date,30,today()):null
      reply=fech.fechado
-      ?`${naoAbreFrase(next.date)}, mas consigo te atender normalmente ${emDia(nextAvail.date)}. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
+      ?(antes
+        ?`${naoAbreFrase(next.date)}. Os dias mais próximos em que consigo te atender são ${emDia(antes.date)}, antes, e ${emDia(nextAvail.date)}, depois. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`
+        :`${naoAbreFrase(next.date)}, mas consigo te atender normalmente ${emDia(nextAvail.date)}. Qual serviço você tem interesse? Assim já te passo os horários certinhos.`)
       :`${emDiaCap(next.date)} não tenho mais vaga. Consigo te atender ${emDia(nextAvail.date)} — qual serviço você tem interesse? Assim já te passo os horários certinhos.`
      dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     }else{
@@ -4284,6 +4298,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=resto.startsWith(emDiaCap(next.date))
      ?`${quando} a barbearia não abre${motivo}. ${resto}`
      :`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)}. ${resto}`
+   }
+   // v29.260.0 (pedido do Juliano, caso Paulo): também o dia aberto mais próximo ANTES do fechado.
+   const antes=await diaAbertoAntes(supabase,diaFechadoPedido.date,duration,today())
+   if(antes){
+    const mesmaHora=effectiveTime&&antes.slots.includes(effectiveTime)?` às ${effectiveTime}`:''
+    reply+=`\n\nSe preferir antes, ${emDia(antes.date)} também consigo${mesmaHora}.`
    }
   }
   }
