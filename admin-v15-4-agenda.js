@@ -161,9 +161,17 @@
 
   // v29.3.0 — confirma que o Pix caiu e avisa o cliente pelo WhatsApp. É o que fecha
   // o ciclo: até aqui o cliente pagava, avisava, e nunca recebia retorno nenhum.
+  // v29.263.0 — caso Aletéia (29/09/2026): dois cliques = duas mensagens pro cliente. O botão só
+  // travava DEPOIS da pergunta "Confirmar?", então o segundo clique abria outra pergunta e as duas
+  // seguiam. Agora trava no primeiro clique, por agendamento, até a tela recarregar.
+  const prepayEmAndamento=new Set();
   async function confirmPrepay(id,btn){
-    if(!await BDJ_UX.confirm('Confirmar que o Pix deste cliente caiu na conta?\n\nEle vai receber um aviso no WhatsApp.'))return;
-    const antes=btn.textContent; btn.disabled=true; btn.textContent='Confirmando…';
+    if(prepayEmAndamento.has(id))return;
+    prepayEmAndamento.add(id);
+    const antes=btn.textContent; btn.disabled=true;
+    const libera=()=>{prepayEmAndamento.delete(id);btn.disabled=false;btn.textContent=antes};
+    if(!await BDJ_UX.confirm('Confirmar que o Pix deste cliente caiu na conta?\n\nEle vai receber um aviso no WhatsApp.')){libera();return}
+    btn.textContent='Confirmando…';
     try{
       const {data:{session}}=await sb.auth.getSession();
       const r=await fetch(`${cfg.supabaseUrl}/functions/v1/prepay-confirm`,{
@@ -172,10 +180,10 @@
         body:JSON.stringify({booking_id:id})
       });
       const out=await r.json().catch(()=>({}));
-      if(!out.ok){btn.disabled=false;btn.textContent=antes;alert(out.message||'Não foi possível confirmar.');return}
+      if(!out.ok){libera();alert(out.message||'Não foi possível confirmar.');return}
       if(!out.avisou)alert('Confirmado! Mas não consegui avisar o cliente pelo WhatsApp — vale mandar uma mensagem manual.');
-      await loadAgendaDay();
-    }catch(e){console.error(e);btn.disabled=false;btn.textContent=antes;alert('Não foi possível confirmar agora.')}
+      await loadAgendaDay();prepayEmAndamento.delete(id);
+    }catch(e){console.error(e);libera();alert('Não foi possível confirmar agora.')}
   }
   // v28.65.0 — caso Moisés: o cancelado era 18:00–18:50 e outro cliente entrou das 17:00 às
   // 18:15 no meio tempo, então reativar batia em 'horario_ocupado' e a única saída oferecida

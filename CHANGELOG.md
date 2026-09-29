@@ -1,3 +1,11 @@
+## 29.263.0 — "Confirmar que o Pix caiu" manda uma mensagem só (29/09)
+
+**Caso Aletéia (29/09, 18h08)** — print do Juliano: *"cliquei 2x confirmar, pro cliente 1x; deveria travar o botão"*. Saíram duas mensagens "Pagamento confirmado" (ele apagou uma). O botão só travava **depois** da pergunta "Confirmar?", então um segundo clique abria outra pergunta e as duas seguiam; e a `prepay-confirm` avisava o cliente toda vez que era chamada.
+
+- Painel (`admin-v15-4-agenda.js`): o botão trava no **primeiro clique**, por agendamento, e só destrava se ele cancelar a pergunta ou der erro.
+- Servidor (`prepay-confirm`): Pix que já tem `prepay_confirmed_at` devolve ok **sem confirmar nem avisar de novo**. Cobre também duas abas ou celular + computador.
+- Teste novo `tests/e2e/admin/admin-pix-duplo-clique.spec.js` (falha sem a correção, passa com ela). Cache `?v=29.263.0` e `ADMIN_VERSION` 29.263.0.
+
 ## 29.262.0 — Pergunta aberta da JuIA vence em 24 h; convite mais novo manda (29/09)
 
 **Caso Mauricio (29/09, 13h05)** — print do Juliano, *"juia de novo caracas"*: respondeu **"2 — Agora não, obrigado"** ao convite de retorno das 10h e recebeu "Consigo te atender na terça (06/10) sim! … Corte de cabelo + Barba Express (aproximadamente 75 min)". Em 17/09 a pesquisa tinha perguntado "Quer já deixar o próximo reservado?" e ele não respondeu; essa pergunta ficou **aberta no estado da conversa por 12 dias** (`last_question`). O webhook trata pergunta aberta da JuIA como prioridade (v29.141.0), então o interceptador do convite foi pulado e o "2" foi para a JuIA como resposta à pergunta velha.

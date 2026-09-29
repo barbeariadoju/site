@@ -43,6 +43,18 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     })
 
+    // v29.263.0 — caso Aletéia (29/09/2026, 18h08): dois cliques em "Confirmar Pix" = duas
+    // mensagens "Pagamento confirmado" pro cliente (o Juliano apagou uma). Pix já confirmado não
+    // confirma nem avisa de novo: devolve ok, e a tela só recarrega.
+    {
+      const adminCk = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: ja } = await adminCk.from('bookings').select('prepay_confirmed_at').eq('id', bookingId).maybeSingle()
+      if (ja?.prepay_confirmed_at) {
+        console.log('[prepay-confirm] já confirmado, sem novo aviso', bookingId)
+        return json({ ok: true, avisou: true, ja_confirmado: true })
+      }
+    }
+
     const { data, error } = await asUser.rpc('confirm_prepay', { p_booking_id: bookingId, p_confirmed: true })
     const row = Array.isArray(data) ? data[0] : data
     if (error || !row?.ok) {
