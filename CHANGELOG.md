@@ -1,3 +1,11 @@
+## 29.262.0 — Pergunta aberta da JuIA vence em 24 h; convite mais novo manda (29/09)
+
+**Caso Mauricio (29/09, 13h05)** — print do Juliano, *"juia de novo caracas"*: respondeu **"2 — Agora não, obrigado"** ao convite de retorno das 10h e recebeu "Consigo te atender na terça (06/10) sim! … Corte de cabelo + Barba Express (aproximadamente 75 min)". Em 17/09 a pesquisa tinha perguntado "Quer já deixar o próximo reservado?" e ele não respondeu; essa pergunta ficou **aberta no estado da conversa por 12 dias** (`last_question`). O webhook trata pergunta aberta da JuIA como prioridade (v29.141.0), então o interceptador do convite foi pulado e o "2" foi para a JuIA como resposta à pergunta velha.
+
+- `whatsapp-webhook`: `last_question` vale por **24 h**; depois disso não trava mais nada. E quando a única trava é a pergunta aberta e o convite de retorno saiu **depois** dela, o número responde ao convite (a pergunta mais nova). Cancelar, remarcar, produtos e troca de serviço pendentes continuam travando sempre.
+- No momento da correção havia **38 conversas** com pergunta aberta de mais de 24 h, todas armadilhas iguais para o próximo convite ou pesquisa.
+- Mauricio: convite marcado como recusado e a conversa limpa.
+
 ## 29.261.0 — Busca na lista de serviços e produtos do painel (29/09)
 
 **Pedido do Juliano** (print do Concluir): *"poderia ter nesta tela um campo de busca, por ex. água: tive que rodar até água; se eu digito agua no campo vai direto na água pra eu selecionar"*.

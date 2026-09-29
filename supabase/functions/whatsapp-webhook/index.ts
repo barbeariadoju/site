@@ -990,7 +990,17 @@ Deno.serve(async (request: Request) => {
         // de encaixe, lista de espera — tem a mesma prioridade que cancelar/remarcar tinham
         // aqui. Sem isso o "1" da oferta pós-reserva caía numa pesquisa de ontem. O Pix fica
         // de fora (é oferta passiva, não pergunta).
-        const perguntaAbertaJuIA = aiState.last_question && typeof aiState.last_question === 'object'
+        // v29.262.0 — caso Mauricio (29/09/2026, 13h05): a pergunta "Quer já deixar o próximo
+        // reservado?" de 17/09 ficou aberta no estado (ele nunca respondeu) e, doze dias depois, o
+        // "2" ("Agora não") do convite de retorno de hoje foi tratado como resposta a ELA — o
+        // interceptador do convite foi pulado e a JuIA ofereceu horário a quem disse não. Pergunta
+        // aberta vale por 24 h; depois disso, e sempre que um convite mais novo saiu depois dela,
+        // a pergunta mais recente é a que manda.
+        const lqAtMs = aiState.last_question && typeof aiState.last_question === 'object'
+          ? Date.parse(String((aiState.last_question as Record<string, unknown>).at || ''))
+          : NaN
+        const lqVencida = Number.isFinite(lqAtMs) && Date.now() - lqAtMs > 24 * 3600 * 1000
+        const perguntaAbertaJuIA = aiState.last_question && typeof aiState.last_question === 'object' && !lqVencida
           ? String((aiState.last_question as Record<string, unknown>).kind || '')
           : ''
         const juiaAwaitingAnswer = !!(
@@ -1002,6 +1012,18 @@ Deno.serve(async (request: Request) => {
           aiState.pending_change_service_new_name ||
           (perguntaAbertaJuIA && perguntaAbertaJuIA !== 'pix')
         )
+        // v29.262.0 (caso Mauricio) — a única trava da JuIA é a pergunta aberta (last_question), e o
+        // convite de retorno saiu DEPOIS dela: o número responde ao convite, que é a pergunta mais nova.
+        // Cancelar/remarcar/produtos/troca de serviço pendentes continuam travando sempre.
+        const juiaBloqueiaConvite = (inv: any) => {
+          if (!juiaAwaitingAnswer) return false
+          const soPerguntaAberta = !(aiState.pending_cancel_booking_id ||
+            (Array.isArray(aiState.pending_cancel_options) && (aiState.pending_cancel_options as unknown[]).length > 0) ||
+            aiState.pending_reschedule_booking_id || aiState.pending_reschedule_new_date ||
+            aiState.pending_products_summary || aiState.pending_change_service_new_name)
+          const conviteDepois = Number.isFinite(lqAtMs) && Date.parse(String(inv?.sent_at || '')) > lqAtMs
+          return !(soPerguntaAberta && conviteDepois)
+        }
 
         // v29.43.4 — caso Adriano (17/08): convite de retorno e recuperacao da pesquisa sairam
         // com 1 segundo de diferenca; o "1" dele foi lido como convite (reservou 11/09) quando
@@ -1664,7 +1686,7 @@ Deno.serve(async (request: Request) => {
         // tempo e ambiguo. Em vez de chutar (antes ganhava o convite, por ser "mais recente"), a
         // JuIA pergunta a qual dos dois o numero se refere e guarda o numero pra proxima mensagem.
         // v29.90.0 — dígito repetido ("1111!!") também conta como número solto aqui.
-        if (returnInvite && !juiaAwaitingAnswer && !quotedTarget && /^([123])\1*[\s!.,]*$/.test(normalize(text).trim())) {
+        if (returnInvite && !juiaBloqueiaConvite(returnInvite) && !quotedTarget && /^([123])\1*[\s!.,]*$/.test(normalize(text).trim())) {
           const { data: pendSurveyRows } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
           const pendSurvey = Array.isArray(pendSurveyRows) ? pendSurveyRows[0] : pendSurveyRows
           if (pendSurvey) {
@@ -1676,7 +1698,7 @@ Deno.serve(async (request: Request) => {
             return
           }
         }
-        if (returnInvite && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'invite')) {
+        if (returnInvite && !juiaBloqueiaConvite(returnInvite) && (!quotedTarget || quotedTarget === 'invite')) {
           const inviteReply = normalize(text)
           const inviteTrimmed = inviteReply.trim()
           // Ordem importa: "não, prefiro outro dia" tem negação E pedido de outro horário —
