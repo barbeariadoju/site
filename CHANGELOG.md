@@ -1,3 +1,11 @@
+## 29.264.0 — Quem disse "agora não" não é cobrado; despedida não vira pedido de corte (29/09)
+
+**Caso Mauricio, de novo** — print do Juliano: *"a juia vai se especializar em irritar clientes… não basta as cagadas que ela fez com este cliente"*. Depois do "2 — Agora não" (v29.262.0), ele ainda levou:
+- **16h15**, do `whatsapp-lead-followup`: "seu horário pra Corte de cabelo + Barba Express ainda NÃO ficou reservado". O lead nasceu da oferta errada das 13h05, e o "resolvido" só olhava agendamento, conversa assumida pelo Juliano e lista de espera. Agora, em lead de horário (`availability`/`booking_intent`), também conta como resolvido: **convite de retorno recusado ou adiado** depois da conversa, e **conversa sem serviço nem dia em andamento**. E o "agora não" do convite (`whatsapp-webhook`) apaga o lead na hora. Havia ainda um lead dele na fila, que mandaria um segundo lembrete: apagado à mão.
+- **18h39**, da JuIA: "Mais pra frente marcamos um horário… meu cabelo demora muito pra crescer… abraço" recebeu "Quando quiser marcar, é só me chamar. Abraço!" **+ "(Anotei Corte de cabelo — o Corte + Lavagem sai R$ 50,00)"**. A palavra "cabelo" disparou a suposição de corte (v29.43.0, caso Bruno). Agora adiar/despedir ("mais pra frente", "outra hora", "abraço", "demora pra crescer") não conta como pedido, e a nota só acompanha resposta que está marcando horário.
+
+Simulador: cenário 47, 125 ok. Conferido no ar com a frase dele: sai só "Sem problema, quando quiser marcar é só me chamar. Abraço!". O e2e `routes.spec.js` caiu de novo por queda do Chromium (2ª vez hoje, mesma rota); passou ao rodar de novo.
+
 ## 29.263.0 — "Confirmar que o Pix caiu" manda uma mensagem só (29/09)
 
 **Caso Aletéia (29/09, 18h08)** — print do Juliano: *"cliquei 2x confirmar, pro cliente 1x; deveria travar o botão"*. Saíram duas mensagens "Pagamento confirmado" (ele apagou uma). O botão só travava **depois** da pergunta "Confirmar?", então um segundo clique abria outra pergunta e as duas seguiam; e a `prepay-confirm` avisava o cliente toda vez que era chamada.

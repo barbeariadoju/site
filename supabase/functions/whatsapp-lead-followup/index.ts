@@ -113,7 +113,7 @@ Deno.serve(async (request: Request) => {
   // migration 083) — a igualdade exata (eq) falhou em caso real: lead com DDI 55 (do
   // remoteJid) vs booking sem 55 → a JuIA mandou "ainda tem interesse?" pro Guilherme
   // 1h depois de ele ser ATENDIDO (04/08/2026).
-  const isResolved = async (phone: string, lastMessageAt: string): Promise<boolean> => {
+  const isResolved = async (phone: string, lastMessageAt: string, kind = ''): Promise<boolean> => {
     const { data: hasBooking } = await admin.rpc('lead_booking_exists', { p_phone: phone, p_since: lastMessageAt })
     if (hasBooking === true) return true
     const { data: conv } = await admin
@@ -156,6 +156,23 @@ Deno.serve(async (request: Request) => {
         .limit(1)
       if (naLista && naLista.length > 0) return true
     }
+    // v29.264.0 — caso Mauricio (29/09/2026, 16h15): disse "2 — Agora não" ao convite de retorno e,
+    // três horas depois, levou "seu horário pra Corte + Barba Express ainda NÃO ficou reservado".
+    // Quem recusou ou adiou o convite depois da conversa foi cuidado; e conversa sem serviço nem dia
+    // em andamento não tem "horário que não ficou reservado" pra cobrar. Só pra lead de horário
+    // (lista de espera e "oi" solto seguem as regras de cima).
+    if (kind !== 'availability' && kind !== 'booking_intent') return false
+    const { data: conviteFechado } = await admin
+      .from('return_invites')
+      .select('id')
+      .eq('phone', phone)
+      .in('status', ['declined', 'deferred'])
+      .gte('responded_at', new Date(new Date(lastMessageAt).getTime() - 6 * 3600 * 1000).toISOString())
+      .limit(1)
+    if (conviteFechado && conviteFechado.length > 0) return true
+    const { data: convSt } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
+    const st = (convSt?.state || {}) as Record<string, unknown>
+    if (convSt && !st.date && !(Array.isArray(st.services) && st.services.length)) return true
     return false
   }
 
@@ -264,7 +281,7 @@ Deno.serve(async (request: Request) => {
   for (const lead of reopenedLeads || []) {
     try {
       if (jaMandouNestaRodada.has(chaveFone(lead.phone))) continue
-      if (await isResolved(lead.phone, lead.last_message_at)) {
+      if (await isResolved(lead.phone, lead.last_message_at, 'availability')) {
         await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
         continue
       }
@@ -320,7 +337,7 @@ Deno.serve(async (request: Request) => {
       // v29.71.0: a query acima usa o limiar curto (30 min) pra alcançar o booking_intent;
       // os outros kinds só entram quando completam as 2h de sempre.
       if (lead.kind !== 'booking_intent' && now - new Date(lead.last_message_at).getTime() < NUDGE1_AFTER_MS) continue
-      if (await isResolved(lead.phone, lead.last_message_at)) {
+      if (await isResolved(lead.phone, lead.last_message_at, lead.kind)) {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
       }
@@ -399,7 +416,7 @@ Deno.serve(async (request: Request) => {
         }
       }
 
-      if (await isResolved(lead.phone, lead.last_message_at)) {
+      if (await isResolved(lead.phone, lead.last_message_at, lead.kind)) {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
       }

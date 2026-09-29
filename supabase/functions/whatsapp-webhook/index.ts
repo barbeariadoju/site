@@ -1791,6 +1791,8 @@ Deno.serve(async (request: Request) => {
             return
           } else if (inviteDecline) {
             await admin.from('return_invites').update({ status: 'declined', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
+            // v29.264.0 (caso Mauricio): "agora não" encerra qualquer cobrança de horário pendente.
+            await admin.from('conversation_leads').delete().eq('phone', phone)
             await sendWhatsapp(phone, 'Tudo bem! 👍 Obrigado de novo pela visita — quando quiser marcar, é só me chamar por aqui. 💈')
             return
           }

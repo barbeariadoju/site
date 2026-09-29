@@ -1793,7 +1793,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.43.5 (revisao 14-18/08): "cê pinta cabelo aí?" e "qual o produto que passou no meu cabelo?"
  // viravam "seria um Corte de cabelo?" — a palavra "cabelo" sozinha nao e pedido de corte quando a
  // frase fala de coloracao/quimica ou de produto.
- const cabeloOutroAssunto=/\b(pint|tint|colora|colorir|descolor|luzes|platin|nevou|reflexo|mecha|progressiva|alisa|hidrata|quimica|química|produto|passou|passa|usou|usa|pomada|leave|creme|oleo|óleo|shampoo|gel|cera)/i.test(message)
+ // v29.264.0 — caso Mauricio (29/09/2026, 18h38): "Mais pra frente marcamos um horário... meu cabelo demora
+ // muito pra crescer... abraço" é despedida, não pedido de corte — e a JuIA colou "(Anotei Corte de cabelo — o
+ // Corte + Lavagem sai R$ 50,00)" no "quando quiser, é só me chamar". Adiar ou comentar sobre o cabelo não é pedir.
+ const cabeloDespedida=/\b(mais pra frente|mais para frente|outra hora|outro dia|depois (a gente|eu|marco|marcamos|vejo)|abraco|abs|demora (muito )?(pra|para) crescer|cresce(ndo| devagar))\b/.test(normalizedQuestion)
+ const cabeloOutroAssunto=cabeloDespedida||/\b(pint|tint|colora|colorir|descolor|luzes|platin|nevou|reflexo|mecha|progressiva|alisa|hidrata|quimica|química|produto|passou|passa|usou|usa|pomada|leave|creme|oleo|óleo|shampoo|gel|cera)/i.test(message)
  const bareCabeloAsk=!cabeloOutroAssunto&&/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
@@ -5023,7 +5027,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`
  }
- if(cabeloAssumidoNota&&!handoff&&!/Anotei Corte de cabelo/i.test(reply)){
+ // v29.264.0 (caso Mauricio): a nota só acompanha resposta que está marcando horário — nunca uma despedida.
+ if(cabeloAssumidoNota&&!handoff&&!next.dismissed&&['availability','book','services','upsell_services'].includes(intent)&&!/Anotei Corte de cabelo/i.test(reply)){
   reply+=`\n\n${cabeloAssumidoNota}`
  }
  // v29.153.0 (caso do alisamento): PERGUNTA DE PREÇO SEMPRE LEVA O PREÇO. Qualquer ramo que

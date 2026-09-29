@@ -677,6 +677,13 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('46a "dia 15" não reserva outro dia sem perguntar', !reservou(r), r.reply)
 }
 
+// 47. Caso Mauricio (29/09/2026, 18h38): despedida que fala de cabelo não vira "Anotei Corte de cabelo".
+{
+  const r = await turno({ msg: 'Mais pra frente marcamos um horário.....meu cabelo demora muito pra crescer....abraço', state: {},
+    ai: { intent: 'other', reply: 'Perfeito, Mauricio. Quando quiser marcar, é só me chamar. Abraço!', updates: {} }, contexto: ctxCliente('Mauricio Teste', { last_services: 'Corte de cabelo + Barba Express' }) })
+  checar('47a despedida sem nota de serviço nem preço', !/Anotei|R\$/.test(r.reply) && !reservou(r), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
