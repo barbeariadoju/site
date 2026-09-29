@@ -1,3 +1,11 @@
+## 29.261.0 — Busca na lista de serviços e produtos do painel (29/09)
+
+**Pedido do Juliano** (print do Concluir): *"poderia ter nesta tela um campo de busca, por ex. água: tive que rodar até água; se eu digito agua no campo vai direto na água pra eu selecionar"*.
+
+- Campo **"Buscar serviço ou produto"** no topo do **Concluir**, do **Editar atendimento** e do **Balcão**, fixo enquanto a lista rola. Filtra pelo nome sem acento e sem maiúscula ("agua" acha "Água Mineral", "ozonio" acha a Barboterapia com ozônio), esconde a categoria que ficou vazia, rola até o primeiro que bate e, se ele for produto, **abre o "Mais opções" sozinho** (no celular ele começa fechado). **Enter marca o primeiro** e limpa o campo pro próximo item; Esc só limpa. Marcar pelo Enter passa pelo mesmo clique da caixinha, então regra das famílias, total e quantidade seguem iguais.
+- Um componente só, em `admin-catalogo-lista-v30.js` (`BDJ_LISTA.busca`), junto da lista que as três telas já dividem. Teste novo: `tests/e2e/admin/admin-busca-lista.spec.js`.
+- Cache: `?v=29.261.0` em `admin-catalogo-lista-v30.js`, `admin-v15-4-agenda.js`, `admin-balcao-v29.js` e `admin-v15-4-core.js`; `ADMIN_VERSION` e `admin-version.json` em 29.261.0 (o painel aberto recarrega sozinho, com a guarda de modal fechado).
+
 ## 29.260.0 — Revisão da JuIA 29/09: suposição sem química, "2 + serviço" vale só o serviço, "dia 15", oferta da lavagem (29/09)
 
 **Pedido do Juliano:** *"eu já tinha pedido algumas vezes para que não presumisse os serviços… faz sentido raspar a cabeça e platinar? … revise as últimas conversas"* (print do Murillo) e, no meio da revisão, *"juia vacilando de novo"* (print do Paulo). Varridas as 89 mensagens desde a revisão de 26/09 (14 telefones).

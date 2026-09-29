@@ -366,6 +366,8 @@
       const stylePrefill=(typeof styleTextFor==='function')?styleTextFor(booking.customer_phone):'';
       styleInput.value=stylePrefill;
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
+      // v29.261.0 — busca de serviço/produto no topo (pedido do Juliano: "digito agua e vai direto na água").
+      window.BDJ_LISTA?.busca?.(modal.querySelector('.booking-edit-card'),modal.querySelector('.booking-edit-card h3'));
       // v29.210.0 — produto para casa à vista. Só 13% dos atendimentos de 60 dias levaram produto,
       // e a lista ficava dentro de "Mais opções" (fechada no celular), no meio das bebidas. Agora,
       // logo abaixo do pagamento, até 3 produtos ligados ao serviço (campo `for` do catálogo,
@@ -710,6 +712,7 @@
       }
       modal.querySelector('[data-service-slot]').innerHTML=serviceChecklistHtml(booking.service_name);
       modal.querySelector('[data-products-slot]').innerHTML=productChecklistHtml(parseProducts(booking));
+      window.BDJ_LISTA?.busca?.(modal.querySelector('.booking-edit-card'),modal.querySelector('.booking-edit-card h3')); // v29.261.0
       modal.querySelector('[data-payment-slot]').innerHTML=paymentPickerHtml(booking.payment_method||'');
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml(booking.products_payment_method||'');
       // v29.220.0 (pedido do Juliano, 23/09: concluiu o Sr. Edgar e esqueceu o "Como foi feito") —

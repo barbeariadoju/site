@@ -30,5 +30,70 @@
     }).join('')}</div></section>`).join('');
   }
 
-  window.BDJ_LISTA = { html };
+  // v29.261.0 — busca na lista (pedido do Juliano, 29/09/2026: "tive que rodar até água; se eu digito
+  // agua no campo vai direto na água pra eu selecionar"). Um campo fixo no topo filtra serviços e
+  // produtos pelo nome (sem acento, sem maiúscula), rola até o primeiro e abre o "Mais opções" se o
+  // item estiver lá dentro. Enter marca o primeiro e limpa o campo pro próximo; Esc só limpa.
+  // busca(root, antes) → root contém os itens; o campo entra logo antes de `antes`. Chamar de novo
+  // no mesmo root (modal reaberto) só limpa o campo.
+  const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  function estiloBusca() {
+    if (document.getElementById('bdj-lista-busca-css')) return;
+    const st = document.createElement('style');
+    st.id = 'bdj-lista-busca-css';
+    st.textContent = '.lista-busca{position:sticky;top:0;z-index:7;background:#141210;padding:10px 0 8px;margin:0 0 4px}.booking-edit-card .lista-busca{top:-18px}.lista-busca input{width:100%;box-sizing:border-box;border:1px solid rgba(240,201,135,.4);background:#0d0b09;color:#f3f3f3;border-radius:12px;padding:11px 14px;font:inherit;font-size:var(--t-base)}.lista-busca input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,201,135,.18)}.lista-busca small{display:block;color:#9a9a9a;font-size:var(--t-xs);margin-top:4px}';
+    document.head.appendChild(st);
+  }
+  function busca(root, antes, { placeholder = 'Buscar serviço ou produto (ex.: água)' } = {}) {
+    if (!root || !antes) return;
+    const existente = root.querySelector('[data-lista-busca]');
+    if (existente) { existente.value = ''; existente.dispatchEvent(new Event('input')); return; }
+    estiloBusca();
+    const wrap = document.createElement('div');
+    wrap.className = 'lista-busca';
+    wrap.innerHTML = `<input type="search" data-lista-busca placeholder="${esc(placeholder)}" autocomplete="off" enterkeyhint="done" aria-label="Buscar serviço ou produto"><small data-lista-busca-msg hidden></small>`;
+    antes.parentNode.insertBefore(wrap, antes);
+    const input = wrap.querySelector('input');
+    const msg = wrap.querySelector('small');
+    const nome = (el) => el.querySelector('h3,strong')?.textContent || '';
+    const filtrar = (rolar = true) => {
+      const q = semAcento(input.value);
+      let primeiro = null;
+      root.querySelectorAll('.service-card,.products-modal-option').forEach((el) => {
+        const ok = !q || semAcento(nome(el)).includes(q);
+        el.style.display = ok ? '' : 'none';
+        if (ok && q && !primeiro) primeiro = el;
+      });
+      root.querySelectorAll('.service-section').forEach((sec) => {
+        sec.style.display = q && ![...sec.querySelectorAll('.service-card')].some((c) => c.style.display !== 'none') ? 'none' : '';
+      });
+      msg.hidden = !q || Boolean(primeiro);
+      msg.textContent = q && !primeiro ? `Nada com "${input.value.trim()}".` : '';
+      if (primeiro) {
+        const fold = primeiro.closest('details');
+        if (fold && !fold.open) fold.open = true;
+        if (rolar) primeiro.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      return primeiro;
+    };
+    input.addEventListener('input', () => filtrar());
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const p = filtrar(false);
+        const cb = p?.querySelector('input[type="checkbox"],input[type="radio"]');
+        if (cb && !cb.checked) cb.click();
+        input.value = '';
+        filtrar(false);
+        p?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } else if (e.key === 'Escape' && input.value) {
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        filtrar(false);
+      }
+    });
+  }
+
+  window.BDJ_LISTA = { html, busca };
 })();

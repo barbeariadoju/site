@@ -51,6 +51,8 @@
     $('balcao-products').innerHTML = renderProductPicker();
     bindServicePicker();
     bindProductPicker();
+    // v29.261.0 — busca de serviço/produto acima da lista (pedido do Juliano, 29/09/2026).
+    window.BDJ_LISTA?.busca?.($('balcao-services').parentElement, $('balcao-services').previousElementSibling);
     // v29.80.1 — os preços reais chegam do banco DEPOIS da primeira renderização
     // (products-catalog-v1.js sincroniza com a tabela products e avisa por este evento;
     // ninguém escutava). Sem re-render a lista mostrava o preço antigo do fallback
