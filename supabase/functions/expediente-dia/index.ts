@@ -6,6 +6,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 //      -> push "Abrir a barbearia?" (uma vez por dia).
 //   2) expediente_fechar_automatico(): 30 min depois do fim do expediente sem Fechar -> registra
 //      o fechamento pelo fim do último atendimento, marcado 'automatico', e avisa no push.
+//      v29.265.0: com a câmera no ar, espera 30 min sem ninguém no quadro e fecha na última
+//      pessoa vista ('camera'); também fecha o dia anterior que ficou aberto (migração 184).
 // Só fala com o Juliano (push do painel); nunca com cliente.
 
 const json = (body: unknown, status = 200) =>
@@ -39,7 +41,7 @@ Deno.serve(async (request: Request) => {
   const { data: fechados, error: e2 } = await admin.rpc('expediente_fechar_automatico')
   if (e2) console.error('[expediente-dia] fechar automatico', e2)
   if (Number(fechados) > 0) {
-    out.fechamento_automatico = await push('Fechamento registrado automaticamente', 'Ninguém clicou em Fechar hoje: o expediente foi encerrado pelo fim do último atendimento. Se saiu em outro horário, ajuste no painel.', 'expediente-fechar-auto')
+    out.fechamento_automatico = await push('Fechamento registrado automaticamente', 'Ninguém clicou em Fechar: o expediente foi encerrado na última vez que a câmera viu alguém na barbearia (sem câmera, pelo fim do último atendimento). Se saiu em outro horário, toque em Ajustar horário na tela Hoje.', 'expediente-fechar-auto')
   }
 
   return json({ ok: true, ...out })

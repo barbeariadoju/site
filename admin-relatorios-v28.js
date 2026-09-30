@@ -199,7 +199,7 @@
     // "qui., 03/09" → "Qui 03/09" (o ponto da abreviação atrapalha na tabela)
     const dowLong = (dia) => cap(new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(/\.,?/, ''));
     const traco = '—';
-    const badgeAuto = (titulo) => `<span class="admin-visit-badge is-new" title="${titulo}">automático</span>`;
+    const badgeAuto = (titulo, rotulo = 'automático') => `<span class="admin-visit-badge is-new" title="${titulo}">${rotulo}</span>`;
     const extremos = t.menor ? (t.menor.dia === t.maior.dia
       ? `${X.fmtMin(t.menor.min)}`
       : `${X.fmtMin(t.menor.min)} – ${X.fmtMin(t.maior.min)}`) : traco;
@@ -221,11 +221,11 @@
       const e = l.e;
       const dia = `<th scope="row"><b>${dowLong(l.dia)}</b></th>`;
       if (!l.registro) return `<tr>${dia}<td colspan="2" class="is-muted">sem registro</td><td class="num is-muted">${traco}</td><td class="num">${l.at}</td><td class="num">${money(l.fat)}</td><td class="num is-muted">${traco}</td></tr>`;
-      const abriu = `${X.hora(e.aberto_em)}${e.aberto_por === 'automatico' ? badgeAuto('Ninguém clicou em Abrir: a abertura foi preenchida pelo primeiro atendimento do dia') : ''}`;
+      const abriu = `${X.hora(e.aberto_em)}${e.aberto_por === 'automatico' ? badgeAuto('Ninguém clicou em Abrir: a abertura foi preenchida pelo primeiro atendimento do dia') : e.aberto_por === 'camera' ? badgeAuto('Aberto pela câmera: primeira pessoa vista no dia', 'câmera') : e.aberto_por === 'ajuste' ? badgeAuto('Horário corrigido à mão', 'ajustado') : ''}`;
       const motivo = e.motivo ? `<small>${esc(X.MOTIVO_LABEL[e.motivo] || e.motivo)}</small>` : '';
       const fechou = l.aberta
         ? '<span class="is-muted">em andamento</span>'
-        : `${X.hora(e.fechado_em)}${e.fechado_por === 'automatico' ? badgeAuto('Ninguém clicou em Fechar: fechado sozinho 30 min depois do fim do expediente') : ''}${motivo}`;
+        : `${X.hora(e.fechado_em)}${e.fechado_por === 'automatico' ? badgeAuto('Ninguém clicou em Fechar: fechado sozinho 30 min depois do fim do expediente') : e.fechado_por === 'camera' ? badgeAuto('Fechado pela câmera: última pessoa vista no dia', 'câmera') : e.fechado_por === 'ajuste' ? badgeAuto('Horário corrigido à mão', 'ajustado') : ''}${motivo}`;
       return `<tr>${dia}<td>${abriu}</td><td>${fechou}</td><td class="num">${l.min ? X.fmtMin(l.min) : `<span class="is-muted">${traco}</span>`}</td><td class="num">${l.at}</td><td class="num">${money(l.fat)}</td><td class="num">${l.min ? money(l.fat / (l.min / 60)) : `<span class="is-muted">${traco}</span>`}</td></tr>`;
     }).join('');
 

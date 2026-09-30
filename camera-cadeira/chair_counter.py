@@ -40,7 +40,11 @@ SAMPLE_EVERY_SEC = 3        # uma amostra a cada 3 s
 MIN_SESSION_MIN = 6         # menos que isso = não foi atendimento (alguém sentou pra olhar o celular)
 GAP_CLOSE_SEC = 150         # 2,5 min sem ninguém na cadeira = sessão terminou
 CONFIRM_SAMPLES = 4         # ~12 s ocupado seguido pra abrir candidata (filtra passagem)
-HEARTBEAT_SEC = 300
+# v29.194.0 (16/09/2026): heartbeat a cada 30 s (era 300) e também na troca de estado da cadeira,
+# levando occupied/people. É o sinal do bloqueio automático de cliente de porta (migration 155,
+# camera_walkin_guard): cadeira ocupada 2 min com 2 pessoas no quadro e sem agendamento cobrindo
+# o horário = agenda bloqueada, acompanhando a cadeira. Continua sendo só contagem — nunca vídeo.
+HEARTBEAT_SEC = 30
 CONF = 0.40
 IMGSZ = 960
 
@@ -69,19 +73,43 @@ def ingest(event):
         log(f"ingest erro: {e}")
         return None
 
-def open_capture():
-    cap = cv2.VideoCapture(CAM, cv2.CAP_FFMPEG)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    return cap
+# v29.194.1 (16/09/2026) — LEITOR EM THREAD. Antes o laço principal pegava 6 quadros a cada
+# 3 s e gastava ~1 s no YOLO; o fluxo HEVC 2304x1296 a 12 fps acumulava na conexão TCP até a
+# câmera reiniciar o fluxo (~a cada 41 s, medido no counter.log: 196 "sem quadro" só na manhã
+# de 16/09, 714 no dia 15), e cada falha derrubava e reabria a conexão. Teste de 120 s com o
+# leitor em thread: 1428 quadros lidos, zero falhas, quadro sempre com < 0,2 s de idade.
+# A thread consome o vídeo no ritmo dele e guarda só o quadro mais recente; o laço principal
+# pega esse quadro quando quer. Reconexão só depois de ~5 s seguidos sem quadro.
+import threading
 
-def grab(cap):
-    # descarta quadros acumulados e pega o mais recente
-    ok = False
-    for _ in range(6):
-        ok = cap.grab() or ok
-    if not ok: return None
-    ok, frame = cap.retrieve()
-    return frame if ok else None
+class Reader(threading.Thread):
+    def __init__(self):
+        super().__init__(daemon=True)
+        self.lock = threading.Lock(); self.frame = None; self.at = 0.0
+        self.fails = 0; self.fail_streak = 0; self.reconnects = 0; self.stop = False
+    def run(self):
+        cap = cv2.VideoCapture(CAM, cv2.CAP_FFMPEG)
+        while not self.stop:
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                with self.lock:
+                    self.frame = frame; self.at = time.time()
+                self.fail_streak = 0
+            else:
+                self.fails += 1; self.fail_streak += 1
+                if self.fail_streak >= 60:  # ~5 s de fluxo sem quadro: reconecta
+                    cap.release(); time.sleep(1)
+                    cap = cv2.VideoCapture(CAM, cv2.CAP_FFMPEG)
+                    self.reconnects += 1; self.fail_streak = 0
+                    log(f"leitor: reconectando à câmera (reconexão nº {self.reconnects})")
+                else:
+                    time.sleep(0.05)
+        cap.release()
+    def latest(self, max_age=10):
+        with self.lock:
+            if self.frame is None or time.time() - self.at > max_age:
+                return None
+            return self.frame
 
 def in_chair(box):
     x1, y1, x2, y2 = box
@@ -90,8 +118,8 @@ def in_chair(box):
 
 def main():
     model = YOLO(os.path.join(BASE, 'yolov8n.pt'))
-    cap = open_capture()
-    log(f"contador iniciado — zona {ZONE['chair']} | sessão >= {MIN_SESSION_MIN} min | fecha após {GAP_CLOSE_SEC}s vazio")
+    reader = Reader(); reader.start()
+    log(f"contador iniciado — zona {ZONE['chair']} | sessão >= {MIN_SESSION_MIN} min | fecha após {GAP_CLOSE_SEC}s vazio | leitor em thread")
     ingest({'type': 'heartbeat', 'device': DEVICE, 'note': 'iniciado'})
 
     sess = None          # {'id','started','last_occ','occ','total','opened_remote'}
@@ -100,11 +128,11 @@ def main():
 
     while True:
         t0 = time.time()
-        frame = grab(cap)
+        frame = reader.latest()
         if frame is None:
             fails += 1
-            if fails % 5 == 1: log(f"sem quadro da câmera (tentativa {fails}) — reconectando")
-            cap.release(); time.sleep(min(30, 3 * fails)); cap = open_capture(); continue
+            if fails % 10 == 1: log(f"sem quadro fresco da câmera (tentativa {fails}) — o leitor está reconectando")
+            time.sleep(SAMPLE_EVERY_SEC); continue
         fails = 0
 
         res = model.predict(frame, classes=[0], conf=CONF, imgsz=IMGSZ, verbose=False)[0]
@@ -159,10 +187,12 @@ def main():
             elif sess['opened_remote'] and sess['total'] % 20 == 0:
                 ingest({'type': 'update', 'session_id': sess['id'], 'samples_occupied': sess['occ'], 'samples_total': sess['total']})
 
-        if time.time() - last_hb >= HEARTBEAT_SEC:
-            fps = round(len(sample_times) / max(1, HEARTBEAT_SEC), 3)
-            ingest({'type': 'heartbeat', 'device': DEVICE, 'fps': fps,
-                    'note': f"{'sessão aberta' if sess else 'cadeira vazia'}; pessoas no quadro: {len(boxes)}"})
+        mudou_estado = occupied != getattr(main, '_last_sent', None)
+        if mudou_estado or time.time() - last_hb >= HEARTBEAT_SEC:
+            fps = round(len(sample_times) / max(1, time.time() - last_hb), 3)
+            ingest({'type': 'heartbeat', 'device': DEVICE, 'fps': fps, 'occupied': bool(occupied), 'people': int(len(boxes)),
+                    'note': f"{'cadeira ocupada' if occupied else 'cadeira vazia'}{' (sessão aberta)' if sess else ''}; pessoas no quadro: {len(boxes)}"})
+            main._last_sent = occupied
             last_hb = time.time(); sample_times = []
         sample_times.append(t0)
 

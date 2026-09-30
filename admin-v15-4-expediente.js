@@ -24,7 +24,13 @@ let expedienteCache={};
 
 function expedienteHora(ts){return BDJ_EXPEDIENTE.hora(ts)}
 function expedienteDuracao(a,b){return BDJ_EXPEDIENTE.duracao(a,b)}
-function expedienteOrigem(por){return por==='automatico'?' <small title="Registrado pelo fechamento automático, não pelo botão">(automático)</small>':''}
+// v29.265.0: além do 'automatico', a câmera ('camera') e o ajuste manual ('ajuste') também registram.
+function expedienteOrigem(por){
+  if(por==='automatico')return ' <small title="Registrado pelo fechamento automático, não pelo botão">(automático)</small>';
+  if(por==='camera')return ' <small title="Registrado pela câmera: primeira pessoa vista no dia (abertura) ou última (fechamento)">(câmera)</small>';
+  if(por==='ajuste')return ' <small title="Horário corrigido à mão em Ajustar horário">(ajustado)</small>';
+  return '';
+}
 
 async function carregarExpediente(dia){
   if(!sb)return null;
@@ -54,9 +60,39 @@ async function renderExpediente(today,ehHoje){
     acao='Reabrir';
   }
   btn.textContent=acao;btn.dataset.acao=acao.includes('Fechar')?'fechar':'abrir';
-  box.innerHTML=`<span>${texto}</span> <button type="button" class="booking-text-button" data-expediente-historico>Histórico →</button>`;
+  const ajustar=e&&e.aberto_em?` <button type="button" class="booking-text-button" data-expediente-ajustar>Ajustar horário</button>`:'';
+  box.innerHTML=`<span>${texto}</span>${ajustar} <button type="button" class="booking-text-button" data-expediente-historico>Histórico →</button>`;
   box.hidden=false;
   box.querySelector('[data-expediente-historico]')?.addEventListener('click',abrirHistoricoExpediente);
+  box.querySelector('[data-expediente-ajustar]')?.addEventListener('click',()=>abrirModalAjustar(today,e));
+}
+
+// v29.265.0 — Ajustar horário (pedido do Juliano, 30/09: abriu no painel às 10h13 mas estava lá
+// desde 8h50; fechou às 20h sem clicar). expediente_ajustar grava 'ajuste'; não mexe no bloqueio
+// da agenda. Fechamento em branco = mantém o que está (dia aberto continua aberto).
+const expedienteHHMM=ts=>ts?new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+function abrirModalAjustar(dia,e){
+  const rotulo=new Date(dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
+  const modal=expedienteModal('expediente-ajustar-modal',`<h2>Ajustar horário</h2><p><b>${esc(rotulo)}</b></p>
+    <label class="booking-field-v14">Abriu às<input id="expediente-ajuste-aberto" type="time" required value="${expedienteHHMM(e?.aberto_em)}"></label>
+    <label class="booking-field-v14">Fechou às<input id="expediente-ajuste-fechado" type="time" value="${expedienteHHMM(e?.fechado_em)}"></label>
+    <p class="field-help">${e?.fechado_em?'Só corrige o registro das horas: a agenda não é trancada nem destrancada aqui.':'Deixe o fechamento em branco se a barbearia ainda está aberta.'}</p>
+    <div class="admin-booking-actions"><button type="button" class="btn primary" data-ajuste-salvar>Salvar</button><button type="button" class="btn ghost" data-modal-close>Cancelar</button></div>`);
+  modal.querySelector('[data-ajuste-salvar]').addEventListener('click',async ev=>{
+    const b=ev.currentTarget,ab=$('expediente-ajuste-aberto').value,fe=$('expediente-ajuste-fechado').value;
+    if(!ab){alert('Informe o horário de abertura.');return}
+    if(fe&&fe<=ab){alert('O fechamento tem que ser depois da abertura.');return}
+    BDJ_UX.setBusy(b,true,'Salvando…');
+    try{
+      const {data,error}=await sb.rpc('expediente_ajustar',{p_dia:dia,p_aberto:ab,p_fechado:fe||null});
+      if(error)throw error;
+      modal.remove();
+      BDJ_UX.toast(data?.fechado_em?`Horário ajustado: ${expedienteHora(data.aberto_em)} às ${expedienteHora(data.fechado_em)} = ${expedienteDuracao(data.aberto_em,data.fechado_em)}.`:`Horário ajustado: aberta desde ${expedienteHora(data?.aberto_em)}.`,'success');
+      document.getElementById('expediente-historico-modal')?.remove();
+      renderDashboard();
+    }catch(err){alert(err?.message||'Não foi possível ajustar agora.')}
+    finally{if(b.isConnected)BDJ_UX.setBusy(b,false)}
+  });
 }
 
 async function onExpedienteClick(e){
@@ -121,9 +157,10 @@ async function abrirHistoricoExpediente(){
   const linhas=calc.map(l=>{
     const e=l.e;
     const dow=new Date(l.dia+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
-    const horas=l.registro?`${expedienteHora(e.aberto_em)}–${e.fechado_em?expedienteHora(e.fechado_em):'…'}${l.automatico?' <small>(auto)</small>':''}`:'<small>—</small>';
+    const horas=l.registro?`${expedienteHora(e.aberto_em)}–${e.fechado_em?expedienteHora(e.fechado_em):'…'}${[...new Set([e.aberto_por,e.fechado_por])].map(expedienteOrigem).join('')}`:'<small>—</small>';
     const porHora=l.min>0&&l.at?` · ${(l.at/(l.min/60)).toFixed(1)}/h`:'';
-    return `<div class="admin-alert-row"><span><b>${dow}</b><br><small>${horas}${e?.motivo?` · ${esc(EXPEDIENTE_MOTIVO_LABEL[e.motivo]||e.motivo)}`:''}</small></span><strong>${l.min?BDJ_EXPEDIENTE.fmtMin(l.min):'—'}<br><small>${l.at} atend. · ${money(l.fat)}${porHora}</small></strong></div>`;
+    return `<div class="admin-alert-row"><span><b>${dow}</b><br><small>${horas}${e?.motivo?` · ${esc(EXPEDIENTE_MOTIVO_LABEL[e.motivo]||e.motivo)}`:''}</small><br><button type="button" class="booking-text-button" data-ajustar-dia="${l.dia}">Ajustar</button></span><strong>${l.min?BDJ_EXPEDIENTE.fmtMin(l.min):'—'}<br><small>${l.at} atend. · ${money(l.fat)}${porHora}</small></strong></div>`;
   }).join('');
-  expedienteModal('expediente-historico-modal',`<h2>Expediente — últimos 14 dias</h2><p>${t.diasComHoras} dia${t.diasComHoras===1?'':'s'} com horas registradas · média <b>${BDJ_EXPEDIENTE.fmtMin(t.mediaMinPorDia)}</b> por dia · ${t.somaAt} atendimentos · ${money(t.somaFat)}${t.atPorHora!=null?` · <b>${t.atPorHora.toFixed(1)} atendimentos por hora aberta</b>`:''}</p>${linhas}<div class="admin-booking-actions"><button type="button" class="btn ghost" data-modal-close>Fechar</button></div>`);
+  const hist=expedienteModal('expediente-historico-modal',`<h2>Expediente — últimos 14 dias</h2><p>${t.diasComHoras} dia${t.diasComHoras===1?'':'s'} com horas registradas · média <b>${BDJ_EXPEDIENTE.fmtMin(t.mediaMinPorDia)}</b> por dia · ${t.somaAt} atendimentos · ${money(t.somaFat)}${t.atPorHora!=null?` · <b>${t.atPorHora.toFixed(1)} atendimentos por hora aberta</b>`:''}</p>${linhas}<div class="admin-booking-actions"><button type="button" class="btn ghost" data-modal-close>Fechar</button></div>`);
+  hist.querySelectorAll('[data-ajustar-dia]').forEach(b=>b.addEventListener('click',ev=>{const d=ev.currentTarget.dataset.ajustarDia;abrirModalAjustar(d,porDia[d]||null)}));
 }

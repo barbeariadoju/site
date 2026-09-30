@@ -1,3 +1,16 @@
+## 29.265.0 — Ajustar o horário do expediente, e a câmera abre e fecha a barbearia sozinha (30/09)
+
+**Pedido do Juliano (30/09):** *"hoje eu lembrei de abrir a barbearia no sistema 10:03 porém eu estava aqui desde 8:50 [...] quando eu esquecer, a partir do momento em que a câmera detecta movimento ela entende que a barbearia foi aberta, e o mesmo pra quando for fechada; ontem eu fechei 20h mas não fechei no app"*.
+
+- **Ajustar horário** (tela Hoje, ao lado do Histórico, e em cada dia do Histórico): corrige a abertura e o fechamento à mão, pela RPC nova `expediente_ajustar` (migração 184). Grava `aberto_por`/`fechado_por = 'ajuste'` e aparece como "(ajustado)" no Histórico e nos Relatórios. **Não tranca nem destranca a agenda** — isso continua sendo Fechar/Reabrir. Fechamento em branco mantém o dia aberto. Barra dia futuro, horário futuro e fechamento antes da abertura.
+- **Abertura pela câmera:** o contador da cadeira já mandava a cada 30 s quantas pessoas vê no quadro (`camera_state_log`, v29.194.0). Agora a primeira presença **confirmada** do dia — duas leituras com gente em até 3 min, porque uma leitura solta pode ser falso positivo do detector — abre o dia com `aberto_por = 'camera'`, no horário da primeira leitura. Roda dentro do `camera_ingest` (protegido: erro ali nunca derruba a ingestão), então o painel já mostra "Aberta desde…" quando ele chega. Só ter–sáb, das 6h ao fim do expediente, dia sem bloqueio de dia inteiro. **Nunca** passa por cima de uma abertura existente (o clique vale) e **nunca reabre** um dia fechado — quem aparece depois do Fechar é limpeza, não expediente.
+- **Fechamento pela câmera:** `expediente_fechar_automatico` agora espera a câmera ficar 30 min sem ver ninguém e fecha no horário da **última pessoa vista** (`fechado_por = 'camera'`). Sem câmera (notebook desligado, contador parado) cai na regra antiga, o fim do último atendimento. E passou a fechar também **dias anteriores (até 3) que ficaram abertos** — antes, quem ficasse depois das 21h45 (fim do cron) deixava o dia aberto pra sempre.
+- Push do fechamento automático (`expediente-dia`) fala da câmera e aponta pro Ajustar horário (antes dizia "ajuste no painel", e não existia onde).
+- Dados corrigidos a pedido dele: 30/09 abertura **8h50** (estava 10h13 pelo painel); 29/09 fechamento **20h00** (estava 20h25, automático).
+- `camera-cadeira/chair_counter.py` no repo estava atrás do que roda no notebook (faltavam o leitor em thread e o heartbeat de 30 s da v29.194); copiado.
+
+**Medido nos dados reais antes de ligar:** em 29/09 a câmera viu a primeira pessoa às 9h03 e a última às 20h28; em 30/09, 9h03. **Limite conhecido:** a câmera só enxerga depois que o notebook liga — hoje ele chegou 8h50 e o contador subiu às 9h00. Por isso o ajuste manual existe junto, e não no lugar. Testado no banco com transação desfeita (abre às 9h03:13 pela câmera, segunda chamada não reabre, fechamento de 29/09 sai 20h28 'camera'). Teste novo: `tests/e2e/admin/admin-expediente-ajustar.spec.js`. Cache `?v=29.265.0` e `ADMIN_VERSION` 29.265.0.
+
 ## 29.264.0 — Quem disse "agora não" não é cobrado; despedida não vira pedido de corte (29/09)
 
 **Caso Mauricio, de novo** — print do Juliano: *"a juia vai se especializar em irritar clientes… não basta as cagadas que ela fez com este cliente"*. Depois do "2 — Agora não" (v29.262.0), ele ainda levou:
