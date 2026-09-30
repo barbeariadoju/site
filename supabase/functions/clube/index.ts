@@ -26,7 +26,7 @@ import {
 import {
   digitsOf, sha256, hojeSP, criarCheckoutClube, enviarWhats, pushJuliano, linkGerenciar, tokenDoCodigo,
 } from '../_shared/clube-pagbank.ts'
-import { chavePublica, cpfValido, criarAssinaturaCartao, cancelarNoPagBank } from '../_shared/clube-recorrencia.ts'
+import { chavePublica, cpfValido, criarAssinaturaCartao, cancelarNoPagBank, estornarClube } from '../_shared/clube-recorrencia.ts'
 import { processarPagamentoClube } from '../_shared/clube-ativacao.ts'
 import { normalizeServiceSet } from '../_shared/service-rules.ts'
 
@@ -333,10 +333,16 @@ Deno.serve(async (req: Request) => {
           status: novoStatus, cancelled_at: agora, cancel_requested_at: agora, cancel_reason: motivo, cancel_channel: 'site',
           refund_due: devolver > 0 ? devolver : null, updated_at: agora,
         }).eq('id', sub.id)
-        if (sub.status !== 'aguardando_pagamento') await enviarWhats(admin, sub.phone, novoStatus === 'arrependida' ? textoArrependimento({ nome: sub.name, devolver }) : textoCancelamento({ nome: sub.name, fimCiclo: null }))
-        if (devolver > 0) await pushJuliano('Clube do Ju: devolver dinheiro', `${sub.name} desistiu no prazo de 7 dias. Devolver ${money(devolver)} pelo PagBank (painel do Clube).`, `clube-devolver-${sub.code}`)
+        // v29.268.0 — estorno automático (cartão automático: só o total; link: aceita parcial).
+        let est: { ok: boolean; estornado: number; faltou?: number } = { ok: false, estornado: 0 }
+        if (devolver > 0) {
+          try { est = await estornarClube(admin, sub, devolver) } catch (e) { console.error('[clube] estorno', sub.code, e) }
+        }
+        if (sub.status !== 'aguardando_pagamento') await enviarWhats(admin, sub.phone, novoStatus === 'arrependida' ? textoArrependimento({ nome: sub.name, devolver, estornado: est.ok }) : textoCancelamento({ nome: sub.name, fimCiclo: null }))
+        if (devolver > 0 && est.ok) await pushJuliano('Clube do Ju: desistência estornada', `${sub.name} desistiu no prazo de 7 dias. Estorno de ${money(devolver)} feito automaticamente no PagBank.`, `clube-devolver-${sub.code}`)
+        else if (devolver > 0) await pushJuliano('Clube do Ju: devolver dinheiro', `${sub.name} desistiu no prazo de 7 dias. ${est.estornado > 0 ? `Estornei ${money(est.estornado)} automaticamente; falta ` : 'Devolver '}${money(est.estornado > 0 ? Number(est.faltou || 0) : devolver)} pelo PagBank (painel do Clube).`, `clube-devolver-${sub.code}`)
         else await pushJuliano('Clube do Ju: cancelamento', `${sub.name} cancelou a assinatura.`, `clube-cancel-${sub.code}`)
-        return json({ ok: true, tipo: novoStatus, devolver })
+        return json({ ok: true, tipo: novoStatus, devolver, estornado: est.ok })
       }
 
       // Cancelamento comum: usa o ciclo pago até o fim, sem novas cobranças (cláusula 8).

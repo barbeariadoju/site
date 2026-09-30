@@ -32,7 +32,8 @@ const mascarar = (v: any): any => {
 
 // deno-lint-ignore no-explicit-any
 export async function pbSubs(admin: any, method: string, path: string, body?: unknown, code?: string) {
-  const url = `${base()}${path}`
+  // Caminho relativo = API de recorrência; URL completa = outra API do PagBank (estorno de cobrança do link).
+  const url = /^https:\/\//.test(path) ? path : `${base()}${path}`
   let status = 0
   let data: unknown = null
   try {
@@ -101,6 +102,20 @@ const mensagemErro = (data: any) => {
   return msgs.map((m: { description?: string; parameter_name?: string }) => [m.description, m.parameter_name].filter(Boolean).join(' ')).join('; ').slice(0, 300)
 }
 
+// Assinante já cadastrado no PagBank com este CPF (lista paginada; a API não filtra por CPF).
+// deno-lint-ignore no-explicit-any
+async function acharAssinantePorCpf(admin: any, cpf: string, code: string): Promise<string | null> {
+  for (let offset = 0; offset < 2000; offset += 100) {
+    const r = await pbSubs(admin, 'GET', `/customers?offset=${offset}&limit=100`, undefined, code)
+    // deno-lint-ignore no-explicit-any
+    const lista: any[] = Array.isArray((r.data as any)?.customers) ? (r.data as any).customers : []
+    const achou = lista.find((c) => digitsOf(c?.tax_id) === cpf)
+    if (achou?.id) return String(achou.id)
+    if (lista.length < 100) break
+  }
+  return null
+}
+
 // Cria plano + assinatura no PagBank e espera a 1ª fatura. Devolve 'paga' (ativa na hora), 'processando'
 // (o clube-ciclo confirma depois) ou erro (nada fica cobrando: a assinatura é cancelada no PagBank).
 export async function criarAssinaturaCartao(
@@ -122,17 +137,29 @@ export async function criarAssinaturaCartao(
   const planId = String((plano.data as any)?.id || '')
   if (!planId) return { ok: false, recusado: false, mensagem: `plano: HTTP ${plano.status} ${mensagemErro(plano.data)}` }
 
-  const assin = await pbSubs(admin, 'POST', '/subscriptions', {
+  const corpo = (customer: unknown) => ({
     reference_id: `CJS-${opts.code}`,
     plan: { id: planId },
-    customer: {
-      reference_id: `cli-${opts.code}`, name: opts.nome, email: opts.email, tax_id: digitsOf(opts.cpf),
-      phones: [telefonePB(opts.phone)],
-      billing_info: [{ type: 'CREDIT_CARD', card: { encrypted: opts.encrypted } }],
-    },
+    customer,
     payment_method: [{ type: 'CREDIT_CARD', card: { security_code: opts.cvv } }],
     pro_rata: false,
-  }, opts.code)
+  })
+  let assin = await pbSubs(admin, 'POST', '/subscriptions', corpo({
+    reference_id: `cli-${opts.code}`, name: opts.nome, email: opts.email, tax_id: digitsOf(opts.cpf),
+    phones: [telefonePB(opts.phone)],
+    billing_info: [{ type: 'CREDIT_CARD', card: { encrypted: opts.encrypted } }],
+  }), opts.code)
+  // v29.266.1 — CPF que já é assinante no PagBank (tentativa anterior recusada, ou quem volta ao Clube):
+  // o PagBank não deixa criar outro com o mesmo CPF (409 em tax_id). Reaproveita o cadastro dele,
+  // troca o cartão pelo novo e assina de novo. Caso real: Juliano, 30/09, 2ª e 3ª tentativa do teste.
+  // deno-lint-ignore no-explicit-any
+  if (assin.status === 409 && JSON.stringify((assin.data as any)?.error_messages || '').includes('tax_id')) {
+    const existente = await acharAssinantePorCpf(admin, digitsOf(opts.cpf), opts.code)
+    if (existente) {
+      await pbSubs(admin, 'PUT', `/customers/${existente}/billing_info`, [{ type: 'CREDIT_CARD', card: { encrypted: opts.encrypted } }], opts.code)
+      assin = await pbSubs(admin, 'POST', '/subscriptions', corpo({ id: existente }), opts.code)
+    }
+  }
   // deno-lint-ignore no-explicit-any
   const s = assin.data as any
   const subscriptionId = String(s?.id || '')
@@ -155,12 +182,68 @@ export async function criarAssinaturaCartao(
     const st = String(invoice?.status || '').toUpperCase()
     if (st === 'PAID') return { ok: true, situacao: 'paga', subscriptionId, planId, invoiceId: invoice?.id || null, brand, last4 }
     if (['UNPAID', 'DECLINED', 'CANCELED', 'CANCELLED', 'OVERDUE'].includes(st) || ['SUSPENDED', 'CANCELED', 'OVERDUE'].includes(String(s?.status || '').toUpperCase())) {
+      // Motivo da recusa (código e mensagem do emissor) fica no club_pagbank_log e no console.
+      let motivo = ''
+      if (invoice?.id) {
+        const p = await pbSubs(admin, 'GET', `/invoices/${invoice.id}/payments`, undefined, opts.code)
+        // deno-lint-ignore no-explicit-any
+        const prov = (p.data as any)?.payments?.[0]?.provider
+        if (prov) motivo = ` / ${prov.code || ''} ${prov.message || ''}`
+      }
       await pbSubs(admin, 'PUT', `/subscriptions/${subscriptionId}/cancel`, undefined, opts.code)
-      return { ok: false, recusado: true, mensagem: `fatura ${st || '-'} / assinatura ${s?.status || '-'}` }
+      return { ok: false, recusado: true, mensagem: `fatura ${st || '-'} / assinatura ${s?.status || '-'}${motivo}` }
     }
     await new Promise((r) => setTimeout(r, 2000))
   }
   return { ok: true, situacao: 'processando', subscriptionId, planId, invoiceId: invoice?.id || null, brand, last4 }
+}
+
+// v29.268.0 — ESTORNO AUTOMÁTICO da desistência (pedido do Juliano, 30/09/2026: "se o cliente cancelar
+// eu preciso solicitar o ressarcimento? precisa automatizar isto pra mim"). Chamado pelo 'cancelar' do
+// clube quando o contrato manda devolver (cláusula 7: desistência em 7 dias devolve o pago menos a
+// tabela do que já foi usado). Devolve pelas cobranças pagas, da mais nova para a mais antiga:
+//   - cartão automático (recorrência): POST /payments/{id}/refunds. A API só faz estorno TOTAL do
+//     pagamento; se o contrato manda devolver só parte, não estorna (fica com o Juliano, no painel).
+//   - link do Checkout (Pix, crédito, débito): POST api.pagseguro.com/charges/{id}/cancel com o valor
+//     (aceita parcial).
+// Deu certo tudo: grava refunded_at (some da lista "Devolver" do painel). Faltou algo: devolve o que
+// faltou e a pendência continua no painel. Nunca devolve mais do que refund_due.
+// deno-lint-ignore no-explicit-any
+export async function estornarClube(admin: any, sub: { id: string; code: string }, devolver: number) {
+  const cents = (v: number) => Math.round(Number(v || 0) * 100)
+  let falta = cents(devolver)
+  const feitos: string[] = []
+  if (falta <= 0) return { ok: true, estornado: 0, feitos }
+  const { data: pagas } = await admin.from('club_charges').select('*').eq('subscription_id', sub.id).in('status', ['paga', 'estornada']).order('seq', { ascending: false })
+  for (const ch of pagas || []) {
+    if (falta <= 0) break
+    const disponivel = cents(ch.amount) - cents(ch.refunded_amount)
+    if (disponivel <= 0) continue
+    const valor = Math.min(disponivel, falta)
+    let ok = false
+    if (ch.pagbank_invoice_id) {
+      if (valor < disponivel) continue // recorrência não aceita estorno parcial
+      const p = await pbSubs(admin, 'GET', `/invoices/${ch.pagbank_invoice_id}/payments`, undefined, sub.code)
+      // deno-lint-ignore no-explicit-any
+      const pago = ((p.data as any)?.payments || []).find((x: { status?: string }) => String(x?.status || '').toUpperCase() === 'PAID')
+      if (!pago?.id) continue
+      const r = await pbSubs(admin, 'POST', `/payments/${pago.id}/refunds`, {}, sub.code)
+      // deno-lint-ignore no-explicit-any
+      ok = r.status >= 200 && r.status < 300 && !['FAILED', 'DECLINED', 'ERROR'].includes(String((r.data as any)?.status || '').toUpperCase())
+    } else if (ch.pagbank_charge_id) {
+      const base = Deno.env.get('PAGBANK_API_BASE') || 'https://api.pagseguro.com'
+      const r = await pbSubs(admin, 'POST', `${base}/charges/${ch.pagbank_charge_id}/cancel`, { amount: { value: valor } }, sub.code)
+      ok = r.status >= 200 && r.status < 300
+    }
+    if (!ok) continue
+    const reembolsado = (cents(ch.refunded_amount) + valor) / 100
+    await admin.from('club_charges').update({ refunded_amount: reembolsado, status: cents(reembolsado) >= cents(ch.amount) ? 'estornada' : ch.status }).eq('id', ch.id)
+    falta -= valor
+    feitos.push(`${ch.reference_id}: ${(valor / 100).toFixed(2)}`)
+  }
+  const estornado = (cents(devolver) - falta) / 100
+  if (falta <= 0) await admin.from('club_subscriptions').update({ refunded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', sub.id)
+  return { ok: falta <= 0, estornado, faltou: Math.max(0, falta) / 100, feitos }
 }
 
 // deno-lint-ignore no-explicit-any

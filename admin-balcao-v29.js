@@ -71,13 +71,15 @@
   }
 
   function renderServicePicker() {
-    return window.BDJ_LISTA.html(catalog, { name: 'balcao-service' }) + '<small class="field-help" data-service-rule-msg hidden></small>';
+    return window.BDJ_LISTA.html(catalog, { name: 'balcao-service', quantidade: true }) + '<small class="field-help" data-service-rule-msg hidden></small>';
   }
-  function selectedServices() { return [...document.querySelectorAll('input[name="balcao-service"]:checked')].map(i => catalog.find(s => s.name === i.value)).filter(Boolean); }
+  // v29.267.0 — o mesmo serviço mais de uma vez (pai + 2 filhos): o contador repete o nome.
+  function selectedServices() { return window.BDJ_LISTA.expandir(document.querySelectorAll('input[name="balcao-service"]:checked'), i => catalog.find(s => s.name === i.value)); }
   function bindServicePicker() {
     const servicesBox = $('balcao-services');
     if (servicesBox.dataset.ruleBound) return; // show() pode rodar de novo no evento de auth; liga uma vez só
     servicesBox.dataset.ruleBound = '1';
+    window.BDJ_LISTA.ligarQuantidade(servicesBox, i => i.name === 'balcao-service', () => updateTotal());
     servicesBox.addEventListener('change', e => {
       if (e.target?.name !== 'balcao-service') return;
       // v29.198.0 — regra das famílias (1 corte + 1 barba; combo desmarca as partes; pezinho já vem

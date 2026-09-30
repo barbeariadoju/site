@@ -206,7 +206,7 @@
     try { r = await api({ action: 'cancelar', motivo: $('m-motivo').value.trim().slice(0, 300) }) } catch (e) { r = { error: 'Sem conexão agora. Nada foi alterado. Tente de novo em instantes.' } }
     if (r.error || !r.ok) { err.textContent = r.error || 'Não foi possível concluir agora.'; b.disabled = false; b.textContent = 'Sim, confirmar o cancelamento'; return }
     let msg
-    if (r.tipo === 'arrependida') msg = Number(r.devolver) > 0 ? `Desistência registrada. Vamos devolver ${money(r.devolver)} pelo mesmo meio de pagamento, em até 7 dias.` : 'Desistência registrada. Não há valor a devolver.'
+    if (r.tipo === 'arrependida') msg = Number(r.devolver) > 0 ? (r.estornado ? `Desistência registrada. O estorno de ${money(r.devolver)} já foi feito pelo mesmo meio de pagamento (no cartão, aparece em até 2 faturas).` : `Desistência registrada. Vamos devolver ${money(r.devolver)} pelo mesmo meio de pagamento, em até 7 dias.`) : 'Desistência registrada. Não há valor a devolver.'
     else if (r.tipo === 'fim_do_ciclo') msg = `Cancelamento registrado. Você continua usando o Clube até ${ddmm(r.fim) || 'o fim do ciclo'} e não será cobrado de novo.`
     else if (r.tipo === 'cancelada') msg = 'Assinatura cancelada. Não haverá nova cobrança.'
     else if (r.ja_cancelada) msg = `O cancelamento já estava registrado. Você usa o Clube até ${ddmm(r.fim) || 'o fim do ciclo'}.`

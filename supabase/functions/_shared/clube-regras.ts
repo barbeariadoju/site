@@ -96,9 +96,14 @@ export const textoCancelamento = (d: { nome: string; fimCiclo: string | null }) 
   (d.fimCiclo ? ` Você continua usando as visitas do ciclo pago até ${ddmm(d.fimCiclo)}.` : '') +
   ` Horários marcados depois disso continuam na agenda pelo preço normal e podem ser desmarcados sem custo.`
 
-export const textoArrependimento = (d: { nome: string; devolver: number }) =>
+// v29.268.0 — estornado = o estorno automático já foi feito no PagBank.
+export const textoArrependimento = (d: { nome: string; devolver: number; estornado?: boolean }) =>
   `Desistência confirmada, ${primeiro(d.nome)}. A assinatura do Clube do Ju foi cancelada.` +
-  (d.devolver > 0 ? ` A devolução de ${money(d.devolver)} é feita pelo mesmo meio de pagamento em até 7 dias.` : '')
+  (d.devolver > 0
+    ? d.estornado
+      ? ` O estorno de ${money(d.devolver)} já foi feito pelo mesmo meio de pagamento. No Pix, o valor volta na hora; no cartão, aparece em até 2 faturas, conforme o banco.`
+      : ` A devolução de ${money(d.devolver)} é feita pelo mesmo meio de pagamento em até 7 dias.`
+    : '')
 
 // Divulgação para a base: curta, sem vender vaga nem expor agenda, com saída fácil.
 // Três versões para a mensagem não sair idêntica em série.

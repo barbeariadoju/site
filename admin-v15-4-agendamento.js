@@ -153,12 +153,15 @@ Prosseguir com o encaixe?`
       const duration=chosen.reduce((a,s)=>a+Number(s.duration||0),0);
       const total=chosen.reduce((a,s)=>a+Number(s.price||0),0);
       summary.innerHTML=`<strong>${chosen.length} serviço${chosen.length>1?'s':''} selecionado${chosen.length>1?'s':''}</strong><span>${duration} min • ${money(total)}</span>`;
+      summary.title=chosen.map(s=>s.name).join(' + ');
     };
     // v29.198.0 — renderAuth roda mais de uma vez (sessão inicial + evento de auth) e chamava
     // initBookingForm de novo: o innerHTML renova as caixinhas, mas o #booking-services é o mesmo
     // elemento e ganhava um segundo 'change' — a regra rodava duas vezes e a segunda apagava a
     // explicação. Liga uma vez só.
     if(!box.dataset.ruleBound){box.dataset.ruleBound='1';box.addEventListener('change',update)}
+    // v29.267.0 — contador − n + no serviço marcado (mesmo serviço mais de uma vez: pai + 2 filhos).
+    window.BDJ_LISTA.ligarQuantidade(box,i=>i.name==='booking-service',()=>{update();saveDraft()})
     // v29.244.0 — o botão é um <label> nativo com o checkbox dentro: o clique já alterna e dispara
     // 'change' sozinho, sem o handler de clique que a caixinha antiga precisava.
     box.classList.add('catalogo-lista');
@@ -166,7 +169,7 @@ Prosseguir com o encaixe?`
   }
 
   // v29.244.0 — mesma lista do site (admin-catalogo-lista-v30.js + css/07-catalogo-lista.css).
-  function renderServicePicker(){return window.BDJ_LISTA.html(catalog,{name:'booking-service'})+'<small class="field-help" data-service-rule-msg hidden></small>'}
+  function renderServicePicker(){return window.BDJ_LISTA.html(catalog,{name:'booking-service',quantidade:true})+'<small class="field-help" data-service-rule-msg hidden></small>'}
   // Casa o cliente pela chave canonica do telefone (ultimos 8 digitos) e nao
   // pelos digitos exatos: assim 11 9xxxx, 55 11 9xxxx e variacoes de formato
   // caem no mesmo cadastro em vez de virar duas fichas do mesmo cliente.
@@ -186,8 +189,9 @@ Prosseguir com o encaixe?`
     if(porNome&&phoneDigits($('booking-phone').value).length<3){$('booking-name').value=porNome.name;$('booking-phone').value=porNome.phone}
   }
   function avisoTelefoneRepetido(nomeSalvo){const el=$('booking-phone-warning');if(!el)return;if(!nomeSalvo){el.hidden=true;el.textContent='';return}el.textContent='Esse WhatsApp já está cadastrado como '+nomeSalvo+'. Usei o nome do cadastro para não criar uma segunda ficha do mesmo cliente. Se for mesmo outra pessoa, confira o número.';el.hidden=false}
-  function selectedServices(){return [...document.querySelectorAll('input[name="booking-service"]:checked')].map(i=>catalog.find(s=>s.name===i.value)).filter(Boolean)}
-  function selectServicesByNames(text=''){const names=text.split(' + ').map(s=>s.trim());document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.name===i.value);i.checked=!!s&&names.includes(s.name);i.dispatchEvent(new Event('change',{bubbles:true}))})}
+  // v29.267.0 — cada serviço marcado entra tantas vezes quanto o contador (nome repetido no agendamento).
+  function selectedServices(){return window.BDJ_LISTA.expandir(document.querySelectorAll('input[name="booking-service"]:checked'),i=>catalog.find(s=>s.name===i.value))}
+  function selectServicesByNames(text=''){const qtd=window.BDJ_LISTA.contar(window.BDJ_LISTA.separar(text,catalog.map(s=>s.name)));document.querySelectorAll('input[name="booking-service"]').forEach(i=>{const s=catalog.find(x=>x.name===i.value);i.checked=!!s&&qtd.has(s.name);i.dispatchEvent(new Event('change',{bubbles:true}));if(i.checked)window.BDJ_LISTA.setQtd(i,qtd.get(s.name))})}
   function prefillReturnStorage(x){if(!x)return;const d=new Date(x.booking_date+'T12:00:00');d.setDate(d.getDate()+15);sessionStorage.setItem('bdj-prefill-booking',JSON.stringify({name:x.customer_name,phone:x.customer_phone,date:isoLocal(d),time:x.start_time.slice(0,5),services:x.service_name,notes:'Retorno'}))}
   function loadPrefillForm(){const raw=sessionStorage.getItem('bdj-prefill-booking'),cRaw=sessionStorage.getItem('bdj-prefill-customer');if(raw){const x=JSON.parse(raw);fillForm(x);sessionStorage.removeItem('bdj-prefill-booking')}else if(cRaw){const c=JSON.parse(cRaw);fillForm({name:c.name,phone:c.phone,date:isoLocal(new Date()),time:'08:00',services:c.lastServices,notes:'Retorno'});sessionStorage.removeItem('bdj-prefill-customer')}else restoreDraft()}
   function fillForm(x){$('booking-name').value=x.name||'';$('booking-phone').value=x.phone||'';$('booking-date').value=x.date||isoLocal(new Date());$('booking-time').value=x.time||'';$('booking-notes').value=x.notes||'';selectServicesByNames(x.services||'')}

@@ -295,13 +295,14 @@
     return found
   }
   function serviceChecklistHtml(currentServiceName=''){
-    const selectedNames=new Set(matchCurrentServiceNames(currentServiceName))
+    // v29.267.0 — serviço repetido (pai + 2 filhos) volta marcado com o contador em n.
+    const quantidades=window.BDJ_LISTA.contar(matchCurrentServiceNames(currentServiceName))
     // v29.244.0 — mesma lista do site (admin-catalogo-lista-v30.js + css/07-catalogo-lista.css);
     // os data-service-* continuam no checkbox, então readChecklistServices e a regra não mudam.
-    return '<div class="catalogo-lista">'+window.BDJ_LISTA.html(catalog,{attrs:s=>`data-service-name="${esc(s.name)}" data-service-price="${s.price}" data-service-duration="${s.duration}"`,marcados:selectedNames})+'</div><small class="field-help checkout-help" data-service-rule-msg hidden></small>'
+    return '<div class="catalogo-lista">'+window.BDJ_LISTA.html(catalog,{attrs:s=>`data-service-name="${esc(s.name)}" data-service-price="${s.price}" data-service-duration="${s.duration}"`,quantidade:true,quantidades})+'</div><small class="field-help checkout-help" data-service-rule-msg hidden></small>'
   }
   function readChecklistServices(modal){
-    return [...modal.querySelectorAll('[data-service-name]:checked')].map(i=>({name:i.dataset.serviceName,price:Number(i.dataset.servicePrice),duration:Number(i.dataset.serviceDuration)}))
+    return window.BDJ_LISTA.expandir(modal.querySelectorAll('[data-service-name]:checked'),i=>({name:i.dataset.serviceName,price:Number(i.dataset.servicePrice),duration:Number(i.dataset.serviceDuration)}))
   }
   // v29.198.0 — regra das famílias nas caixinhas (pedido do Juliano, 17/09/2026: "posso colocar 2 cabelos,
   // 2 barbas, ele não entende a redundância"). Marcar uma barba desmarca a outra; combo "Corte + X"
@@ -311,6 +312,8 @@
   // do modal (renderTotal) roda depois, na fase de bubbling, já com o conjunto certo.
   function bindServiceChecklistRule(slot){
     if(!slot)return;
+    // v29.267.0 — contador − n +: mudar a quantidade recalcula o total (o modal escuta 'change').
+    window.BDJ_LISTA.ligarQuantidade(slot,i=>i.matches('[data-service-name]'),()=>slot.dispatchEvent(new Event('change',{bubbles:true})));
     slot.addEventListener('change',e=>{
       const input=e.target.closest('[data-service-name]');
       const r=input?window.BDJ_SERVICE_RULES?.applyToPicker?.(slot,input,i=>i.dataset.serviceName||''):null;

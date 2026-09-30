@@ -1,3 +1,21 @@
+## 29.267.0 — Mesmo serviço mais de uma vez no painel; estorno automático da desistência do Clube; recorrência pega CPF que já é assinante (30/09)
+
+**Serviço repetido no mesmo atendimento** — pedido do Juliano: *"precisei agendar pra Geovana 3 cortes, 1 corte de cabelo pro marido dela e 2 cortes infantis; tive que gerar 2 agendamentos"*.
+- O serviço marcado ganha o contador **− n +** (o mesmo dos produtos do Balcão desde a v29.151.0) no **Novo agendamento**, no **Concluir**, no **Editar atendimento** e no **Balcão**. + num serviço desmarcado marca; − no 1 desmarca.
+- Formato: o nome se **repete** no agendamento ("Corte de cabelo + Corte de cabelo infantil + Corte de cabelo infantil"). Decidido assim, e não com "(2x)", porque é o que todo o resto já entende: o banco soma o preço de cada pedaço (`service_price_on`, conferido: hoje R$ 120, depois do reajuste R$ 150), a duração soma na tela, e Concluir/Editar/remarcar remontam o contador contando as repetições.
+- **Só no painel.** O site e a JuIA seguem a regra das famílias sem repetição (22/08): quem marca sozinho não junta família no mesmo horário.
+- Peça comum em `admin-catalogo-lista-v30.js` (`BDJ_LISTA.ligarQuantidade/expandir/contar/separar`). Teste novo `tests/e2e/admin/admin-servico-repetido.spec.js`.
+- **Defeito antigo corrigido junto:** remarcar/repetir um agendamento com "Corte + Lavagem" não voltava marcado no Novo agendamento (o texto era quebrado em "Corte" e "Lavagem"). Agora usa a mesma separação gulosa do Concluir (caso Guilherme, 04/08).
+
+**Estorno automático da desistência** — pedido do Juliano: *"se o cliente cancelar eu preciso solicitar o ressarcimento? precisa automatizar isto pra mim"*.
+- Na desistência em 7 dias (contrato, cláusula 7), o `clube` já estorna sozinho pelo PagBank (`estornarClube`): cartão automático por `POST /payments/{id}/refunds`; link do Checkout por `POST /charges/{id}/cancel` com o valor. Deu certo: `refunded_at` gravado (sai da lista "Devolver" do painel), cliente recebe "o estorno já foi feito", push "desistência estornada".
+- **Limite do PagBank, decidido contra o óbvio:** a API de recorrência só faz estorno **total**. Se o cliente usou visita antes de desistir (devolução parcial) e pagou no cartão automático, o sistema **não** estorna o total (seria devolver a mais) — fica na lista "Devolver" do painel, com push. No link, parcial funciona.
+- A cobrança recorrente já era cancelada no PagBank no mesmo clique (v29.266.0) e segue conferida pelo `clube-ciclo`.
+
+**Recorrência: CPF que já é assinante no PagBank** (achado no teste real das 17h55): a 2ª tentativa de assinar recebia 409 "already a customer registered with the informed tax_ID" e o cartão nem era tentado — pegaria qualquer cliente que tentasse de novo ou voltasse ao Clube. Agora acha o assinante pelo CPF, troca o cartão (`PUT /customers/{id}/billing_info`) e assina com `customer.id`. Também passou a registrar o motivo da recusa do emissor (`/invoices/{id}/payments`). Teste em produção às 18h01 com esse caminho: assinatura ativa e fatura paga; logs enviados ao PagBank às 18h14 (chamado 1450423315).
+
+**Erro meu na v29.265.0, corrigido aqui:** mudei `ADMIN_VERSION` dentro de `admin-v15-4-core.js` sem bumpar o `?v=` dele nas páginas do painel — um navegador com o core antigo em cache compararia versões diferentes com o `admin-version.json`. Agora core, lista, agenda, agendamento e balcão estão em `?v=29.267.0` e `ADMIN_VERSION` 29.267.0.
+
 ## 29.266.0 — Clube do Ju: cobrança automática no cartão (30/09)
 
 **O PagBank liberou a recorrência em produção** (e-mail do Time de Integração, 30/09 15h41, chamado 1450423315). Ping em produção: `/plans` 200, chave pública existente — o `PAGBANK_TOKEN` que já estava no sistema vale para a recorrência, **não foi preciso gerar token novo**. Pedido do Juliano: *"faz tudo o que ainda falta"* / *"vamos lançar o clube amanhã rodando 100%"*.

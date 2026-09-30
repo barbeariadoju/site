@@ -63,6 +63,14 @@ Deno.serve(async (req) => {
     })
   }
 
+  // v29.266.1 — diagnóstico só de leitura (motivo de recusa, assinante por CPF). Só GET e só nestes caminhos.
+  if (action === 'consultar') {
+    const path = String(body.path || '')
+    if (!/^\/(invoices|subscriptions|customers)(\/[A-Za-z0-9_-]+)*(\?[A-Za-z0-9_=&.-]*)?$/.test(path)) return json({ ok: false, message: 'Caminho não permitido.' }, 400)
+    const r = await pb('GET', path)
+    return json({ ok: r.status < 300, status: r.status, data: r.data })
+  }
+
   // Chave pública da recorrência (para criptografar o cartão no navegador). Cria se não existir.
   if (action === 'public_key') {
     let key = await pb('GET', '/public-keys')
