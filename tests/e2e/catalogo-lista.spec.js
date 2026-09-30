@@ -44,12 +44,12 @@ test.describe('lista de serviços padrão', () => {
     await corte.click();
     await corte.click();
     await expect(box.locator('.service-card.is-selected .service-qty b')).toHaveText('2');
-    await expect(page.locator('#vp-total')).toHaveText(/80,00/);
+    await expect(page.locator('#vp-total')).toHaveText(/100,00/); // v29.268.0: tabela de 01/10 (2 × R$ 50)
     await expect(page.locator('#vp-go-2')).toBeEnabled();
 
     await box.locator('[data-menos="Corte de cabelo"]').click();
     await expect(box.locator('.service-qty b')).toHaveText('1');
-    await expect(page.locator('#vp-total')).toHaveText(/40,00/);
+    await expect(page.locator('#vp-total')).toHaveText(/50,00/);
   });
 
   test('/reagendar.html mostra serviços e produtos na mesma lista, com o serviço anterior marcado', async ({ page }) => {

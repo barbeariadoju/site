@@ -1,7 +1,7 @@
 window.BDJ_SERVICES = [
   {category:'Cortes e combos',name:'Corte + Lavagem',description:'Corte masculino personalizado com lavagem profissional para maior conforto, sensação de limpeza e acabamento caprichado.',price:50,priceFrom:60,duration:50},
   {category:'Cortes e combos',name:'Corte de cabelo',description:'Corte de cabelo masculino realizado com técnica, precisão e atenção aos detalhes para valorizar seu estilo.',price:40,priceFrom:50,duration:45},
-  {category:'Cortes e combos',name:'Raspar a cabeça',description:'Raspagem completa da cabeça, com ou sem navalha, para um acabamento liso e impecável.',price:40,priceFrom:50,duration:40},
+  {category:'Cortes e combos',name:'Raspar a cabeça',description:'Raspagem completa da cabeça, com ou sem navalha, para um acabamento liso e impecável.',price:40,duration:40},
   {category:'Cortes e combos',name:'Corte de cabelo infantil',description:'Corte infantil feito na tesoura ou na tesoura com máquina, com toda a paciência, cuidado e capricho para o seu filho sair sorrindo — e você, tranquilo.',price:40,priceFrom:50,duration:40},
   {category:'Cortes e combos',name:'Corte + Barba na navalha com toalha quente',description:'Corte de cabelo aliado ao ritual de barba com toalha quente, navalha e acabamento caprichado.',price:80,priceFrom:95,duration:70},
   {category:'Cortes e combos',name:'Corte + Barba Express',description:'Corte masculino + alinhamento de barba só na máquina (sem navalha e sem toalha quente), ideal para manutenção do visual no dia a dia.',price:65,priceFrom:80,duration:60},
@@ -42,7 +42,7 @@ window.BDJ_SERVICES = [
 // Os valores de `priceFrom` vieram de service_price_changes, a MESMA tabela que o cron aplica
 // no banco — site e sistema não podem divergir porque bebem da mesma fonte.
 (function () {
-  var VIGENCIA = '2026-10-01'; // 00:00 em America/Sao_Paulo
+  var VIGENCIA = '2026-09-30'; // antecipado de 01/10 para 30/09 à noite a pedido do Juliano (v29.268.0)
   // v29.154.0 — a data de vigência fica visível pro agendamento (agenda-v15.js): quem marca HOJE
   // pra uma data a partir da vigência vê e paga a tabela nova, como diz a placa do reajuste
   // ("inclusive para horários marcados antes"). Antes o resumo mostrava R$ 40 e a cadeira cobrava 50.

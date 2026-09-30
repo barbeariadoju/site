@@ -15,7 +15,7 @@ test('Balcão: pagamento em botões, total e forma escolhida no rodapé', async 
   await expect(footer.locator('#balcao-payment-label')).toHaveText('escolha a forma de pagamento');
 
   await page.locator('#balcao-services label.service-btn', { has: page.locator('input[value="Corte de cabelo"]') }).click();
-  await expect(footer.locator('#balcao-total')).toHaveText(/R\$\s?40,00/);
+  await expect(footer.locator('#balcao-total')).toHaveText(/R\$\s?50,00/); // v29.268.0: tabela de 01/10
 
   const pix = page.locator('#balcao-payment-grid [data-payment-option="pix"]');
   await pix.click();

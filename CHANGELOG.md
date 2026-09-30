@@ -1,3 +1,14 @@
+## 29.268.0 — Reajuste de outubro antecipado para 30/09 à noite (30/09)
+
+**Pedido do Juliano (30/09, ~19h50, fechando a barbearia):** *"pode prosseguir com o reajuste, altere todos os preços de todos os lugares"*. A regra dele era "nenhum preço novo antes de 01/10 00:00"; com a barbearia fechada e nenhum atendimento em aberto no dia, ele mesmo antecipou. A conferência da véspera (tarefa agendada) já tinha dado OK no plano: 319 trechos, 328 ocorrências, 65 arquivos.
+
+- **Banco:** as 17 mudanças pendentes em `service_price_changes` ganharam `effective_at = now()` (com a antecipação anotada no `note`) e `apply_scheduled_price_changes()` rodou na hora: 17 aplicadas. `services` já está na tabela nova; Raspar a cabeça ficou em R$ 40. A rede de segurança (`reprice_future_bookings`) só mexe em agendamento em aberto de hoje em diante, e hoje não havia nenhum. O cron das 03h05 roda amanhã e não encontra nada pendente.
+- **Site estático:** `aplicar.mjs --aplicar --ignorar-data` no main (o `--ignorar-data` existia só para ensaio; aqui foi a pedido). A marca `APLICADO` faz as 7 execuções agendadas da automação de 01/10 terminarem sem fazer nada.
+- **Catálogo JS (`services-catalog-v7.js`):** vigência de `2026-10-01` para `2026-09-30`, o que vira o `/agendar/`, o vale-presente e o painel hoje mesmo. `?v=` novo nas 11 páginas.
+- **Erro achado de passagem:** o catálogo ainda tinha `priceFrom:50` no **Raspar a cabeça**. A 29.234.1 tirou o raspar do plano e do banco, mas esqueceu este arquivo: à meia-noite o `/agendar/` mostraria R$ 50 enquanto o banco cobraria R$ 40. Tirado o `priceFrom`; fica R$ 40.
+- **Testes:** dois e2e criados depois de 19/09 tinham o preço antigo escrito à mão (vale-presente 2 × R$ 40 e Balcão R$ 40) e quebrariam na virada de qualquer jeito. Viraram R$ 100/R$ 50/R$ 50. O `_precos.js` segue a data nova de vigência.
+- **Descuido meu:** a troca do `?v=` pegou também as cópias antigas em `.claude/worktrees/` (fora do Git do site). Na que é repositório, restaurei a versão original de cada página; nas duas que não são, ficou só o número de versão num link, sem efeito.
+
 ## 29.267.1 — Preço de outubro também ao editar o agendamento (30/09)
 
 **Caso Geovana** — print do Juliano: *"porque está aparecendo 120 amanhã se amanhã é 50 cada corte?"*. O agendamento de 01/10 foi criado às 18h07 com 2 serviços (o gatilho do reajuste converteu: R$ 100) e **editado** às 18h30 para 3 (1 corte + 2 infantis, v29.267.0). O painel calcula com a tabela de hoje (3 × R$ 40 = R$ 120) e o `trg_bookings_preco_vigente` só rodava em INSERT.

@@ -4,7 +4,7 @@
 // 01/10). BDJ_PRECO_HOJE=2026-10-01 força a tabela nova (ensaio da virada numa cópia).
 import fs from 'node:fs';
 
-const VIGENCIA = '2026-10-01';
+const VIGENCIA = '2026-09-30'; // v29.268.0: virada antecipada
 const src = fs.readFileSync(new URL('../../services-catalog-v7.js', import.meta.url), 'utf8');
 
 const hojeSP = () => process.env.BDJ_PRECO_HOJE
