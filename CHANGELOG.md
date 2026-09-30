@@ -1,3 +1,11 @@
+## 29.267.1 — Preço de outubro também ao editar o agendamento (30/09)
+
+**Caso Geovana** — print do Juliano: *"porque está aparecendo 120 amanhã se amanhã é 50 cada corte?"*. O agendamento de 01/10 foi criado às 18h07 com 2 serviços (o gatilho do reajuste converteu: R$ 100) e **editado** às 18h30 para 3 (1 corte + 2 infantis, v29.267.0). O painel calcula com a tabela de hoje (3 × R$ 40 = R$ 120) e o `trg_bookings_preco_vigente` só rodava em INSERT.
+
+- Migração 186: o gatilho roda também em UPDATE de `service_name`, `service_price` ou `booking_date`, com as mesmas travas (só troca se o preço gravado for exatamente a tabela de hoje; cortesia, vale-presente, fidelidade e preço digitado à mão ficam; só pendente/confirmado com data futura). Status, observação e confirmação não disparam.
+- Varredura: só o da Geovana estava assim; corrigido para R$ 150.
+- `clube-pagbank`: consulta de leitura ganhou `/payments` (lista de estornos) e `consultar_cobranca` (cobrança pela API de pedidos). Usado para conferir o estorno do teste do Juliano: até 18h40 o pagamento seguia APPROVED, sem estorno registrado.
+
 ## 29.267.0 — Mesmo serviço mais de uma vez no painel; estorno automático da desistência do Clube; recorrência pega CPF que já é assinante (30/09)
 
 **Serviço repetido no mesmo atendimento** — pedido do Juliano: *"precisei agendar pra Geovana 3 cortes, 1 corte de cabelo pro marido dela e 2 cortes infantis; tive que gerar 2 agendamentos"*.

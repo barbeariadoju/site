@@ -66,9 +66,17 @@ Deno.serve(async (req) => {
   // v29.266.1 — diagnóstico só de leitura (motivo de recusa, assinante por CPF). Só GET e só nestes caminhos.
   if (action === 'consultar') {
     const path = String(body.path || '')
-    if (!/^\/(invoices|subscriptions|customers)(\/[A-Za-z0-9_-]+)*(\?[A-Za-z0-9_=&.-]*)?$/.test(path)) return json({ ok: false, message: 'Caminho não permitido.' }, 400)
+    if (!/^\/(invoices|subscriptions|customers|payments)(\/[A-Za-z0-9_-]+)*(\?[A-Za-z0-9_=&.-]*)?$/.test(path)) return json({ ok: false, message: 'Caminho não permitido.' }, 400)
     const r = await pb('GET', path)
     return json({ ok: r.status < 300, status: r.status, data: r.data })
+  }
+  // Cobrança pelo lado da API de pedidos (a que o app do PagBank enxerga): só GET /charges/CHAR_...
+  if (action === 'consultar_cobranca') {
+    const id = String(body.id || '')
+    if (!/^CHAR_[A-Za-z0-9-]+$/.test(id)) return json({ ok: false, message: 'Id inválido.' }, 400)
+    const r = await fetch(`${Deno.env.get('PAGBANK_API_BASE') || 'https://api.pagseguro.com'}/charges/${id}`, { headers: { Authorization: `Bearer ${Deno.env.get('PAGBANK_TOKEN')}`, Accept: 'application/json' } })
+    const d = await r.json().catch(() => null)
+    return json({ ok: r.status < 300, status: r.status, data: d })
   }
 
   // Chave pública da recorrência (para criptografar o cartão no navegador). Cria se não existir.
