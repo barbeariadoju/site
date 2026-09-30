@@ -30,7 +30,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css?v=29.259.0">
-<link rel="stylesheet" href="/css/07-clube.css?v=29.255.0"><link rel="stylesheet" href="/css/07-catalogo-lista.css?v=29.256.0">
+<link rel="stylesheet" href="/css/07-clube.css?v=29.266.0"><link rel="stylesheet" href="/css/07-catalogo-lista.css?v=29.256.0">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://www.barbeariadoju.com.br/clube/","url":"https://www.barbeariadoju.com.br/clube/","name":"Clube do Ju: assinatura mensal da Barbearia do Ju","description":"Assinatura mensal de serviços de barbearia, de terça a quinta, com hora marcada e um cliente por vez, em Bragança Paulista.","inLanguage":"pt-BR","isPartOf":{"@id":"https://www.barbeariadoju.com.br/#website"},"about":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"breadcrumb":{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Início","item":"https://www.barbeariadoju.com.br/"},{"@type":"ListItem","position":2,"name":"Clube do Ju","item":"https://www.barbeariadoju.com.br/clube/"}]},"mainEntity":{"@type":"Service","name":"Clube do Ju","serviceType":"Assinatura mensal de barbearia","provider":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"areaServed":{"@type":"City","name":"Bragança Paulista"},"offers":{"@type":"Offer","name":"Assinatura mensal do Clube do Ju","url":"https://www.barbeariadoju.com.br/clube/","priceCurrency":"BRL","availableAtOrFrom":{"@id":"https://www.barbeariadoju.com.br/#barbearia"},"seller":{"@id":"https://www.barbeariadoju.com.br/#barbearia"}}}}]}</script>
 </head>
 <body>
@@ -90,9 +90,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <div class="clube-passo" data-passo="3" hidden>
       <p class="clube-etapa-prog">Etapa 3 de 3: resumo do contrato</p>
       <div id="resumo-contrato" class="clube-resumo"></div>
-      <p><a href="/clube/contrato/" target="_blank" rel="noopener">Ler o contrato completo (abre em nova aba)</a> · <a href="/clube/contrato/v2.txt" target="_blank" rel="noopener">Texto do contrato (v2.txt)</a></p>
+      <p><a href="/clube/contrato/" target="_blank" rel="noopener">Ler o contrato completo (abre em nova aba)</a> · <a href="/clube/contrato/v3.txt" target="_blank" rel="noopener">Texto do contrato (v3.txt)</a></p>
+      <fieldset class="clube-pagamento" id="forma-pagamento">
+        <legend>Forma de pagamento</legend>
+        <label class="clube-aceite" id="opcao-cartao"><input type="radio" name="forma-pag" value="cartao" checked><span><strong>Cartão de crédito, cobrança automática</strong><br><small>A mensalidade é cobrada no mesmo cartão todo mês. Não precisa lembrar de pagar.</small></span></label>
+        <label class="clube-aceite"><input type="radio" name="forma-pag" value="link"><span><strong>Pix ou cartão pelo link, a cada mês</strong><br><small>O link chega no WhatsApp até 3 dias antes de cada renovação.</small></span></label>
+      </fieldset>
+      <div id="campos-cartao" class="clube-cartao">
+        <label class="clube-campo"><span>Número do cartão</span><input type="text" id="f-cartao-numero" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="0000 0000 0000 0000"></label>
+        <label class="clube-campo"><span>Nome impresso no cartão</span><input type="text" id="f-cartao-nome" autocomplete="cc-name" maxlength="60"></label>
+        <div class="clube-cartao-linha">
+          <label class="clube-campo"><span>Validade</span><input type="text" id="f-cartao-validade" inputmode="numeric" autocomplete="cc-exp" maxlength="7" placeholder="MM/AA"></label>
+          <label class="clube-campo"><span>Código de segurança</span><input type="text" id="f-cartao-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV"></label>
+        </div>
+        <label class="clube-campo"><span>CPF do titular do cartão</span><input type="text" id="f-cartao-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></label>
+        <p class="clube-nota">O cartão é criptografado aqui mesmo, no seu navegador, com a chave do PagBank. A barbearia não vê nem guarda o número do cartão.</p>
+        <label class="clube-aceite"><input type="checkbox" id="aceite-recorrente"><span>Autorizo a cobrança automática de <strong id="valor-recorrente"></strong> por mês neste cartão, no dia em que começa cada ciclo, até eu cancelar (contrato, cláusulas 3.2 e 3.5).</span></label>
+      </div>
       <div class="clube-aceites">
-        <label class="clube-aceite"><input type="checkbox" id="aceite-contrato" required><span>Li e aceito o contrato do Clube do Ju (versão <span data-versao>v2</span>).</span></label>
+        <label class="clube-aceite"><input type="checkbox" id="aceite-contrato" required><span>Li e aceito o contrato do Clube do Ju (versão <span data-versao>v3</span>).</span></label>
         <label class="clube-aceite"><input type="checkbox" id="aceite-regras" required><span>Entendi as regras em destaque: terça a quinta, marcar de 7 a 30 dias antes, cancelamento com menos de 24 horas ou falta contam como visita usada.</span></label>
         <label class="clube-aceite"><input type="checkbox" id="aceite-privacidade" required><span>Li a <a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></label>
       </div>
@@ -142,13 +158,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <details><summary>O preço pode mudar?</summary><p>Só com aviso pelo WhatsApp com pelo menos 30 dias de antecedência, valendo a partir da renovação seguinte. O mês já pago nunca muda de preço, e quem não concordar pode cancelar sem custo.</p></details>
   </section>
 
-  <p class="clube-nota clube-nota-final">Contrato completo: <a href="/clube/contrato/">Clube do Ju, versão v2</a>. Já é assinante? O link da sua assinatura chega no WhatsApp junto com a confirmação.</p>
+  <p class="clube-nota clube-nota-final">Contrato completo: <a href="/clube/contrato/">Clube do Ju, versão v3</a>. Já é assinante? O link da sua assinatura chega no WhatsApp junto com a confirmação.</p>
 </main>
 
 <footer class="site-footer"><strong>Barbearia do Ju</strong><p><a href="https://maps.app.goo.gl/VJAfv4MJpd84tmDY7" rel="noopener" target="_blank">Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista/SP</a><br/>Terça a sexta, 8h às 19h · Sábado, 8h às 15h · <a href="https://wa.me/5511967073038" rel="noopener" target="_blank">(11) 96707-3038</a></p><nav aria-label="Rodapé"><a href="/servicos.html">Serviços e preços</a><a href="/agendar/#servicos">Agendar</a><a href="/perguntas-frequentes.html">Dúvidas</a><a href="/blog.html">Blog</a><a href="/sobre-o-juliano.html">Sobre o Juliano</a><a href="/privacidade.html">Privacidade</a></nav><small>© 2026 Barbearia do Ju</small></footer>
 
 <script src="/agenda-config-v6.js?v=29.249.0"></script>
-<script type="module" src="/assets/js/clube.js?v=29.245.0"></script>
+<script src="/assets/js/vendor/pagseguro-sdk.min.js?v=29.266.0" defer></script>
+<script type="module" src="/assets/js/clube.js?v=29.266.0"></script>
 <script src="/privacy-consent-v22-4.js?v=29.249.0" defer></script>
 <script src="/whatsapp-attrib-v29.js?v=29.139.0" defer></script>
 </body>

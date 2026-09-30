@@ -9,6 +9,11 @@
 //   POST {action:'cancelar', c, t, motivo}        → desistência (até 7 dias) ou cancelamento no fim do ciclo
 //   POST {action:'lista_espera', nome, telefone, plano}
 //
+// v29.266.0 — 'assinar' com pagamento:'cartao' faz a cobrança automática no cartão (API de Pagamentos
+// Recorrentes, _shared/clube-recorrencia.ts): o navegador manda o cartão criptografado com a chave que
+// 'planos' devolve; a 1ª mensalidade é cobrada na hora e a assinatura já sai ativa. Cancelar aqui
+// cancela também no PagBank (o clube-ciclo confere de novo, para nenhum cartão seguir cobrando).
+//
 // Nada aqui confia no navegador: preço, vagas, horário da Cativa e versão do contrato são conferidos no
 // servidor. O aceite guarda data, IP, navegador, telefone confirmado, versão e hash do texto (contrato,
 // cláusula 13). Anti-abuso do código: 3 por telefone por hora, 60 s entre pedidos, 10 por IP por hora,
@@ -21,6 +26,8 @@ import {
 import {
   digitsOf, sha256, hojeSP, criarCheckoutClube, enviarWhats, pushJuliano, linkGerenciar, tokenDoCodigo,
 } from '../_shared/clube-pagbank.ts'
+import { chavePublica, cpfValido, criarAssinaturaCartao, cancelarNoPagBank } from '../_shared/clube-recorrencia.ts'
+import { processarPagamentoClube } from '../_shared/clube-ativacao.ts'
 import { normalizeServiceSet } from '../_shared/service-rules.ts'
 
 const ALLOWED_ORIGINS = new Set(['https://www.barbeariadoju.com.br', 'https://barbeariadoju.com.br', 'http://127.0.0.1:8090', 'http://localhost:8090'])
@@ -91,10 +98,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (action === 'planos') {
-      const [{ data: planos }, { data: vagas }, sob] = await Promise.all([
+      const [{ data: planos }, { data: vagas }, sob, chave] = await Promise.all([
         admin.from('club_plans').select('id,name,summary,kind,visit_items,visits_per_cycle,extras_per_cycle,table_value,price,discount_pct,pool,sort').eq('active', true).order('sort'),
         admin.rpc('club_vagas'),
         precosSobMedida(),
+        chavePublica(admin),
       ])
       const livresCativa = (vagas || []).find((v: { pool: string }) => v.pool === 'cativa')?.livres || 0
       let cativa: { weekday: number; time: string }[] = []
@@ -107,6 +115,7 @@ Deno.serve(async (req: Request) => {
         sob_medida: { servicos: sob, visitas: SOB_MEDIDA_VISITAS, tabela_minima: SOB_MEDIDA_TABELA_MINIMA },
         cativa_horarios: cativa,
         contrato: { versao: TERMS_VERSION, url: TERMS_URL, txt: TERMS_TXT_URL, sha256: TERMS_SHA256 },
+        cartao: chave ? { public_key: chave } : null,
       })
     }
 
@@ -152,6 +161,18 @@ Deno.serve(async (req: Request) => {
       if (codigo.length !== 6) return json({ error: 'Digite o código de 6 dígitos que chegou no WhatsApp.' }, 400)
       if (body?.contrato_versao !== TERMS_VERSION || body?.contrato_sha256 !== TERMS_SHA256) return json({ error: 'O contrato foi atualizado. Recarregue a página e leia a versão nova.' }, 409)
       if (aceite.contrato !== true || aceite.regras !== true || aceite.privacidade !== true) return json({ error: 'Para assinar, marque as três confirmações.' }, 400)
+      // v29.266.0 — cobrança automática no cartão (contrato v3, cláusulas 3.2 e 3.5: aceite próprio).
+      const noCartao = body?.pagamento === 'cartao'
+      const cartao = body?.cartao && typeof body.cartao === 'object' ? body.cartao : {}
+      const cvv = digitsOf(cartao.cvv).slice(0, 4)
+      const cpf = digitsOf(cartao.cpf)
+      const encrypted = String(cartao.encrypted || '').trim()
+      if (noCartao) {
+        if (aceite.recorrente !== true) return json({ error: 'Para a cobrança automática, marque a autorização da cobrança mensal no cartão.' }, 400)
+        if (encrypted.length < 100 || encrypted.length > 4000) return json({ error: 'Não foi possível ler o cartão. Confira os dados e tente de novo.' }, 400)
+        if (cvv.length < 3) return json({ error: 'Informe o código de segurança do cartão.' }, 400)
+        if (!cpfValido(cpf)) return json({ error: 'Informe um CPF válido do titular do cartão.' }, 400)
+      }
 
       // Código do WhatsApp
       const { data: rows } = await admin.from('club_phone_codes').select('id, code_hash, attempts, expires_at, used_at')
@@ -167,9 +188,10 @@ Deno.serve(async (req: Request) => {
       // Assinatura viva no mesmo telefone
       const { data: mkeyRow } = await admin.rpc('phone_match_key', { p_phone: phone })
       const mkey = String(mkeyRow || key)
-      const { data: viva } = await admin.from('club_subscriptions').select('id, code, status').eq('phone_mkey', mkey).in('status', ['aguardando_pagamento', 'ativa', 'atrasada']).maybeSingle()
+      const { data: viva } = await admin.from('club_subscriptions').select('id, code, status, pagbank_subscription_id, pagbank_cancelled_at').eq('phone_mkey', mkey).in('status', ['aguardando_pagamento', 'ativa', 'atrasada']).maybeSingle()
       if (viva && viva.status !== 'aguardando_pagamento') return json({ error: 'Este telefone já tem uma assinatura do Clube. Para trocar de plano, fale com a barbearia pelo WhatsApp.' }, 409)
       if (viva) {
+        if (viva.pagbank_subscription_id) await cancelarNoPagBank(admin, viva)
         await admin.from('club_charges').update({ status: 'cancelada' }).eq('subscription_id', viva.id).eq('status', 'pendente')
         await admin.from('club_subscriptions').update({ status: 'expirada', updated_at: new Date().toISOString(), notes: 'Substituída por nova tentativa de assinatura.' }).eq('id', viva.id)
       }
@@ -211,7 +233,7 @@ Deno.serve(async (req: Request) => {
         code, manage_token_hash: await sha256(token), customer_id: perfil && perfil.length ? perfil[0].id : null,
         name: nome, phone, phone_mkey: mkey, email, plan_id: plano.id, visit_items: visitItems, visits_per_cycle: visitas,
         extras_per_cycle: plano.extras_per_cycle || {}, table_value: tabela, price: preco, discount_pct: pct,
-        fixed_weekday: fixedWeekday, fixed_time: fixedTime, payment_method: 'link', status: 'aguardando_pagamento',
+        fixed_weekday: fixedWeekday, fixed_time: fixedTime, payment_method: noCartao ? 'cartao_auto' : 'link', status: 'aguardando_pagamento',
         terms_version: TERMS_VERSION, accepted_at: agora, accept_ip: ipDe(req) || null,
         accept_user_agent: String(req.headers.get('user-agent') || '').slice(0, 300),
         accept_checks: { ...aceite, contrato_sha256: TERMS_SHA256 }, phone_verified_at: agora,
@@ -224,6 +246,30 @@ Deno.serve(async (req: Request) => {
 
       const reference = `CLB-${code}-1`
       const gerenciar = linkGerenciar(code, token)
+      const cativaTxt = fixedWeekday ? ` · ${DIAS_SEMANA_PT[fixedWeekday]} ${fixedTime}` : ''
+
+      if (noCartao) {
+        const r = await criarAssinaturaCartao(admin, { code, nomePlano: plano.name, valorCents: Math.round(preco * 100), nome, email, phone, cpf, encrypted, cvv })
+        if (!r.ok) {
+          console.error('[clube] cartão', code, r.mensagem)
+          await admin.from('club_subscriptions').delete().eq('id', sub.id)
+          // O código do WhatsApp volta a valer: dá para tentar outro cartão ou o link sem pedir outro.
+          await admin.from('club_phone_codes').update({ used_at: null }).eq('id', otp.id)
+          return json({ error: r.recusado
+            ? 'O cartão não foi aprovado e nada foi cobrado. Confira os dados, tente outro cartão ou escolha pagar pelo link (Pix ou cartão).'
+            : 'A cobrança no cartão está fora do ar agora e nada foi cobrado. Tente de novo em alguns minutos ou escolha pagar pelo link.' }, r.recusado ? 402 : 503)
+        }
+        await admin.from('club_subscriptions').update({ pagbank_subscription_id: r.subscriptionId, pagbank_plan_id: r.planId, card_brand: r.brand, card_last4: r.last4, updated_at: new Date().toISOString() }).eq('id', sub.id)
+        await admin.from('club_charges').insert({ subscription_id: sub.id, seq: 1, amount: preco, status: 'pendente', reference_id: reference, pagbank_invoice_id: r.invoiceId })
+        if (r.situacao === 'paga') {
+          // Mesma ativação do pagamento por link: boas-vindas no WhatsApp, push, Cadeira Cativa.
+          await processarPagamentoClube(admin, reference, [{ status: 'PAID', id: r.invoiceId, payment_method: { type: 'CREDIT_CARD' } }], null)
+          return json({ ok: true, code, ativa: true, gerenciar })
+        }
+        await pushJuliano('Clube do Ju: nova assinatura (cartão)', `${nome} · ${plano.name}${cativaTxt} · ${money(preco)}/mês. Cobrança no cartão em processamento.`, `clube-${code}`)
+        return json({ ok: true, code, processando: true, gerenciar })
+      }
+
       const ck = await criarCheckoutClube({ reference, amountCents: Math.round(preco * 100), descricao: `Clube do Ju — ${plano.name} (1ª mensalidade)`, redirectUrl: `${gerenciar}&pago=1` })
       if (!ck.ok) {
         await admin.from('club_subscriptions').delete().eq('id', sub.id)
@@ -234,7 +280,6 @@ Deno.serve(async (req: Request) => {
         pagbank_checkout_id: ck.checkoutId, pay_link: ck.payUrl, expires_at: ck.expiresAt,
       })
       await enviarWhats(admin, phone, `${textoLinkPagamento({ nome, plano: plano.name, valor: preco, link: ck.payUrl })}\n\nSua assinatura, a qualquer momento: ${gerenciar}`)
-      const cativaTxt = fixedWeekday ? ` · ${DIAS_SEMANA_PT[fixedWeekday]} ${fixedTime}` : ''
       await pushJuliano('Clube do Ju: nova assinatura', `${nome} · ${plano.name}${cativaTxt} · ${money(preco)}/mês. Aguardando o pagamento.`, `clube-${code}`)
       return json({ ok: true, code, pay_url: ck.payUrl, gerenciar })
     }
@@ -243,7 +288,10 @@ Deno.serve(async (req: Request) => {
       const sub = await acharPorLink()
       if (!sub) return json({ error: 'Link inválido.' }, 401)
       const { data: resumo } = await admin.rpc('club_summary', { p_subscription: sub.id })
-      return json({ ok: true, assinatura: resumo, contrato: { versao: sub.terms_version, url: TERMS_URL } })
+      const pagamento = sub.payment_method === 'cartao_auto'
+        ? { forma: 'cartao', bandeira: sub.card_brand || null, final: sub.card_last4 || null }
+        : { forma: 'link' }
+      return json({ ok: true, assinatura: resumo, pagamento, contrato: { versao: sub.terms_version, url: TERMS_URL } })
     }
 
     if (action === 'pagar') {
@@ -268,6 +316,8 @@ Deno.serve(async (req: Request) => {
       if (!['aguardando_pagamento', 'ativa', 'atrasada'].includes(sub.status)) return json({ ok: true, ja_encerrada: true })
       if (sub.cancel_at_cycle_end) return json({ ok: true, ja_cancelada: true, fim: sub.current_cycle_end })
       await admin.from('club_charges').update({ status: 'cancelada' }).eq('subscription_id', sub.id).eq('status', 'pendente')
+      // Cartão: para de cobrar já (cláusula 8.2). Se o PagBank falhar agora, o clube-ciclo tenta de novo.
+      if (sub.pagbank_subscription_id) await cancelarNoPagBank(admin, sub)
 
       const dentroDos7 = Date.now() - new Date(sub.accepted_at).getTime() <= 7 * 24 * 60 * 60 * 1000
       if (sub.status === 'aguardando_pagamento' || dentroDos7 || sub.status === 'atrasada') {

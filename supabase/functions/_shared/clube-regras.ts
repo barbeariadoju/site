@@ -4,12 +4,13 @@
 // da régua em assets/js/clube.js. Mudou aqui, muda lá (o teste tests/unit/clube-regras.spec.js confere).
 // Nenhum texto para cliente leva emoji (regra de 01/09/2026); a saída passa pelo semEmoji de qualquer jeito.
 
-export const TERMS_VERSION = 'v2'
+export const TERMS_VERSION = 'v3'
 export const TERMS_URL = 'https://www.barbeariadoju.com.br/clube/contrato/'
-export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v2.txt'
+export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v3.txt'
+// v29.266.0: v3 = v2 com a cobrança automática no cartão (3.2, 3.5 e 12.2). v2 e v1 ficam guardados intactos.
 // v29.238.0: v2 = v1 sem a Cadeira Cativa (tirada antes do lançamento). SHA-256 do clube/contrato/v2.txt com quebras de linha LF (.gitattributes fixa eol=lf).
 // O teste recalcula e falha se o texto mudar sem trocar a versão.
-export const TERMS_SHA256 = 'cf820c75386cebeaec924886e9ea961e94ede4783d910a6f08d0faeddca59311'
+export const TERMS_SHA256 = 'b316b7f82e7669095544dad6833fe83f38a1524e72a67382d434f945d727ad94'
 export const PAGINA_CLUBE = 'https://www.barbeariadoju.com.br/clube/'
 export const PAGINA_MINHA = 'https://www.barbeariadoju.com.br/clube/minha-assinatura/'
 
@@ -79,6 +80,12 @@ export const textoRenovado = (d: { nome: string; inicio: string; fim: string }) 
 export const textoEmAberto = (d: { nome: string; link: string | null }) =>
   `Olá, ${primeiro(d.nome)}. A mensalidade do seu Clube do Ju ainda está em aberto. Enquanto isso, os horários marcados continuam na agenda, pelo preço normal da tabela.` +
   (d.link ? `\n\nPara reativar, é só pagar por este link:\n${d.link}` : '') +
+  `\n\nSem pagamento em 15 dias, a assinatura é encerrada, sem nenhum custo.`
+
+// v29.266.0 — cobrança automática recusada (contrato v3, cláusula 3.5).
+export const textoCartaoRecusado = (d: { nome: string }) =>
+  `Olá, ${primeiro(d.nome)}. A mensalidade do seu Clube do Ju não foi aprovada no cartão cadastrado. O PagBank vai tentar cobrar de novo nos próximos dias. Enquanto isso, os horários marcados continuam na agenda, pelo preço normal da tabela.` +
+  `\n\nSe quiser trocar o cartão ou pagar por Pix, é só responder esta mensagem.` +
   `\n\nSem pagamento em 15 dias, a assinatura é encerrada, sem nenhum custo.`
 
 export const textoEncerrada = (d: { nome: string }) =>

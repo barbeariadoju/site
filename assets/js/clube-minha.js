@@ -88,6 +88,9 @@
     if (Array.isArray(itens) && itens.length) linhas.push(['Cada visita', itens.join(' + ')])
     if (preco != null) linhas.push(['Mensalidade', money(preco) + ' por mês'])
     if (inicio && fim) linhas.push(['Ciclo atual', `${ddmm(inicio)} a ${ddmm(fim)}`])
+    // v29.266.0 — cobrança automática no cartão: mostra o cartão e não oferece link de pagamento.
+    const noCartao = a.pagamento && a.pagamento.forma === 'cartao'
+    if (noCartao) linhas.push(['Pagamento', `Cartão${a.pagamento.bandeira ? ' ' + String(a.pagamento.bandeira).toUpperCase() : ''}${a.pagamento.final ? ' final ' + a.pagamento.final : ''}, cobrança automática todo mês`])
     if (cativa && wd && fixo) linhas.push(['Horário fixo', `toda ${DIA_ISO[wd] || ''} às ${hora(fixo)}`])
     $('m-dados').innerHTML = linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')
 
@@ -118,7 +121,13 @@
     // Pagamento
     const pend = pick(a, 'cobranca_pendente', 'pendente', 'pending_charge')
     const pagarBloco = $('m-pagar-bloco')
-    if (VIVAS.includes(status) && (pend || status === 'aguardando_pagamento' || status === 'atrasada') && !(cancelFim && !pend)) {
+    if (noCartao) {
+      pagarBloco.hidden = !(status === 'aguardando_pagamento' || status === 'atrasada')
+      $('m-pagar').hidden = true
+      $('m-pagar-texto').textContent = status === 'atrasada'
+        ? 'A mensalidade não foi aprovada no cartão. O PagBank tenta de novo nos próximos dias. Para trocar o cartão ou pagar por Pix, fale com a barbearia pelo WhatsApp.'
+        : 'O pagamento no cartão está em análise no PagBank. A confirmação chega pelo WhatsApp.'
+    } else if (VIVAS.includes(status) && (pend || status === 'aguardando_pagamento' || status === 'atrasada') && !(cancelFim && !pend)) {
       pagarBloco.hidden = false
       const valor = pend && typeof pend === 'object' ? pick(pend, 'amount', 'valor') : (typeof pend === 'number' ? pend : preco)
       $('m-pagar-texto').textContent = `Há uma mensalidade em aberto${valor != null ? ' de ' + money(valor) : ''}. Pague por Pix ou cartão na página do PagBank.`
@@ -150,7 +159,7 @@
     try { r = await api({ action: 'status' }) } catch (e) { r = { error: 'rede' } }
     if (r.error === 'rede') { invalido('Sem conexão para carregar a sua assinatura agora.'); return null }
     if (r.error || !r.ok || !r.assinatura) { invalido(r.error === 'Link inválido.' ? 'Este link não é válido.' : (r.error || 'Não foi possível carregar a sua assinatura.')); return null }
-    render(Object.assign({}, r.assinatura, { contrato: r.contrato }))
+    render(Object.assign({}, r.assinatura, { contrato: r.contrato, pagamento: r.pagamento || null }))
     return r.assinatura
   }
 

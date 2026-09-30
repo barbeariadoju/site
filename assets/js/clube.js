@@ -465,7 +465,7 @@ import { toggleServiceSelection } from '/assets/js/service-rules.js'
         <dt>Plano</dt><dd><strong>${esc(p.name)}</strong></dd>
         <dt>O que inclui</dt><dd>${esc(linhaInclui())}</dd>
         <dt>Mensalidade</dt><dd><strong>${money(valorAtual())} por mês</strong></dd>
-        <dt>Pagamento</dt><dd>Ciclo mensal pago adiantado, por Pix ou cartão, pelo link de pagamento do PagBank. O ciclo começa no dia em que o pagamento é confirmado e dura um mês. O link da renovação chega pelo WhatsApp até 3 dias antes do fim do ciclo.</dd>
+        <dt>Pagamento</dt><dd id="resumo-pagamento"></dd>
       </dl>
       <div class="clube-destaque">
         <h3>Regras que limitam o uso (leia com atenção)</h3>
@@ -486,7 +486,67 @@ import { toggleServiceSelection } from '/assets/js/service-rules.js'
         <li>Reajuste só com aviso de 30 dias. O ciclo já pago nunca muda de preço.</li>
       </ul>
       <p>Contrato versão ${esc(c.versao || 'v2')}. Código de integridade (SHA-256): <span class="clube-hash">${esc(c.sha256 || '')}</span></p>`
-    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v2' })
+    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v3' })
+    atualizarFormaPag()
+  }
+
+  // ---------- Forma de pagamento (v29.266.0) ----------
+  // Cartão = cobrança automática (API de Pagamentos Recorrentes do PagBank). O cartão é criptografado
+  // aqui, com o SDK oficial (servido do próprio site) e a chave pública que 'planos' devolve; o número
+  // nunca sai do navegador em claro. Sem chave (PagBank fora do ar), só o link aparece.
+  const cartaoDisponivel = () => Boolean(estado.dados.cartao && estado.dados.cartao.public_key)
+  const formaPag = () => (cartaoDisponivel() && (secAssinar.querySelector('input[name="forma-pag"]:checked') || {}).value === 'cartao' ? 'cartao' : 'link')
+  const atualizarFormaPag = () => {
+    const disp = cartaoDisponivel()
+    $('opcao-cartao').hidden = !disp
+    if (!disp) { const l = secAssinar.querySelector('input[name="forma-pag"][value="link"]'); if (l) l.checked = true }
+    const cartao = formaPag() === 'cartao'
+    $('campos-cartao').hidden = !cartao
+    $('valor-recorrente').textContent = money(valorAtual())
+    $('btn-assinar').textContent = cartao ? 'Assinar e pagar no cartão' : 'Assinar e ir para o pagamento'
+    const dd = $('resumo-pagamento')
+    if (dd) dd.textContent = cartao
+      ? 'Cartão de crédito com cobrança automática: a primeira mensalidade é cobrada agora e as seguintes no mesmo cartão, no dia em que começa cada ciclo, até você cancelar. O ciclo dura um mês.'
+      : 'Ciclo mensal pago adiantado, por Pix ou cartão, pelo link de pagamento do PagBank. O ciclo começa no dia em que o pagamento é confirmado e dura um mês. O link da renovação chega pelo WhatsApp até 3 dias antes do fim do ciclo.'
+  }
+  secAssinar.querySelectorAll('input[name="forma-pag"]').forEach((r) => r.addEventListener('change', atualizarFormaPag))
+  const mascara = (id, fn) => $(id).addEventListener('input', (e) => { const v = fn(e.target.value); if (v !== e.target.value) e.target.value = v })
+  mascara('f-cartao-numero', (v) => digits(v).slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 '))
+  mascara('f-cartao-validade', (v) => { const d = digits(v).slice(0, 6); return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d })
+  mascara('f-cartao-cvv', (v) => digits(v).slice(0, 4))
+  mascara('f-cartao-cpf', (v) => { const d = digits(v).slice(0, 11); return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2') })
+  const cpfValido = (raw) => {
+    const c = digits(raw)
+    if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false
+    const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += Number(c[i]) * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r }
+    return dv(9) === Number(c[9]) && dv(10) === Number(c[10])
+  }
+  // Devolve { cartao } pronto para o servidor, ou { erro, campo }.
+  const lerCartao = () => {
+    const numero = digits($('f-cartao-numero').value)
+    const nome = $('f-cartao-nome').value.trim().replace(/\s+/g, ' ')
+    const val = digits($('f-cartao-validade').value)
+    const cvv = digits($('f-cartao-cvv').value)
+    const cpf = digits($('f-cartao-cpf').value)
+    const mes = val.slice(0, 2)
+    let ano = val.slice(2)
+    if (ano.length === 2) ano = `20${ano}`
+    if (numero.length < 13) return { erro: 'Confira o número do cartão.', campo: 'f-cartao-numero' }
+    if (nome.length < 3) return { erro: 'Informe o nome impresso no cartão.', campo: 'f-cartao-nome' }
+    if (!(Number(mes) >= 1 && Number(mes) <= 12) || ano.length !== 4) return { erro: 'Informe a validade no formato MM/AA.', campo: 'f-cartao-validade' }
+    if (cvv.length < 3) return { erro: 'Informe o código de segurança do cartão.', campo: 'f-cartao-cvv' }
+    if (!cpfValido(cpf)) return { erro: 'Informe um CPF válido do titular do cartão.', campo: 'f-cartao-cpf' }
+    if (!$('aceite-recorrente').checked) return { erro: 'Para a cobrança automática, marque a autorização da cobrança mensal no cartão.', campo: 'aceite-recorrente' }
+    const sdk = window.PagSeguro
+    if (!sdk || typeof sdk.encryptCard !== 'function') return { erro: 'O módulo seguro do cartão não carregou. Recarregue a página ou escolha pagar pelo link.', campo: 'f-cartao-numero' }
+    let r
+    try { r = sdk.encryptCard({ publicKey: estado.dados.cartao.public_key, holder: nome, number: numero, expMonth: mes, expYear: ano, securityCode: cvv }) } catch (e) { r = { hasErrors: true } }
+    if (!r || r.hasErrors || !r.encryptedCard) {
+      const cod = (r && r.errors && r.errors[0] && r.errors[0].code) || ''
+      const msg = /NUMBER|CARD_NUMBER/i.test(cod) ? 'Confira o número do cartão.' : /EXP/i.test(cod) ? 'Confira a validade do cartão.' : /SECURITY/i.test(cod) ? 'Confira o código de segurança.' : /HOLDER/i.test(cod) ? 'Confira o nome impresso no cartão.' : 'Confira os dados do cartão.'
+      return { erro: msg, campo: 'f-cartao-numero' }
+    }
+    return { cartao: { encrypted: r.encryptedCard, cvv, cpf } }
   }
 
   // Envio final
@@ -500,13 +560,22 @@ import { toggleServiceSelection } from '/assets/js/service-rules.js'
     const p = estado.plano
     if (p.kind === 'sob_medida' && !estado.sob.cota) { erro('passo3-erro', 'Monte o seu Sob Medida de novo na lista de planos.'); return }
     const c = estado.dados.contrato || {}
+    const forma = formaPag()
+    let cartao = null
+    if (forma === 'cartao') {
+      const lido = lerCartao()
+      if (lido.erro) { erro('passo3-erro', lido.erro); const el = $(lido.campo); if (el) el.focus(); return }
+      cartao = lido.cartao
+    }
     const payload = {
       action: 'assinar', plano: p.id,
       nome: $('f-nome').value.trim().replace(/\s+/g, ' '), telefone: digits($('f-telefone').value), email: $('f-email').value.trim(),
       codigo: digits($('f-codigo').value),
-      aceite: { contrato: true, regras: true, privacidade: true },
+      aceite: { contrato: true, regras: true, privacidade: true, recorrente: forma === 'cartao' },
       contrato_versao: c.versao, contrato_sha256: c.sha256,
+      pagamento: forma,
     }
+    if (cartao) payload.cartao = cartao
     if (p.kind === 'sob_medida') { payload.itens = estado.sob.cota.itens; payload.visitas = estado.sob.cota.visitas }
     if (p.kind === 'cativa') payload.cativa = { dia: estado.cativa.dia, hora: estado.cativa.hora }
     const valor = valorAtual()
@@ -517,10 +586,21 @@ import { toggleServiceSelection } from '/assets/js/service-rules.js'
     try { r = await api(payload) } catch (err) { r = { error: 'Sem conexão agora. Nada foi cobrado. Tente de novo em instantes.' } }
     if (r.error || !r.ok) {
       erro('passo3-erro', r.error || 'Não foi possível concluir agora. Tente de novo em instantes.')
-      estado.enviando = false; b.disabled = false; b.textContent = 'Assinar e ir para o pagamento'
+      estado.enviando = false; b.disabled = false; atualizarFormaPag()
       return
     }
     const fim = $('assinar-fim')
+    // Cartão: nada de redirecionar. Ativa na hora (ou fica em análise e a confirmação chega no WhatsApp).
+    if (r.ativa || r.processando) {
+      $('f-cartao-numero').value = ''; $('f-cartao-cvv').value = ''
+      const gerenciar = /^https:\/\//.test(String(r.gerenciar || '')) ? r.gerenciar : ''
+      fim.innerHTML = r.ativa
+        ? `<h3>Assinatura ativa</h3><p>Pagamento de ${money(valor)} aprovado no cartão. Bem-vindo ao Clube do Ju. As próximas mensalidades são cobradas no mesmo cartão, no dia em que começa cada ciclo, até você cancelar.</p><p>A confirmação, com as regras e o link da sua assinatura, foi enviada para o seu WhatsApp.</p>${gerenciar ? `<p><a class="btn primary" href="${esc(gerenciar)}">Ver minha assinatura</a></p>` : ''}`
+        : `<h3>Pagamento em análise</h3><p>O PagBank está confirmando o pagamento no cartão. Assim que for aprovado, a confirmação chega no seu WhatsApp. Não precisa assinar de novo.</p>${gerenciar ? `<p><a class="btn" href="${esc(gerenciar)}">Ver minha assinatura</a></p>` : ''}`
+      irPara('fim'); focarTopo(secAssinar)
+      push(r.ativa ? 'clube_assinatura_ativa_cartao' : 'clube_assinatura_cartao_analise', { plano: p.id, valor })
+      return
+    }
     if (r.lista_espera) {
       fim.innerHTML = `<h3>As vagas acabaram</h3><p>As vagas do plano ${esc(p.name)} acabaram agora há pouco. Você entrou na lista de espera e avisamos pelo WhatsApp quando abrir uma vaga. Nada foi cobrado.</p>`
       irPara('fim'); focarTopo(secAssinar); return

@@ -10,8 +10,13 @@
 //      (a Evolution não é API oficial; envio em massa é o que derruba número).
 // Autenticação: x-webhook-secret (mesma do resto dos crons). Corpo opcional { dry_run: true }.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { textoRenovacao, textoEmAberto, textoEncerrada, textosAnuncio } from '../_shared/clube-regras.ts'
+// v29.266.0 — cobrança automática no cartão (payment_method 'cartao_auto'): antes de tudo, confere no
+// PagBank as faturas de quem está perto da renovação (sincronizarCartao) e cancela lá qualquer assinatura
+// que já acabou aqui (não importa por onde foi cancelada). Cartão não recebe link de renovação, e só fica
+// "em aberto" um dia depois do vencimento (o PagBank cobra no dia em que o ciclo novo começa).
+import { textoRenovacao, textoEmAberto, textoEncerrada, textosAnuncio, textoCartaoRecusado } from '../_shared/clube-regras.ts'
 import { hojeSP, somaDias, fimDoCicloAncorado, criarCheckoutClube, enviarWhats, linkGerenciar, tokenDoCodigo, pushJuliano } from '../_shared/clube-pagbank.ts'
+import { sincronizarCartao, cancelarNoPagBank } from '../_shared/clube-recorrencia.ts'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } })
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -28,7 +33,18 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } })
   const hoje = hojeSP()
   const agora = new Date().toISOString()
-  const log: Record<string, unknown[]> = { expiradas: [], viradas: [], em_aberto: [], encerradas: [], canceladas: [], renovacoes: [], anuncio: [] }
+  const log: Record<string, unknown[]> = { cartao_sync: [], cartao_cancelado: [], expiradas: [], viradas: [], em_aberto: [], encerradas: [], canceladas: [], renovacoes: [], anuncio: [] }
+
+  // 0. Cartão: faturas pagas no PagBank que ainda não estão aqui (1ª em processamento, renovação, retentativa).
+  const { data: noCartao } = await admin.from('club_subscriptions').select('*').eq('payment_method', 'cartao_auto').not('pagbank_subscription_id', 'is', null).in('status', ['aguardando_pagamento', 'ativa', 'atrasada'])
+  for (const s of noCartao || []) {
+    const pertoDaRenovacao = s.status !== 'ativa' || (s.current_cycle_end && s.current_cycle_end <= somaDias(hoje, 1))
+    if (!pertoDaRenovacao || s.cancel_at_cycle_end || dryRun) continue
+    try {
+      const r = await sincronizarCartao(admin, s)
+      if (r.novas) log.cartao_sync.push({ code: s.code, novas: r.novas })
+    } catch (e) { console.error('[clube-ciclo] sync cartão', s.code, e) }
+  }
 
   // 1. Primeira mensalidade não paga em 48 h
   const { data: pendentes } = await admin.from('club_subscriptions').select('id, code').eq('status', 'aguardando_pagamento').lt('created_at', new Date(Date.now() - 48 * 3600 * 1000).toISOString())
@@ -56,10 +72,17 @@ Deno.serve(async (req: Request) => {
       if (!dryRun) await admin.from('club_subscriptions').update({ current_cycle_start: paga.cycle_start, current_cycle_end: paga.cycle_end, updated_at: agora }).eq('id', s.id)
       continue
     }
+    // Cartão: o PagBank cobra no dia em que o ciclo novo começa; só fica em aberto no dia seguinte.
+    if (s.payment_method === 'cartao_auto' && hoje <= proximo) continue
     log.em_aberto.push(s.code)
     if (dryRun) continue
     await admin.rpc('club_uncover_future', { p_subscription: s.id, p_from: proximo })
     await admin.from('club_subscriptions').update({ status: 'atrasada', updated_at: agora }).eq('id', s.id)
+    if (s.payment_method === 'cartao_auto') {
+      await enviarWhats(admin, s.phone, textoCartaoRecusado({ nome: s.name }))
+      await pushJuliano('Clube do Ju: cartão recusado', `${s.name}: a mensalidade não passou no cartão. O PagBank tenta de novo; horários seguem pelo preço normal.`, `clube-aberto-${s.code}`)
+      continue
+    }
     const { data: ch } = await admin.from('club_charges').select('pay_link, expires_at').eq('subscription_id', s.id).eq('status', 'pendente').order('seq', { ascending: false }).limit(1).maybeSingle()
     const link = ch?.pay_link && new Date(ch.expires_at).getTime() > Date.now() ? ch.pay_link : linkGerenciar(s.code, await tokenDoCodigo(s.code))
     await enviarWhats(admin, s.phone, textoEmAberto({ nome: s.name, link }))
@@ -76,7 +99,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 4. Link da renovação, 3 dias antes do fim do ciclo
-  const { data: renovar } = await admin.from('club_subscriptions').select('*').eq('status', 'ativa').eq('cancel_at_cycle_end', false).lte('current_cycle_end', somaDias(hoje, 3)).gte('current_cycle_end', hoje)
+  const { data: renovar } = await admin.from('club_subscriptions').select('*').eq('status', 'ativa').eq('cancel_at_cycle_end', false).neq('payment_method', 'cartao_auto').lte('current_cycle_end', somaDias(hoje, 3)).gte('current_cycle_end', hoje)
   for (const s of renovar || []) {
     const inicio = somaDias(s.current_cycle_end, 1)
     const { data: jaTem } = await admin.from('club_charges').select('id').eq('subscription_id', s.id).eq('cycle_start', inicio).in('status', ['pendente', 'paga']).maybeSingle()
@@ -96,6 +119,18 @@ Deno.serve(async (req: Request) => {
       pagbank_checkout_id: ck.ok ? ck.checkoutId : null, pay_link: ck.ok ? ck.payUrl : null, expires_at: ck.ok ? ck.expiresAt : null,
     })
     await enviarWhats(admin, s.phone, textoRenovacao({ nome: s.name, plano: plano?.name || 'Clube do Ju', valor: Number(s.price), fimCiclo: s.current_cycle_end, link: ck.ok ? ck.payUrl : gerenciar }))
+  }
+
+  // 4b. Cartão: assinatura que acabou aqui (cancelada, arrependida, expirada, encerrada, ou com
+  // cancelamento pedido para o fim do ciclo) não pode seguir cobrando no PagBank.
+  const { data: paraCancelar } = await admin.from('club_subscriptions').select('id, code, status, cancel_at_cycle_end, pagbank_subscription_id, pagbank_cancelled_at')
+    .not('pagbank_subscription_id', 'is', null).is('pagbank_cancelled_at', null)
+  for (const s of paraCancelar || []) {
+    if (['aguardando_pagamento', 'ativa', 'atrasada'].includes(s.status) && !s.cancel_at_cycle_end) continue
+    log.cartao_cancelado.push(s.code)
+    if (dryRun) continue
+    const ok = await cancelarNoPagBank(admin, s)
+    if (!ok) await pushJuliano('Clube do Ju: cancelar no PagBank', `${s.code}: não consegui cancelar a cobrança automática no PagBank. Tento de novo em 10 minutos; se repetir, cancelar no painel do PagBank.`, `clube-pb-cancel-${s.code}`)
   }
 
   // 5. Mensagem de lançamento para a base (lote pequeno por rodada, intervalo aleatório de 20 a 55 s).

@@ -15,6 +15,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { processarPagamentoClube } from '../_shared/clube-ativacao.ts'
+import { sincronizarCartao } from '../_shared/clube-recorrencia.ts'
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -42,6 +43,23 @@ Deno.serve(async (req) => {
     const raw = await req.text()
     const pagbankToken = Deno.env.get('PAGBANK_TOKEN')
     if (!pagbankToken) return json({ ok: false }, 500)
+
+    // v29.266.0 — aviso da recorrência do Clube ({event:'subscription.*', resource:{reference_id:'CJS-...'}}).
+    // A documentação não diz como ele é assinado, então o corpo NÃO é usado como prova de nada: só serve
+    // de gatilho para perguntar à API do PagBank (com o nosso token) quais faturas estão pagas.
+    try {
+      const aviso = JSON.parse(raw)
+      const ref = String(aviso?.resource?.reference_id || '')
+      if (String(aviso?.event || '').startsWith('subscription.') || ref.startsWith('CJS-')) {
+        const code = ref.startsWith('CJS-') ? ref.slice(4) : ''
+        if (/^CJ-[A-Z0-9]{6}$/.test(code)) {
+          const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+          const { data: sub } = await admin.from('club_subscriptions').select('*').eq('code', code).maybeSingle()
+          if (sub && ['aguardando_pagamento', 'ativa', 'atrasada'].includes(sub.status)) await sincronizarCartao(admin, sub)
+        }
+        return json({ ok: true, recorrencia: true })
+      }
+    } catch { /* não é JSON da recorrência: segue o fluxo normal (e a assinatura abaixo decide) */ }
 
     const received = String(req.headers.get('x-authenticity-token') || '').trim().toLowerCase()
     const expected = await sha256Hex(`${pagbankToken}-${raw}`)

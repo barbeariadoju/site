@@ -198,3 +198,12 @@
   .clube-contrato-texto p{break-inside:avoid}
 }
 .clube-nota-final{margin-top:40px}
+/* v29.266.0 — forma de pagamento e cartão (cobrança automática) na etapa 3 */
+.clube-pagamento{border:0;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:10px}
+.clube-pagamento legend{font-weight:700;margin-bottom:8px;padding:0}
+.clube-pagamento .clube-aceite small{color:var(--muted);font-size:.9rem}
+.clube-cartao{margin:16px 0 0;padding:16px;border:1px solid var(--edge-2);border-radius:var(--r-sm)}
+.clube-cartao[hidden]{display:none}
+.clube-cartao-linha{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:30em}
+.clube-cartao-linha .clube-campo{margin-bottom:16px}
+.clube-cartao .clube-nota{margin:0 0 14px;max-width:34em}
