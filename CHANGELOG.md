@@ -1,3 +1,10 @@
+## 29.274.1 — Volta dos robôs mais devagar: número restringido fica "vigiado" (01/10)
+
+Combinado com o Juliano depois da pergunta *"mesmo enviando poucas mensagens por dia podemos chamar atenção deles?"*. A resposta honesta: sim, menos. Nos 30 dias antes de 01/10 os robôs mandaram ~13 mensagens frias por dia, por meses, sem restrição; o que derrubou foi o pico (50 em 4 h, 48 sem resposta). Mas o número recém-restringido fica mais sensível por algumas semanas, e a Evolution (não oficial) é risco permanente. Só banco (cron e `club_settings`), sem código:
+- **Semana 1 (02-08/10):** só respostas da JuIA e mensagens de quem marcou horário (confirmação, lembrete, rota de chegada, pesquisa pós-atendimento, comprovante). Nenhum marketing.
+- **Calendário novo do `bdj-religar-robos-out26`:** 06/10 aviso de fechamento (necessário, viagem de 15-17/10, teto de 6 por dia) · 09/10 convite de retorno · 13/10 aniversário · 14/10 benefícios · 20/10 reativação (depois da viagem). O job some sozinho em 20/10. A recuperação de pesquisa não volta.
+- **Anúncio do Clube para a base: desligado** (`anuncio_ativo=false`) até a decisão sobre a API oficial da Meta. A fila de 148 continua guardada.
+
 ## 29.274.0 — A JuIA não presume mais o serviço: uma trava só, no ponto em que a reserva nasce (01/10)
 
 **Pedido do Juliano (01/10, depois do caso Sharles):** *"esta semana já foram uns 3 clientes assim, deveríamos fazer com que a JuIA não presuma mais os serviços… tem coisas que são esporádicas como pigmentação… já foram diversas tentativas"*.
