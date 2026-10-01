@@ -109,8 +109,14 @@ Deno.serve(async (request: Request) => {
   }
   out.lembretes_aniversario = lemRes
 
-  // 4. convite para indicar
-  const { data: candidatos, error: candErr } = await admin.rpc('referral_invite_candidates', { p_limit: 10 })
+  // 4. convite para indicar — DESLIGADO na v29.271.0 (01/10/2026). Em 30 dias saíram 50 convites frios e 2
+  // clientes responderam (4%); foi o robô de marketing de maior volume e menor retorno, e o número foi
+  // restringido no mesmo dia por envio em massa. O link de indicação continua no /beneficios.html e a JuIA
+  // explica quando o cliente pergunta. Para religar, volte o p_limit para 10 (decisão do Juliano).
+  const CONVITES_INDICACAO_POR_DIA = 0
+  const { data: candidatos, error: candErr } = CONVITES_INDICACAO_POR_DIA > 0
+    ? await admin.rpc('referral_invite_candidates', { p_limit: CONVITES_INDICACAO_POR_DIA })
+    : { data: [], error: null }
   if (candErr) console.error('[benefits-dispatch] candidatos', candErr)
   const convRes: unknown[] = []
   for (const c of candidatos || []) {

@@ -705,7 +705,19 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 }
 {
   const r = await turno({ msg: 'pode cancelar meu horário', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Carlos Teste'), futuros: [{ id: 'b2', booking_date: dia1, start_time: '10:00:00', service_name: 'Corte de cabelo' }] })
-  checar('R3 pedido explícito de cancelar pede sim/não', /cancelar\? Responda sim ou não/i.test(r.reply), r.reply)
+  // v29.271.0: pedido explícito com um agendamento só cancela direto (era o sim/não até a 29.270).
+  checar('R3 pedido explícito de cancelar cancela direto', cancelou(r) && /Cancelei/.test(r.reply), r.reply)
+}
+// 49. Caso Henrique (01/10/2026, 12h28): "vou ter que desmarcar" com um agendamento só cancela na hora.
+{
+  const r = await turno({ msg: 'Tive um imprevisto aqui vou ter que desmarcar', ai: { intent: 'cancel', reply: 'Ok' }, contexto: {}, nomeWhats: 'Henrique',
+    futuros: [{ id: 'b49', booking_date: hoje, start_time: '14:20:00', service_name: 'Barba Express' }], vagas: { [dia1]: ['10:00'] } })
+  checar('49 desmarcar com 1 agendamento: cancela direto', cancelou(r) && !/Responda sim ou não/.test(r.reply), r.reply)
+}
+// 49b. Pergunta sobre cancelar não cancela nada: continua no sim/não.
+{
+  const r = await turno({ msg: 'Posso desmarcar meu horário?', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Carlos Teste'), futuros: [{ id: 'b2', booking_date: dia1, start_time: '10:00:00', service_name: 'Corte de cabelo' }] })
+  checar('49b pergunta "posso desmarcar?" pede sim/não', !cancelou(r) && /Responda sim ou não/.test(r.reply), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

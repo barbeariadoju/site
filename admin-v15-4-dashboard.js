@@ -37,7 +37,13 @@
     // v29.160.0 (pedido do Juliano, 09/09): caixinhas do dia visíveis ao lado do faturado, mas
     // fora dele — mesma regra do Financeiro (v29.20.0): caixinha é do barbeiro, não da casa.
     const completedTips=completed.reduce((a,x)=>a+Number(x.tip_amount||0),0);
-    setText('metric-revenue-sub',completedTips>0?`concluídos · + ${money(completedTips)} de caixinha, à parte`:'concluídos');
+    // v29.271.0 (pedido do Juliano, 01/10/2026): previsão do dia = o que já foi faturado + o que ainda está
+    // marcado (pendente/confirmado), pelo preço gravado no agendamento, já sem fidelidade, desconto/Clube e
+    // cortesia. Não conta ausência nem cancelado. É o "se todo mundo vier".
+    const aindaMarcado=todayRows.filter(x=>['pending','confirmed'].includes(x.status)).reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)-Number(x.discount_amount||0)))+Number(x.products_price||0),0);
+    const faturado=completed.reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)))+Number(x.products_price||0),0);
+    const previsao=aindaMarcado>0?` · previsão do dia ${money(faturado+aindaMarcado)}`:'';
+    setText('metric-revenue-sub',(completedTips>0?`concluídos · + ${money(completedTips)} de caixinha, à parte`:'concluídos')+previsao);
     const completedServiceCount=completed.reduce((a,x)=>a+String(x.service_name||'').split('+').map(s=>s.trim()).filter(Boolean).length,0);
     const completedDistinctClients=new Set(completed.map(x=>phoneKey(x.customer_phone)).filter(Boolean)).size;
     setText('metric-ticket-medio',completed.length?money(completedRevenue/completed.length):money(0));

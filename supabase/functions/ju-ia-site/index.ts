@@ -2178,11 +2178,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
 *1* — Remarcar
 *2* — Cancelar`
     actions=[{label:'1 — Remarcar',message:'1'},{label:'2 — Cancelar',message:'2'}]
+   }else if(cancelAsk&&!cancelNegated&&!cancelHypothetical&&!/\?/.test(message)&&!/\b(como|qual|quanto|posso|politica|regra|multa|taxa|prazo|antecedencia)\b/.test(normalizedQuestion)){
+    // v29.271.0 — caso Henrique (01/10/2026, 12h28): "Tive um imprevisto aqui vou ter que desmarcar", um
+    // só agendamento, e a JuIA ainda perguntou "é esse que você quer cancelar? Responda sim ou não". Ele
+    // respondeu dez minutos depois; quem não responde deixa o horário preso e vira falta. Pedido
+    // explícito, afirmativo e sem dúvida (sem "?", sem "como/posso/qual a regra") com um agendamento só
+    // não tem o que confirmar: cancela e já oferece outro horário (doCancel). Pergunta sobre cancelamento
+    // ("posso desmarcar?", "como funciona o cancelamento") continua no sim/não. Decisão do Juliano.
+    await doCancel(b.id)
    }else{
    reply=`É o seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} para ${b.service_name} que você quer cancelar? Responda sim ou não.`
    actions=[{label:'Sim, cancelar',message:'Sim, pode cancelar'},{label:'Não, manter',message:'Não, manter o agendamento'}]
-   }
    handoff=false
+   }
+   if(next.pending_cancel_or_reschedule)handoff=false
   }else{
    // "cancela o das 8h" com 2 agendamentos futuros: se o horario citado casa com um so, cancela
    // direto (o cliente ja pediu e ja apontou qual). Senao, lista numerada COM estado.

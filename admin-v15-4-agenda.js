@@ -566,6 +566,10 @@
         const svShow=isCourtesy?0:Math.max(0,baseDesconto-desconto);
         const due=Math.max(0,svShow+pr-paidValue);
         totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · fidelidade −${money(premio)} (${esc(free.name)})`:''}${desconto>0?(clubeValor>0?` · coberto pelo Clube do Ju −${money(desconto)}`:` · desconto −${money(desconto)}${selectedDiscountPct?` (${selectedDiscountPct}%)`:''}`):''} · produtos ${money(pr)}${paidValue>0?` · <em style="display:inline">pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
+        // v29.271.0 — o botão diz o que vai gravar: "Concluir · Pix ✓" (ver a forma pré-marcada lá embaixo).
+        const formaNome={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'}[selectedPayment];
+        const btnOk=modal.querySelector('[data-payment-confirm]');
+        if(btnOk)btnOk.textContent=formaNome&&!isCourtesy?`Concluir · ${formaNome} ✓`:'Concluir ✓';
       };
       const onRestClick=e=>{const btn=e.target.closest('[data-rest-option]');if(!btn)return;selectedRestPayment=selectedRestPayment===btn.dataset.restOption?'':btn.dataset.restOption;loyaltyPick.querySelectorAll('[data-rest-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.restOption===selectedRestPayment));renderTotal()};
       loyaltyPick.addEventListener('click',onRestClick);
@@ -613,6 +617,26 @@
           }
         }).catch(()=>{});
       }
+      // v29.271.0 — pedido do Juliano (01/10/2026): a forma que o cliente costuma usar já vem marcada,
+      // com a dica de onde ela veio. Em 90 dias, 51 dos 81 clientes que vieram 2+ vezes pagaram sempre
+      // igual. O medo dele: "se eu clicar em concluir vai concluir com forma de pagamento errada" — por
+      // isso o botão passa a dizer a forma ("Concluir · Pix ✓", em renderTotal): ele vê o que vai gravar
+      // no próprio dedo que conclui. Só preenche se nada foi escolhido (Pix antecipado, prêmio de
+      // fidelidade, Clube e clique dele mandam) e com pelo menos 2 pagamentos iguais no histórico.
+      let pagamentoTocado=false;
+      if(booking.phone_key&&!prepaid&&!temPremio&&!(clubeValor>0)){
+        sb.from('bookings').select('payment_method').eq('phone_key',booking.phone_key).eq('status','completed').not('payment_method','is',null).neq('payment_method','fidelidade').order('booking_date',{ascending:false}).limit(10).then(({data:hist})=>{
+          if(!hist?.length||modal.hidden||pagamentoTocado||selectedPayment)return;
+          const conta={};hist.forEach(h=>{conta[h.payment_method]=(conta[h.payment_method]||0)+1});
+          const [forma,vezes]=Object.entries(conta).sort((a,b)=>b[1]-a[1])[0];
+          const nome={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro'}[forma];
+          if(!nome||vezes<2)return;
+          selectedPayment=forma;
+          paymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===forma));
+          paymentSlot.insertAdjacentHTML('afterbegin',`<p class="privacy-note" data-payment-hint style="margin:4px 0 8px">Costuma pagar no <b>${nome}</b> (${vezes} de ${hist.length} últimas vezes) — já marcado. Se hoje foi diferente, toque na forma certa.</p>`);
+          renderTotal();
+        }).catch(()=>{});
+      }
       const finish=value=>{modal.hidden=true;cleanup();resolve(value)};
       const onCancel=()=>finish(null);
       const paymentSlot=modal.querySelector('[data-payment-slot]');
@@ -621,6 +645,7 @@
         const btn=e.target.closest('[data-payment-option]');
         if(!btn)return;
         selectedPayment=selectedPayment===btn.dataset.paymentOption?'':btn.dataset.paymentOption;
+        pagamentoTocado=true;paymentSlot.querySelector('[data-payment-hint]')?.remove();
         paymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===selectedPayment));
         {const warn=paymentSlot.querySelector('[data-loyalty-warn]');if(warn)warn.hidden=selectedPayment!=='fidelidade'}
       };
