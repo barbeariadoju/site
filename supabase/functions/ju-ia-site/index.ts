@@ -374,6 +374,9 @@ const greetingNow=()=>{
  return hour<5?'Boa noite':hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite'
 }
 
+// v29.273.0 (caso Juliano Prando): tira da frase o horário que é de um compromisso do cliente ("ultrassom às
+// 7h55", "saio do trabalho 18h") para o extrator não confundir com o horário que ele quer na barbearia.
+const semHorarioDeCompromisso=(text='')=>String(text).replace(/\b(exame|ultrassom|ultra\s?som|ultrason|consulta|medic[oa]|médic[oa]|dentista|reuni[aã]o|trabalho|aula|compromisso|prova|voo|[oô]nibus|entrevista|audi[eê]ncia)\b[^.!?\n]{0,25}?(?:[aà]s\s*)?\d{1,2}(?:[:hH.,;]\d{2}|\s*h(?:s|rs?|oras?)?\b)/gi,' ')
 const extractRequestedTime=(text='')=>{
  // v29.51.0 — caso Luiz André (19/08): "11.00 horas" caía no fallback de hora sem
  // minutos, que casava o "00" antes de "horas" e devolvia 00:00 ("meia-noite já está
@@ -1379,12 +1382,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // não casavam (a frase não COMEÇA com "só"): o combo assumido ficou, a JuIA repetiu a negativa do combo
  // três vezes e caiu no "me embolei". Muleta de abertura ("e", "ok,", "então", "tá") e "pra/um/o" depois
  // do "só" fazem parte da mesma frase.
- if(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*(so|somente|apenas)(?:\s+(?:o|a|um|uma|pra|pro|para|de|do|da))*\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion.replace(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*/,''))){
+ // v29.273.0 — caso Sharles (01/10/2026, 11h49): "8:45h. Seria somente o corte" não começa com "somente", e a
+ // JuIA reservou Corte + Pigmentação (R$ 100) — a pigmentação vinha do convite de retorno. "só/somente/apenas"
+ // no MEIO da frase também vale, desde que o que vem depois dele nomeie um serviço do catálogo (assim "só
+ // amanhã", "somente às 9h" e "só que…" não mexem em nada) e que não seja "não só".
+ const soMeioMatch=normalizedQuestion.match(/(?:^|[\s.,!?;])(?:so|somente|apenas)\s+(?!que\b|pra confirmar|confirmando)((?:(?:o|a|um|uma|pra|pro|para|de|do|da)\s+)*)(.+)$/)
+ const soMeioCauda=soMeioMatch&&!/\bnao\s+(?:so|somente|apenas)\s/.test(normalizedQuestion)?soMeioMatch[2].split(/[.!?;]/)[0].trim():''
+ const soMeio=Boolean(soMeioCauda)&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(soMeioCauda)&&findServicesLoose(soMeioCauda).length>0
+ if((/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*(so|somente|apenas)(?:\s+(?:o|a|um|uma|pra|pro|para|de|do|da))*\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion.replace(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*/,'')))||soMeio){
   // v29.142.0 (bateria W15): "só corte de cabelo de criança" — o parser solto casava "Corte de
   // cabelo"; o modelo já tinha devolvido "Corte de cabelo infantil". O modelo tem prioridade;
   // o parser é o plano B. E criança/infantil no texto força o corte infantil.
   const doModelo=(Array.isArray(ai.updates?.services)?ai.updates.services:[]).map((x:string)=>findService(x)).filter(Boolean)
-  let soEstes=doModelo.length?doModelo:findServicesLoose(message)
+  let soEstes=doModelo.length?doModelo:findServicesLoose(soMeio?soMeioCauda:message)
   if(/\b(crianca|criança|infantil|filho|filha|menino|menina)\b/.test(normalizedQuestion)){
    const inf=findService('Corte de cabelo infantil')
    if(inf)soEstes=[inf,...soEstes.filter((s:any)=>!/corte/i.test(String(s.name)))]
@@ -2395,7 +2405,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    }
   }else if(!next.pending_reschedule_booking_id){
    if(!upcomingBookings.length){
-    reply='Não encontrei nenhum agendamento futuro nesse número para remarcar.'
+    // v29.273.0 — caso Catarina (01/10/2026, 08h35): pediu para remarcar o corte do irmão (marcado em outro
+    // número) e a conversa parou nesta frase; ela teve de pedir de novo para marcar. Quem quer remarcar quer
+    // um horário: a resposta já abre o caminho dos dois jeitos.
+    reply='Não encontrei agendamento futuro neste número. Se o horário foi marcado em outro número, me diga qual. Ou, se preferir, já marco um novo: é só me dizer o dia e o horário.'
     handoff=false
    }else if(upcomingBookings.length===1){
     const b=upcomingBookings[0]
@@ -2404,7 +2417,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // 19:15"), não perguntar de novo "qual dia e horário?" — guardar o horário, assumir o
     // dia do próprio agendamento quando não dito, e pedir só a confirmação (a validação de
     // disponibilidade/horário estendido roda na resposta do "sim").
-    const askedTime=extractRequestedTime(message)
+    // v29.273.0 — caso Juliano Prando (01/10/2026, 10h51): "tenho ultrassom às 7h55… pode ser umas 9h ou
+    // manter 8h30" virou proposta de remarcar para 07:55 — o horário do EXAME, o primeiro que aparecia na
+    // frase. Horário colado num compromisso dele (exame, consulta, trabalho…) sai da leitura antes.
+    const askedTime=extractRequestedTime(semHorarioDeCompromisso(message))
     if(askedTime){
      next.time=askedTime
      if(!next.date)next.date=b.booking_date
@@ -2843,6 +2859,27 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      handoff=false
      return
     }
+    // v29.273.0 — caso Sharles (01/10/2026, 13h02): reserva com Corte + Pigmentação, ele escreveu "E somente
+    // o corte.. blz" e ouviu "Qual serviço você quer no lugar?" — a troca só sabia SUBSTITUIR ou SOMAR, nunca
+    // tirar o que sobrou. "só/somente/apenas X" com X do catálogo vira a lista inteira: confirma "fica só X".
+    // "o corte.. blz": corta na pontuação e tira o artigo da frente, senão o catálogo não reconhece.
+    const caudaSo=(normalizedQuestion.match(/(?:^|[\s.,!?;])(?:so|somente|apenas)\s+(?!que\b)(.+)$/)?.[1]||'').split(/[.!?;]/)[0].replace(/^(?:(?:o|a|um|uma|pra|pro|para|de|do|da)\s+)+/,'').trim()
+    const soQuer=caudaSo&&!/\bnao\s+(?:so|somente|apenas)\s/.test(normalizedQuestion)&&!/\bmais\b|\btambem\b/.test(caudaSo)?findServicesLoose(caudaSo):[]
+    if(!addSignal&&soQuer.length&&soQuer.length<=2){
+     const fica={name:soQuer.map((x:any)=>x.name).join(' + '),price:soQuer.reduce((a:number,x:any)=>a+Number(x.price||0),0),duration:soQuer.reduce((a:number,x:any)=>a+Number(x.duration||0),0)}
+     if(normalize(fica.name)===normalize(String(b.service_name||''))){
+      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já está só com ${fica.name} (${money(fica.price)}). Está tudo certo.`
+      next.pending_change_service_booking_id=null
+      handoff=false
+      return
+     }
+     next.pending_change_service_new_name=fica.name
+     if(soQuer.length>1)next.pending_change_service_composed=fica
+     reply=`Confirmando: no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} fica só ${fica.name} (${money(fica.price)}, aproximadamente ${fica.duration} min), no lugar de "${b.service_name}"? Responda sim ou não.`
+     actions=[{label:'Sim, fica só isso',message:'Sim'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+     handoff=false
+     return
+    }
     if(swapTailService&&normalize(swapTailService.name)!==normalize(String(b.service_name||''))){
      next.pending_change_service_new_name=swapTailService.name
      reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, aproximadamente ${swapTailService.duration} min)? Responda sim ou não.`
@@ -3186,8 +3223,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const previousServices=Array.isArray(state?.services)?state.services:[]
    const modelAdded=pendingOffer.find(n=>n!=='__none__'&&next.services.includes(n)&&!previousServices.includes(n))
    const keywordPick=/(^|\s)nao(\s|$)/.test(normalizedQuestion)?null:pendingOffer.find(n=>n!=='__none__'&&normalizedQuestion.includes(offerKeyword(n)))
+   // v29.273.0 — caso Chaccal (30/09/2026, 13h41): a opção "nenhum" da lista é "Não, pode fechar assim"; ele
+   // escreveu "Pode fechar assim" e ouviu "Qual deles você quer incluir?" — o "pode" contava como sim antes
+   // de alguém olhar o texto da própria opção. Repetir a opção "nenhum" (ou dizer que está bom assim) é recusa.
+   const recusaPorExtenso=/\b(pode fechar|fecha assim|fechar assim|so isso|somente isso|apenas isso|nada mais|mais nada|ta bom assim|esta bom assim|assim mesmo|assim ta bom|assim esta bom|nenhum|nao precisa)\b/.test(normalizedQuestion)
    if(modelAdded||keywordPick){addName=String(modelAdded||keywordPick);resolved=true}
-   else if(simpleNo){declined=true;resolved=true}
+   else if(recusaPorExtenso||simpleNo){declined=true;resolved=true}
    else if(simpleYes){
     // "sim, quero" sem dizer o quê — repete só o pedido do número, sem reabrir a lista inteira.
     reply='Qual deles você quer incluir? Pode me responder só com o número 😊'
@@ -4428,6 +4469,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     intent='other';handoff=false;actions=[]
     reply='Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui.'
    }
+   // v29.273.0 — caso Vivian (01/10/2026, 12h38): respondeu "😉👍🏻" ao anúncio do Clube e o modelo agradeceu
+   // "pela confirmação" — não havia nada a confirmar. Mensagem só de emoji, sem pergunta nossa em aberto, é
+   // um aceno: resposta curta e neutra, nunca "confirmado", nunca oferta.
+   const soEmoji=!String(message).replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}\s!.,]/gu,'').length&&/\p{Extended_Pictographic}/u.test(String(message))
+   if(soEmoji&&semPerguntaAberta&&!escolheuHorarioAgora){
+    intent='other';handoff=false;actions=[]
+    reply='Obrigado! Se precisar de alguma coisa, é só me chamar por aqui.'
+   }
   }
   if(intent==='book'){
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
@@ -5208,6 +5257,20 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  if(!handoff&&verifiedPhone&&prometeRecado(reply)){
   const pushSecretR=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrlR=Deno.env.get('SUPABASE_URL')
   if(pushSecretR&&supabaseUrlR)await fetch(`${supabaseUrlR}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretR},body:JSON.stringify({custom:{title:'Recado de cliente pela JuIA',body:`${String(contextFullName||body?.whatsapp_name||'').trim()||verifiedPhone}: "${String(message).slice(0,160)}"`,url:'/admin-atendimento.html?app=1',tag:`recado-${verifiedPhone}`}})}).catch(()=>{})
+ }
+ // v29.273.0 — caso Henrique (01/10/2026, 09h29): "Marcelo me passou seu contato" e o modelo respondeu "O
+ // Marcelo é muito bem-vindo", como se o cliente fosse o Marcelo; a indicação não foi anotada em lugar
+ // nenhum. Indicação dita em texto não tem o código do link, então quem aplica os R$ 10 é o Juliano no
+ // Concluir (motivo "Indicação: <nome>", o texto que o gatilho de benefícios lê): ele recebe um aviso, uma
+ // vez por conversa, e a frase trocada de pessoa é corrigida.
+ const indicacaoTexto=String(message).match(/\b([A-ZÀ-Ú][a-zà-ú]{2,})\s+(?:me\s+)?(?:passou|deu|indicou|mandou)\s+(?:o\s+)?(?:seu|teu|o)?\s*(?:contato|n[uú]mero|whats(?:app)?|zap)\b/)||String(message).match(/\bindica[cç][aã]o\s+d[oa]\s+([A-ZÀ-Ú][a-zà-ú]{2,})/)
+ if(indicacaoTexto&&!state?.referral_named){
+  const quemIndicou=indicacaoTexto[1]
+  next.referral_named=quemIndicou
+  reply=String(reply||'').replace(new RegExp(`\\b[OoAa]\\s+${quemIndicou}\\s+(?:é|e)\\s+(?:muito\\s+)?bem[- ]vind[oa]\\.?`,'g'),`Que bom que você veio por indicação de ${quemIndicou}.`)
+  const pushSecretInd=Deno.env.get('PUSH_WEBHOOK_SECRET')
+  const supabaseUrlInd=Deno.env.get('SUPABASE_URL')
+  if(pushSecretInd&&supabaseUrlInd)await fetch(`${supabaseUrlInd}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretInd},body:JSON.stringify({custom:{title:'Indicação pelo WhatsApp',body:`${firstName(contextFullName)||String(body?.whatsapp_name||'').trim()||'Cliente novo'} diz que veio por indicação de ${quemIndicou}. Se agendar de terça a quinta, aplique R$ 10 no Concluir com o motivo "Indicação: ${quemIndicou}".`,url:'/admin-agenda.html?app=1',tag:`indicacao-${verifiedPhone||'site'}`}})}).catch(()=>{})
  }
  // v29.212.0 (caso Nuno): quem assina o WhatsApp é o Juliano — "Obrigada" não sai.
  reply=falarNoMasculino(reply)

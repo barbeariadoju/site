@@ -693,6 +693,49 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('48 "Express" escolhido segue a reserva', !/Se quiser marcar um horário/.test(r.reply) && (reservou(r) || /Barba Express/.test(r.reply)), r.reply)
 }
 
+// ---- v29.273.0: revisão da JuIA de 01/10/2026 ----
+// 50. Caso Sharles (11h49): "8:45h. Seria somente o corte" com Corte + Pigmentação no estado (vindo do convite)
+//     reserva SÓ o corte.
+{
+  const r = await turno({ msg: '8:45h. Seria somente o corte', state: { services: ['Corte de cabelo', 'Pigmentação Capilar (Tintura)'], date: dia2, upsell_offer_done: true, name: 'Sharles Teste' },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { date: dia2, time: '08:45' } }, contexto: ctxCliente('Sharles Teste'), vagas: { [dia2]: ['08:45'] } })
+  const reserva = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('50 "somente o corte" no meio da frase tira a pigmentação', reserva ? reserva.args?.p_service_name === 'Corte de cabelo' : (!/Pigmenta/.test(r.reply) && /Corte/.test(r.reply)), { reply: r.reply, servico: reserva?.args?.p_service_name })
+}
+// 51. Caso Sharles (13h02): já reservado Corte + Pigmentação, "E somente o corte.. blz" confirma ficar só o corte.
+{
+  const futuros = [{ id: 'b51', booking_date: dia2, start_time: '08:45:00', service_name: 'Corte de cabelo + Pigmentação Capilar (Tintura)', status: 'confirmed', duration_minutes: 85 }]
+  const r = await turno({ msg: 'E somente o corte.. blz', state: {}, ai: { intent: 'change_service', reply: 'Ok' }, contexto: ctxCliente('Sharles Teste'), futuros })
+  checar('51 depois de reservado, "somente o corte" propõe ficar só o corte', /fica só Corte de cabelo/.test(r.reply) && !/Qual serviço você quer no lugar/.test(r.reply), r.reply)
+}
+// 52. Caso Juliano Prando (10h51): horário do exame não vira proposta de remarcação.
+{
+  const futuros = [{ id: 'b52', booking_date: dia1, start_time: '08:30:00', service_name: 'Raspar a cabeça', status: 'confirmed', duration_minutes: 40 }]
+  const r = await turno({ msg: 'Tenho ultrassom às 7h55, consegue umas 9h?', state: {}, ai: { intent: 'reschedule', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Prando Teste'), futuros, vagas: { [dia1]: ['09:00', '09:15'] } })
+  checar('52 remarcação ignora o horário do exame', !/07:55/.test(r.reply) && /09:00/.test(r.reply), r.reply)
+}
+// 53. Caso Chaccal (30/09): "Pode fechar assim" na lista de complementos é a opção "nenhum".
+{
+  const r = await turno({ msg: 'Pode fechar assim', state: { services: ['Corte de cabelo'], date: dia1, time: '18:00', name: 'Chaccal Teste', upsell_offer_options: ['Sobrancelha Masculina', '__none__'] },
+    ai: { intent: 'book', reply: 'Ok', updates: {} }, contexto: ctxCliente('Chaccal Teste'), vagas: { [dia1]: ['18:00'] } })
+  checar('53 "pode fechar assim" recusa os complementos', !/Qual deles/i.test(r.reply), r.reply)
+}
+// 54. Caso Vivian (12h38): "😉👍🏻" sem pergunta aberta não vira "obrigado pela confirmação".
+{
+  const r = await turno({ msg: '😉👍🏻', state: {}, ai: { intent: 'book', reply: 'Obrigado pela confirmação. 🙏' }, contexto: ctxCliente('Vivian Teste') })
+  checar('54 só emoji: resposta neutra', !/confirma/i.test(r.reply) && /Obrigado/.test(r.reply), r.reply)
+}
+// 55. Caso Henrique (09h29): "Marcelo me passou seu contato" não trata o cliente como Marcelo e anota a indicação.
+{
+  const r = await turno({ msg: 'Marcelo me passou seu contato', state: {}, ai: { intent: 'other', reply: 'Tudo bem por aqui, e você? O Marcelo é muito bem-vindo. Como posso ajudar?' }, contexto: {}, nomeWhats: 'Henrique' })
+  checar('55 indicação: frase corrigida e anotada', !/O Marcelo é muito bem-vindo/.test(r.reply) && /indicação de Marcelo/.test(r.reply) && r.state?.referral_named === 'Marcelo', { reply: r.reply, st: r.state?.referral_named })
+}
+// 56. Caso Catarina (08h35): sem agendamento para remarcar, a resposta já oferece marcar.
+{
+  const r = await turno({ msg: 'Quero remarcar o corte do meu irmão', state: {}, ai: { intent: 'reschedule', reply: 'Ok' }, contexto: ctxCliente('Catarina Teste'), futuros: [] })
+  checar('56 sem agendamento: oferece marcar um novo', /já marco um novo/.test(r.reply), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

@@ -1,3 +1,18 @@
+## 29.273.0 — Revisão da JuIA de 01/10: seis erros de leitura corrigidos
+
+Revisão diária (13 conversas em 24 h). Ninguém que pediu horário ficou sem agendamento, mas seis leituras saíram erradas. Cada uma ganhou cenário no simulador (50 a 56): todos falhavam no código anterior e passam agora (135 ok).
+
+1. **Sharles (11h49), "8:45h. Seria somente o corte" → reservou Corte + Pigmentação (R$ 100).** A pigmentação vinha do convite de retorno. A regra do "só/somente/apenas X = a lista inteira" só valia no começo da frase. Agora vale no meio também, desde que o que vem depois nomeie um serviço (assim "só amanhã", "somente às 9h", "só que" e "não só" não mexem em nada).
+2. **Sharles (13h02), já reservado, "E somente o corte.. blz" → "Qual serviço você quer no lugar?"** A troca de serviço só sabia substituir ou somar. Agora "só X" com X do catálogo confirma "fica só X (R$, min), no lugar de …".
+3. **Juliano Prando (10h51), "tenho ultrassom às 7h55" → proposta de remarcar para 07:55.** Na remarcação, o horário colado num compromisso (exame, ultrassom, consulta, médico, dentista, trabalho, reunião, aula, prova, voo, ônibus, entrevista, audiência) sai da frase antes da leitura (`semHorarioDeCompromisso`).
+4. **Chaccal (30/09), "Pode fechar assim" (o texto da opção "nenhum") → "Qual deles você quer incluir?".** O "pode" contava como sim. Agora repetir a recusa por extenso ("pode fechar", "só isso", "nada mais", "está bom assim", "nenhum") fecha sem complemento.
+5. **Vivian (12h38), "😉👍🏻" ao anúncio do Clube → "Obrigado pela confirmação".** Mensagem só de emoji, sem pergunta nossa em aberto, recebe uma resposta neutra ("Obrigado! Se precisar de alguma coisa, é só me chamar por aqui"), nunca "confirmado".
+6. **Henrique (09h29), "Marcelo me passou seu contato" → "O Marcelo é muito bem-vindo".** O modelo tratou o cliente como o Marcelo, e a indicação não ficou anotada. Agora a frase trocada é corrigida ("Que bom que você veio por indicação de Marcelo"), o estado guarda `referral_named` e o Juliano recebe um push, uma vez por conversa: indicação por texto não tem o código do link, então quem aplica os R$ 10 é ele, no Concluir, com o motivo "Indicação: <nome>" (o texto que o gatilho de benefícios lê).
+7. **Catarina (08h35), remarcar o corte do irmão (marcado em outro número) → "Não encontrei nenhum agendamento".** Ela teve que pedir de novo. A resposta agora pergunta o outro número ou oferece marcar um novo.
+
+- NO AR: `ju-ia-site` v295 (verify_jwt true), OPTIONS 200. Unit 286 ok.
+- **Achado da mesma revisão, sem código:** desde ~13h15 a Evolution está "close" (alerta do `notifications-watchdog` em `integration_alerts`), efeito da restrição. Sem mensagem entrando nem saindo, a JuIA está parada até reconectar (QR code, depois que a restrição acabar). Os 10 anúncios do Clube das 13h10-13h50 constam em `whatsapp_messages` sem `evolution_message_id`, ou seja, não foram entregues.
+
 ## 29.272.0 — Ritmo humano nos robôs: "digitando…", pausa entre envios e teto por rodada (01/10)
 
 **Dica que o Juliano trouxe do Google:** atraso longo e variável entre mensagens e o "digitando…" antes do texto. Nenhum robô fazia isso: cada um mandava a lista do dia em sequência, em segundos.
