@@ -202,7 +202,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 
 // 10. Tratamento no cadastro não vira nome na reserva (16/09, "Reservado! Sr,")
 {
-  const r = await turno({ msg: 'Fica agendado para 13.30 certo', state: { services: ['Corte de cabelo'], date: dia1, name: 'Sr Magno', upsell_offer_done: true },
+  const r = await turno({ msg: 'Fica agendado para 13.30 certo', state: { services: ['Corte de cabelo'], ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] }, date: dia1, name: 'Sr Magno', upsell_offer_done: true },
     ai: { intent: 'book', reply: 'Reservado.', updates: { time: '13:30' } }, contexto: ctxCliente('Sr Magno'), vagas: { [dia1]: ['13:30'] } })
   checar('10 nome: reservou', reservou(r), r.reply)
   checar('10 nome: "Magno", não "Sr"', /Magno/.test(r.reply) && !/\bSr,/.test(r.reply), r.reply)
@@ -245,7 +245,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r1 = await turno({ msg: 'Como vc está de horários, hoje ou amanhã cedo', state: st, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Rogerio Teste', { last_services: 'Barboterapia com vaporizador de ozônio' }), vagas: { [hoje]: ['11:50'], [amanha]: ['08:00'] } })
   checar('14a suposição continua de pé', r1.state?.usual_assumed === true, r1.state?.usual_assumed)
   const r2 = await turno({ msg: 'Sim, serve sim', state: { ...r1.state, time: '11:50', date: hoje }, ai: { intent: 'book', reply: 'Reservado', updates: { time: '11:50', date: hoje } }, contexto: ctxCliente('Rogerio Teste', { last_services: 'Barboterapia com vaporizador de ozônio' }), vagas: { [hoje]: ['11:50'] } })
-  checar('14b pergunta o serviço antes de reservar', !reservou(r2) && /como da última vez/i.test(r2.reply), r2.reply)
+  checar('14b pergunta o serviço antes de reservar (numerada, sem presumir)', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/como da última vez/i.test(r2.reply), r2.reply)
 }
 
 // 15. Barba escolhida dentro do combo não repete a pergunta "qual barba?" (19/09, 10h24 — cliente desistiu)
@@ -329,7 +329,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 // agenda, nenhum pending_* aberto — e a resposta era "Entendi. Se quiser marcar um horário…",
 // com o horário já gravado no estado. Bateu na trave: só o aviso de conversa parada salvou a reserva.
 {
-  const r = await turno({ msg: '18', state: { services: ['Corte de cabelo'], date: dia1, period: 'evening', name: 'Marcelo Teste', upsell_offer_done: true },
+  const r = await turno({ msg: '18', state: { services: ['Corte de cabelo'], ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] }, date: dia1, period: 'evening', name: 'Marcelo Teste', upsell_offer_done: true },
     history: [{ role: 'assistant', content: 'No período da final do dia, estes são todos os horários disponíveis para aproximadamente 45 minutos: 18:00, 18:15, 18:30, 18:45, 19:00. Qual você prefere?' }],
     ai: { intent: 'book', reply: 'Reservado!', updates: { time: '18:00' } }, contexto: ctxCliente('Marcelo Teste'),
     vagas: { [dia1]: ['18:00', '18:15', '18:30', '18:45', '19:00'] } })
@@ -379,7 +379,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('24a suposição fica guardada no estado', r1.state?.usual_assumed === true, r1.state)
   const r2 = await turno({ msg: '10h', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '10:00' } }, contexto: ctx,
     vagas: { [amanha]: ['08:00', '09:00', '10:00'] } })
-  checar('24b o serviço aparece na pergunta que fecha', !reservou(r2) && /Corte de cabelo \+ Sobrancelha Masculina, como da última vez/.test(r2.reply), r2.reply)
+  checar('24b fecha com a pergunta numerada do serviço, sem o de sempre', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/Sobrancelha/.test(r2.reply), r2.reply)
 }
 {
   const r = await turno({ msg: 'tem horário hoje às 14h?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '14:00' } }, contexto: {},
@@ -387,7 +387,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('24c cliente novo: corte suposto sem "(Anotei…)"', !/anotei/i.test(r.reply), r.reply)
   const r2 = await turno({ msg: '13h então', state: r.state, history: [{ role: 'assistant', content: r.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '13:00' } }, contexto: {},
     vagas: { [hoje]: ['13:00', '15:00'] } })
-  checar('24d cliente novo: confirma o corte antes de reservar, sem "como da última vez"', !reservou(r2) && /Reservo Corte de cabelo\?/.test(r2.reply) && !/última vez/.test(r2.reply), r2.reply)
+  checar('24d cliente novo: pergunta o serviço antes de reservar', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/última vez/.test(r2.reply), r2.reply)
   const r3 = await turno({ msg: '1', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: {},
     vagas: { [hoje]: ['13:00', '15:00'] } })
   checar('24e "1" segue a reserva (reserva ou pede o nome)', reservou(r3) || /nome/i.test(r3.reply), r3.reply)
@@ -472,7 +472,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r3 = await turno({ msg: 'Final do dia', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { period: 'evening' } }, contexto: ctx, vagas })
   checar('30b "final do dia": lista os horários do fim do dia', /17:00|18:00|18:30|19:00/.test(r3.reply) && !/manhã, tarde ou final do dia/.test(r3.reply), r3.reply)
   const r4 = await turno({ msg: '18h', state: r3.state, history: [{ role: 'assistant', content: r3.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '18:00' } }, contexto: ctx, vagas })
-  checar('30c "18h": fecha (confirma o serviço de sempre ou reserva)', reservou(r4) || /como da última vez/.test(r4.reply), r4.reply)
+  checar('30c "18h": fecha com a pergunta numerada do serviço', reservou(r4) || /Qual serviço vai ser\?/.test(r4.reply), r4.reply)
 }
 
 // 31. Convite do Instagram no fechamento da conversa (23/09, ideia do Juliano a partir do WhatsApp de um
@@ -639,7 +639,8 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const ctx = ctxCliente('Jose Teste', { last_services: 'Corte de cabelo + Barba na navalha com toalha quente' })
   const r = await turno({ msg: 'Tem horário amanhã?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } }, contexto: ctx,
     vagas: { [amanha]: ['09:15', '11:15'] } })
-  checar('43a suposição = combo "Corte + Barba na navalha com toalha quente"', (r.state?.services || []).join() === 'Corte + Barba na navalha com toalha quente', r.state?.services)
+  // v29.274.0: o histórico não vira mais serviço; a consulta mostra horários sem citar serviço.
+  checar('43a sem suposição do histórico: mostra horários', /09:15|11:15/.test(r.reply) && !/navalha|Barba/.test(r.reply), r.reply)
   const r2 = await turno({ msg: 'Não tem mais cedo??', state: { ...r.state, date: amanha }, history: [{ role: 'assistant', content: 'Amanhã o primeiro horário livre é 11:15.' }],
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha, time: '11:15' } }, contexto: ctx, vagas: { [amanha]: ['11:15'] } })
   checar('43b "mais cedo?" nunca é respondido com "Sim"', !/^Sim\b/.test(r2.reply), r2.reply)
@@ -734,6 +735,33 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 {
   const r = await turno({ msg: 'Quero remarcar o corte do meu irmão', state: {}, ai: { intent: 'reschedule', reply: 'Ok' }, contexto: ctxCliente('Catarina Teste'), futuros: [] })
   checar('56 sem agendamento: oferece marcar um novo', /já marco um novo/.test(r.reply), r.reply)
+}
+
+// ---- v29.274.0: a JuIA não presume o serviço (Juliano, 01/10/2026) ----
+// 57. Histórico "Pezinho + Pigmentação" (o do Sharles): pede horário sem dizer o serviço → mostra horários,
+//     fecha com a pergunta numerada, e o "1" reserva SÓ o corte.
+{
+  const ctx = ctxCliente('Sharles Teste', { last_services: 'Pezinho (acabamento) + Pigmentação Capilar (Tintura)' })
+  const vagas = { [dia2]: ['08:45', '10:00'] }
+  const r1 = await turno({ msg: 'Tem horário sábado cedo?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia2 } }, contexto: ctx, vagas })
+  checar('57a consulta não cita pigmentação nem pezinho', !/Pigmenta|Pezinho/.test(r1.reply) && /08:45/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: '8:45', state: r1.state, history: [{ role: 'user', content: 'Tem horário sábado cedo?' }, { role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '08:45' } }, contexto: ctx, vagas })
+  checar('57b não reserva sem o serviço dito: pergunta numerada', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: '1', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'book', reply: 'Reservado', updates: {} }, contexto: ctx, vagas })
+  const reserva = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('57c "1" reserva só o Corte de cabelo', reserva?.args?.p_service_name === 'Corte de cabelo', { reply: r3.reply, servico: reserva?.args?.p_service_name })
+}
+// 58. O modelo enfia serviço que ninguém pediu (pigmentação) num pedido sem serviço → a trava segura.
+{
+  const r = await turno({ msg: 'pode ser amanhã 10h', state: { name: 'Teste Trava', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Reservado', updates: { services: ['Corte de cabelo', 'Pigmentação Capilar (Tintura)'], date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Trava'), vagas: { [amanha]: ['10:00'] } })
+  checar('58 trava: serviço não dito não vira reserva', !reservou(r) && /Qual serviço vai ser\?/.test(r.reply), r.reply)
+}
+// 59. Ele disse "corte" e o modelo somou pigmentação → reserva só o corte.
+{
+  const r = await turno({ msg: 'quero um corte amanhã 10h', state: { name: 'Teste Trava', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Reservado', updates: { services: ['Corte de cabelo', 'Pigmentação Capilar (Tintura)'], date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Trava'), vagas: { [amanha]: ['10:00'] } })
+  const reserva = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('59 trava: fica só o que ele disse', !reserva || reserva.args?.p_service_name === 'Corte de cabelo', { reply: r.reply, servico: reserva?.args?.p_service_name })
+  checar('59 trava: nada de pigmentação na resposta', !/Pigmenta/.test(r.reply), r.reply)
 }
 
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------

@@ -1,3 +1,27 @@
+## 29.274.0 — A JuIA não presume mais o serviço: uma trava só, no ponto em que a reserva nasce (01/10)
+
+**Pedido do Juliano (01/10, depois do caso Sharles):** *"esta semana já foram uns 3 clientes assim, deveríamos fazer com que a JuIA não presuma mais os serviços… tem coisas que são esporádicas como pigmentação… já foram diversas tentativas"*.
+
+**Por que as tentativas anteriores não seguraram:** eram quatro caminhos diferentes escolhendo serviço sozinhos, e cada correção (v29.140, 29.190, 29.218, 29.221, 29.234, 29.260) tapou um deles:
+1. **Convite de retorno (webhook, sem passar pela JuIA):** o "1 — Quero sim" reservava o serviço INTEIRO da última visita. Foi o Sharles (Pezinho + Pigmentação) e os outros desta semana.
+2. **"O de sempre" da JuIA:** pedido de horário sem serviço puxava o último atendimento.
+3. **Corte padrão** (v29.72.0, caso Bruno) para quem não disse o serviço.
+4. **O modelo** preenchendo `updates.services` por conta própria.
+
+**O que mudou:**
+- **Trava única** antes do `create_public_booking_v15` da JuIA: serviço que o cliente não escreveu nesta conversa nem escolheu numa lista nossa não entra na reserva. Família (corte/barba/infantil) vale pela palavra ("cabelo", "barba", "navalha", "express", "filho"…); o resto (sobrancelha, pigmentação, química, depilação) só pelo nome. O que foi dito fica em `state.ditos` (o histórico que chega é curto); escolha em lista (complemento, "o de sempre" pedido por ele, a pergunta numerada) em `state.servicos_escolhidos`. O que não foi dito sai; se não sobrar nada, ela pergunta. Log `trava do serviço` quando corta.
+- **Pergunta numerada do serviço** no lugar do "Reservo X, como da última vez?": *"Qual serviço vai ser? 1 Corte · 2 Corte + Barba Express (barba só na máquina) · 3 Corte + Barba na navalha · 4 Barba Express · 5 Barba na navalha. Se for outro, é só me dizer qual."* O número vira "Quero <serviço>" no começo do turno seguinte (`pending_service_pick`, registrada em PERGUNTAS).
+- **"O de sempre" desligado** (`PRESUMIR_SERVICO_DE_SEMPRE=false`). Continua valendo quando o cliente pede ("o de sempre", "repetir").
+- **O corte padrão ficou só para CONSULTAR a agenda**, em silêncio. A primeira versão desta mudança perguntava o serviço antes de mostrar horário, e o simulador mostrou "tem horário hoje?" e "Amanhã" quebrando (a rodada a mais que matava o timing no caso Bruno). Então: horários na hora, sem citar serviço; a pergunta numerada no fechamento; a trava garante.
+- **Convite de retorno:** depois do "quero sim" vem a mesma pergunta do serviço (etapa `servico` no `pending_invite`), e só depois o prazo e os horários. Número da lista, ou "corte" sozinho, segue; qualquer outra resposta passa para a JuIA (`_shared/convite-retorno.ts`: `mensagemServicoConvite`, `servicoDaResposta`; teste em `tests/unit/convite-retorno.spec.js`). A pergunta do prazo passou a abrir com "Certo." para não repetir o "Boa.".
+
+**Achados de passagem:**
+- "Não tem mais cedo??" ainda podia receber "Sim! ✅ … está livre" na oferta de complementos (a correção da 29.260.0 só olhava o "Sim, "). Corrigido.
+- **Defeito antigo:** a regex do "até que horas vocês fecham" tinha um caractere de controle (backspace, ``) no lugar do `` desde uma edição anterior, então nunca casava. Trocado; o arquivo não tem mais nenhum.
+
+**Testes:** simulador 141 ok. Os cenários 57 a 59 são a garantia: histórico Pezinho + Pigmentação → horários sem citar nada → pergunta numerada → "1" reserva só o corte; o modelo enfiando pigmentação sem o cliente pedir → não reserva; ele disse "corte" e o modelo somou pigmentação → reserva só o corte. Os cenários 14b, 24b, 24d, 30c e 43a conferiam o texto antigo e foram reescritos para o comportamento novo; 10 e 20 ganharam `ditos` no estado (o corte foi dito num turno anterior). Unit 290 ok.
+- NO AR: `ju-ia-site` v296 (verify_jwt true, OPTIONS 200), `whatsapp-webhook` v130 (verify_jwt false igual ao config, 401 sem segredo).
+
 ## 29.273.0 — Revisão da JuIA de 01/10: seis erros de leitura corrigidos
 
 Revisão diária (13 conversas em 24 h). Ninguém que pediu horário ficou sem agendamento, mas seis leituras saíram erradas. Cada uma ganhou cenário no simulador (50 a 56): todos falhavam no código anterior e passam agora (135 ok).

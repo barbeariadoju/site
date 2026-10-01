@@ -8,6 +8,7 @@ const cors={
 const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}})
 // v29.62.0 — regra das famílias de serviço (1 corte + 1 barba por atendimento), mesma
 // lógica do site (assets/js/service-rules.js). Ver o bloco "serviceRuleNote" abaixo.
+import { OPCOES_SERVICO_CONVITE, servicoDaResposta } from '../_shared/convite-retorno.ts'
 import { normalizeServiceSet as normalizeServiceFamilies, swapWithinFamily, familiesOf as familiesOfService, splitServiceNames } from '../_shared/service-rules.ts'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
@@ -67,6 +68,8 @@ const PERGUNTAS:{kind:string;flags:string[]}[]=[
  {kind:'first_visit',flags:['pending_first_visit']},
  {kind:'other_name',flags:['pending_other_name']},
  {kind:'pix',flags:['pix_offered']},
+ // v29.274.0 — "Qual serviço vai ser? 1/2/3…" (a JuIA não presume mais o serviço).
+ {kind:'service_pick',flags:['pending_service_pick']},
 ]
 const flagAberta=(s:any,f:string)=>{const v=s?.[f];return Array.isArray(v)?v.length>0:Boolean(v)}
 // "conflict" usa o pending_cancel_booking_id como parte da própria pergunta — não conta como 'cancel'.
@@ -647,6 +650,29 @@ function servicosPorPalavra(normalizedText:string,todas=false){
  }
  return out
 }
+// v29.274.0 — A JuIA NÃO PRESUME O SERVIÇO (Juliano, 01/10/2026, depois do caso Sharles e de "diversas
+// tentativas": "deveríamos fazer com que a JuIA não presuma mais os serviços… tem coisas que são esporádicas
+// como pigmentação"). As correções anteriores tapavam um caminho de cada vez (o de sempre, o corte padrão,
+// o modelo preenchendo, o convite copiando a última visita) e o próximo escapava. Agora existe UMA trava, no
+// único lugar em que a JuIA cria reserva: serviço que o cliente não escreveu nesta conversa (nome, palavra da
+// família — "cabelo", "barba", "navalha"…) nem escolheu numa lista nossa (servicos_escolhidos) não entra.
+// Se não sobrar nada, ela pergunta, com a mesma lista numerada do convite de retorno.
+const PALAVRA_FAMILIA:[RegExp,string][]=[[/\b(corte|cortar|cabelo|raspar|raspa|raspagem|careca|maquina|degrade|tesoura|lavagem|lavar)\b/,'corte'],[/\b(infantil|crianca|filho|filha|menino|menina|garoto)\b/,'infantil'],[/\b(barba|barboterapia|navalha|express|bigode|toalha|ozonio)\b/,'barba']]
+function servicosDitosPeloCliente(textos:string[],escolhidos:string[]){
+ const nomes=new Set<string>(),fams=new Set<string>()
+ for(const t of textos){
+  const n=normalize(String(t||''))
+  if(!n.trim())continue
+  for(const s of [...findServicesLoose(String(t)),...servicosPorPalavra(n,true)]){nomes.add(s.name);familiesOfService(s.name).forEach((f:string)=>fams.add(f))}
+  for(const [re,f] of PALAVRA_FAMILIA)if(re.test(n))fams.add(f)
+ }
+ for(const e of escolhidos||[]){const s=findService(String(e));const nome=s?.name||String(e);nomes.add(nome);familiesOfService(nome).forEach((f:string)=>fams.add(f))}
+ return {nomes,fams}
+}
+// Serviço de família (corte/barba/infantil) vale se o cliente falou da família; o resto (sobrancelha,
+// pigmentação, química, depilação…) só se ele falou daquele serviço.
+const servicoNaoDito=(nome:string,d:{nomes:Set<string>,fams:Set<string>})=>{const f=familiesOfService(nome);return f.size?[...f].some((x:string)=>!d.fams.has(x)):!d.nomes.has(nome)}
+const perguntaQualServico=()=>`Qual serviço vai ser?\n${OPCOES_SERVICO_CONVITE.map((o)=>`*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe for outro, é só me dizer qual.`
 const textFrom=(d:any)=>typeof d?.output_text==='string'?d.output_text.trim():(d?.output||[]).flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('\n').trim()
 function parseJSON(text:string){try{return JSON.parse(text.replace(/^```json\s*|\s*```$/g,''))}catch{return null}}
 function serviceSuggestions(chosen:any[]){
@@ -734,6 +760,14 @@ Deno.serve(async req=>{
     console.log('[ju-ia-site] registro: resposta curta →',ultimaPergunta,'| perguntas velhas apagadas:',velhas.join(',')||'nenhuma')
    }
   }
+ }
+  // v29.274.0 — resposta a "Qual serviço vai ser?": número da lista vira o nome do serviço antes de qualquer
+  // leitura (o modelo e os parsers passam a ver "Quero Corte de cabelo"), e fica anotado como escolhido.
+ let servicoEscolhidoNaLista=''
+ if(state?.pending_service_pick&&!body._segunda_parte){
+  servicoEscolhidoNaLista=servicoDaResposta(normalize(message))
+  if(servicoEscolhidoNaLista)message=`Quero ${servicoEscolhidoNaLista}`
+  delete state.pending_service_pick
  }
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
  const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
@@ -1094,6 +1128,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.222.0 (caso Marcello): o modelo também não repõe um dia que já passou.
  if(ai.updates&&typeof ai.updates.date==='string'&&ai.updates.date.slice(0,10)<today())delete ai.updates.date
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
+ // v29.274.0: o que o cliente escolheu numa lista nossa conta como dito por ele (ver servicosDitosPeloCliente).
+ if(!Array.isArray(next.servicos_escolhidos))next.servicos_escolhidos=[]
+ if(servicoEscolhidoNaLista&&!next.servicos_escolhidos.includes(servicoEscolhidoNaLista))next.servicos_escolhidos.push(servicoEscolhidoNaLista)
+ // E o que ele escreveu, turno a turno: o histórico que chega é curto, a memória fica no estado.
+ {
+  const dt=servicosDitosPeloCliente([message],[])
+  const ant=state?.ditos&&typeof state.ditos==='object'?state.ditos:{nomes:[],fams:[]}
+  next.ditos={nomes:[...new Set([...(ant.nomes||[]),...dt.nomes])],fams:[...new Set([...(ant.fams||[]),...dt.fams])]}
+ }
  // v29.239.0 (caso Gilvana, 25/09/2026, 13h11): depois de "hoje tenho 15:30", ela respondeu "Entendi" e a
  // JuIA devolveu "Sim! hoje às 15:30 está livre… Quer incluir mais alguma coisa?" — o modelo tratou a
  // concordância como escolha. "Entendi" é recibo, não é sim: o horário não entra e a conversa fica com ela.
@@ -1616,7 +1659,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // pergunta "É corte de cabelo?", e o serviço de sempre não era assumido. Pergunta de agenda
  // com horário ou dia na frase conta como availability pra este bloco, seja qual for o intent.
  const perguntaDeAgendaComHorario=/\b(tem|teria|consegue|da pra|d[aá] pra|rola|vaga|horario|hor[aá]rio)\b/.test(normalizedQuestion)&&(Boolean(extractRequestedTime(message))||/\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado)\b/.test(normalizedQuestion))
- if((intent==='availability'||intent==='book'||perguntaDeAgendaComHorario)&&!chosen.length&&verifiedPhone&&hasCustomer&&usualServices.length&&!usualIsOnlyAddon&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest&&!next.usual_rejected){
+ // v29.274.0 — DESLIGADO: o "serviço de sempre" não é mais assumido (ver servicosDitosPeloCliente). Só vale
+ // quando o cliente pede ("o de sempre", "repetir": repeatRequest, logo abaixo).
+ const PRESUMIR_SERVICO_DE_SEMPRE=false
+ if(PRESUMIR_SERVICO_DE_SEMPRE&&(intent==='availability'||intent==='book'||perguntaDeAgendaComHorario)&&!chosen.length&&verifiedPhone&&hasCustomer&&usualServices.length&&!usualIsOnlyAddon&&visits>=1&&!isPriceOrInfoQuestion&&!repeatRequest&&!recommendationRequest&&!next.usual_rejected){
   if(intent!=='availability'&&intent!=='book')intent='availability'
   next.services=usualServices.map((s:any)=>s.name)
   chosen.push(...usualServices)
@@ -1633,6 +1679,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(hasCustomer && repeatRequest){
   if(lastService){
    next.services=[lastService.name]
+   if(!next.servicos_escolhidos.includes(lastService.name))next.servicos_escolhidos.push(lastService.name) // v29.274.0: ele pediu o de sempre
    next.pending_repeat_service=lastService.name
    next.upsell_services_done=true
    next.sales_stage='repeat_confirmation'
@@ -3246,6 +3293,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // confirmação final do agendamento.
     intent='book';handoff=false
    }else if(addName){
+    if(!next.servicos_escolhidos.includes(addName))next.servicos_escolhidos.push(addName) // v29.274.0: escolheu na lista
     if(addName==='Corte + Lavagem'){
      next.services=next.services.filter((n:string)=>n!=='Corte de cabelo')
      if(!next.services.includes('Corte + Lavagem'))next.services.push('Corte + Lavagem')
@@ -3612,7 +3660,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h.'
   else if(hourNow>=limite)aviso=`Hoje já encerramos — atendemos até ${limite}h.`
   else if(encerradoPeloExpediente)aviso='Por hoje já encerramos o atendimento.'
-  else aviso=/ate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
+  else aviso=/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
   avisoAbertoHoje=aviso
  }
  // v29.43.0 — ADIAMENTO/DESISTENCIA (caso Bruno, 15/08, 11:28): depois de nao conseguir o
@@ -3701,7 +3749,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.260.0 — caso Ana (29/09/2026, 07h53): "Pra quando?" → "Hoje" recebeu "Vamos marcar! Corte de
  // cabelo sai R$ 40,00. Me diz o horário" — o dia estava dito, e em vez dos horários livres ela teve
  // que chutar um. Dia sem hora (e sem pergunta pendente) é consulta de agenda daquele dia.
- if(intent==='book'&&next.date&&!next.time&&chosen.length&&!extractRequestedTime(message)&&!Object.keys(next||{}).some(k=>k.startsWith('pending_')&&(next as any)[k]))intent='availability'
+ // v29.274.0: sem o serviço suposto do histórico, "Amanhã" chega aqui sem serviço — também é consulta de agenda.
+ if(intent==='book'&&next.date&&!next.time&&!extractRequestedTime(message)&&!Object.keys(next||{}).some(k=>k.startsWith('pending_')&&(next as any)[k]))intent='availability'
  if(intent==='availability'&&!extractRequestedTime(message)&&weekdayDatesMentioned(normalizedQuestion,today()).length>1)next.date=null
  // v29.72.0 — caso Bruno (25/08, 11h14): cliente NOVO perguntou "tem horário livre às 13:00
  // ou 14:00?" e recebeu "qual serviço você tem interesse?" — sumiu, e nem o Juliano na mão
@@ -3712,7 +3761,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // fluxo refaz. Só no WhatsApp (no site o catálogo está na tela) e nunca em pergunta de
  // preço/informação. Hora citada sem dia (caso do Bruno) = hoje.
  if(intent==='availability'&&!chosen.length&&verifiedPhone&&!isPriceOrInfoQuestion&&!bareBarbaAsk&&!bareCabeloAsk&&notSpecialFlow){
-  const corteAssumido=findService('Corte de cabelo')
+  // v29.274.0 — o corte não é mais assumido (Juliano, 01/10/2026: "não presuma mais os serviços"): o dia e a
+  // hora que ele disse ficam guardados e a JuIA pergunta o serviço, numerado. Respondeu "1" → segue daqui.
+  // Simulador (01/10): perguntar o serviço ANTES de mostrar horário quebrou "tem horário hoje?" (caso Bruno,
+  // v29.72.0: a rodada extra mata o timing). O corte segue servindo só pra CONSULTAR a agenda, em silêncio;
+  // ele não vira serviço do cliente: a pergunta numerada vem no fechamento e a trava antes da reserva garante.
+  const PRESUMIR_CORTE_PADRAO=true
+  if(!PRESUMIR_CORTE_PADRAO){
+   if(!next.date&&(effectiveTime||requestedPeriod)&&!weekdayDatesMentioned(normalizedQuestion,today()).length)next.date=today()
+   next.pending_service_pick={at:new Date().toISOString()}
+   reply=perguntaQualServico()
+   actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
+   intent='other';handoff=false
+  }
+  const corteAssumido=PRESUMIR_CORTE_PADRAO?findService('Corte de cabelo'):null
   if(corteAssumido){
    chosen.push(corteAssumido)
    next.services=chosen.map((c:any)=>c.name)
@@ -4039,10 +4101,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      if(next.usual_assumed){
       // v29.140.0: serviço veio do histórico, não da boca do cliente — confirma em UMA pergunta
       // antes de reservar. O horário fica guardado; o "1" reserva (ver pending_usual_confirm).
-      next.pending_usual_confirm={date:next.date,time:effectiveTime}
+      // v29.274.0 — no lugar de "Reservo X?", a pergunta numerada do serviço (nada presumido). O dia e a hora
+      // ficam guardados; o "1" vira "Quero Corte de cabelo" no começo do próximo turno e a reserva sai.
+      next.time=effectiveTime;next.usual_assumed=false;next.services=[]
+      next.pending_service_pick={at:new Date().toISOString()}
       const abre=`${emDia(next.date)} às ${effectiveTime} está livre.`
-      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} ${perguntaServicoSuposto(serviceNames,next.usual_origem)}`
-      actions=[{label:'1 — Sim',message:'1'},{label:'2 — Outro serviço',message:'2'}]
+      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} ${perguntaQualServico()}`
+      actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
       respostaConferidaNaAgenda=true
       intent='other';handoff=false
      }else{
@@ -4368,10 +4433,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // "Corte + Barba Express" assumido do histórico sem a pergunta de confirmação. A trava vale
  // aqui também: serviço assumido só reserva depois do "1".
  if(intent==='book'&&next.usual_assumed&&verifiedPhone&&next.date&&next.time&&chosen.length&&!state?.pending_usual_confirm){
-  next.pending_usual_confirm={date:next.date,time:String(next.time).slice(0,5)}
+  // v29.274.0 — mesma troca do bloco do horário conferido: pergunta numerada, nada presumido.
+  next.usual_assumed=false;next.services=[];chosen=[]
+  next.pending_service_pick={at:new Date().toISOString()}
   const abreUc=`${emDia(next.date)} às ${String(next.time).slice(0,5)}.`
-  reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} ${perguntaServicoSuposto(chosen.map((s:any)=>s.name).join(' + '),next.usual_origem)}`
-  actions=[{label:'1 — Sim',message:'1'},{label:'2 — Outro serviço',message:'2'}]
+  reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} ${perguntaQualServico()}`
+  actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
   intent='other';handoff=false
  }
  if(intent==='book'){
@@ -4476,6 +4543,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    if(soEmoji&&semPerguntaAberta&&!escolheuHorarioAgora){
     intent='other';handoff=false;actions=[]
     reply='Obrigado! Se precisar de alguma coisa, é só me chamar por aqui.'
+   }
+  }
+  // v29.274.0 — TRAVA ÚNICA: nenhuma reserva sai com serviço que o cliente não disse nem escolheu. O que não
+  // foi dito sai da lista; se não sobrar nada, a JuIA pergunta o serviço em vez de reservar.
+  if(intent==='book'&&chosen.length){
+   const textosCliente=[...(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').map((h:any)=>String(h.content||'')),message]
+   const ditos=servicosDitosPeloCliente(textosCliente,next.servicos_escolhidos)
+   for(const n of (next.ditos?.nomes||[]))ditos.nomes.add(n)
+   for(const f of (next.ditos?.fams||[]))ditos.fams.add(f)
+   const ficam=chosen.filter((s:any)=>!servicoNaoDito(s.name,ditos))
+   if(ficam.length<chosen.length){
+    console.log('[ju-ia-site] trava do serviço: tirado o que o cliente não disse',JSON.stringify({antes:chosen.map((s:any)=>s.name),ficam:ficam.map((s:any)=>s.name)}))
+    if(ficam.length){chosen=ficam;next.services=ficam.map((s:any)=>s.name)}
+    else{
+     chosen=[];next.services=[]
+     next.pending_service_pick={at:new Date().toISOString()}
+     reply=perguntaQualServico()
+     actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
+     intent='other';handoff=false
+    }
    }
   }
   if(intent==='book'){
@@ -5086,8 +5173,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.260.0 — caso José Carlos (29/09/2026, 09h01): "Não tem mais cedo??" depois de "o primeiro
  // horário livre é 11:15" recebeu "Sim, hoje às 11:15 está livre" — um "sim" pra quem perguntou se
  // havia algo antes. Quando a resposta volta com o mesmo horário, é porque mais cedo não tem.
- if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/^Sim, /.test(reply)&&/está livre/.test(reply)){
-  reply=reply.replace(/^Sim, (.+?) às (\d\d:\d\d) está livre/,(_m,dia,hora)=>`Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
+ // v29.274.0: vale também para o "Sim! ✅ … está livre para X. Quer incluir…" da oferta de complementos (o
+ // simulador pegou: sem o corte suposto do histórico, cliente antigo passou a cair nesse texto).
+ if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/Sim[,!]/.test(reply)&&/está livre/.test(reply)){
+  reply=reply.replace(/^(.*?)Sim[,!]\s*(?:✅\s*)?(.+?) às (\d\d:\d\d) está livre/s,(_m,antes,dia,hora)=>`${antes}Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
  }
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`

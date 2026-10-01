@@ -106,7 +106,33 @@ export const OPCOES_PRAZO: Array<{ numero: number; rotulo: string; dias: number 
 ]
 
 export const mensagemPrazo = (): string =>
-  `Boa. Pra quando você quer deixar reservado?\n${OPCOES_PRAZO.map((o) => `*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe preferir outra data, é só me dizer qual.`
+  `Certo. Pra quando você quer deixar reservado?\n${OPCOES_PRAZO.map((o) => `*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe preferir outra data, é só me dizer qual.`
+
+// v29.274.0 — O CONVITE NÃO PRESUME O SERVIÇO (Juliano, 01/10/2026: "deveríamos fazer com que a JuIA não
+// presuma mais os serviços… já foram diversas tentativas"). Até aqui o "1 — Quero sim" reservava o serviço
+// INTEIRO da última visita: o Sharles levou Pezinho + Pigmentação de novo, e foram uns 3 casos na semana.
+// Pigmentação, química e acabamento são pontuais. Depois do "quero sim", a pergunta é o serviço; só
+// número desta lista (ou "corte"/"cabelo" sozinho) é aceito aqui; qualquer outra resposta vai pra JuIA,
+// que também não presume.
+export const OPCOES_SERVICO_CONVITE: Array<{ numero: number; nome: string; rotulo: string }> = [
+  { numero: 1, nome: 'Corte de cabelo', rotulo: 'Corte de cabelo' },
+  { numero: 2, nome: 'Corte + Barba Express', rotulo: 'Corte + Barba Express (barba só na máquina)' },
+  { numero: 3, nome: 'Corte + Barba na navalha com toalha quente', rotulo: 'Corte + Barba na navalha com toalha quente' },
+  { numero: 4, nome: 'Barba Express', rotulo: 'Só a barba: Barba Express (só na máquina)' },
+  { numero: 5, nome: 'Barba na navalha com toalha quente', rotulo: 'Só a barba: na navalha com toalha quente' },
+]
+
+export const mensagemServicoConvite = (): string =>
+  `Boa. Qual serviço vai ser?\n${OPCOES_SERVICO_CONVITE.map((o) => `*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe for outro, é só me dizer qual.`
+
+// Resposta à pergunta do serviço: número da lista, ou "corte"/"cabelo" sem mais nada. Texto já normalizado.
+export const servicoDaResposta = (raw: string): string => {
+  const t = String(raw || '').trim().replace(/[\s!.,]+$/, '')
+  const n = /^[1-9]$/.test(t) ? Number(t) : 0
+  if (n) return OPCOES_SERVICO_CONVITE.find((o) => o.numero === n)?.nome || ''
+  if (/^(?:(?:so|somente|apenas|o|um)\s+)*(?:corte(?: de cabelo)?|cabelo|cortar o cabelo)$/.test(t)) return 'Corte de cabelo'
+  return ''
+}
 
 export const diasDaOpcao = (numero: number): number =>
   OPCOES_PRAZO.find((o) => o.numero === numero)?.dias || 0

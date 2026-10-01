@@ -3,7 +3,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
-import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias } from '../_shared/convite-retorno.ts'
+import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta } from '../_shared/convite-retorno.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
 // v29.195.1 — resposta ao pedido de confirmação de presença (caso Sr. Magno): número na frente
@@ -1532,7 +1532,21 @@ Deno.serve(async (request: Request) => {
               const melhor = diasFracosPrimeiro(comVaga)[0]
               return melhor ? { iso: melhor.date, lista: melhor.lista } : null
             }
-            if (pendInvite.stage === 'defer') {
+            if (pendInvite.stage === 'servico') {
+              // v29.274.0 — resposta a "Qual serviço vai ser?": número da lista (ou "corte" sozinho).
+              // Qualquer outra coisa ("corte e sobrancelha", "a de sempre", uma pergunta): o convite sai do
+              // caminho e a JuIA assume, sem presumir nada.
+              const nomeServ = servicoDaResposta(raw)
+              const { data: servRow } = nomeServ ? await admin.from('services').select('name, price, duration_minutes').eq('name', nomeServ).eq('active', true).maybeSingle() : { data: null }
+              if (!servRow) {
+                await dropInvite(String(pendInvite.invite_id), 'counter')
+              } else {
+                await saveInviteState({ ...pendInvite, stage: 'interval', service_name: servRow.name, service_price: Number(servRow.price || 0), duration_minutes: Number(servRow.duration_minutes) || 30, at: new Date().toISOString() })
+                await admin.from('return_invites').update({ service_name: servRow.name, service_price: Number(servRow.price || 0), duration_minutes: Number(servRow.duration_minutes) || 30, updated_at: new Date().toISOString() }).eq('id', pendInvite.invite_id)
+                await sendWhatsapp(phone, mensagemPrazo())
+                return
+              }
+            } else if (pendInvite.stage === 'defer') {
               // v29.149.0 — resposta a "daqui a quantos dias você quer que eu te chame?".
               const dias = diasPedidos(raw) || (/^\d{1,3}[\s!.,]*$/.test(raw) ? Number(raw.replace(/\D/g, '')) : 0)
               if (!dias) {
@@ -1772,18 +1786,17 @@ Deno.serve(async (request: Request) => {
                 ...stInv,
                 pending_invite: {
                   invite_id: returnInvite.id,
-                  stage: 'interval',
+                  // v29.274.0 — primeiro o SERVIÇO (perguntado), depois o prazo. O serviço da última
+                  // visita não é mais copiado: service_name/price/duration só existem depois da resposta.
+                  stage: 'servico',
                   customer_name: returnInvite.customer_name,
-                  service_name: returnInvite.service_name,
-                  service_price: returnInvite.service_price,
-                  duration_minutes: returnInvite.duration_minutes || 30,
                   base_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
                   at: new Date().toISOString(),
                 },
               },
               updated_at: new Date().toISOString(),
             }).eq('phone', phone)
-            await sendWhatsapp(phone, mensagemPrazo())
+            await sendWhatsapp(phone, mensagemServicoConvite())
             return
           } else if (inviteOtherDay) {
             await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)

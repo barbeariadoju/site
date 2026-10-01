@@ -107,3 +107,32 @@ describe('linhaValor', () => {
     expect(linhaValor('', 50)).toBe('');
   });
 });
+
+// v29.274.0 — o convite não presume mais o serviço: depois do "quero sim" vem a pergunta do serviço.
+import { mensagemServicoConvite, servicoDaResposta, OPCOES_SERVICO_CONVITE } from '../../supabase/functions/_shared/convite-retorno.ts';
+
+describe('pergunta do serviço no convite (caso Sharles, 01/10/2026)', () => {
+  it('lista os serviços numerados, com o resumo da Barba Express', () => {
+    const m = mensagemServicoConvite();
+    expect(m).toContain('Qual serviço vai ser?');
+    expect(m).toContain('*1* — Corte de cabelo');
+    expect(m).toContain('só na máquina');
+    expect(m).not.toMatch(/Pigmenta|Pezinho/);
+    expect(m).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+  it('número escolhe o serviço; "corte" sozinho é o corte', () => {
+    expect(servicoDaResposta('1')).toBe('Corte de cabelo');
+    expect(servicoDaResposta('2 ')).toBe('Corte + Barba Express');
+    expect(servicoDaResposta('so corte')).toBe('Corte de cabelo');
+    expect(servicoDaResposta('cabelo')).toBe('Corte de cabelo');
+  });
+  it('qualquer outra coisa não escolhe nada (vai pra JuIA)', () => {
+    expect(servicoDaResposta('9')).toBe('');
+    expect(servicoDaResposta('corte e sobrancelha')).toBe('');
+    expect(servicoDaResposta('o de sempre')).toBe('');
+    expect(servicoDaResposta('')).toBe('');
+  });
+  it('todo serviço da lista é nome exato do catálogo', () => {
+    for (const o of OPCOES_SERVICO_CONVITE) expect(o.nome).toMatch(/^(Corte de cabelo|Corte \+ Barba Express|Corte \+ Barba na navalha com toalha quente|Barba Express|Barba na navalha com toalha quente)$/);
+  });
+});
