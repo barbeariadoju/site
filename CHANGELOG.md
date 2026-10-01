@@ -1,3 +1,15 @@
+## 29.269.0 — JuIA: "Express" escolhido na lista de barbas não derruba mais a reserva (01/10)
+
+**Caso Henrique (01/10, 09h33), print do Juliano:** cliente novo (indicação do Marcelo) pediu "umas 13,30", aceitou 14:20, respondeu "Somente barba" à pergunta do corte e recebeu a lista das três barbas. Escreveu **"Express"** e ouviu *"Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui."* Repetiu "As 14,20" e a JuIA respondeu "me embolei" e passou pro Juliano, que fechou na mão às 09h38.
+
+- **Causa:** a mesma guarda do caso Marcelo (v29.216.0). Frase "sem sinal de agenda" e sem `pending_*` no estado vira "não é pedido". "Express" não está na lista de palavras de agenda, e a lista de barbas não deixa pergunta aberta no estado. A exceção da 29.216.0 olhava só **horário** novo no turno; aqui a data e a hora já estavam na mesa e o que chegou foi o **serviço**.
+- **Correção (`ju-ia-site`):** serviço que entra no estado neste turno conta como escolha, igual ao horário (`escolheuServicoAgora`). As duas guardas (número solto e sem sinal de agenda) não correm quando o cliente acabou de escolher alguma coisa.
+- **Simulador:** cenário 48 (cliente sem cadastro, data e hora no estado, "Express"). Sem a correção, sai o "Entendi…"; com ela, "Vamos marcar! Barba Express…". 126 ok.
+- **Testes:** unit 286 ok. Os e2e de **Relatórios** (horas trabalhadas, aviso sem expediente) e o smoke de `admin.html`/`admin-atendimento.html` falharam (4). Nenhum toca a JuIA (função no Supabase, não carregada pelas páginas); suspeita de dependência da virada do mês. Investigar à parte.
+- **NO AR:** `ju-ia-site` **v293** via CLI, `verify_jwt=true` igual ao anterior, OPTIONS 200 logo depois do deploy.
+
+**Visto e NÃO mudado:** a desmarcação do mesmo Henrique às 12h28 ("Tive um imprevisto aqui vou ter que desmarcar") recebeu "É o seu agendamento de hoje às 14:20 … que você quer cancelar? Responda sim ou não." e ele não respondeu, então o horário ficou como confirmado. O sim/não é de propósito (teste R3 do simulador, v29.212.0); mudar para cancelar direto quando há um só agendamento é decisão do Juliano.
+
 ## 29.268.0 — Reajuste de outubro antecipado para 30/09 à noite (30/09)
 
 **Pedido do Juliano (30/09, ~19h50, fechando a barbearia):** *"pode prosseguir com o reajuste, altere todos os preços de todos os lugares"*. A regra dele era "nenhum preço novo antes de 01/10 00:00"; com a barbearia fechada e nenhum atendimento em aberto no dia, ele mesmo antecipou. A conferência da véspera (tarefa agendada) já tinha dado OK no plano: 319 trechos, 328 ocorrências, 65 arquivos.

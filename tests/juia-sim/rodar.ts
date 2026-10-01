@@ -684,6 +684,15 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('47a despedida sem nota de serviço nem preço', !/Anotei|R\$/.test(r.reply) && !reservou(r), r.reply)
 }
 
+// 48. Caso Henrique (01/10/2026, 09h33): data e hora já na mesa, a JuIA listou as barbas e ele respondeu
+// "Express". Ouviu "Entendi. Se quiser marcar um horário…" — a guarda de "sem sinal de agenda" jogou fora
+// o serviço que ele tinha acabado de escolher.
+{
+  const r = await turno({ msg: 'Express', state: { date: dia1, time: '14:20', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Barba Express'], date: dia1, time: '14:20' } }, contexto: {}, nomeWhats: 'Henrique', vagas: { [dia1]: ['14:20', '14:30'] } })
+  checar('48 "Express" escolhido segue a reserva', !/Se quiser marcar um horário/.test(r.reply) && (reservou(r) || /Barba Express/.test(r.reply)), r.reply)
+}
+
 // ---- regressão: o caminho feliz continua igual ----------------------------------------------------
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },

@@ -4398,7 +4398,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // aviso de conversa parada das 15h30 trouxe o Marcelo de volta e a reserva saiu. Agora, quando
    // o turno TRAZ horário novo com a data já na mesa, nenhuma das duas corre — o horário que o
    // cliente acabou de escolher vale mais que o formato em que ele escreveu.
-   const escolheuHorarioAgora=Boolean(next.time)&&Boolean(next.date)&&String(next.time)!==String(state?.time||'')
+   // v29.269.0 — caso Henrique (01/10/2026, 09h33): com data e hora já na mesa, a JuIA listou as três
+   // barbas, ele respondeu "Express" e ouviu "Entendi. Se quiser marcar um horário…". Mesma armadilha
+   // do Marcelo, agora pelo serviço: "express" não é palavra de agenda e a lista de barbas não deixa
+   // pending_* no estado. Na mensagem seguinte ("As 14,20") a JuIA se embolou e foi pro Juliano. O
+   // serviço que o cliente acabou de escolher vale tanto quanto o horário.
+   const servicosAntes=Array.isArray(state?.services)?state.services:[]
+   const escolheuServicoAgora=(Array.isArray(next.services)?next.services:[]).some((n:string)=>!servicosAntes.includes(n))
+   const escolheuHorarioAgora=(Boolean(next.time)&&Boolean(next.date)&&String(next.time)!==String(state?.time||''))||escolheuServicoAgora
    if(intent==='book'&&numeroSolto&&semPerguntaAberta&&!escolheuHorarioAgora){
     intent='other';handoff=false;actions=[]
     reply=`Obrigado! Se precisar de horário ou tiver alguma dúvida, é só me dizer por aqui.`
