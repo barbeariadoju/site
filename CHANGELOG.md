@@ -7,6 +7,8 @@
 - **Início do anúncio do Clube adiado de 09/10 para 13/10**, para não somar com os avisos de fechamento de 06 a 10/10.
 - Os 4 robôs que restam na lista de religação seguem o calendário da 29.271.0. Teste de subida: as funções respondem 401 sem o segredo (subiram). verify_jwt igual ao `config.toml`.
 
+- **Erro meu de publicação:** conferi o `?v=29.271.0` com curl antes de o GitHub Pages terminar de publicar, e o Cloudflare guardou o JS **antigo** sob o número novo (`cf-cache-status: HIT`). O painel e a previsão do dia ficariam até ~10 min com o código velho. Saída: `?v=29.272.0` e `ADMIN_VERSION` 29.272.0. **Regra: esperar o `admin-version.json` novo aparecer antes do primeiro curl em arquivo com `?v=` novo.**
+
 **Concordo com o diagnóstico que o Juliano colou (Google), com uma ressalva:** dos três gatilhos, aquecimento e intervalo curto se resolvem aqui (o número já tem uso diário de duas vias, e o problema foi o pico). A denúncia não se controla por código, só por mandar menos para quem não espera. É por isso que o teto por dia vale mais que o "digitando…".
 
 ## 29.271.0 — Robôs enxutos depois da restrição; JuIA cancela direto; forma de pagamento marcada; previsão do dia (01/10)
