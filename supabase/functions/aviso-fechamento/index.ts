@@ -1,3 +1,4 @@
+import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { periodosDeFechamento, diasAlternativos, textoAvisoFechamento, somarDias } from '../_shared/aviso-fechamento.ts'
@@ -29,7 +30,9 @@ const canonicalPhone = (value = '') => {
 
 const JANELA_MAX = 10 // dias antes do fechamento em que o aviso pode começar a sair
 const JANELA_MIN = 3 // mais perto que isso, não avisa mais (vira ruído de véspera)
-const LIMITE_POR_RODADA = 40
+// v29.272.0: era 40 por rodada — 25 avisos sairiam em segundos (o padrão que restringiu o número em
+// 01/10). Agora 6 por dia, com "digitando…" e 15-30 s entre eles; a janela de 3 a 10 dias antes dá conta.
+const LIMITE_POR_RODADA = 6
 
 Deno.serve(async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
@@ -81,10 +84,12 @@ Deno.serve(async (request: Request) => {
         .gte('created_at', new Date(Date.now() - 20 * 3600 * 1000).toISOString()).limit(1)
       if (recente && recente.length) { itens.push({ nome: c.customer_name, adiado: 'mensagem_recente' }); continue }
       try {
+        if (enviados > 0) await pausaEntreEnvios()
+        const delay = digitandoMs(text)
         const res = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-          body: JSON.stringify({ number, text: semEmoji(text) }),
-        })
+          body: JSON.stringify({ number, text: semEmoji(text), delay }),
+        }, timeoutComDigitando(delay))
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(`Evolution ${res.status}`)
         await admin.from('whatsapp_messages').insert({ phone: number, direction: 'out', body: semEmoji(text), sent_by: 'bot', evolution_message_id: String(data?.key?.id || '') || null })

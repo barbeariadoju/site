@@ -14,6 +14,7 @@
 // Regras mantidas: NUNCA pra quem já tem agendamento futuro; UMA mensagem por atendimento; sem
 // resposta em 72h expira em silêncio; 2 recusas seguidas = pausa de 60 dias; venda só de produto
 // não recebe convite. A resposta (1/2 ou texto) é interpretada pelo whatsapp-webhook.
+import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { alvoDias, decisaoEnvio, diasEntre, mensagemConvite, retornoTipicoDias, somarDiasIso, JANELA_DIAS } from '../_shared/convite-retorno.ts'
@@ -82,12 +83,20 @@ Deno.serve(async(req:Request)=>{
     .select('customer_phone').gte('booking_date',today).in('status',['pending','confirmed'])
   const futurePhones=new Set((futureRows||[]).map((b:any)=>canonicalPhone(b.customer_phone)).filter(Boolean))
 
+  // v29.272.0 — ritmo humano (_shared/humano.ts): "digitando…" antes, 15-30 s entre envios e no máximo
+  // MAX_POR_RODADA por dia; quem passa do teto não é marcado e sai na rodada seguinte.
+  const MAX_POR_RODADA=4
+  let enviadosNaRodada=0
   const sendText=async(phone:string,waText:string)=>{
+    if(enviadosNaRodada>=MAX_POR_RODADA)throw new Error('limite_da_rodada')
+    if(enviadosNaRodada>0)await pausaEntreEnvios()
+    enviadosNaRodada++
+    const delay=digitandoMs(waText)
     const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
       method:'POST',
       headers:{'Content-Type':'application/json',apikey:evolutionApiKey},
-      body:JSON.stringify({number:phone,text:semEmoji(waText)}),
-    })
+      body:JSON.stringify({number:phone,text:semEmoji(waText),delay}),
+    },timeoutComDigitando(delay))
     if(!sendResponse.ok)throw new Error(`Evolution ${sendResponse.status}`)
     const sendData=await sendResponse.json().catch(()=>({}))
     await admin.from('whatsapp_messages').insert({phone,direction:'out',body:semEmoji(waText),sent_by:'bot',evolution_message_id:String(sendData?.key?.id||'')||null})

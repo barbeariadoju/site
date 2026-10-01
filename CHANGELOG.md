@@ -1,3 +1,14 @@
+## 29.272.0 — Ritmo humano nos robôs: "digitando…", pausa entre envios e teto por rodada (01/10)
+
+**Dica que o Juliano trouxe do Google:** atraso longo e variável entre mensagens e o "digitando…" antes do texto. Nenhum robô fazia isso: cada um mandava a lista do dia em sequência, em segundos.
+- `_shared/humano.ts`: `digitandoMs` (3 a 9 s conforme o tamanho do texto, com variação) vai no campo `delay` do `sendText` da Evolution v2, que mostra "digitando…" antes de entregar. `pausaEntreEnvios` espera 15 a 30 s entre uma mensagem e a próxima da mesma rodada. O timeout do fetch passou a cobrir o tempo de digitação.
+- Aplicado em convite de retorno, reativação, benefícios, aniversário, aviso de fechamento e no `enviarWhats` do Clube (anúncio, renovação, código; republicados `clube`, `clube-ciclo` e `pagbank-webhook`, que importam o mesmo arquivo).
+- **Teto por rodada (o pedaço que importa):** convite 4, reativação 3, benefícios 4, aviso de fechamento 6. **O aviso de fechamento mandava até 40 por rodada**: na volta, em 06/10, os ~25 avisos da viagem de 15-17/10 sairiam em segundos, o mesmo padrão que restringiu o número. O que passa do teto não é marcado como enviado e sai na rodada do dia seguinte (a janela do aviso, de 3 a 10 dias antes, comporta 6 por dia).
+- **Início do anúncio do Clube adiado de 09/10 para 13/10**, para não somar com os avisos de fechamento de 06 a 10/10.
+- Os 4 robôs que restam na lista de religação seguem o calendário da 29.271.0. Teste de subida: as funções respondem 401 sem o segredo (subiram). verify_jwt igual ao `config.toml`.
+
+**Concordo com o diagnóstico que o Juliano colou (Google), com uma ressalva:** dos três gatilhos, aquecimento e intervalo curto se resolvem aqui (o número já tem uso diário de duas vias, e o problema foi o pico). A denúncia não se controla por código, só por mandar menos para quem não espera. É por isso que o teto por dia vale mais que o "digitando…".
+
 ## 29.271.0 — Robôs enxutos depois da restrição; JuIA cancela direto; forma de pagamento marcada; previsão do dia (01/10)
 
 **Robôs de marketing (pedido do Juliano: "enxugar, evitar ser redundantes"; OK para religar um por dia).** Levantamento dos últimos 30 dias de mensagens frias (sem o cliente ter escrito nas 24 h anteriores) e de quantas tiveram resposta em 48 h:

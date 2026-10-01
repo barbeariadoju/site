@@ -2,6 +2,7 @@
 // Cobrança por link do Checkout PagBank (Pix, crédito e débito à vista), o mesmo produto que já roda
 // em produção para o pagamento antecipado do agendamento. A referência "CLB-<código>-<n>" é o que o
 // pagbank-webhook usa para saber que o pagamento é do Clube.
+import { digitandoMs, timeoutComDigitando } from './humano.ts'
 import { semEmoji } from './sem-emoji.ts'
 
 const SITE = 'https://www.barbeariadoju.com.br'
@@ -88,11 +89,13 @@ export async function enviarWhats(admin: any, phone: string, texto: string, text
   const number = toWhatsNumber(phone)
   if (!url || !apikey || !instance || !number) return false
   try {
+    // v29.272.0 — "digitando…" antes da mensagem (_shared/humano.ts); o timeout cobre o tempo de digitação.
+    const delay = digitandoMs(texto)
     const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 15000)
+    const t = setTimeout(() => controller.abort(), timeoutComDigitando(delay))
     const res = await fetch(`${url}/message/sendText/${instance}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey },
-      body: JSON.stringify({ number, text: semEmoji(texto) }), signal: controller.signal,
+      body: JSON.stringify({ number, text: semEmoji(texto), delay }), signal: controller.signal,
     }).finally(() => clearTimeout(t))
     const sent = await res.json().catch(() => ({}))
     await admin.from('whatsapp_messages').insert({

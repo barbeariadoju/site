@@ -1,3 +1,4 @@
+import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { textoAniversario } from '../_shared/beneficios.ts'
@@ -81,11 +82,14 @@ Deno.serve(async (request: Request) => {
     if (grantError || !validoAte) { failed++; console.error('[customer-birthday] presente não registrado', c.customer_id, grantError); continue }
     const text = textoAniversario({ nome: c.name, validoAte: String(validoAte) })
     try {
+      // v29.272.0 — ritmo humano (_shared/humano.ts): "digitando…" e 15-30 s entre um parabéns e outro.
+      if (sent > 0) await pausaEntreEnvios()
+      const delay = digitandoMs(text)
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-        body: JSON.stringify({ number: phone, text: semEmoji(text) }),
-      })
+        body: JSON.stringify({ number: phone, text: semEmoji(text), delay }),
+      }, timeoutComDigitando(delay))
       if (!sendResponse.ok) throw new Error(`sendText ${sendResponse.status}`)
       const sendData = await sendResponse.json().catch(() => ({}))
       const sentMessageId = String(sendData?.key?.id || '') || null

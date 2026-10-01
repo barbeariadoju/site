@@ -1,3 +1,4 @@
+import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
@@ -158,12 +159,21 @@ Deno.serve(async (request: Request) => {
 
   // Manda pela Evolution e registra em whatsapp_messages/whatsapp_conversations (o mesmo par que a
   // JuIA lê para saber que a conversa existe). Lança erro quando o envio falha; quem chama conta.
+  // v29.272.0 — ritmo humano (_shared/humano.ts): "digitando…", 15-30 s entre envios, no máximo
+  // MAX_POR_RODADA por dia (a função SQL devolve até 8; o que sobra sai no dia seguinte, dentro da janela
+  // de 30 dias de cada etapa).
+  const MAX_POR_RODADA = 3
+  let enviadosNaRodada = 0
   const enviarTexto = async (phone: string, text: string) => {
+    if (enviadosNaRodada >= MAX_POR_RODADA) throw new Error('limite_da_rodada')
+    if (enviadosNaRodada > 0) await pausaEntreEnvios()
+    enviadosNaRodada++
+    const delay = digitandoMs(text)
     const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({ number: phone, text: semEmoji(text) }),
-    })
+      body: JSON.stringify({ number: phone, text: semEmoji(text), delay }),
+    }, timeoutComDigitando(delay))
     if (!sendResponse.ok) throw new Error(`sendText ${sendResponse.status}`)
     const sendData = await sendResponse.json().catch(() => ({}))
     const sentMessageId = String(sendData?.key?.id || '') || null

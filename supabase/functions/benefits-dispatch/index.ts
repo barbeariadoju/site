@@ -1,3 +1,4 @@
+import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 import { textoLembreteAniversario, textoConviteIndicacao, textoCreditoIndicador } from '../_shared/beneficios.ts'
@@ -45,13 +46,20 @@ Deno.serve(async (request: Request) => {
   const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim() || ''
   if (!dryRun && (!evolutionApiUrl || !evolutionApiKey || !evolutionInstance)) return json({ error: 'WhatsApp indisponível.' }, 500)
 
+  // v29.272.0 — ritmo humano (_shared/humano.ts); o que passar de MAX_POR_RODADA não é marcado e sai amanhã.
+  const MAX_POR_RODADA = 4
+  let enviadosNaRodada = 0
   const send = async (rawPhone: string, text: string) => {
     const number = canonicalPhone(rawPhone)
     if (!number) throw new Error('telefone')
+    if (enviadosNaRodada >= MAX_POR_RODADA) throw new Error('limite_da_rodada')
+    if (enviadosNaRodada > 0) await pausaEntreEnvios()
+    enviadosNaRodada++
+    const delay = digitandoMs(text)
     const res = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: evolutionApiKey },
-      body: JSON.stringify({ number, text: semEmoji(text) }),
-    })
+      body: JSON.stringify({ number, text: semEmoji(text), delay }),
+    }, timeoutComDigitando(delay))
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(`Evolution ${res.status}`)
     const clean = semEmoji(text)
