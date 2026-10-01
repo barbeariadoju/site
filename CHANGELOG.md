@@ -1,3 +1,11 @@
+## 29.270.0 — WhatsApp restringido pelo anúncio do Clube; anúncio vira 5 por dia a partir de 09/10 (01/10)
+
+**O que aconteceu:** às 13h53 o celular do Juliano mostrou *"Sua conta está restringida no momento"* (≈23 h sem iniciar conversa nova; motivo: "mensagens automáticas ou em massa"). O anúncio de lançamento do Clube (`clube-ciclo`, ligado pela primeira vez hoje) mandou **50 mensagens frias das 9h às 13h**, até 3 por rodada de 10 min. Somado aos robôs normais do dia, foram 35 conversas abertas só entre 10h e 11h. Das 50, 2 responderam (1 SAIR). A partir de 13h10, as 10 seguintes falharam. **Erro meu:** os ~12 por hora que desenhei na 29.233.0 eram "devagar" para um envio em massa, mas não para um número pessoal ligado por API não oficial.
+
+- **Pausado na hora:** `club_settings.anuncio_ativo=false` e os crons que abrem conversa sem o cliente ter escrito (`customer-reactivation-diario`, `bdj-return-invite-dispatch`, `customer-birthday-diario`, `bdj-benefits-dispatch`, `bdj-aviso-fechamento`, `bdj-survey-recovery`). Ficam ligados confirmação, lembrete, rota de chegada, pesquisa pós-atendimento e a JuIA. **Religar um por dia, com OK do Juliano, depois que a restrição acabar.**
+- **Anúncio em conta-gotas (pedido do Juliano: "5 por dia, em um mês avisamos todos"):** migração 187 cria `anuncio_por_dia` (5) e `anuncio_a_partir` (09/10, uma semana de uso normal depois da restrição). O `clube-ciclo` manda 1 por rodada, só se a última do dia saiu há 110 min ou mais (as 5 ficam espalhadas entre 9h e 19h), e para quando bate o teto. As 10 que falharam voltaram para a fila (148 no total, ~30 dias úteis). A fila foi reordenada: quem escreveu para a barbearia mais recentemente vai primeiro, e quem nunca escreveu fica para o fim.
+- **Ordem do deploy:** a função nova subiu ANTES da migração. A antiga ignoraria a data de início e voltaria a mandar hoje mesmo com `anuncio_ativo=true`.
+
 ## 29.269.0 — JuIA: "Express" escolhido na lista de barbas não derruba mais a reserva (01/10)
 
 **Caso Henrique (01/10, 09h33), print do Juliano:** cliente novo (indicação do Marcelo) pediu "umas 13,30", aceitou 14:20, respondeu "Somente barba" à pergunta do corte e recebeu a lista das três barbas. Escreveu **"Express"** e ouviu *"Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui."* Repetiu "As 14,20" e a JuIA respondeu "me embolei" e passou pro Juliano, que fechou na mão às 09h38.
@@ -8,7 +16,7 @@
 - **Testes:** unit 286 ok. Os e2e de **Relatórios** (horas trabalhadas, aviso sem expediente) e o smoke de `admin.html`/`admin-atendimento.html` falharam (4). Nenhum toca a JuIA (função no Supabase, não carregada pelas páginas); suspeita de dependência da virada do mês. Investigar à parte.
 - **NO AR:** `ju-ia-site` **v293** via CLI, `verify_jwt=true` igual ao anterior, OPTIONS 200 logo depois do deploy.
 
-**Visto e NÃO mudado:** a desmarcação do mesmo Henrique às 12h28 ("Tive um imprevisto aqui vou ter que desmarcar") recebeu "É o seu agendamento de hoje às 14:20 … que você quer cancelar? Responda sim ou não." e ele não respondeu, então o horário ficou como confirmado. O sim/não é de propósito (teste R3 do simulador, v29.212.0); mudar para cancelar direto quando há um só agendamento é decisão do Juliano.
+**Correção desta própria entrada:** escrevi primeiro que o Henrique não respondeu ao "sim ou não" da desmarcação. Errado: ele respondeu "Sim" às 12h38 e a JuIA cancelou na hora. Eu tinha olhado o print das 12h28 e a consulta ao banco antes disso.
 
 ## 29.268.0 — Reajuste de outubro antecipado para 30/09 à noite (30/09)
 

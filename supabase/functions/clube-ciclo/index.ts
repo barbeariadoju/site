@@ -5,9 +5,9 @@
 //      os horários seguem na agenda pelo preço normal;
 //   3. encerra quem ficou 15 dias em aberto (cláusula 3.4) e fecha quem pediu cancelamento no fim do ciclo;
 //   4. gera o link da renovação 3 dias antes do fim do ciclo e manda pelo WhatsApp;
-//   5. manda 1 a 3 mensagens de lançamento (club_announcements), só se o envio estiver ligado
-//      (club_settings.anuncio_ativo), com intervalo aleatório entre elas: ~12 por hora, nunca em rajada
-//      (a Evolution não é API oficial; envio em massa é o que derruba número).
+//   5. manda mensagem de lançamento (club_announcements), só se o envio estiver ligado
+//      (club_settings.anuncio_ativo) e a partir de anuncio_a_partir: no máximo anuncio_por_dia (5) por dia,
+//      ~1h50 entre uma e outra (a Evolution não é API oficial; os ~12 por hora de 01/10 restringiram o número).
 // Autenticação: x-webhook-secret (mesma do resto dos crons). Corpo opcional { dry_run: true }.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // v29.266.0 — cobrança automática no cartão (payment_method 'cartao_auto'): antes de tudo, confere no
@@ -134,10 +134,21 @@ Deno.serve(async (req: Request) => {
   }
 
   // 5. Mensagem de lançamento para a base (lote pequeno por rodada, intervalo aleatório de 20 a 55 s).
-  const { data: cfg } = await admin.from('club_settings').select('anuncio_ativo, anuncio_por_rodada').eq('id', 1).single()
+  // v29.270.0 — depois da restrição de 01/10 (50 frias em 4 h): teto diário (anuncio_por_dia, 5) e data de
+  // início (anuncio_a_partir). Uma por rodada, e a próxima só ~1h50 depois da anterior, para as 5 do dia
+  // ficarem espalhadas entre 9h e 19h em vez de saírem juntas de manhã.
+  const { data: cfg } = await admin.from('club_settings').select('anuncio_ativo, anuncio_por_rodada, anuncio_por_dia, anuncio_a_partir').eq('id', 1).single()
   const diaUtil = (() => { const wd = new Date(`${hoje}T12:00:00-03:00`).getUTCDay(); return wd >= 2 && wd <= 6 })()
-  if (cfg?.anuncio_ativo && diaUtil && hora >= 9 && hora < 19) {
-    const lote = Math.max(1, Math.min(3, Number(cfg.anuncio_por_rodada || 2)))
+  const jaComecou = !cfg?.anuncio_a_partir || hoje >= String(cfg.anuncio_a_partir)
+  let cotaHoje = 0
+  if (cfg?.anuncio_ativo && diaUtil && jaComecou && hora >= 9 && hora < 19) {
+    const { data: deHoje } = await admin.from('club_announcements').select('sent_at').eq('status', 'enviada').gte('sent_at', `${hoje}T00:00:00-03:00`).order('sent_at', { ascending: false })
+    const ultima = deHoje?.[0]?.sent_at ? new Date(deHoje[0].sent_at).getTime() : 0
+    const espacada = Date.now() - ultima >= 110 * 60 * 1000
+    cotaHoje = espacada ? Math.max(0, Number(cfg.anuncio_por_dia ?? 5) - (deHoje?.length || 0)) : 0
+  }
+  if (cotaHoje > 0) {
+    const lote = Math.max(1, Math.min(cotaHoje, Number(cfg?.anuncio_por_rodada || 1), 3))
     const { data: fila } = await admin.from('club_announcements').select('*').eq('status', 'fila').order('queued_at').limit(lote)
     for (const [i, a] of (fila || []).entries()) {
       // Conferência de última hora: saiu da lista (SAIR) ou já assinou? Pula.
