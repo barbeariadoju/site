@@ -1,3 +1,12 @@
+## 29.274.6 — Modal aberto no celular esconde a barra de baixo: o Salvar não some mais (02/10)
+
+**Caso do Juliano (01/10, pelo iPhone):** *"no crm quando fui editar um cliente aí pra salvar tive que deitar a tela do celular"*.
+- **Causa:** a barra de baixo do painel (Hoje/Agenda/Agendar/Clientes/Balcão/Mais) tem `z-index` 99990 e todo modal tem 1000. Em modal comprido, o fim do cartão (onde fica o botão de salvar) caía atrás da barra. O de editar cliente é o mais longo (1.704 px de conteúdo) e foi onde apareceu; medido no tamanho do iPhone (390×664), o centro do "Salvar cliente" ficava embaixo da barra.
+- **Correção (`css/06-admin-reforma.css`):** com qualquer `.admin-modal` aberto, a barra de baixo e o aviso "Instale o Barbearia OS" somem (`body:has(...)`), como em app nativo. **Decidido contra** subir o `z-index` do modal acima da barra: os diálogos do BDJ_UX, os toasts e o aviso de versão nova têm camadas próprias calibradas em cima de 1000, e mexer na ordem deles arriscava esconder confirmação atrás de modal.
+- Conferido nas 19 páginas do painel que a barra continua lá sem modal aberto (todo modal fechado usa `hidden`). No Safari (fora do app instalado) o aviso de instalação também cobria os botões Concluir, Salvar remarcação e Salvar alterações: resolvido pela mesma regra.
+- Teste novo `tests/e2e/admin/admin-modal-celular.spec.js`. `?v=29.274.6` do css/06 em todas as páginas do painel.
+- **Também verificado, sem defeito: o agendamento do Guilherme (sábado 03/10).** Corte infantil + Corte + Barba na navalha = 125 min. O painel de horários não mostrou nada porque nenhuma janela de 125 min cabia no sábado (Sharles 8h45, Lucas 10h30-12h, Dorta 12h-13h25, Alessio 13h30-14h15), e nesse caso ele escreve "Nenhum horário livre comporta 125 min nessa data". O horário digitado à mão (14h30) termina às **16h35, depois do fechamento de sábado**: fica a critério do Juliano.
+
 ## 29.274.5 — Combos de corte + barba com a soma exata dos tempos (02/10)
 
 **Pedido do Juliano:** *"hoje o corte é 45 min, quantos minutos é a barba na navalha? O ideal é que seja a soma exata dos dois tempos… arruma, senão eu me lasco aqui"*. Os combos estavam mais curtos que as partes e apertavam a agenda: Corte + Barba na navalha com toalha quente **70 → 85 min** (45 + 40) e Corte + Barba Express **60 → 75 min** (45 + 30).

@@ -983,3 +983,8 @@ html{color-scheme:dark}
 .admin-content>.admin-subnav{align-self:flex-start}
 @media (max-width:760px){.admin-content>.admin-subnav{align-self:stretch}}
 .admin-modal-card:focus:not(:focus-visible){outline:none}
+/* v29.274.6 — modal aberto esconde a barra de baixo (caso do Juliano, 01/10/2026: editando cliente no CRM pelo
+   iPhone, o "Salvar cliente" ficava atrás da barra Hoje/Agenda/Agendar e ele teve de deitar o celular pra salvar).
+   A barra tem z-index 99990 e o modal 1000: todo modal comprido perdia o fim atrás dela. Esconder a barra enquanto
+   há modal aberto é o que app nativo faz, e não mexe na ordem dos diálogos (BDJ_UX, toasts) entre si. */
+body:has(.admin-modal:not([hidden])) :is(.admin-mobile-nav,.admin-install-tip){display:none}
