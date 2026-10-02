@@ -1,3 +1,7 @@
+## 29.274.4 — Página de Produtos lia "1h10" como 60 minutos (02/10)
+
+Conferência das durações pedida pelo Juliano depois do caso João Vitor: os 23 serviços batem nos três lugares (banco `services`, `services-catalog-v7.js` e os botões de `/agendar/`). O defeito estava na página de **Produtos**, que tem cópia própria do leitor de tempo: "1h10" virava 60 min (o "10" sem "min" era ignorado), encurtando Corte + Barba na navalha (70), Luzes (100), Nevou (130) e Aparação corporal (70) para quem agendava a partir dali. Agora usa a mesma leitura do `parseDuration` de `assets/js/booking-format.js`. O servidor já corrigia desde a 29.274.3; com isso, os horários oferecidos ao cliente também saem certos.
+
 ## 29.274.3 — Duração da reserva do site vem do catálogo, não do navegador (02/10)
 
 **Caso João Vitor (02/10), print do Juliano:** *"porque o corte do João Vitor considerou 30 minutos só de intervalo pro próximo agendamento?"*. Reserva feita pelo site em 01/10 às 16h27: "Corte de cabelo" gravado com **30 min** (o catálogo diz 45), 17:00-17:30, e o próximo cliente (Gabriel) entrou às 17:30, em cima do corte. Nos últimos 20 dias foi o único corte com a duração errada.

@@ -392,9 +392,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         const agendaServices=[];
         selectedServices.forEach(item=>{
           const durationText=String(item.time||'');
-          const h=Number((durationText.match(/(\d+)h/)||[0,0])[1]);
+          // v29.274.4: "1h10" virava 60 (o minuto sem "min" depois do h era ignorado). Mesma leitura do
+          // parseDuration de assets/js/booking-format.js; o servidor ainda confere pelo catálogo do banco.
+          const comb=durationText.match(/(\d+)\s*h\s*(\d+)/);
+          const h=Number((durationText.match(/(\d+)\s*h\b/)||[0,0])[1]);
           const m=Number((durationText.match(/(\d+)\s*min/)||[0,0])[1]);
-          const duration=h*60+m||30;
+          const duration=comb?Number(comb[1])*60+Number(comb[2]):(h*60+m||30);
           for(let i=0;i<Number(item.qty||1);i++) agendaServices.push({name:item.name,price:Number(item.price||0),duration});
         });
         const agendaProducts=[];
