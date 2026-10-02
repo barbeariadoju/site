@@ -1,3 +1,11 @@
+## 29.274.3 — Duração da reserva do site vem do catálogo, não do navegador (02/10)
+
+**Caso João Vitor (02/10), print do Juliano:** *"porque o corte do João Vitor considerou 30 minutos só de intervalo pro próximo agendamento?"*. Reserva feita pelo site em 01/10 às 16h27: "Corte de cabelo" gravado com **30 min** (o catálogo diz 45), 17:00-17:30, e o próximo cliente (Gabriel) entrou às 17:30, em cima do corte. Nos últimos 20 dias foi o único corte com a duração errada.
+- **Causa:** a duração era somada no navegador (botão do serviço, carrinho, sessionStorage) e o `create-public-booking` aceitava o número que chegava. A página de Produtos usa 30 quando não consegue ler o texto do tempo, e página antiga em cache manda o que tinha.
+- **Correção (`create-public-booking`):** a duração passa a ser a soma do catálogo do banco (`services.duration_minutes`, partes por `splitServiceNames`). O número do navegador só vale se for maior (nunca encurta) ou se algum serviço não for reconhecido. Log `duração corrigida pelo catálogo` quando corrige.
+- NO AR: `create-public-booking` v63, verify_jwt true (igual ao config), OPTIONS 200.
+- **Também (29.274.2, mesmo dia):** o `whatsapp-webhook` (v131) ignora mensagem com mais de 15 min, que fica só registrada, sem resposta automática. Foi para a reconexão depois da restrição: a Evolution pode reentregar o que chegou enquanto estava fora, e a JuIA responderia conversa de ontem que o Juliano já tinha atendido à mão. Reconexão por QR às 13h13 de 02/10; a primeira tentativa (13h10) caiu em segundos.
+
 ## 29.274.1 — Volta dos robôs mais devagar: número restringido fica "vigiado" (01/10)
 
 Combinado com o Juliano depois da pergunta *"mesmo enviando poucas mensagens por dia podemos chamar atenção deles?"*. A resposta honesta: sim, menos. Nos 30 dias antes de 01/10 os robôs mandaram ~13 mensagens frias por dia, por meses, sem restrição; o que derrubou foi o pico (50 em 4 h, 48 sem resposta). Mas o número recém-restringido fica mais sensível por algumas semanas, e a Evolution (não oficial) é risco permanente. Só banco (cron e `club_settings`), sem código:

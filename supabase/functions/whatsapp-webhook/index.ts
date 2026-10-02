@@ -371,6 +371,22 @@ Deno.serve(async (request: Request) => {
     const messageId = String(data?.key?.id || '')
     let text = String(data?.message?.conversation || data?.message?.extendedTextMessage?.text || '').trim()
 
+    // v29.274.2 — reconexão depois da restrição do WhatsApp (01-02/10/2026): ao ler o QR de novo, a
+    // Evolution pode reentregar o que chegou enquanto estava desconectada (desde 13h15 de 01/10), e a JuIA
+    // responderia conversa de ontem que o Juliano já atendeu à mão. Mensagem com mais de 15 min fica
+    // REGISTRADA (o histórico continua completo) e não recebe resposta automática.
+    {
+      const ts = Number(data?.messageTimestamp || 0)
+      const idadeMin = ts > 0 ? (Date.now() / 1000 - ts) / 60 : 0
+      if (idadeMin > 15) {
+        if (!fromMe && text) {
+          await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: text, sent_by: 'bot', evolution_message_id: messageId || null }).then(() => {}, () => {})
+        }
+        console.log('[whatsapp-webhook] mensagem antiga, sem resposta automática', phone, Math.round(idadeMin), 'min')
+        return json({ ok: true, skipped: 'stale_message', age_min: Math.round(idadeMin) })
+      }
+    }
+
     // v29.17.0 — caso Robson (13/08/2026): o cliente respondeu CITANDO (reply do WhatsApp)
     // a pergunta específica — "Sim" citando o "quer cancelar? responda sim ou não" e "1"
     // citando a pesquisa de satisfação — e nós ignorávamos a citação: o "Sim" foi engolido

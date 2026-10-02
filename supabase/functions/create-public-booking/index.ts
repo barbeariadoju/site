@@ -37,13 +37,27 @@ Deno.serve(async(req:Request)=>{
     // Augusto Monteiro (22/08/2026) chegou com "Corte + Barboterapia + Barba Express".
     // Se a lista de serviços não carregar, não bloqueia (melhor um agendamento estranho do
     // que nenhum) — a JuIA e o admin enxergam e corrigem na cadeira.
+    // v29.274.3 — caso João Vitor (02/10/2026): "Corte de cabelo" chegou com 30 min (o catálogo diz 45) e a
+    // agenda deixou o próximo cliente às 17:30, em cima do corte. A duração era calculada no navegador e
+    // aceita como veio: a página de Produtos usa 30 quando não consegue ler o texto do tempo, e página
+    // velha em cache manda o que tinha. A duração agora vem do catálogo do banco (soma de cada serviço);
+    // o número do navegador só vale se for MAIOR (nunca encurta) ou se algum serviço não for reconhecido.
+    let duracaoFinal=Number(body.duration_minutes)
     try{
-      const {data:svc}=await admin.from('services').select('name').eq('active',true)
+      const {data:svc}=await admin.from('services').select('name,duration_minutes').eq('active',true)
       const known=(svc||[]).map((s:any)=>String(s.name))
       if(known.length){
-        const check=normalizeServiceSet(splitServiceNames(String(body.service_name),known))
+        const partes=splitServiceNames(String(body.service_name),known)
+        const check=normalizeServiceSet(partes)
         const r=check.removed.find((x:any)=>x.name!==x.keptBy)
         if(r)return json({error:`«${r.keptBy}» e «${r.name}» não entram no mesmo horário: a Barboterapia já inclui a barba e todo corte já inclui o acabamento. Vale 1 serviço de corte e 1 de barba por atendimento (exceção: corte adulto + corte infantil). Ajuste a lista e tente de novo.`},400)
+        const durDe=(n:string)=>Number((svc||[]).find((s:any)=>String(s.name)===n)?.duration_minutes||0)
+        const nomes=partes.map((p:any)=>typeof p==='string'?p:String(p?.name||''))
+        const doCatalogo=nomes.reduce((a:number,n:string)=>a+durDe(n),0)
+        if(doCatalogo>0&&doCatalogo>duracaoFinal){
+          console.log('[create-public-booking] duração corrigida pelo catálogo',JSON.stringify({servico:body.service_name,navegador:body.duration_minutes,catalogo:doCatalogo}))
+          duracaoFinal=doCatalogo
+        }
       }
     }catch(ruleError){console.error('[create-public-booking] service rule',ruleError)}
 
@@ -53,7 +67,7 @@ Deno.serve(async(req:Request)=>{
       p_customer_email:body.customer_email?String(body.customer_email).trim().toLowerCase():null,
       p_service_name:String(body.service_name),
       p_service_price:Number(body.service_price),
-      p_duration_minutes:Number(body.duration_minutes),
+      p_duration_minutes:duracaoFinal,
       p_booking_date:String(body.booking_date),
       p_start_time:String(body.start_time),
       p_notes:body.notes?String(body.notes).trim():null,
