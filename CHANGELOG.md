@@ -1,3 +1,12 @@
+## 29.274.5 — Combos de corte + barba com a soma exata dos tempos (02/10)
+
+**Pedido do Juliano:** *"hoje o corte é 45 min, quantos minutos é a barba na navalha? O ideal é que seja a soma exata dos dois tempos… arruma, senão eu me lasco aqui"*. Os combos estavam mais curtos que as partes e apertavam a agenda: Corte + Barba na navalha com toalha quente **70 → 85 min** (45 + 40) e Corte + Barba Express **60 → 75 min** (45 + 30).
+- **Banco (`services.duration_minutes`)**: vale na hora para a agenda (`get_available_slots`), a JuIA e o `create-public-booking`.
+- **Site**: `services-catalog-v7.js` e os botões e rótulos de `/agendar/` (1h25 e 1h15); páginas dos dois combos (meta, JSON-LD, FAQ e texto), `servicos.html`, `/precos/`, home, perguntas frequentes, página da Barba Express e o artigo de preços. As frases "um horário só, com cerca de 70 minutos em vez de 85" (e a da Express, "60 em vez de 75") deixaram de ser verdade e viraram só "cerca de 1h25"/"1h15"; a vantagem do combo que continua é o preço.
+- Cache: `services-catalog-v7.js?v=29.274.5` nas 11 páginas; `ADMIN_VERSION` e `admin-version.json` 29.274.5 (o Novo agendamento do painel usa o mesmo catálogo).
+- **Agendamentos já marcados ficam com a duração com que nasceram** (não mexi, para não criar sobreposição em horário já confirmado).
+- Testes: unit ok; e2e 83 ok e as mesmas 4 falhas antigas (Relatórios e smoke do painel). JSON-LD das páginas alteradas validado.
+
 ## 29.274.4 — Página de Produtos lia "1h10" como 60 minutos (02/10)
 
 Conferência das durações pedida pelo Juliano depois do caso João Vitor: os 23 serviços batem nos três lugares (banco `services`, `services-catalog-v7.js` e os botões de `/agendar/`). O defeito estava na página de **Produtos**, que tem cópia própria do leitor de tempo: "1h10" virava 60 min (o "10" sem "min" era ignorado), encurtando Corte + Barba na navalha (70), Luzes (100), Nevou (130) e Aparação corporal (70) para quem agendava a partir dali. Agora usa a mesma leitura do `parseDuration` de `assets/js/booking-format.js`. O servidor já corrigia desde a 29.274.3; com isso, os horários oferecidos ao cliente também saem certos.

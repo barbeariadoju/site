@@ -25,6 +25,15 @@
         "rule": "overused-font",
         "value": "inter",
         "createdAt": "2026-09-24T20:53:00.383Z"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "produtos.html"
+        ],
+        "createdAt": "2026-10-02T19:45:34.511Z",
+        "reason": "Claude: #modal-img é o slot do modal de produto; o JS preenche o src ao abrir (produtos.html), não é imagem quebrada"
       }
     ]
   }
