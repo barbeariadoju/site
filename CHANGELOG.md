@@ -1,3 +1,13 @@
+## 29.274.9 — Selo do card diz a forma paga: crédito não aparece mais como "Pix ✓" (05/10)
+
+**Caso do Juliano (05/10):** *"o cliente pagou no crédito e aparece o check no pix, me confundiu"*. Marcelo, quinta 08/10, pago pelo Checkout PagBank no cartão de crédito: o detalhe do card dizia certo ("Pago online (PagBank · cartão de crédito) — automático"), mas o selo ao lado do nome dizia **"Pix ✓"**.
+- **Causa:** o selo do resumo (`prepayMini`, `admin-v15-4-agenda.js`) é de antes do Checkout, quando adiantamento só podia ser Pix, e o texto ficou fixo. Só o `title` (dica do mouse) tinha sido atualizado para a forma online.
+- **Por que importa:** crédito online cai no PagBank num prazo diferente do Pix (e da maquininha). Com "Pix ✓", o Juliano foi procurar o dinheiro na conta e não achou.
+- **Correção:** com `prepay_key='checkout'`, o selo usa a forma do pagamento pago: **Crédito ✓**, **Débito ✓** ou **Pix ✓** (e "Pago ✓" se a forma não vier). Pix manual confirmado continua "Pix ✓"; declarado e ainda não conferido continua "Pix".
+- Teste novo `tests/e2e/admin/admin-selo-pagamento.spec.js` (os cinco casos). Conferido que falha com o código antigo ("Pix ✓" no lugar de "Crédito ✓").
+- **Testes:** vitest 290 ok + 1 pulado. e2e 87 ok + as 2 falhas antigas de `admin-relatorios.spec.js` (dia 1 a 7 do mês, ver 29.274.7).
+- Cache: `?v=29.274.9` em `admin-v15-4-agenda.js` e `admin-v15-4-core.js` nas 6 páginas do painel; `ADMIN_VERSION` e `admin-version.json` 29.274.9.
+
 ## 29.274.8 — Autor e editora tipados nos 19 artigos do blog (05/10)
 
 Continuação da 29.274.7, mesma causa: o Google valida cada página sozinha e não segue `@id` para outra página.
