@@ -1,3 +1,12 @@
+## 29.274.7 — Search Console: 'Página de perfil' com mainEntity inválido em /sobre-o-juliano.html (05/10)
+
+**Aviso do Search Console de 03/10:** *"Dados estruturados de: Página de perfil — o tipo de objeto do campo mainEntity não é válido"* (erro crítico).
+- **Causa:** o JSON-LD da `sobre-o-juliano.html` (única página com `ProfilePage`) tinha `"mainEntity":{"@id":"…/#juliano"}`, só a referência. O `Person` completo existe apenas no `@graph` da home. O Google valida cada página isolada e não segue `@id` entre páginas, então o `mainEntity` ficava sem tipo.
+- **Correção (só o `<script type="application/ld+json">` da página, em uma linha):** o `mainEntity` agora é o `Person` completo, com o **mesmo `@id` `#juliano`** (continua ligando com a home), `worksFor` com a barbearia tipada, e `isPartOf` (`WebSite`) e `breadcrumb` definidos na própria página. Tudo copiado do `Person` e da barbearia da home: nenhum dado novo, nada de `AggregateRating` (seção 5).
+- **Varredura das 97 páginas (51 com JSON-LD, todas com JSON válido):** `mainEntity` só-`@id` era só este caso. Ficaram **de propósito, para decidir depois**, 26 outras referências só-`@id` que a página não define: `author` → `#juliano` e `publisher` → `#barbearia` nos 7 posts do blog, e `isPartOf` em 6 desses posts (+2 para `blog.html#serie-ciencia-da-barba`), `agendar/index.html` e `produtos.html`. O Search Console não acusou nenhuma delas.
+- **Testes:** vitest 290 ok + 1 pulado (o do reajuste, pulado por já estar aplicado). A falha antiga de `integridade-arquivos.spec.js` ("a regra reconhece o defeito real…") **passou** nesta máquina. e2e: 86 ok, **2 falhas antigas e sem relação** em `tests/e2e/admin/admin-relatorios.spec.js` (14% ≠ 19%; 3 ≠ 2 linhas): o próprio teste "supõe que hoje é dia 8 ou mais" e hoje é 05/10 — falham igual sem esta mudança (conferido com `git stash`). Passam a valer de novo no dia 8; ficam como pendência (o teste quebra do dia 1 ao 7 de todo mês).
+- Nenhum `.js`/`.css` alterado: sem bump de `?v=`.
+
 ## 29.274.6 — Modal aberto no celular esconde a barra de baixo: o Salvar não some mais (02/10)
 
 **Caso do Juliano (01/10, pelo iPhone):** *"no crm quando fui editar um cliente aí pra salvar tive que deitar a tela do celular"*.
