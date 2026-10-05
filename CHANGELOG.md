@@ -1,3 +1,12 @@
+## 29.274.8 — Autor e editora tipados nos 19 artigos do blog (05/10)
+
+Continuação da 29.274.7, mesma causa: o Google valida cada página sozinha e não segue `@id` para outra página.
+- **O que mudou:** nos 19 `Article` do blog, `author` e `publisher` eram só `{"@id":…}`. Agora `author` é o `Person` (`#juliano`: nome, cargo, url da página Sobre) e `publisher` é a barbearia (`#barbearia`: nome, url, logo `marca-selo-transparente.png`), com os **mesmos `@id`** e dados copiados do `@graph` da home. Só essas duas chaves, por string exata (1 de cada por página, conferido), e o JSON de cada página validado depois.
+- **Por quê:** é o autor que o Google lê para atribuir o artigo ao Juliano (e a dupla formação é o diferencial, seção 2). Referência sem tipo nem nome não entrega nada. O Search Console não acusava porque `Article` não tem relatório lá, mas a ligação se perdia do mesmo jeito.
+- **Erro meu na 29.274.7:** a varredura de lá falava em "26 referências". Estava errada: o script não entrava no `@graph`, então ignorou as páginas que usam esse formato. Com o script corrigido, eram **129 referências em 50 páginas**. Depois desta versão restam 78, todas **deixadas de propósito**: `provider` → `#barbearia` nas 26 páginas de serviço, `isPartOf`/`hasPart`/`about` (ligações entre páginas) e `seller`/`availableAtOrFrom` no `/clube/`. O Google não usa nenhuma delas para resultado aprimorado, e mexer em 50 páginas sem ganho é risco sem retorno. Se um dia o Search Console acusar alguma, o caminho é o mesmo: entidade tipada com o mesmo `@id`.
+- **Testes:** vitest 290 ok + 1 pulado (reajuste). e2e 86 ok + as 2 falhas antigas de `admin-relatorios.spec.js`, que dependem da data (veja a 29.274.7).
+- Nenhum `.js`/`.css` alterado: sem bump de `?v=`.
+
 ## 29.274.7 — Search Console: 'Página de perfil' com mainEntity inválido em /sobre-o-juliano.html (05/10)
 
 **Aviso do Search Console de 03/10:** *"Dados estruturados de: Página de perfil — o tipo de objeto do campo mainEntity não é válido"* (erro crítico).
