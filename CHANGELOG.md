@@ -1,3 +1,13 @@
+## 29.274.10 — Financeiro: PagBank online recebido × a receber; Relatórios testados com data fixa (05/10)
+
+**Pedido do Juliano (05/10):** depois do caso do Marcelo (pago no crédito pelo link, dinheiro ainda fora da conta), separar no Financeiro o que já caiu do que ainda vai cair.
+- **Quadro novo "PagBank online — recebido × a receber"** (`admin-financeiro-v29.js`): pagamentos `paid` da tabela `payments` dos últimos 45 dias, com cliente, forma, valor e a **previsão** de quando cai (data do pagamento + prazo da forma). Mostra o total a receber e a próxima liberação.
+- **Por que previsão, e não a data exata:** a notificação do PagBank não traz a data de liberação. O prazo de cada forma é ajustável no próprio quadro (padrão: crédito 30 dias, débito 1, Pix na hora — o padrão do PagBank para venda online) e fica guardado no aparelho. A data exata continua no app do PagBank (Extrato → Lançamentos futuros). Sem migração de banco.
+- **Relatórios (`tests/e2e/admin/admin-relatorios.spec.js`):** o spec supunha "hoje é dia 8 ou mais" e falhava do dia 1 ao 7 de todo mês (pendência da 29.274.7). Agora o navegador (`page.clock.setFixedTime`) e os dados (`mockAdmin(page, { hoje })`, opção nova do `_fixtures.js`) usam o dia 20 do mês corrente. Passa hoje, dia 5.
+- **Erro meu na 29.274.9:** o `admin.html` (tela Hoje) ficou fora do bump, porque o `git add admin-*.html` não pega `admin.html` — ele seguiu com `admin-v15-4-agenda.js?v=29.272.0` e `core?v=29.274.5`. Desta vez o bump foi pelo `scripts/bump-v.mjs`, que acerta todas as páginas, e o `--check` passou limpo.
+- Teste novo `tests/e2e/admin/admin-financeiro-online.spec.js` (a receber, já caído, Pix na hora, link não pago fora, troca do prazo para 14 dias).
+- Cache: `?v=29.274.10` em `admin-financeiro-v29.js`, `admin-v15-4-core.js` e `admin-v15-4-agenda.js`; `ADMIN_VERSION` e `admin-version.json` 29.274.10.
+
 ## 29.274.9 — Selo do card diz a forma paga: crédito não aparece mais como "Pix ✓" (05/10)
 
 **Caso do Juliano (05/10):** *"o cliente pagou no crédito e aparece o check no pix, me confundiu"*. Marcelo, quinta 08/10, pago pelo Checkout PagBank no cartão de crédito: o detalhe do card dizia certo ("Pago online (PagBank · cartão de crédito) — automático"), mas o selo ao lado do nome dizia **"Pix ✓"**.

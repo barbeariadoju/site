@@ -12,8 +12,18 @@
 import { test, expect } from '@playwright/test';
 import { mockAdmin } from './_supabase-mock.js';
 
+// v29.274.10 — data fixa no dia 20 do mês corrente, no navegador E nos dados. Sem isso o spec
+// supunha "hoje é dia 8 ou mais" e quebrava do dia 1 ao 7 de todo mês (dois testes vermelhos
+// por semana escondiam qualquer falha de verdade no meio).
+const agora = new Date();
+const HOJE = new Date(agora.getFullYear(), agora.getMonth(), 20, 12, 0, 0);
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(HOJE);
+});
+const mock = (page, extra = {}) => mockAdmin(page, { hoje: HOJE, ...extra });
+
 test('Relatórios calculam faturamento, ticket, clientes, faltas e satisfação', async ({ page }) => {
-  await mockAdmin(page);
+  await mock(page);
   await page.goto('/admin-relatorios.html');
 
   await expect(page.locator('#admin-app')).toBeVisible();
@@ -44,9 +54,9 @@ test('Relatórios calculam faturamento, ticket, clientes, faltas e satisfação'
 });
 
 // v29.247.0 — Horas trabalhadas cruza a tabela expediente com os concluídos (contas em
-// _fixtures.js, bloco `expediente`). Como o resto deste spec, supõe que hoje é dia 8 ou mais.
+// _fixtures.js, bloco `expediente`), com "hoje" fixo no dia 20 (ver HOJE acima).
 test('Relatórios mostram horas trabalhadas a partir do expediente', async ({ page }) => {
-  await mockAdmin(page);
+  await mock(page);
   await page.goto('/admin-relatorios.html');
   await expect(page.locator('#admin-app')).toBeVisible();
 
@@ -79,7 +89,7 @@ test('Relatórios mostram horas trabalhadas a partir do expediente', async ({ pa
 // Tabela expediente vazia (o registro só existe desde 26/09/2026): a tela avisa em vez de
 // mostrar zero como se fosse dado.
 test('Relatórios avisam quando não há expediente registrado no período', async ({ page }) => {
-  await mockAdmin(page, { tables: { expediente: [] } });
+  await mock(page, { tables: { expediente: [] } });
   await page.goto('/admin-relatorios.html');
   await expect(page.locator('#admin-app')).toBeVisible();
   const horas = page.locator('#rel-horas');

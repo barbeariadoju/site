@@ -7,12 +7,15 @@ const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
-const today = new Date();
+// "Hoje" dos dados. Um spec pode fixar outro com mockAdmin(page, { hoje }) — o de Relatórios
+// fixa o dia 20, porque as contas dele supõem os dias 3, 5 e 8 já passados, e do dia 1 ao 7
+// do mês os dias se encavalavam no "nunca no futuro" e o teste quebrava (v29.274.10).
+let today = new Date();
 // Dia N do mês atual, mas nunca no futuro (se hoje for dia 2, "dia 8" vira dia 2).
 // Garante que os concluídos fiquem sempre dentro do período corrente dos relatórios.
 const dayOfMonth = (n) => iso(new Date(today.getFullYear(), today.getMonth(), Math.min(Math.max(n, 1), today.getDate())));
 const tsOfMonth = (n, h = 10, min = 0) => new Date(today.getFullYear(), today.getMonth(), Math.min(Math.max(n, 1), today.getDate()), h, min, 0).toISOString();
-const lastMonth = iso(new Date(today.getFullYear(), today.getMonth() - 1, 15));
+const lastMonth = () => iso(new Date(today.getFullYear(), today.getMonth() - 1, 15));
 
 const ANA = { id: 'aaaaaaaa-0000-4000-8000-000000000001', name: 'Ana Fictícia', phone: '5511987654321', email: 'ana.ficticia@example.com' };
 const BRUNO = { id: 'bbbbbbbb-0000-4000-8000-000000000002', name: 'Bruno de Mentira', phone: '11912345678', email: 'bruno.mentira@example.com' };
@@ -29,6 +32,17 @@ const booking = (over) => ({
 });
 
 export function makeFixtures(overrides = {}) {
+  if (!overrides.hoje) return montarFixtures(overrides);
+  const antes = today;
+  today = new Date(overrides.hoje);
+  try {
+    return montarFixtures(overrides);
+  } finally {
+    today = antes;
+  }
+}
+
+function montarFixtures(overrides) {
   const tables = {
     // Mês atual: 3 concluídos (R$ 175 no total, 2 clientes), 1 falta, 1 cancelado.
     // Mês passado: 1 concluído da Ana (vira "recorrente" nos relatórios).
@@ -37,7 +51,7 @@ export function makeFixtures(overrides = {}) {
       booking({}), // Ana, Corte, 40+0
       booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Corte + Barba', service_price: 60, products_price: 25, selected_products: [{ name: 'Água', price: 25 }], booking_date: dayOfMonth(5), start_time: '14:00:00', end_time: '15:00:00', duration_minutes: 60, channel: 'balcao', payment_method: 'pix', products_payment_method: 'debito' }),
       booking({ booking_date: dayOfMonth(8), products_price: 10, start_time: '11:00:00', end_time: '11:30:00' }),
-      booking({ booking_date: lastMonth, created_at: new Date(today.getFullYear(), today.getMonth() - 1, 15, 10, 0, 0).toISOString() }),
+      booking({ booking_date: lastMonth(), created_at: new Date(today.getFullYear(), today.getMonth() - 1, 15, 10, 0, 0).toISOString() }),
       booking({ customer_name: CARLA.name, customer_phone: CARLA.phone, customer_email: null, status: 'no_show', booking_date: dayOfMonth(6), start_time: '16:00:00', end_time: '16:30:00' }),
       booking({ status: 'cancelled', booking_date: dayOfMonth(4) }),
       booking({ customer_name: BRUNO.name, customer_phone: BRUNO.phone, customer_email: BRUNO.email, service_name: 'Barba', service_price: 35, status: 'confirmed', booking_date: iso(addDays(today, 1)), start_time: '09:00:00', end_time: '09:30:00' }),

@@ -15,6 +15,7 @@
   let bookings = [];        // atendimentos concluídos do mês
   let feeRates = {};        // { debito: 2.12, credito: 4.61, ... }
   let recentBookings = [];  // últimos 7 dias, para o painel de taxas
+  let onlinePayments = [];  // pagos pelo Checkout PagBank nos últimos 45 dias (v29.274.10)
   let ref = new Date(); ref.setHours(0, 0, 0, 0);
 
   const kindOf = (name) => (categories.find(c => c.name === name) || {}).kind || 'variavel';
@@ -105,6 +106,7 @@
       sb.from('bookings').select(bookingCols).eq('status', 'completed').gte('booking_date', start).lte('booking_date', end),
       sb.from('bookings').select(bookingCols).eq('status', 'completed').gte('booking_date', iso(sevenAgo)).lte('booking_date', iso(new Date()))
     ]);
+    await loadOnline();
     recentBookings = recentRes.error ? [] : (recentRes.data || []);
     if (recentRes.error) console.error(recentRes.error);
     if (entriesRes.error) { console.error(entriesRes.error); $('fin-list').innerHTML = '<p class="fin-empty">Não foi possível carregar os lançamentos.</p>'; return; }
@@ -113,6 +115,83 @@
     entries = entriesRes.data || [];
     bookings = bookingsRes.data || [];
     render();
+  }
+
+  // ---------- PagBank online: recebido × a receber (v29.274.10) ----------
+  // Caso do Juliano (05/10/2026): o Marcelo pagou no crédito pelo link do PagBank, o card dizia
+  // "pago" e o dinheiro não estava na conta. Venda online no cartão cai num prazo diferente da
+  // maquininha (o padrão do PagBank para link/checkout é 30 dias no crédito), e o PagBank NÃO
+  // manda a data de liberação na notificação. Por isso o prazo é ajustável aqui, por forma de
+  // pagamento, e o quadro mostra PREVISÃO — a data exata está no app do PagBank (Extrato →
+  // Lançamentos futuros). Guardado no aparelho: é configuração de leitura, não dado do negócio.
+  const PRAZO_KEY = 'bdj_prazo_online_v1';
+  const PRAZO_PADRAO = { pix: 0, debito: 1, credito: 30 };
+  const lerPrazos = () => {
+    try { return { ...PRAZO_PADRAO, ...(JSON.parse(localStorage.getItem(PRAZO_KEY) || '{}')) }; } catch { return { ...PRAZO_PADRAO }; }
+  };
+  const ONLINE_LABEL = { pix: 'Pix', debito: 'Débito', credito: 'Crédito' };
+
+  async function loadOnline() {
+    const desde = new Date(); desde.setDate(desde.getDate() - 45);
+    const pays = await sb.from('payments').select('booking_id,method,amount_cents,paid_at,status').eq('status', 'paid').gte('paid_at', desde.toISOString()).order('paid_at', { ascending: false });
+    if (pays.error) { console.error(pays.error); onlinePayments = []; return; }
+    const lista = pays.data || [];
+    const ids = [...new Set(lista.map(p => p.booking_id).filter(Boolean))];
+    const nomes = {};
+    if (ids.length) {
+      const bk = await sb.from('bookings').select('id,customer_name,booking_date').in('id', ids);
+      for (const b of (bk.data || [])) nomes[b.id] = b;
+    }
+    onlinePayments = lista.map(p => ({ ...p, booking: nomes[p.booking_id] || null }));
+  }
+
+  // Previsão de quando cai: data do pagamento + prazo da forma, em dias corridos.
+  function previsao(p, prazos) {
+    const d = new Date(p.paid_at);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + Number(prazos[p.method] ?? 0));
+    return d;
+  }
+
+  function renderOnline() {
+    const box = $('fin-online');
+    if (!box) return;
+    const prazos = lerPrazos();
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const linhas = onlinePayments.map(p => ({ ...p, cai: previsao(p, prazos), valor: Number(p.amount_cents || 0) / 100 }));
+    const aReceber = linhas.filter(l => l.cai > hoje);
+    const totalAReceber = aReceber.reduce((s, l) => s + l.valor, 0);
+    const proxima = aReceber.slice().sort((a, b) => a.cai - b.cai)[0];
+    const dia = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+    const campos = ['credito', 'debito', 'pix'].map(m => `<label class="fin-prazo">${ONLINE_LABEL[m]} <input type="number" min="0" max="60" inputmode="numeric" data-prazo="${m}" value="${esc(String(prazos[m]))}" style="width:3.6em;min-height:0;height:auto;padding:2px 6px;display:inline-block"> dias</label>`).join(' ');
+
+    const rows = linhas.map(l => `<tr>
+      <td>${esc(dia(new Date(l.paid_at)))}</td>
+      <td>${esc(l.booking ? l.booking.customer_name : '—')}</td>
+      <td>${esc(ONLINE_LABEL[l.method] || l.method || '—')}</td>
+      <td class="num">${esc(money(l.valor))}</td>
+      <td class="num">${esc(dia(l.cai))} · ${l.cai > hoje ? '<b class="fin-strong">a receber</b>' : 'já deve ter caído'}</td>
+    </tr>`).join('');
+
+    box.innerHTML = `<h3>PagBank online — recebido × a receber</h3>
+      <div class="fin-fees-grid">
+        <div><span>A receber</span><strong data-online-areceber>${esc(money(totalAReceber))}</strong></div>
+        <div><span>Próxima liberação</span><strong>${proxima ? esc(`${dia(proxima.cai)} · ${money(proxima.valor)}`) : '—'}</strong></div>
+        <div><span>Pagamentos (45 dias)</span><strong>${linhas.length}</strong></div>
+      </div>
+      ${linhas.length ? `<table><thead><tr><th>Pago em</th><th>Cliente</th><th>Forma</th><th class="num">Valor</th><th class="num">Cai em</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="fin-empty is-tight">Nenhum pagamento online nos últimos 45 dias.</p>'}
+      <p class="fin-note">Previsão pelo prazo do seu plano no PagBank (venda online cai diferente da maquininha). Ajuste se o seu for outro: ${campos}. A data exata fica no app do PagBank, em Extrato → Lançamentos futuros.</p>`;
+
+    box.querySelectorAll('[data-prazo]').forEach(inp => {
+      inp.onchange = () => {
+        const atual = lerPrazos();
+        const n = Math.max(0, Math.min(60, Math.round(Number(inp.value) || 0)));
+        atual[inp.dataset.prazo] = n;
+        try { localStorage.setItem(PRAZO_KEY, JSON.stringify(atual)); } catch { /* sem storage: vale só nesta tela */ }
+        renderOnline();
+      };
+    });
   }
 
   // ---------- cálculo ----------
@@ -248,6 +327,7 @@
 
     renderBreakEven(t);
     renderFees();
+    renderOnline();
 
     if (!entries.length) { $('fin-list').innerHTML = '<p class="fin-empty">Nenhum lançamento neste mês ainda.</p>'; return; }
 
