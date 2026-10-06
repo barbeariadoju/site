@@ -1,3 +1,12 @@
+## 29.275.2 — JuIA: oferta da lavagem diz o acréscimo ("por mais R$ 10,00"), não o preço do combo (06/10)
+
+**Pedido do Juliano (06/10), em cima da conversa do Lucas (16h52):** depois da reserva, a oferta saía como *"Quer aproveitar e incluir a lavagem profissional (Corte + Lavagem, vira R$ 60,00)?"*. Quem lê vê um preço novo e alto, e não o pouco que a lavagem soma, ainda mais quando a reserva já tem barba e sobrancelha (R$ 105). *"Quer incluir a lavagem no seu corte por mais 10 reais, ficaria mais vendável."*
+- **Agora:** *"Quer incluir a lavagem no seu corte por mais R$ 10,00? Digite 1 para sim ou 2 para não."* Na oferta numerada antes da reserva, a opção vira *"Lavagem no corte (+ R$ 10,00)"*.
+- **De onde vem o valor:** é calculado, nunca escrito à mão. É a diferença entre `Corte + Lavagem` e `Corte de cabelo` na tabela vigente da data do horário (`extraLavagem`, que usa o mesmo `svcPriceOn` da reajuste de outubro). Hoje dá 60 − 50 = R$ 10. Se a tabela mudar, o texto acompanha. Se um dos dois serviços sumir do catálogo, volta o texto antigo.
+- O "1" continua trocando o serviço da reserva pelo combo, como antes (v29.139.0). Só o texto mudou.
+- Conferido na conversa: a reserva do Lucas (Corte + Barba Express + Sobrancelha, R$ 105) está certa, porque foi o que ele pediu às 16h38.
+- **Simulador:** cenário 62 (oferta com "por mais R$ 10,00" e sem "vira") ok. Total de 144 ok e as 3 falhas antigas do 57. Deploy: `ju-ia-site`, testada no ar logo depois do deploy.
+
 ## 29.275.1 — JuIA: pedido de localização sempre leva a localização; serviço em aberto avisa que o agendamento não está concluído (06/10)
 
 **Caso Renan (06/10, 12h02), mandado pelo Juliano:** *"18:10 pode ser"* e logo depois *"Pode me mandar a localização por favor"*. A JuIA respondeu só *"Hoje às 18:10 está livre. Qual serviço vai ser? 1-5"*. O pedido de localização sumiu, e nada dizia que o horário **ainda não estava reservado**. O Juliano assumiu às 12h55.

@@ -793,6 +793,10 @@ Deno.serve(async req=>{
   }
  }catch(reajErr){console.error('[ju-ia-site] service_price_changes',reajErr)}
  const svcPriceOn=(s:any,dateIso?:string|null)=>(dateIso&&s?.effectiveFrom&&String(dateIso).slice(0,10)>=s.effectiveFrom&&typeof s.priceFrom==='number')?s.priceFrom:Number(s?.price||0)
+ // v29.275.2 (Juliano, 06/10/2026, caso Lucas): a oferta da lavagem dizia "Corte + Lavagem, vira R$ 60,00" —
+ // o cliente lê um preço novo, não o acréscimo. Vende melhor dizer quanto ela soma: "por mais R$ 10,00".
+ // 0 = não dá pra calcular (serviço fora do catálogo): volta o texto antigo.
+ const extraLavagem=(dateIso?:string|null)=>{const l=findService('Corte + Lavagem'),c=findService('Corte de cabelo');if(!l||!c)return 0;const d=svcPriceOn(l,dateIso)-svcPriceOn(c,dateIso);return d>0?d:0}
  const totalOn=(lista:any[],dateIso?:string|null)=>lista.reduce((a:number,s:any)=>a+svcPriceOn(s,dateIso),0)
  // Regra do Juliano (03/09/2026, no prompt): nunca anunciar reajuste por conta própria nem
  // comparar valor velho com novo. Por isso o valor da data sai NEUTRO, sem nota "(a partir de…)".
@@ -4129,7 +4133,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      const optionLabel=(n:string)=>{
       const s=findService(n)
       if(!s)return n
-      if(n==='Corte + Lavagem')return `Corte + Lavagem (vira ${money(svcPriceOn(s,next.date))}, com lavagem profissional)`
+      if(n==='Corte + Lavagem')return extraLavagem(next.date)?`Lavagem no corte (+ ${money(extraLavagem(next.date))})`:`Corte + Lavagem (vira ${money(svcPriceOn(s,next.date))}, com lavagem profissional)`
       return `${n} (+ ${money(svcPriceOn(s,next.date))})`
      }
      const lines=offerOpts.map((n,i)=>`*${i+1}* — ${optionLabel(n)}`).join('\n')
@@ -4776,10 +4780,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       delete next.upsell_after_booking
       if(upsellAfter&&findService(upsellAfter)&&bookingId){
        const sAdd=findService(upsellAfter)!
+       const extraLav=upsellAfter==='Corte + Lavagem'?extraLavagem(next.date):0
        const rotulo=upsellAfter==='Corte + Lavagem'
         ?`a lavagem profissional (Corte + Lavagem, vira ${money(svcPriceOn(sAdd,next.date))})`
         :`${upsellAfter} (+ ${money(svcPriceOn(sAdd,next.date))})`
-       upsellAsk=`\n\nQuer aproveitar e incluir ${rotulo}? Digite *1* para sim ou *2* para não.`
+       upsellAsk=extraLav
+        ?`\n\nQuer incluir a lavagem no seu corte por mais ${money(extraLav)}? Digite *1* para sim ou *2* para não.`
+        :`\n\nQuer aproveitar e incluir ${rotulo}? Digite *1* para sim ou *2* para não.`
        next.upsell_offer_options=[upsellAfter,'__none__']
        next.upsell_post_booking={id:String(bookingId),date:next.date,time:next.time,services:chosen.map((s:any)=>s.name)}
       }

@@ -811,6 +811,13 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('61 localização: não reserva sem o serviço', !reservou(r), r.reply)
   checar('61 localização: avisa que não está concluído quando pede o serviço', !/Qual serviço vai ser/.test(r.reply) || /não está concluído/.test(r.reply), r.reply)
 }
+// 62. Pedido do Juliano (06/10/2026, caso Lucas): a oferta da lavagem depois da reserva diz o ACRÉSCIMO
+// ("por mais R$ 10,00"), não o preço do combo ("Corte + Lavagem, vira R$ 50,00").
+{
+  const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: {},
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Lucas Teste'), vagas: { [dia1]: ['09:00', '10:00'] } })
+  checar('62 lavagem: oferece "por mais R$ 10,00" e não "vira"', /incluir a lavagem no seu corte por mais R\$\s?10,00/.test(r.reply) && !/vira R\$/.test(r.reply), r.reply)
+}
 
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
