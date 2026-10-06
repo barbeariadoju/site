@@ -42,6 +42,23 @@ describe('lerRespostaConfirmacao', () => {
     expect(lerRespostaConfirmacao('sem a barba dessa vez, so o corte')).not.toBe('decline');
     expect(lerRespostaConfirmacao('nao vou fazer a depilacao nasal')).not.toBe('decline');
   });
+  it('caso Tony (05/10/2026): "amanhã eu vou aí… não caiu o pagamento" confirma o horário de amanhã', () => {
+    const TONY = 'o juliana, boa tarde meu patrao, amanha eu vou ai viu, que nao caiu ainda o pagamento, amanha eu vou pagar as contas ainda, ai eu passo ai cortar ai, falou? e nois patrao.';
+    expect(lerRespostaConfirmacao(TONY, 'amanha')).toBe('confirm');
+    expect(lerRespostaConfirmacao(TONY)).toBe('confirm');
+    // o mesmo texto sobre um horário de HOJE não confirma nem cancela: vai pra JuIA
+    expect(lerRespostaConfirmacao(TONY, 'hoje')).toBeNull();
+  });
+  it('presença negada ou cancelamento explícito continuam cancelando', () => {
+    expect(lerRespostaConfirmacao('nao vou ai amanha nao, surgiu um compromisso')).toBe('decline');
+    expect(lerRespostaConfirmacao('ia passar ai mas infelizmente nao vou conseguir')).toBe('decline');
+    expect(lerRespostaConfirmacao('nao vou')).toBe('decline');
+    expect(lerRespostaConfirmacao('pode cancelar, depois eu passo ai')).toBe('decline');
+  });
+  it('"não" no meio de frase longa sem falar de vir não cancela', () => {
+    expect(lerRespostaConfirmacao('boa tarde, ainda nao sei direito como vai ser o dia amanha')).toBeNull();
+    expect(lerRespostaConfirmacao('to indo sim, nao esquece de separar o cafe')).toBe('confirm');
+  });
   it('palavras de confirmação', () => {
     expect(lerRespostaConfirmacao('sim, confirmo')).toBe('confirm');
     expect(lerRespostaConfirmacao('ok')).toBe('confirm');

@@ -790,6 +790,17 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r = await turno({ msg: 'Posso desmarcar meu horário?', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Carlos Teste'), futuros: [{ id: 'b2', booking_date: dia1, start_time: '10:00:00', service_name: 'Corte de cabelo' }] })
   checar('49b pergunta "posso desmarcar?" pede sim/não', !cancelou(r) && /Responda sim ou não/.test(r.reply), r.reply)
 }
+// 60. Caso Alexander (06/10/2026, 10h28): "O mais próximo que tenho é 17:40 ou 17:45. Serve pra você?" →
+// "pode ser" reserva o primeiro oferecido, sem voltar a perguntar o período.
+{
+  const st = { services: ['Corte + Barba Express'], servicos_escolhidos: ['Corte + Barba Express'], date: dia1, time: '17:30', name: 'Alexander Teste', pending_fit_choice: { time: '17:30', added: null, alts: ['17:40', '17:45'] } }
+  const r = await turno({ msg: 'pode ser', state: st, ai: { intent: 'availability', reply: 'Você prefere manhã, tarde ou final do dia?' }, contexto: ctxCliente('Alexander Teste'), vagas: { [dia1]: ['17:40', '17:45'] } })
+  const criou = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('60 "pode ser" à oferta: reserva o 17:40', Boolean(criou) && String(criou.args?.p_start_time).startsWith('17:40'), { reply: r.reply, args: criou?.args })
+  const r2 = await turno({ msg: '17h45', state: st, ai: { intent: 'book', reply: 'Ok', updates: { time: '17:45' } }, contexto: ctxCliente('Alexander Teste'), vagas: { [dia1]: ['17:40', '17:45'] } })
+  const criou2 = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('60 horário citado da oferta: reserva o 17:45', Boolean(criou2) && String(criou2.args?.p_start_time).startsWith('17:45'), { reply: r2.reply, args: criou2?.args })
+}
 
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

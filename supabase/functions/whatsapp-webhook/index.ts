@@ -1201,7 +1201,10 @@ Deno.serve(async (request: Request) => {
           // _shared/confirmacao-presenca.ts (testada): número na frente decide; sem número, remarcar
           // antes de cancelar, e negação sobre SERVIÇO ("nao vou pintar", "sem barba", "so vou cortar")
           // nunca cancela — só negação sobre VIR.
-          const acaoConfirmacao = lerRespostaConfirmacao(normalizedReply)
+          // v29.274.11 (caso Tony): o dia do horário entra na leitura — "amanhã eu vou aí" confirma o de
+          // amanhã, mas sobre um horário de hoje é outra conversa (vai pra JuIA).
+          const hojeConfSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+          const acaoConfirmacao = lerRespostaConfirmacao(normalizedReply, String(pendingConfirmation.booking_date).slice(0, 10) === hojeConfSP ? 'hoje' : 'amanha')
           const isReschedule = acaoConfirmacao === 'reschedule'
           const isDecline = acaoConfirmacao === 'decline'
           const isConfirm = acaoConfirmacao === 'confirm'

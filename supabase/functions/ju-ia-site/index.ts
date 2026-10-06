@@ -3162,8 +3162,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const escolheu1=bareFit==='1',escolheu2=bareFit==='2'
   const comboNoAlt=escolheu1&&!pfc.semOutroHorario&&pfc.alt
   const verOutroDia=escolheu2&&pfc.semOutroHorario
-  const soBase=(escolheu2&&!pfc.semOutroHorario)||(escolheu1&&pfc.semOutroHorario)||semAdded||manterBase||/\bso\b[\s\S]*?\b(corte|cabelo)\b|\bsem (a )?barba\b|\bdeixa (so )?o corte\b/.test(normalizedQuestion)
-  if(comboNoAlt){
+  // v29.274.11 (caso Alexander): resposta à oferta "X ou Y. Serve pra você?" (pending_fit_choice.alts).
+  // Horário citado que é um dos oferecidos reserva ele; "sim"/"pode ser" seco reserva o primeiro (o mais
+  // próximo do que o cliente pediu). Só vale para essa oferta — as outras não guardam alts.
+  const altsFit=Array.isArray(pfc.alts)?pfc.alts.map(String).filter(Boolean):[]
+  const horaFit=normalizedQuestion.match(/\b(\d{1,2})\s*(?::|h)\s*(\d{2})?\b/)
+  const altCitado=horaFit?altsFit.find((t:string)=>Number(t.slice(0,2))===Number(horaFit[1])&&Number(t.slice(3,5))===Number(horaFit[2]||0)):null
+  const altAceito=altsFit.length?(altCitado||(simpleYes&&!simpleNo&&!horaFit&&!/\?\s*$/.test(normalizedQuestion.trim())?altsFit[0]:null)):null
+  const soBase=!altAceito&&((escolheu2&&!pfc.semOutroHorario)||(escolheu1&&pfc.semOutroHorario)||semAdded||manterBase||/\bso\b[\s\S]*?\b(corte|cabelo)\b|\bsem (a )?barba\b|\bdeixa (so )?o corte\b/.test(normalizedQuestion))
+  if(altAceito){
+   next.time=altAceito
+   chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
+   intent='book';handoff=false
+  }else if(comboNoAlt){
    next.time=pfc.alt
    chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
    intent='book';handoff=false
@@ -4618,7 +4629,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // v29.79.0 (caso Rodrigo): arma a saída "só o corte então" — se o cliente abrir
       // mão do serviço que não coube, o horário original volta e o agendamento fecha
       // direto (sem isso o modelo regerava a mesma negativa e caía no "me embolei").
-      next.pending_fit_choice={time:alvo,added:null}
+      // v29.274.11 (caso Alexander, 06/10/2026, 10h28): "O mais próximo que tenho é 17:40 ou 17:45.
+      // Serve pra você?" → "pode ser" caía no modelo, que perguntou "manhã, tarde ou final do dia?"
+      // e o Juliano fechou na mão. As alternativas oferecidas ficam guardadas pra o "sim" reservar.
+      next.pending_fit_choice={time:alvo,added:null,alts:perto}
      }else if(error.message.includes('antecedência')){
       // v29.62.3 (caso Cleiton, 21/08/2026, 14h58): às 12h51 a JuIA ofereceu 15:00 com a
       // pergunta de complemento; ele só respondeu "4" (fechar) às 14h58 — 2 minutos antes

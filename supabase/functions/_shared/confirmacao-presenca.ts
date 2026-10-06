@@ -78,14 +78,39 @@ export const negacaoDeServico = (normalizedReply: string): boolean => {
   return false
 }
 
-export const lerRespostaConfirmacao = (normalizedReply: string): AcaoConfirmacao => {
+// v29.274.11 — caso Tony (05/10/2026, 14h58). Áudio transcrito: "amanhã eu vou aí viu, que não caiu
+// ainda o pagamento, amanhã eu vou pagar as contas ainda, aí eu passo aí cortar aí, falou? É nóis".
+// Era CONFIRMAÇÃO (o horário era amanhã), mas qualquer "não" na frase cancelava: o "não caiu o
+// pagamento" liberou o horário e a JuIA ofereceu outro dia. O Juliano refez na mão.
+// Agora: (a) "vou aí / passo aí / estarei aí / tô indo / pode contar" sem negação na frente confirma,
+// a não ser que a frase peça cancelamento com todas as letras; (b) "não" solto só cancela em resposta
+// curta — em frase longa, cancelar exige negação sobre VIR ("não vou poder", "não consigo ir"...).
+// Na dúvida devolve null e a mensagem desce pra JuIA, que pergunta em vez de cancelar.
+const PRESENCA = /\b(?:vou\s+(?:sim|ai|la|estar\s+ai|passar\s+ai|aparecer|comparecer)|irei|estarei\s+(?:ai|la)|passo\s+(?:ai|la)|apareco\s+(?:ai|la)|(?:to|tou|estou)\s+indo|pode\s+(?:contar|me\s+esperar))\b/g
+const CANCELA = /cancel|desmarc|infelizmente|nao\s+vou\s+(?:mais|poder|conseguir|dar|ir|vir|ai|la|comparecer)|nao\s+posso|nao\s+consigo|nao\s+vai\s+(?:dar|rolar)|nao\s+da\s+(?:pra|para)|nao\s+estarei|nao\s+irei/
+
+export const presencaPositiva = (t: string): boolean => {
+  for (const m of t.matchAll(PRESENCA)) {
+    const antes = t.slice(Math.max(0, (m.index ?? 0) - 12), m.index)
+    if (!/\b(nao|nem)\b/.test(antes)) return true
+  }
+  return false
+}
+
+// `dia` = quando é o horário reservado. "Vou amanhã" sobre horário de HOJE não é confirmação.
+export const lerRespostaConfirmacao = (normalizedReply: string, dia?: 'hoje' | 'amanha'): AcaoConfirmacao => {
   const t = normalizedReply.trim()
   const n = numeroNaFrente(t)
   if (n === '1') return 'confirm'
   if (n === '2') return 'reschedule'
   if (n === '3') return 'decline'
   if (/remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(t)) return 'reschedule'
-  if (!negacaoDeServico(t) && /\bnao\b|nao vou|nao posso|nao consigo|cancela|infelizmente/.test(t)) return 'decline'
+  const cancelaExplicito = CANCELA.test(t)
+  if (!cancelaExplicito && presencaPositiva(t)) {
+    const outroDia = (dia === 'hoje' && /\bamanha\b/.test(t)) || (dia === 'amanha' && /\bhoje\b/.test(t) && !/\bamanha\b/.test(t))
+    return outroDia ? null : 'confirm'
+  }
+  if (!negacaoDeServico(t) && (cancelaExplicito || (/\bnao\b/.test(t) && t.length <= 30))) return 'decline'
   if (/\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(t)) return 'confirm'
   return null
 }
