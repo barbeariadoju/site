@@ -18,6 +18,7 @@ import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceit
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
+import { comLocalizacao } from '../_shared/localizacao.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 // v29.190.0 — caso 12/09 18h41 (sábado à noite): "ele está atendendo na cadeira" com a barbearia
 // fechada. Mesma régua do webhook (naCadeira): terça a sábado, 8h às 19h, sábado até 15h.
@@ -5375,6 +5376,10 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   const supabaseUrlInd=Deno.env.get('SUPABASE_URL')
   if(pushSecretInd&&supabaseUrlInd)await fetch(`${supabaseUrlInd}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretInd},body:JSON.stringify({custom:{title:'Indicação pelo WhatsApp',body:`${firstName(contextFullName)||String(body?.whatsapp_name||'').trim()||'Cliente novo'} diz que veio por indicação de ${quemIndicou}. Se agendar de terça a quinta, aplique R$ 10 no Concluir com o motivo "Indicação: ${quemIndicou}".`,url:'/admin-agenda.html?app=1',tag:`indicacao-${verifiedPhone||'site'}`}})}).catch(()=>{})
  }
+ // v29.275.1 — caso Renan (06/10/2026, 12h02): "18:10 pode ser" + "Pode me mandar a localização" recebeu
+ // só a lista de serviços. Pedido de localização sempre leva a localização, e com o serviço ainda em aberto
+ // a resposta diz que o agendamento não está concluído (regra em _shared/localizacao.ts, testada).
+ if(!handoff)reply=comLocalizacao(normalize(String(message||'')),String(reply||''),Boolean(next.pending_service_pick&&next.time&&!next.completed))
  // v29.212.0 (caso Nuno): quem assina o WhatsApp é o Juliano — "Obrigada" não sai.
  reply=falarNoMasculino(reply)
  // v29.102.0: ultimo passo antes de responder — tira emoji da resposta e dos botoes.

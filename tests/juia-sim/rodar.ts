@@ -801,6 +801,16 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const criou2 = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('60 horário citado da oferta: reserva o 17:45', Boolean(criou2) && String(criou2.args?.p_start_time).startsWith('17:45'), { reply: r2.reply, args: criou2?.args })
 }
+// 61. Caso Renan (06/10/2026, 12h02): "18:10 pode ser" + "Pode me mandar a localização" — a resposta leva a
+// localização e diz que o agendamento ainda não está concluído (falta o serviço).
+{
+  const r = await turno({ msg: '18:10 pode ser\nPode me mandar a localização por favor', state: { date: hoje, period: 'noite' },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '18:10' } }, contexto: {}, nomeWhats: 'Renan',
+    vagas: { [hoje]: ['18:10', '18:15', '18:30'] } })
+  checar('61 localização: manda o link do Maps', /maps\.app\.goo\.gl/.test(r.reply) && /Antônio da Cruz, 482/.test(r.reply), r.reply)
+  checar('61 localização: não reserva sem o serviço', !reservou(r), r.reply)
+  checar('61 localização: avisa que não está concluído quando pede o serviço', !/Qual serviço vai ser/.test(r.reply) || /não está concluído/.test(r.reply), r.reply)
+}
 
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

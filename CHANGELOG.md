@@ -1,3 +1,11 @@
+## 29.275.1 — JuIA: pedido de localização sempre leva a localização; serviço em aberto avisa que o agendamento não está concluído (06/10)
+
+**Caso Renan (06/10, 12h02), mandado pelo Juliano:** *"18:10 pode ser"* e logo depois *"Pode me mandar a localização por favor"*. A JuIA respondeu só *"Hoje às 18:10 está livre. Qual serviço vai ser? 1-5"*. O pedido de localização sumiu, e nada dizia que o horário **ainda não estava reservado**. O Juliano assumiu às 12h55.
+- **O que o Juliano pediu:** responder às duas coisas. Entendi 18:10, segue a localização, mas o agendamento ainda não está concluído: falta escolher o serviço.
+- **Correção (`_shared/localizacao.ts`, fonte única, teste `tests/unit/localizacao.spec.js`):** é o último passo da resposta da `ju-ia-site`. Se a mensagem pede localização ("localização", "endereço", "onde fica", "como chego", "manda a loc", "maps") e a resposta ainda não tem o endereço, entram o link do Maps (o mesmo do aviso de chegada) e o endereço com a Zona Azul. Se a resposta é a pergunta do serviço com um horário guardado, entra também *"Seu agendamento ainda não está concluído: falta escolher o serviço."* A saudação continua abrindo a mensagem. Quando o modelo já respondeu com o endereço, não repete (conferido no ar).
+- **Simulador:** cenário 61 (caso Renan) ok. Total de 143 ok e as 3 falhas antigas do 57 (Sharles, dependem da data; ver 29.274.11). vitest 302 ok + 1 pulado.
+- Deploy: `ju-ia-site`, testada no ar logo depois do deploy. Sem `.js`/`.css` do site.
+
 ## 29.275.0 — Senha digital: previsão real, sem a folga de 15 min do agendamento online (06/10)
 
 **Teste do Juliano (06/10, 11h20), logo depois de colar a placa:** pegou a senha com a cadeira e a agenda vazias e recebeu *"previsão para as 11:45"*. Quem está dentro da loja esperaria 25 minutos à toa, e sairia com a impressão errada.
