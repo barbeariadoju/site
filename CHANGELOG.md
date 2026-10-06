@@ -1,3 +1,14 @@
+## 29.275.0 — Senha digital: previsão real, sem a folga de 15 min do agendamento online (06/10)
+
+**Teste do Juliano (06/10, 11h20), logo depois de colar a placa:** pegou a senha com a cadeira e a agenda vazias e recebeu *"previsão para as 11:45"*. Quem está dentro da loja esperaria 25 minutos à toa, e sairia com a impressão errada.
+- **Causa:** `senha_digital_criar` escolhia o horário pela regra do agendamento online (`get_available_slots_excluding`): agora + **15 min de antecedência**, na **grade de 15 em 15**. 11:20 + 15 = 11:35, arredondado para 11:45. A folga existe para o cliente online ter tempo de chegar. Quem pegou a senha já chegou.
+- **Correção (migração 189):** a senha procura o primeiro horário livre **a partir de agora**, arredondado para os próximos 5 min. Entram como candidatos também o **fim exato** de cada atendimento e de cada bloqueio: com alguém na cadeira até 11:40, a senha fica para 11:40, não 11:45. As travas continuam as mesmas: fechamento, bloqueios, choque com agendamento e descanso a cada 4 atendimentos. O `create_public_booking_v15` só aceita horário "agora" quando é chamado de dentro da senha, por uma marca local da transação (`bdj.senha_porta`). **O site, a JuIA e o painel seguem com os 15 min**, e isso foi conferido no banco.
+- **"Quantos antes de você"** agora conta só quem ainda não terminou. Antes, um atendimento das 9h que ficou "confirmado" porque ninguém clicou em Concluir aparecia como "Há 1 pessoa antes de você".
+- **Mensagem do WhatsApp (`_shared/senha-digital.ts`):** sem ninguém antes e com o horário a até 5 min, a mensagem diz *"A cadeira está livre: o Juliano já te chama."* em vez de dar uma previsão. Com fila, a previsão continua como antes.
+- **Conferido no banco com rollback, às 11h26:** a senha caiu às 11:30, posição 0. Um agendamento online para dali a 2 min continuou recusado.
+- **Limite que o sistema não resolve:** atendimento sem registro na agenda (cliente sentado sem senha nem agendamento) não aparece em lugar nenhum. A previsão sai como se a cadeira estivesse livre.
+- **Testes:** `tests/unit/senha-digital.spec.js` 13 ok (2 novos). Deploy: `senha-digital`. A página `/senha/` não mudou: ela já dizia "Você é o próximo. Pode entrar." e mostra o horário que vem do banco.
+
 ## 29.274.11 — JuIA: "pode ser" à oferta de horário reserva; "amanhã eu vou aí" confirma em vez de cancelar (06/10)
 
 **Dois casos mandados pelo Juliano (06/10), os dois fechados na mão por ele:**

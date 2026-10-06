@@ -22,9 +22,22 @@ describe('montarMensagemSenha', () => {
     expect(t).not.toContain('dar uma volta');
   });
 
+  it('teste do Juliano (06/10): cadeira livre não dá "previsão", diz que já vai ser chamado', () => {
+    const t = montarMensagemSenha({ ...base, horario: '11:20:00', posicao: 0, agora: '11:20' });
+    expect(t).toContain('A cadeira está livre: o Juliano já te chama.');
+    expect(t).not.toContain('previsão');
+    expect(montarMensagemSenha({ ...base, horario: '11:25:00', posicao: 0, agora: '11:21' })).toContain('A cadeira está livre');
+  });
+
+  it('com alguém na cadeira ou horário mais adiante, segue a previsão', () => {
+    expect(montarMensagemSenha({ ...base, horario: '11:40:00', posicao: 0, agora: '11:20' })).toContain('com previsão para as 11:40.');
+    expect(montarMensagemSenha({ ...base, horario: '11:20:00', posicao: 1, agora: '11:20' })).toContain('com previsão para as 11:20.');
+    expect(montarMensagemSenha({ ...base, posicao: 0 })).toContain('com previsão para as 14:50.');
+  });
+
   it('não leva emoji nem pergunta', () => {
     for (const pos of [0, 1, 2]) {
-      const t = montarMensagemSenha({ ...base, posicao: pos });
+      const t = montarMensagemSenha({ ...base, posicao: pos, agora: pos ? undefined : '14:50' });
       expect(t).not.toMatch(/\p{Extended_Pictographic}/u);
       expect(t).not.toContain('?');
     }

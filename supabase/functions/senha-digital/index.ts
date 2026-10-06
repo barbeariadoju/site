@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
     let whats = false
     try {
       whats = await enviarWhats(admin, toWhatsNumber(telefone), montarMensagemSenha({
-        nome, senha: Number(linha.senha_numero), servico, horario: String(linha.start_time), posicao, link,
+        nome, senha: Number(linha.senha_numero), servico, horario: String(linha.start_time), posicao, link, agora: agoraSP().hora,
       }))
     } catch (sendError) { console.error('[senha-digital] whatsapp', sendError) }
 
