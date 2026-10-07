@@ -5467,7 +5467,9 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  // v29.276.1 — regra do Juliano (07/10/2026), caso Samuel: "Eu tou só bigode para fazer" ouviu "não temos
  // bigode avulso" e a oferta da Barba Express. Só o bigode é cortesia da casa: a resposta diz isso e, se a
  // reserva ainda espera o serviço, refaz a pergunta. Reserva feita neste turno fica como está, com o aviso.
- if(!handoff&&soBigode(normalize(String(message||'')))&&!/cortesia/i.test(String(reply||''))){
+ // O texto é sempre o da regra: no ar, o modelo escreveu a própria versão ("…não é necessário agendar um
+ // serviço específico pra isso") — e o bigode é cortesia JUNTO com o atendimento, não visita avulsa.
+ if(!handoff&&soBigode(normalize(String(message||'')))&&!String(reply||'').includes(TEXTO_BIGODE_CORTESIA.split('. ')[0])){
   if(/Reservado/i.test(String(reply||''))||intent==='cancel'||intent==='reschedule'){
    reply=`${reply}\n\n${TEXTO_BIGODE_CORTESIA.split('. ')[0]}.`
   }else{
