@@ -237,3 +237,29 @@ describe('pinturaPedida (caso Samuel, 07/10)', () => {
     expect(semTrechoDePintura('vou cortar o cabelo tambem')).toMatch(/cabelo/);
   });
 });
+
+// v29.276.1 — Juliano (07/10/2026): "pintar cabelo tintura é igual pigmentação".
+describe('pigmentação = tintura (Juliano, 07/10)', () => {
+  it('"pigmentação" sozinha é a do cabelo', () => {
+    expect(pinturaPedida('quero fazer pigmentacao')).toBe('Pigmentação Capilar (Tintura)');
+    expect(pinturaPedida('corte e pigmentacao')).toBe('Pigmentação Capilar (Tintura)');
+  });
+  it('com barba ou sobrancelha continua sendo a delas', () => {
+    expect(pinturaPedida('pigmentacao de barba')).toBe('Pigmentação de Barba');
+    expect(pinturaPedida('pigmentacao da sobrancelha')).toBe('Pigmentação de Sobrancelha');
+  });
+});
+
+// v29.276.1 — regra do Juliano (07/10/2026): só o bigode é cortesia da casa.
+import { soBigode } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('soBigode (caso Samuel, 07/10)', () => {
+  it('"tou só bigode para fazer" é só o bigode', () => {
+    expect(soBigode('eu tou so bigode para fazer')).toBe(true);
+    expect(soBigode('tem o bigode pra fazer fininho, retocar')).toBe(true);
+  });
+  it('barba ou pigmentação do bigode não são "só o bigode"', () => {
+    expect(soBigode('barba e bigode')).toBe(false);
+    expect(soBigode('pintar o bigode')).toBe(false);
+    expect(soBigode('corte de cabelo')).toBe(false);
+  });
+});

@@ -1,3 +1,17 @@
+## 29.276.1 — JuIA: pigmentação, tintura e pintar o cabelo são o mesmo serviço; só o bigode é cortesia da casa (07/10)
+
+**Regra do Juliano (07/10):** *"pintar cabelo, tintura é igual pigmentação"*, ou seja, **Pigmentação Capilar (Tintura)**.
+- **Defeito achado ao conferir:** "pigmentação" sozinha casava com a **Pigmentação de Barba**. O `findService` escolhe o nome do catálogo mais parecido em tamanho, e o de barba é o mais curto dos três. Agora "pigmentação" sem falar de barba, bigode ou sobrancelha é a Pigmentação Capilar (Tintura). A de Barba só entra com barba ou bigode na frase, e a de Sobrancelha com sobrancelha.
+- A mesma regra foi para a leitura de frase (`pinturaPedida`, que agora também lê "pigment…"), para os sinônimos da pergunta de existência ("vocês fazem pigmentação?" continua sendo só pergunta) e para o texto de regras da JuIA (seção SERVIÇOS).
+- **Agenda no texto da JuIA:** a linha de funcionamento ganhou *"o primeiro horário de atendimento é 08:30 (nunca ofereça 08:00)"*, para acompanhar a grade nova da 29.276.0. Antes, ela ainda podia dizer "abrimos às 8h, pode vir às 8h".
+- **Bigode (regra do Juliano, 07/10, fecha a pendência da 29.276.0):** alinhar **só o bigode** o Juliano faz como **cortesia da casa**, junto com o atendimento. Quem quer a barba inteira segue as opções de barba. Foi o que aconteceu com o Samuel (Corte + Lavagem + Sobrancelha + Tintura, bigode sem custo). A JuIA tinha dito *"não temos bigode avulso"* e oferecido a Barba Express (R$ 35). Agora:
+  - `soBigode` (`_shared/leitura-cliente.ts`, com teste) reconhece frase com bigode e sem barba. "Pintar o bigode" não conta: é a Pigmentação de Barba.
+  - Nessa frase, nenhum serviço de barba entra na lista. "Bigode" também saiu das palavras que valiam como pedido de barba na trava.
+  - A resposta diz *"O bigode o Juliano alinha como cortesia da casa, junto com o seu atendimento, sem custo. Se preferir fazer a barba inteira, aí seguem as opções de barba."* Se a reserva ainda espera o serviço, refaz a pergunta numerada. Se a reserva sai no mesmo turno ("corte e o bigode amanhã às 10h"), reserva só o corte e avisa a cortesia.
+  - A regra também entrou no texto da JuIA (seção SERVIÇOS).
+- **Testes (bigode):** 2 unitários e o cenário 65 (a e b, 3 verificações). Simulador: **160 ok, 0 falhas**. Na primeira rodada do `npm test`, 1 e2e falhou por instabilidade. Rodando de novo, deu 90/90, e esta versão não mexe em nenhum arquivo do site.
+- **Testes:** 4 unitários novos e o cenário 64 do simulador ("quero corte e pigmentação" reserva a Tintura, não a de Barba). Simulador: **157 ok, 0 falhas**.
+
 ## 29.276.0 — JuIA: "pintar o cabelo de preto" é tintura, e ela não some mais da reserva (caso Samuel); primeiro horário às 08:30 (07/10)
 
 **Caso Samuel (07/10, 06h20–08h13), mandado pelo Juliano** ("cliente tem um português ruim mas dá pra entender"). Ele pediu horário hoje de manhã, corte **e** pintar o cabelo de preto, por áudio e por texto. A JuIA reservou só o corte, incluiu uma lavagem que ele não pediu e, quando ele voltou às 8h05 falando da pintura, ofereceu horários novos. O Juliano resolveu por áudio e arrumou a reserva na mão (Corte + Lavagem + Sobrancelha + Tintura, R$ 130). Seis defeitos, todos lidos turno a turno no `site_chat_messages`:

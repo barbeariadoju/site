@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, pinturaPedida, semTrechoDePintura } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -499,6 +499,9 @@ const findService=(name:string)=>{
  if(!n.trim())return undefined
  const exact=services.find(s=>normalize(s.name)===n)
  if(exact)return exact
+ // v29.276.1 (Juliano, 07/10/2026): "pintar cabelo, tintura é igual pigmentação". "Pigmentação" sozinha casava
+ // com a de Barba (o nome mais curto dos três). Sem falar de barba/bigode/sobrancelha, é a do cabelo.
+ if(/\bpigment/.test(n)&&!/barba|bigode|cavanhaque|sobrancelha/.test(n)){const cap=services.find(s=>/pigmentacao capilar/.test(normalize(s.name)));if(cap)return cap}
  const candidates=services.filter(s=>normalize(s.name).includes(n)||n.includes(normalize(s.name)))
  if(!candidates.length)return undefined
  const wantsCombo=comboSignal.test(name)
@@ -664,7 +667,7 @@ function servicosPorPalavra(normalizedText:string,todas=false){
 // único lugar em que a JuIA cria reserva: serviço que o cliente não escreveu nesta conversa (nome, palavra da
 // família — "cabelo", "barba", "navalha"…) nem escolheu numa lista nossa (servicos_escolhidos) não entra.
 // Se não sobrar nada, ela pergunta, com a mesma lista numerada do convite de retorno.
-const PALAVRA_FAMILIA:[RegExp,string][]=[[/\b(corte|cortar|cabelo|raspar|raspa|raspagem|careca|maquina|degrade|tesoura|lavagem|lavar)\b/,'corte'],[/\b(infantil|crianca|filho|filha|menino|menina|garoto)\b/,'infantil'],[/\b(barba|barboterapia|navalha|express|bigode|toalha|ozonio)\b/,'barba']]
+const PALAVRA_FAMILIA:[RegExp,string][]=[[/\b(corte|cortar|cabelo|raspar|raspa|raspagem|careca|maquina|degrade|tesoura|lavagem|lavar)\b/,'corte'],[/\b(infantil|crianca|filho|filha|menino|menina|garoto)\b/,'infantil'],[/\b(barba|barboterapia|navalha|express|toalha|ozonio)\b/,'barba']] // v29.276.1: "bigode" saiu — só o bigode é cortesia, não pedido de barba
 function servicosDitosPeloCliente(textos:string[],escolhidos:string[]){
  const nomes=new Set<string>(),fams=new Set<string>()
  for(const t of textos){
@@ -1035,11 +1038,13 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Quando perguntarem o que é um serviço, como funciona ou por que vale a pena, use o "argumento de venda" do catálogo com suas palavras (o benefício), sem colar o texto. Preço e duração são complemento. Sem argumento cadastrado, responda com o catálogo, sem inventar benefício.
 - Depois de responder preço, duração ou detalhe de um serviço, termine com uma oferta breve ("Se quiser, posso checar um horário pra você.") — sem repetir se já ofereceu há pouco.
 - Grupo ("2 cortes e 1 infantil", "eu e meu filho"): um atendimento por pessoa, em sequência. Repita o serviço uma vez por pessoa em updates.services, trate a duração como a soma e diga quantas pessoas entendeu.
+- Bigode: alinhar SÓ o bigode o Juliano faz como cortesia da casa, junto com o atendimento, sem custo. Não é serviço do catálogo: não coloque nada em updates.services por causa dele e nunca ofereça Barba Express a quem só quer o bigode. Se ele quiser a barba inteira, aí sim as opções de barba.
+- Pintar o cabelo, tintura e pigmentação são o MESMO serviço: "Pigmentação Capilar (Tintura)". "Pigmentação de Barba" só quando ele falar de barba ou bigode; "Pigmentação de Sobrancelha" só quando falar de sobrancelha. "Pigmentação" sozinha é a do cabelo.
 - "Raspar a cabeça", "deixar no zero", "carequinha" (cabelo) = serviço "Raspar a cabeça". Corte pra filho/criança = "Corte de cabelo infantil".
 - Nunca assuma o serviço pelo histórico (last_services), a não ser que o cliente peça "o mesmo de sempre", "igual da última vez", "repetir".
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
-- Funcionamento: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado.
+- Funcionamento: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. O primeiro horário de atendimento é 08:30 (nunca ofereça 08:00).
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
 - "Antes das X", "até as X" = limite de horário, não o horário escolhido. "Depois das X", "a partir das X", "após as X" = piso. Nos dois casos deixe updates.time em null e use intent "availability"; o sistema filtra.
@@ -1165,6 +1170,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(soRecibo&&!state?.completed)next.time=state?.time||null
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
  // Resposta à lista numerada: o que estava guardado (ditos) volta junto com o escolhido.
+ // v29.276.1 (regra do bigode): "só bigode" não põe barba na lista — o que for barba e não estava antes sai.
+ if(soBigode(normalize(message))){
+  const antesBg=Array.isArray(state?.services)?state.services:[]
+  next.services=next.services.filter((n:string)=>antesBg.includes(n)||!familiesOfService(n).has('barba'))
+ }
  if(servicoEscolhidoNaLista&&manterNaEscolha.length){
   const fam=normalizeServiceFamilies([...next.services,...manterNaEscolha.filter((n:string)=>!next.services.includes(n))].map((n:string)=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
   next.services=fam.items.map((x:any)=>x.name)
@@ -5453,6 +5463,26 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   const pushSecretInd=Deno.env.get('PUSH_WEBHOOK_SECRET')
   const supabaseUrlInd=Deno.env.get('SUPABASE_URL')
   if(pushSecretInd&&supabaseUrlInd)await fetch(`${supabaseUrlInd}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretInd},body:JSON.stringify({custom:{title:'Indicação pelo WhatsApp',body:`${firstName(contextFullName)||String(body?.whatsapp_name||'').trim()||'Cliente novo'} diz que veio por indicação de ${quemIndicou}. Se agendar de terça a quinta, aplique R$ 10 no Concluir com o motivo "Indicação: ${quemIndicou}".`,url:'/admin-agenda.html?app=1',tag:`indicacao-${verifiedPhone||'site'}`}})}).catch(()=>{})
+ }
+ // v29.276.1 — regra do Juliano (07/10/2026), caso Samuel: "Eu tou só bigode para fazer" ouviu "não temos
+ // bigode avulso" e a oferta da Barba Express. Só o bigode é cortesia da casa: a resposta diz isso e, se a
+ // reserva ainda espera o serviço, refaz a pergunta. Reserva feita neste turno fica como está, com o aviso.
+ if(!handoff&&soBigode(normalize(String(message||'')))&&!/cortesia/i.test(String(reply||''))){
+  if(/Reservado/i.test(String(reply||''))||intent==='cancel'||intent==='reschedule'){
+   reply=`${reply}\n\n${TEXTO_BIGODE_CORTESIA.split('. ')[0]}.`
+  }else{
+   const esperaServico=Boolean(next.time&&!next.completed&&!(Array.isArray(next.services)&&next.services.length))
+   if(esperaServico){
+    next.pending_service_pick={at:new Date().toISOString(),manter:[]}
+    reply=`${TEXTO_BIGODE_CORTESIA}\n\n${perguntaQualServico()}`
+    actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
+   }else{
+    const temLista=Array.isArray(next.services)&&next.services.length
+    reply=`${TEXTO_BIGODE_CORTESIA}${temLista?` Fica ${next.services.join(' + ')}.`:''}`
+    actions=[]
+   }
+   intent='other'
+  }
  }
  // v29.275.1 — caso Renan (06/10/2026, 12h02): "18:10 pode ser" + "Pode me mandar a localização" recebeu
  // só a lista de serviços. Pedido de localização sempre leva a localização, e com o serviço ainda em aberto

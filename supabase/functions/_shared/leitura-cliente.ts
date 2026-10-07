@@ -178,7 +178,7 @@ export const trechosDePerguntaDeExistencia = (q: string): string[] => {
 // Palavras que o cliente usa pra cada serviço — o nome do catálogo ("Pigmentação Capilar
 // (Tintura)") quase nunca é o que ele escreve ("pintura", "pintar o cabelo").
 const SINONIMOS: [RegExp, string[]][] = [
-  [/tintura|pigmentacao capilar/, ['pint', 'tint', 'colora', 'cabelo branco', 'grisalh', 'cor no cabelo']],
+  [/tintura|pigmentacao capilar/, ['pint', 'tint', 'pigment', 'colora', 'cabelo branco', 'grisalh', 'cor no cabelo']],
   [/pigmentacao de barba/, ['pigment', 'pintar a barba', 'barba branca']],
   [/pigmentacao de sobrancelha/, ['pigment']],
   [/luzes/, ['luzes', 'mecha', 'reflexo']],
@@ -205,7 +205,8 @@ export const palavrasDoServico = (nomeServico: string): string[] => {
 // ---------------------------------------------------------------------------------------------
 export const pinturaPedida = (q: string): string | null => {
   const t = String(q || '')
-  const m = /\b(pint(?!ei\b|ou\b|ado\b|ada\b|ados\b|adas\b)\w*|tintura\w*|tingi\w*|colorir|coloracao)\b/.exec(t)
+  // v29.276.1 (Juliano): pigmentação é o mesmo serviço que pintar/tintura.
+  const m = /\b(pint(?!ei\b|ou\b|ado\b|ada\b|ados\b|adas\b)\w*|tintura\w*|tingi\w*|colorir|coloracao|pigment\w*)\b/.exec(t)
   if (!m) return null
   const antes = t.slice(Math.max(0, m.index - 16), m.index)
   if (/\b(sem|nao|nem|nunca)\s+(\w+\s+)?$/.test(antes)) return null
@@ -218,6 +219,18 @@ export const pinturaPedida = (q: string): string | null => {
 // palavra da família ("cabelo" → corte).
 export const semTrechoDePintura = (q: string): string =>
   String(q || '').replace(/\b(pint|tint|tingi|colori)\w*\s+(?:(?:o|os|a|as|meu|minha|meus|minhas|do|da|de|no|na)\s+)*(cabelo|barba|bigode|sobrancelha)s?\b/g, ' ')
+
+// ---------------------------------------------------------------------------------------------
+// SÓ O BIGODE — regra do Juliano (07/10/2026), caso Samuel: "Eu tou só bigode para fazer" ouviu que não
+// existe bigode avulso e recebeu a oferta da Barba Express (R$ 35). Alinhar só o bigode o Juliano faz como
+// CORTESIA DA CASA; a barba inteira segue as opções do catálogo. Fala de bigode sem falar de barba (nem de
+// pigmentação do bigode, que é a Pigmentação de Barba) é "só o bigode".
+// ---------------------------------------------------------------------------------------------
+export const soBigode = (q: string): boolean => {
+  const t = String(q || '')
+  return /\bbigode/.test(t) && !/\b(barba|barboterapia|navalha|cavanhaque|pigment\w*|pint\w*|tint\w*)\b/.test(t)
+}
+export const TEXTO_BIGODE_CORTESIA = 'O bigode o Juliano alinha como cortesia da casa, junto com o seu atendimento, sem custo. Se preferir fazer a barba inteira, aí seguem as opções de barba.'
 
 // O serviço apareceu só na pergunta ("você faz pintura?") e não no pedido? Então não entra.
 export const servicoSoPerguntado = (nomeServico: string, trechosPergunta: string[], restoDaMensagem: string): boolean => {

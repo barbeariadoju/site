@@ -873,5 +873,24 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('63f "vocês pinta cabelo" responde, não pede confirmação de inclusão', !/Responda sim ou não/.test(r.reply), r.reply)
 }
 
+// 64. Juliano (07/10/2026): "pigmentação" sozinha é a Pigmentação Capilar (Tintura) — casava com a de Barba.
+{
+  const r = await turno({ msg: 'quero corte e pigmentação amanhã às 10h', state: { name: 'Teste Pig', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Vou ver.', updates: { date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Pig'), vagas: { [amanha]: ['10:00'] } })
+  const criou = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  const nome = String(criou?.args?.p_service_name || (r.state?.services || []).join(' + '))
+  checar('64 "pigmentação" = Pigmentação Capilar (Tintura), não de Barba', nome.includes(TINT) && !/Pigmentação de Barba/.test(nome), { reply: r.reply, nome })
+}
+
+// 65. Regra do Juliano (07/10/2026), caso Samuel: só o bigode é cortesia da casa — nada de Barba Express.
+{
+  const st = { date: dia1, time: '10:30', name: 'Samuel Teste', services: [], upsell_offer_done: true }
+  const r = await turno({ msg: 'Eu tou só bigode para fazer', state: st, ai: { intent: 'services', reply: 'Para fazer somente o bigode, não temos um serviço avulso no catálogo. A opção cadastrada é a Barba Express, no valor de R$ 35,00.', updates: { services: ['Barba Express'] } }, contexto: ctxCliente('Samuel Teste'), vagas: { [dia1]: ['10:30'] } })
+  checar('65a só o bigode: cortesia, sem Barba Express', /cortesia da casa/.test(r.reply) && !/Barba Express, no valor|R\$ 35/.test(r.reply) && !(r.state?.services || []).includes('Barba Express'), { reply: r.reply, services: r.state?.services })
+  checar('65a só o bigode: volta a perguntar o serviço', /Qual serviço vai ser\?/.test(r.reply) && !reservou(r), r.reply)
+  const r2 = await turno({ msg: 'quero corte e o bigode amanhã às 10h', state: { name: 'Teste Bigode', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo', 'Barba Express'], date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Bigode'), vagas: { [amanha]: ['10:00'] } })
+  const criou = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('65b corte + bigode: reserva só o corte e avisa a cortesia', criou?.args?.p_service_name === 'Corte de cabelo' && /cortesia da casa/.test(r2.reply), { reply: r2.reply, servico: criou?.args?.p_service_name })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
