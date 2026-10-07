@@ -442,6 +442,17 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
 const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':period==='not_morning'?'tarde ou fim do dia':period==='not_afternoon'?'manhã ou fim do dia':period==='not_evening'?'manhã ou tarde':'final do dia'
 // v29.224.0: "no período da final do dia" (conversa do Tiago, 23/09) — o fim do dia não é "período da".
 const noPeriodo=(period:string)=>period==='evening'?'no final do dia':`no período da ${periodLabel(period)}`
+// v29.279.0 (pedido do Juliano, 07/10/2026): à tarde a JuIA perguntava "manhã, tarde ou final do dia?" para
+// HOJE — a manhã já tinha passado. A pergunta só cita o período que ainda tem horário livre; hoje, o que está
+// correndo vira "agora à tarde"/"ainda de manhã". Sobrou um período só: não pergunta (null), lista direto.
+function perguntaDoPeriodo(slots:string[],ehHoje:boolean){
+ const todos:[string,string,string,string][]=[['morning','de manhã','ainda de manhã','Manhã'],['afternoon','à tarde','agora à tarde','Tarde'],['evening','no final do dia','no final do dia','Final do dia']]
+ const comVaga=todos.filter(([p])=>slotsForPeriod(slots,p).length>0)
+ if(comVaga.length<=1)return null
+ const falas=comVaga.map(([,normal,hoje],i)=>ehHoje&&i===0?hoje:normal)
+ const texto=`Você prefere ${falas.length>2?`${falas.slice(0,-1).join(', ')} ou ${falas[falas.length-1]}`:falas.join(' ou ')}?`
+ return {texto,actions:comVaga.map(([,,,rotulo])=>({label:rotulo,message:`Prefiro ${rotulo.toLowerCase()}`}))}
+}
 const periodoFalado=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à tarde':p==='evening'?'no fim do dia':p==='not_morning'?'depois do meio-dia':p==='not_afternoon'?'de manhã ou no fim do dia':p==='not_evening'?'até as 18h':''
 // v29.12.0 — caso real 11/08/2026: cliente respondeu "Indiferente" e depois "QQ horário"
 // para a pergunta "manhã, tarde ou final do dia?" e a JuIA repetiu a MESMA pergunta, porque
@@ -1044,7 +1055,7 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Nunca assuma o serviço pelo histórico (last_services), a não ser que o cliente peça "o mesmo de sempre", "igual da última vez", "repetir".
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
-- Funcionamento: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. O primeiro horário de atendimento é 08:30 (nunca ofereça 08:00).
+- Funcionamento: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. O primeiro horário de atendimento é 08:30 (nunca ofereça 08:00). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
 - "Antes das X", "até as X" = limite de horário, não o horário escolhido. "Depois das X", "a partir das X", "após as X" = piso. Nos dois casos deixe updates.time em null e use intent "availability"; o sistema filtra.
@@ -4458,12 +4469,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // o recado — "vários" é abundância, e abundância na agenda de barbearia lê como cadeira
    // vazia. "Ainda tenho alguns" diz a mesma verdade operacional (dá pra encaixar) sem
    // anunciar folga, e o "sim!" na frente responde a pergunta que o cliente fez de verdade.
-   reply=`Consigo te atender ${emDia(next.date)} sim! Ainda tenho alguns horários para ${serviceNames} (aproximadamente ${duration} min). Você prefere manhã, tarde ou final do dia?`
-   actions=[
-    {label:'Manhã',message:'Prefiro manhã'},
-    {label:'Tarde',message:'Prefiro tarde'},
-    {label:'Final do dia',message:'Prefiro final do dia'}
-   ]
+   // v29.279.0: só os períodos que ainda têm vaga (hoje à tarde não oferece manhã) — ver perguntaDoPeriodo.
+   const pp=perguntaDoPeriodo(allSlots,next.date===today())
+   if(pp){
+    reply=`Consigo te atender ${emDia(next.date)} sim! Ainda tenho alguns horários para ${serviceNames} (aproximadamente ${duration} min). ${pp.texto}`
+    actions=pp.actions
+   }else{
+    const spreadUm=[allSlots[0],allSlots[Math.floor(allSlots.length*0.25)],allSlots[Math.floor(allSlots.length/2)],allSlots[Math.floor(allSlots.length*0.75)],allSlots[allSlots.length-1]].filter((v,i,a)=>a.indexOf(v)===i)
+    reply=`Consigo te atender ${emDia(next.date)} sim! Para ${serviceNames} (aproximadamente ${duration} min) tenho horários entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}. Alguns exemplos: ${spreadUm.join(', ')}. Qual fica melhor pra você?`
+    actions=spreadUm.map((t:string)=>({label:t,message:t}))
+   }
   }else if(allSlots.length>4){
    // v29.43.0 — casos Aline e Luis (15/08): 8 e 10 horarios despejados numa linha e os dois
    // sumiram. Mais de 4 opcoes vira amostra espalhada + faixa; o cliente pode responder

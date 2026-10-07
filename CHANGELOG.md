@@ -1,3 +1,22 @@
+## 29.279.0 — JuIA: a pergunta "manhã, tarde ou final do dia?" só cita o período que ainda tem vaga (07/10)
+
+**Pedido do Juliano (07/10):** *"é a tarde e a JuIA pergunta pro cliente pra qual horário você quer hoje: manhã, tarde ou noite. Se a JuIA avaliasse a hora ela diria: para agora à tarde ou para a noite?"*
+- **Agora (`perguntaDoPeriodo`):** a pergunta é montada pelos horários que existem de verdade. Sem vaga de manhã: *"Você prefere à tarde ou no final do dia?"*. Para **hoje**, o período que está correndo vira *"agora à tarde"* ou *"ainda de manhã"*. Com vaga só num período, a JuIA não pergunta: mostra os horários direto (faixa + exemplos). Os botões seguem mandando "Prefiro manhã/tarde/final do dia", então a leitura da resposta não mudou.
+- O texto de regras da JuIA também ganhou: *"Para HOJE, olhe a hora atual: período que já passou não se oferece"*, para quando é o modelo quem pergunta.
+- **Simulador:** cenário 67 (a: só tarde e noite, sem manhã; b: um período só, lista direto; c: dia inteiro, os três). **165 ok, 0 falhas.**
+
+## 29.278.0 — Limite de 12 atendimentos por dia: com 12, a agenda fecha o dia (site, JuIA, reagendamento e senha digital) (07/10)
+
+**Pedido do Juliano (07/10):** *"meu físico é pra 10/12 clientes no máximo em 1 dia… bateu 12 num dia não agenda mais… assim a gente força a pessoa cortar outro dia"*. E sobre a senha: *"precisa pôr trava na senha digital, ela mesma pode dizer: poxa, hoje já lotou, mas amanhã…"*.
+- **Banco (migrações 192 e 193):** `dia_lotado(data)` conta os agendamentos ativos do dia (pendente, confirmado e concluído). O limite mora em `limite_atendimentos_dia()` (12), para mudar num lugar só.
+  - `get_available_slots_excluding` não oferece horário em dia lotado. Isso vale para o site, a JuIA, o reagendamento e a lista de horários do painel.
+  - O gatilho `trg_bookings_limite_diario` recusa reserva nova (ou remarcação para o dia cheio) com *"Horário indisponível: a agenda de DD/MM já está completa"*. A JuIA já trata "indisponível" oferecendo outro dia.
+  - **Só o Juliano logado no painel (`is_admin()`) passa por cima:** cara a cara, quem decide é ele.
+  - Um agendamento conta 1: pai e filho no mesmo horário contam 1.
+- **Senha digital (`senha-digital`):** confere `dia_lotado` antes de gerar. Se lotou, responde na própria tela: *"Poxa, a agenda do Juliano de hoje já lotou. Amanhã tem horário a partir das 08:30: é só agendar pelo site ou chamar no WhatsApp que a gente garante o seu."* O dia sugerido é o próximo com vaga de verdade (até 14 dias à frente; "Na quinta (08/10)" quando não é amanhã). Se dois chegam juntos e a trava do banco pega o 13º, a resposta é a mesma.
+- **Testado no banco, dentro de transação desfeita (nada gravado, conferido):** com 11 reservas no dia, 32 horários livres; com 12, zero; a 13ª recusada com a mensagem certa. Num primeiro teste, com 11 reservas coladas, o dia já ficava sem horário pela regra do descanso (5º seguido), e por isso o teste foi refeito com reservas espaçadas.
+- Os dias normais seguem iguais, por exemplo quinta 08/10, com 2 marcados e 29 horários livres.
+
 ## 29.277.0 — Push "Novo agendamento" também quando quem reserva é a JuIA (07/10)
 
 **Pedido do Juliano (07/10):** *"gerar um push no meu celular e no meu relógio toda vez que a JuIA criar um novo agendamento"*.

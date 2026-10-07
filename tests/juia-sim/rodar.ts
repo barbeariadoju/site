@@ -902,5 +902,18 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('66 conversa sem reserva não manda push de agendamento', !r2.saidas.some((s: any) => /Novo agendamento/.test(s.body?.custom?.title || '')), r2.saidas.map((s: any) => s.body?.custom?.title))
 }
 
+// 67. Pedido do Juliano (07/10/2026): a pergunta do período só cita o que ainda tem vaga.
+{
+  const tardeNoite = ['12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '17:00', '18:00', '18:15', '18:30']
+  const r = await turno({ msg: 'tem horário?', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: dia1 }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Teste Periodo'), vagas: { [dia1]: tardeNoite } })
+  checar('67a só tarde e noite: não oferece manhã', /à tarde ou no final do dia\?/.test(r.reply) && !/de manhã|Manhã/.test(r.reply), r.reply)
+  const soTarde = ['12:30', '13:00', '13:15', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+  const r2 = await turno({ msg: 'tem horário?', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: dia1 }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Teste Periodo'), vagas: { [dia1]: soTarde } })
+  checar('67b um período só: lista os horários direto, sem perguntar o período', !/Você prefere/.test(r2.reply) && /12:30/.test(r2.reply) && /17:00/.test(r2.reply), r2.reply)
+  const diaTodo = ['08:30', '09:00', '09:30', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '18:00', '18:30']
+  const r3 = await turno({ msg: 'tem horário?', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: dia1 }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Teste Periodo'), vagas: { [dia1]: diaTodo } })
+  checar('67c dia inteiro com vaga: pergunta os três períodos', /de manhã, à tarde ou no final do dia\?/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

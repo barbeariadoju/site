@@ -145,6 +145,28 @@ Deno.serve(async (req: Request) => {
       }
     } catch (ruleError) { console.error('[senha-digital] service rule', ruleError) }
 
+    // v29.278.0 (pedido do Juliano, 07/10/2026): bateu 12 atendimentos no dia, a senha também não sai — e
+    // a resposta já aponta o próximo dia com vaga ("poxa, hoje já lotou, mas amanhã…").
+    const avisoLotado = async (): Promise<string> => {
+      const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date(hoje + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + i)
+        const iso = d.toISOString().slice(0, 10)
+        const { data: vagas } = await admin.rpc('get_available_slots', { p_date: iso, p_duration_minutes: duracao })
+        const primeiro = Array.isArray(vagas) && vagas.length ? String(vagas[0].slot_time).slice(0, 5) : ''
+        if (!primeiro) continue
+        const semana = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][d.getUTCDay()]
+        const quando = i === 1 ? 'Amanhã' : `Na ${semana} (${iso.slice(8, 10)}/${iso.slice(5, 7)})`
+        return `Poxa, a agenda do Juliano de hoje já lotou. ${quando} tem horário a partir das ${primeiro}: é só agendar pelo site ou chamar no WhatsApp que a gente garante o seu.`
+      }
+      return 'Poxa, a agenda do Juliano de hoje já lotou. Você pode agendar outro dia pelo site ou chamar no WhatsApp.'
+    }
+    try {
+      const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      const { data: lotado } = await admin.rpc('dia_lotado', { p_date: hojeSP })
+      if (lotado === true) return json({ ok: false, motivo: 'sem_horario', error: await avisoLotado() }, 409)
+    } catch (lotErr) { console.error('[senha-digital] dia_lotado', lotErr) }
+
     const { data: criado, error: erroCriar } = await admin.rpc('senha_digital_criar', {
       p_nome: nome, p_telefone: telefone, p_servico: servico, p_preco: preco, p_duracao: duracao,
     })
@@ -160,6 +182,8 @@ Deno.serve(async (req: Request) => {
         const atual = record || b
         return json({ ok: true, existente: true, code: atual.booking_code, token: managementToken, senha: await situacao(admin, atual) })
       }
+      // A trava do banco (trg_bookings_limite_diario) pegou um 12º que chegou junto com outro.
+      if (msg.includes('já está completa')) return json({ ok: false, motivo: 'sem_horario', error: await avisoLotado() }, 409)
       if (msg.includes('sem_horario')) {
         // v29.242.0 — se o Juliano fechou mais cedo (Abrir/Fechar), diz isso em vez de "não há horário".
         let texto = 'Não há mais horário para hoje. Você pode agendar outro dia pelo site ou falar com o Juliano no WhatsApp.'
