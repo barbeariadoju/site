@@ -1,3 +1,12 @@
+## 29.277.0 — Push "Novo agendamento" também quando quem reserva é a JuIA (07/10)
+
+**Pedido do Juliano (07/10):** *"gerar um push no meu celular e no meu relógio toda vez que a JuIA criar um novo agendamento"*.
+- **O buraco:** o agendamento feito pelo formulário do site já mandava o push "💈 Novo agendamento" (`create-public-booking` → `send-push`). A JuIA grava a reserva direto pela RPC `create_public_booking_v15`, sem passar pela function do site, e por isso a reserva **nova** dela não avisava ninguém. Cancelamento, remarcação e troca de serviço da JuIA já avisavam.
+- **Agora:** logo depois de marcar o canal da reserva, a `ju-ia-site` manda *"💈 Novo agendamento pela JuIA (WhatsApp)"* (ou *"(chat do site)"*) com nome, dia, hora, serviços e valor. Toque abre a Agenda. A tag é `booking-<id>`, a mesma do push do site, então a mesma reserva nunca aparece duas vezes empilhada. É best-effort: se o push falhar, a reserva sai do mesmo jeito.
+- **Relógio:** não existe push direto para relógio. O relógio mostra o que chega no celular, desde que o app do relógio esteja liberado para espelhar as notificações do navegador/app do painel.
+- **Aparelhos cadastrados hoje (`push_subscriptions`):** 2 ativos, um Android/Chrome e o Windows da barbearia. Uma inscrição de iPhone está inativa desde 18/07: se o celular for iPhone, é preciso reativar as notificações em Notificações, no painel aberto pelo app da tela inicial.
+- **Simulador:** cenário 66 (reserva da JuIA manda o push com nome, hora e serviço; conversa sem reserva não manda). **162 ok, 0 falhas.**
+
 ## 29.276.1 — JuIA: pigmentação, tintura e pintar o cabelo são o mesmo serviço; só o bigode é cortesia da casa (07/10)
 
 **Regra do Juliano (07/10):** *"pintar cabelo, tintura é igual pigmentação"*, ou seja, **Pigmentação Capilar (Tintura)**.

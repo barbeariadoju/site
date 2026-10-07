@@ -892,5 +892,15 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('65b corte + bigode: reserva só o corte e avisa a cortesia', criou?.args?.p_service_name === 'Corte de cabelo' && /cortesia da casa/.test(r2.reply), { reply: r2.reply, servico: criou?.args?.p_service_name })
 }
 
+// 66. Pedido do Juliano (07/10/2026): toda reserva NOVA da JuIA manda push pro celular/relógio.
+{
+  const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Pedro Teste'), vagas: { [dia1]: ['10:00'] } })
+  const push = r.saidas.find((s: any) => s.url.includes('/send-push') && /Novo agendamento pela JuIA/.test(s.body?.custom?.title || ''))
+  checar('66 reserva da JuIA manda push "Novo agendamento"', reservou(r) && Boolean(push) && /Pedro Teste/.test(push?.body?.custom?.body) && /10:00/.test(push?.body?.custom?.body) && /Corte de cabelo/.test(push?.body?.custom?.body), { push: push?.body })
+  const r2 = await turno({ msg: 'bom dia', ai: { intent: 'other', reply: 'Bom dia!' }, contexto: ctxCliente('Pedro Teste') })
+  checar('66 conversa sem reserva não manda push de agendamento', !r2.saidas.some((s: any) => /Novo agendamento/.test(s.body?.custom?.title || '')), r2.saidas.map((s: any) => s.body?.custom?.title))
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

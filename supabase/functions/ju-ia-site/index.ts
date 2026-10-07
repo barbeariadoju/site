@@ -4744,6 +4744,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       try{
         await supabase.from('bookings').update({channel:verifiedPhone?'juia_whatsapp':'juia_chat'}).eq('id',bookingId)
       }catch(chErr){console.error('[ju-ia-site] channel',chErr)}
+      // v29.277.0 (pedido do Juliano, 07/10/2026): push no celular (e no relógio, que espelha o celular) a cada
+      // agendamento NOVO feito pela JuIA. O do site já avisava (create-public-booking → send-push); o da JuIA
+      // grava direto pela RPC e passava em silêncio. Best-effort: nunca segura a reserva.
+      try{
+        const nbSecret=Deno.env.get('PUSH_WEBHOOK_SECRET'),nbUrl=Deno.env.get('SUPABASE_URL')
+        if(nbSecret&&nbUrl){
+          const canal=verifiedPhone?'WhatsApp':'chat do site'
+          await fetch(`${nbUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':nbSecret},body:JSON.stringify({custom:{title:`💈 Novo agendamento pela JuIA (${canal})`,body:`${next.name||'Cliente'} • ${formatDateBR(next.date)} às ${String(next.time).slice(0,5)}\n${chosen.map((s:any)=>s.name).join(' + ')} • ${money(Number(price||0))}`,url:'/admin-agenda.html?app=1',tag:`booking-${bookingId}`}})}).catch(()=>{})
+        }
+      }catch(nbErr){console.error('[ju-ia-site] push novo agendamento',nbErr)}
 
       // v29.10.0 — fidelidade proativa de verdade: se o cliente tem prêmio disponível,
       // aplica sozinha no serviço MAIS CARO do combo (o resto continua cobrando e
