@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, pinturaPedida, semTrechoDePintura } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -629,6 +629,9 @@ function findServicesLoose(text:string){
  }
  return found
 }
+// v29.276.0 — "Corte + Lavagem + Pigmentação Capilar (Tintura)" picado no "+" virava "Corte" e "Lavagem" soltos
+// (dois serviços errados): o combo que tem "+" no nome é casado inteiro (splitServiceNames).
+function servicosDaReserva(nome:string){return splitServiceNames(nome,services.map((s:any)=>s.name)).map((p:string)=>findService(p)).filter(Boolean)}
 // v29.193.1 — caso Lucas (16/09/2026, 10h12 e 10h17): "corte de cabelo, barba e sobrancelha para
 // sábado dia 19/09" e, já reservado, "tem sobrancelha tambem" — a sobrancelha sumiu nas duas. A
 // findServicesLoose parte a frase em vírgula/"e" e casa cada pedaço com nome de serviço; "sobrancelha
@@ -649,6 +652,9 @@ function servicosPorPalavra(normalizedText:string,todas=false){
   if(/\b(sem|nao|nem|tira|tirar|remove|remover|menos|exceto)\s+(a\s+|o\s+|de\s+)?$/.test(antes))continue
   const svc=findService(name);if(svc&&!out.some(o=>o.name===svc.name))out.push(svc)
  }
+ // v29.276.0 (caso Samuel): "pintar o cabelo de preto" é a Tintura — ver pinturaPedida.
+ const pint=pinturaPedida(normalizedText)
+ if(pint){const svc=findService(pint);if(svc&&!out.some(o=>o.name===svc.name))out.push(svc)}
  return out
 }
 // v29.274.0 — A JuIA NÃO PRESUME O SERVIÇO (Juliano, 01/10/2026, depois do caso Sharles e de "diversas
@@ -665,7 +671,8 @@ function servicosDitosPeloCliente(textos:string[],escolhidos:string[]){
   const n=normalize(String(t||''))
   if(!n.trim())continue
   for(const s of [...findServicesLoose(String(t)),...servicosPorPalavra(n,true)]){nomes.add(s.name);familiesOfService(s.name).forEach((f:string)=>fams.add(f))}
-  for(const [re,f] of PALAVRA_FAMILIA)if(re.test(n))fams.add(f)
+  const nFam=semTrechoDePintura(n) // "pintar o cabelo" não é pedido de corte (caso Samuel)
+  for(const [re,f] of PALAVRA_FAMILIA)if(re.test(nFam))fams.add(f)
  }
  for(const e of escolhidos||[]){const s=findService(String(e));const nome=s?.name||String(e);nomes.add(nome);familiesOfService(nome).forEach((f:string)=>fams.add(f))}
  return {nomes,fams}
@@ -765,6 +772,7 @@ Deno.serve(async req=>{
   // v29.274.0 — resposta a "Qual serviço vai ser?": número da lista vira o nome do serviço antes de qualquer
   // leitura (o modelo e os parsers passam a ver "Quero Corte de cabelo"), e fica anotado como escolhido.
  let servicoEscolhidoNaLista=''
+ const manterNaEscolha:string[]=Array.isArray(state?.pending_service_pick?.manter)?state.pending_service_pick.manter.map(String):[]
  if(state?.pending_service_pick&&!body._segunda_parte){
   servicoEscolhidoNaLista=servicoDaResposta(normalize(message))
   if(servicoEscolhidoNaLista)message=`Quero ${servicoEscolhidoNaLista}`
@@ -1142,12 +1150,25 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const ant=state?.ditos&&typeof state.ditos==='object'?state.ditos:{nomes:[],fams:[]}
   next.ditos={nomes:[...new Set([...(ant.nomes||[]),...dt.nomes])],fams:[...new Set([...(ant.fams||[]),...dt.fams])]}
  }
+ // v29.276.0 — caso Samuel (07/10/2026, 06h23): o corte era suposição, mas a tintura ele tinha PEDIDO
+ // ("pintar o cabelo preto"). A pergunta numerada do serviço zerava a lista inteira e a tintura sumiu da
+ // conversa. Separa o que o cliente disse (fica) do que foi suposto (sai e vira a pergunta).
+ const ditosAteAqui=()=>{const d=servicosDitosPeloCliente([],next.servicos_escolhidos);for(const n of (next.ditos?.nomes||[]))d.nomes.add(n);for(const f of (next.ditos?.fams||[]))d.fams.add(f);return d}
+ const separaSuposto=(lista:any[])=>{const d=ditosAteAqui();const ficam=lista.filter((s:any)=>!servicoNaoDito(s.name,d));return {ficam,temFamilia:ficam.some((s:any)=>familiesOfService(s.name).size>0)}}
+ const perguntaServicoMantendo=(ficam:any[])=>ficam.length
+  ?`Anotei ${ficam.map((s:any)=>s.name).join(' + ')}. Vai fazer outro serviço junto?\n${OPCOES_SERVICO_CONVITE.map((o)=>`*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe for só ${ficam.length>1?'isso':'esse'}, é só me dizer.`
+  :perguntaQualServico()
  // v29.239.0 (caso Gilvana, 25/09/2026, 13h11): depois de "hoje tenho 15:30", ela respondeu "Entendi" e a
  // JuIA devolveu "Sim! hoje às 15:30 está livre… Quer incluir mais alguma coisa?" — o modelo tratou a
  // concordância como escolha. "Entendi" é recibo, não é sim: o horário não entra e a conversa fica com ela.
  const soRecibo=/^(entendi+|entendo|hum+|hm+|saquei|compreendi|ah? ?entendi|ata|ah ta|certo,? entendi)[.!\s]*$/.test(normalize(message).trim())
  if(soRecibo&&!state?.completed)next.time=state?.time||null
  next.services=Array.isArray(next.services)?next.services.map((x:string)=>findService(x)?.name).filter(Boolean):[]
+ // Resposta à lista numerada: o que estava guardado (ditos) volta junto com o escolhido.
+ if(servicoEscolhidoNaLista&&manterNaEscolha.length){
+  const fam=normalizeServiceFamilies([...next.services,...manterNaEscolha.filter((n:string)=>!next.services.includes(n))].map((n:string)=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
+  next.services=fam.items.map((x:any)=>x.name)
+ }
  // v29.212.0 — caso Sr. Magno (16/09/2026, 15h16): "limpeza de pelos das orelhas e nas narinas.
  // Pergunto: você faz pintura nos cabelos?" — a Pigmentação entrou na reserva (R$ 140, 145 min) só
  // porque apareceu na PERGUNTA. Serviço novo que o cliente só perguntou se a casa faz não é pedido.
@@ -1529,7 +1550,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.153.0 (caso do alisamento, 08/09/2026, 17h38): "Quero saber o valor" não casava em
  // nenhuma das formas acima — nem "quanto", nem "qual". Entram: "saber/passar/mandar/dizer o
  // valor", "valor?" sozinho (com ou sem "o"/"e o"/"qual" na frente) e "quanto?" solto.
- const askedPrice=/(quanto (custa|e|fica|sai|da|seria))|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$/.test(normalizedQuestion)
+ // v29.276.0 (caso Samuel): "Fica quanto tudo" — a ordem invertida não casava e virou "sim" à lavagem.
+ const askedPrice=/(quanto (custa|e|fica|sai|da|deu|seria|vai (ficar|sair|dar)))|\b(fica|ficou|deu|sai|vai ficar|vai dar) quanto\b|\bquanto (tudo|no total|ao todo)\b|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$/.test(normalizedQuestion)
  const isQuestion=/\?\s*$/.test(String(message||'').trim())||askedPrice
  // v29.153.0 — o valor do que já está escolhido, numa linha, pra sair (a) quando o cliente
  // pergunta o preço no meio do fluxo (rede de segurança no fim, e resposta própria no bloco
@@ -2796,6 +2818,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.43.2 (bateria): "quero fazer sobrancelha tambem, alem do corte que ja marquei" — o modelo
  // classificava como agendamento novo e caia no "voce ja esta confirmado". Sinal de acrescimo +
  // referencia ao horario ja marcado + servico reconhecido = alteracao do agendamento existente.
+ // v29.276.0 — caso Samuel (07/10/2026, 08h06): já reservado (Corte + Lavagem), "Vocês pinta cabelo" levou a
+ // oferta da tintura e "Mas é pintar o cabelo de preto" levou uma LISTA DE HORÁRIOS NOVOS; "Meu horário dá pra
+ // 10h30" levou "você já está confirmado (Corte + Lavagem)". A tintura nunca entrou e o Juliano resolveu por
+ // áudio. Com reserva feita nesta conversa, serviço citado (não perguntado) que não está nela é pedido de
+ // INCLUIR: vai pra confirmação "incluir X no seu horário?", que grava no "sim".
+ let incluirPorCitacao=false
+ if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&state?.completed&&upcomingBookings.length>=1
+  &&!trechosPergunta.length&&!askedPrice&&!/\?\s*$/.test(String(message||'').trim())&&!/\b(sem|nao quero|tira|tirar|cancela|cancelar)\b/.test(normalizedQuestion)){
+  const reservados=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
+  const novos=servicosPorPalavra(normalizedQuestion,true).filter((x:any)=>!reservados.some((n:string)=>n.includes(normalize(x.name))))
+  if(novos.length){
+   for(const svc of novos)if(!chosen.some((c:any)=>c.name===svc.name))chosen.push(svc)
+   next.services=chosen.map((c:any)=>c.name)
+   incluirPorCitacao=true
+   intent='change_service'
+  }
+ }
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&upcomingBookings.length>=1
   &&/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|aproveitar e|junto com)\b/.test(normalizedQuestion)
   &&/\b(ja marquei|que marquei|ja agendei|que agendei|meu horario|meu agendamento|no meu|alem d[oa])\b/.test(normalizedQuestion)){
@@ -2862,7 +2901,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // como TROCA ("qual servico no lugar?"). Com sinal de acrescimo (tambem/alem/incluir/
    // adicionar) e um servico reconhecido, o alvo vira o servico atual + o novo (nome
    // composto, preco e duracao somados) e a confirmacao diz "incluir", nao "trocar".
-   const addSignal=/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)
+   const addSignal=/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)||incluirPorCitacao
    const bookedNames=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
    const jaReservado=(x:any)=>bookedNames.some((n:string)=>n.includes(normalize(x.name)))
    // v29.193.1 (caso Lucas, "tem sobrancelha tambem"): o serviço a incluir é o que a MENSAGEM cita
@@ -2876,7 +2915,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const askOrConfirm=(b:any)=>{
     next.pending_change_service_booking_id=b.id
     if(addSignal&&!desiredNewReal){
-     const atuais=String(b.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+     const atuais=servicosDaReserva(String(b.service_name||''))
      if(citadoJaReservado&&/pezinho/i.test(citadoJaReservado.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
       reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} 😉 Não precisa adicionar — está tudo certo!`
      }else if(citadoJaReservado){
@@ -2889,7 +2928,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      return
     }
     if(addSignal&&desiredNew){
-     const atuais=String(b.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+     const atuais=servicosDaReserva(String(b.service_name||''))
      if(/pezinho/i.test(desiredNew.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
       reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} 😉 Não precisa adicionar — está tudo certo!`
       next.pending_change_service_booking_id=null
@@ -3224,12 +3263,29 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const primeiroToken=bareResp.split(/\s+/)[0]
   const negou=/(^|\s)(nao|n)(\s|$)/.test(normalizedQuestion)
   const soOQueTinha=/\b(somente|so|apenas|soh)\b/.test(normalizedQuestion)&&!(addKey&&normalizedQuestion.includes(addKey))
-  const disse2=primeiroToken==='2'||simpleNo||negou||soOQueTinha
-  const disse1=!disse2&&(primeiroToken==='1'||simpleYes||Boolean(addKey&&normalizedQuestion.includes(addKey)))
+  // v29.276.0 — caso Samuel (07/10/2026, 06h26): "Fica quanto tudo" depois de "quer incluir a lavagem?"
+  // virou "Incluído. Fica Corte + Lavagem". Pergunta de valor não é resposta à oferta: responde o total
+  // dos dois jeitos e a oferta continua de pé.
+  const perguntouValor=askedPrice&&primeiroToken!=='1'&&primeiroToken!=='2'
+  const disse2=!perguntouValor&&(primeiroToken==='2'||simpleNo||negou||soOQueTinha)
+  const disse1=!perguntouValor&&!disse2&&(primeiroToken==='1'||simpleYes||Boolean(addKey&&normalizedQuestion.includes(addKey)))
   const quando=`${emDia(String(postBooking.date||''))} às ${String(postBooking.time||'')}`
+  if(perguntouValor&&findService(addName)){
+   const dataPb=String(postBooking.date||'')||null
+   const baseSvcs=baseNames.map(n=>findService(n)).filter(Boolean)
+   let comNames=baseNames.filter(n=>!(addName==='Corte + Lavagem'&&n==='Corte de cabelo'))
+   if(!comNames.includes(addName))comNames.push(addName)
+   comNames=normalizeServiceFamilies(comNames.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}})).items.map((x:any)=>x.name)
+   const comSvcs=comNames.map(n=>findService(n)).filter(Boolean)
+   reply=`${quando.charAt(0).toUpperCase()+quando.slice(1)}: ${baseNames.join(' + ')} — ${money(totalOn(baseSvcs,dataPb))}. Com a inclusão, fica ${comNames.join(' + ')} — ${money(totalOn(comSvcs,dataPb))}. Quer incluir? Digite *1* para sim ou *2* para não.`
+   intent='other';handoff=false;offerTurn=true;actions=[]
+  }else{
   next.upsell_offer_options=null
   next.upsell_post_booking=null
-  if(disse1&&findService(addName)){
+  }
+  if(perguntouValor&&findService(addName)){
+   // a oferta segue viva (upsell_offer_options e upsell_post_booking intactos)
+  }else if(disse1&&findService(addName)){
    let names=baseNames.slice()
    if(addName==='Corte + Lavagem')names=names.filter(n=>n!=='Corte de cabelo')
    if(!names.includes(addName))names.push(addName)
@@ -4114,15 +4170,22 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      next.upsell_offer_done=true
      next.upsell_services_done=true
      next.upsell_products_done=true
-     if(next.usual_assumed){
+     const sepUsual=next.usual_assumed?separaSuposto(chosen):null
+     if(sepUsual&&sepUsual.temFamilia){
+      // v29.276.0: o cliente disse o corte/barba nesta conversa — não era suposição.
+      next.usual_assumed=false;chosen=sepUsual.ficam;next.services=chosen.map((s:any)=>s.name)
+      intent='book';handoff=false
+     }else if(sepUsual){
       // v29.140.0: serviço veio do histórico, não da boca do cliente — confirma em UMA pergunta
       // antes de reservar. O horário fica guardado; o "1" reserva (ver pending_usual_confirm).
       // v29.274.0 — no lugar de "Reservo X?", a pergunta numerada do serviço (nada presumido). O dia e a hora
       // ficam guardados; o "1" vira "Quero Corte de cabelo" no começo do próximo turno e a reserva sai.
-      next.time=effectiveTime;next.usual_assumed=false;next.services=[]
-      next.pending_service_pick={at:new Date().toISOString()}
+      // v29.276.0: o que ele PEDIU (a tintura do Samuel) fica guardado e volta junto com o escolhido.
+      next.time=effectiveTime;next.usual_assumed=false
+      chosen=sepUsual.ficam;next.services=chosen.map((s:any)=>s.name)
+      next.pending_service_pick={at:new Date().toISOString(),manter:next.services}
       const abre=`${emDia(next.date)} às ${effectiveTime} está livre.`
-      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} ${perguntaQualServico()}`
+      reply=`${abre.charAt(0).toUpperCase()+abre.slice(1)} ${perguntaServicoMantendo(chosen)}`
       actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
       respostaConferidaNaAgenda=true
       intent='other';handoff=false
@@ -4450,12 +4513,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // aqui também: serviço assumido só reserva depois do "1".
  if(intent==='book'&&next.usual_assumed&&verifiedPhone&&next.date&&next.time&&chosen.length&&!state?.pending_usual_confirm){
   // v29.274.0 — mesma troca do bloco do horário conferido: pergunta numerada, nada presumido.
-  next.usual_assumed=false;next.services=[];chosen=[]
-  next.pending_service_pick={at:new Date().toISOString()}
-  const abreUc=`${emDia(next.date)} às ${String(next.time).slice(0,5)}.`
-  reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} ${perguntaQualServico()}`
-  actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
-  intent='other';handoff=false
+  const sepUc=separaSuposto(chosen)
+  next.usual_assumed=false;chosen=sepUc.ficam;next.services=chosen.map((s:any)=>s.name)
+  if(!sepUc.temFamilia){
+   next.pending_service_pick={at:new Date().toISOString(),manter:next.services}
+   const abreUc=`${emDia(next.date)} às ${String(next.time).slice(0,5)}.`
+   reply=`${abreUc.charAt(0).toUpperCase()+abreUc.slice(1)} ${perguntaServicoMantendo(chosen)}`
+   actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
+   intent='other';handoff=false
+  }
  }
  if(intent==='book'){
   const conflicting=upcomingBookings.find((b:any)=>b.booking_date===next.date)
@@ -4472,7 +4538,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const jaTem=normalize(String(conflicting.service_name||''))
    const extras=chosen.filter((s:any)=>!jaTem.includes(normalize(s.name)))
    if(extras.length&&verifiedPhone){
-    const atuais=String(conflicting.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p)).filter(Boolean)
+    const atuais=servicosDaReserva(String(conflicting.service_name||''))
     const todos=[...atuais,...extras]
     const composed={name:todos.map((s:any)=>s.name).join(' + '),price:todos.reduce((a:number,s:any)=>a+Number(s.price||0),0),duration:todos.reduce((a:number,s:any)=>a+Number(s.duration||0),0)}
     next.pending_change_service_booking_id=conflicting.id
@@ -4521,7 +4587,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   {
    const qSolto=normalizedQuestion.trim()
    const numeroSolto=/^\d[\s!.,]*$/.test(qSolto)||/^\d[\s!.,]*(obrigad\w*|valeu|brigad\w*|ok|blz|beleza|joia)[!. ]*$/.test(qSolto)
-   const semPerguntaAberta=!state?.last_question&&!Object.keys(state||{}).some((k:string)=>k.startsWith('pending_')&&(state as any)[k])
+   // v29.276.0 — caso Samuel (07/10/2026, 06h25): "Corte + Tintura às 10:30, quer que eu reserve?" e ele
+   // respondeu "1" (a lista numerada que tinha vindo antes). Ouviu "Obrigado! Se precisar de horário…": a
+   // pergunta "quer que eu reserve?" não deixa marca no estado. Reserva montada (dia, hora e serviço) e
+   // ainda não feita É pergunta aberta.
+   const reservaMontada=!state?.completed&&Boolean(state?.date)&&Boolean(state?.time)&&Array.isArray(state?.services)&&state.services.length>0
+   const semPerguntaAberta=!reservaMontada&&!state?.last_question&&!Object.keys(state||{}).some((k:string)=>k.startsWith('pending_')&&(state as any)[k])
    // v29.216.0 — caso Marcelo (22/09/2026, 13h15): a JuIA listou "18:00, 18:15, 18:30, 18:45,
    // 19:00. Qual você prefere?", ele respondeu "18" e ouviu "Entendi. Se quiser marcar um
    // horário…". O modelo tinha lido certo (o estado gravou time 18:00 e a data de amanhã) — quem

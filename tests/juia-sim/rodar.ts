@@ -742,8 +742,11 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 //     fecha com a pergunta numerada, e o "1" reserva SÓ o corte.
 {
   const ctx = ctxCliente('Sharles Teste', { last_services: 'Pezinho (acabamento) + Pigmentação Capilar (Tintura)' })
-  const vagas = { [dia2]: ['08:45', '10:00'] }
-  const r1 = await turno({ msg: 'Tem horário sábado cedo?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia2 } }, contexto: ctx, vagas })
+  // v29.276.0: o pedido diz "sábado" — a data tem que ser um sábado (com dia2, que é terça a sexta, o dia do
+  // cliente vencia o do modelo e o cenário falhava em toda semana em que dia2 não caía num sábado).
+  const sabado = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const vagas = { [sabado]: ['08:45', '10:00'] }
+  const r1 = await turno({ msg: 'Tem horário sábado cedo?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sabado } }, contexto: ctx, vagas })
   checar('57a consulta não cita pigmentação nem pezinho', !/Pigmenta|Pezinho/.test(r1.reply) && /08:45/.test(r1.reply), r1.reply)
   const r2 = await turno({ msg: '8:45', state: r1.state, history: [{ role: 'user', content: 'Tem horário sábado cedo?' }, { role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '08:45' } }, contexto: ctx, vagas })
   checar('57b não reserva sem o serviço dito: pergunta numerada', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply), r2.reply)
@@ -817,6 +820,57 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: {},
     ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Lucas Teste'), vagas: { [dia1]: ['09:00', '10:00'] } })
   checar('62 lavagem: oferece "por mais R$ 10,00" e não "vira"', /incluir a lavagem no seu corte por mais R\$\s?10,00/.test(r.reply) && !/vira R\$/.test(r.reply), r.reply)
+}
+
+// ---- v29.276.0: caso Samuel (07/10/2026) — "pintar o cabelo de preto" -------------------------------
+const TINT = 'Pigmentação Capilar (Tintura)'
+const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão ter que pintar o cabelo preto também.', 'De manhã'].map((c) => ({ role: 'user', content: c }))
+// 63a. Corte suposto + tintura pedida: a pergunta do serviço guarda a tintura; o "1" reserva os dois.
+{
+  const st = { services: ['Corte de cabelo', TINT], usual_assumed: true, date: dia1, name: 'Samuel Teste', upsell_offer_done: true, ditos: { nomes: [TINT], fams: [] } }
+  const r1 = await turno({ msg: 'Pode ser a 10:30\n?', state: st, history: histSamuel, ai: { intent: 'book', reply: 'Ok', updates: { time: '10:30' } }, contexto: ctxCliente('Samuel Teste', { completed_visits: 0 }), vagas: { [dia1]: ['10:30'] } })
+  checar('63a pergunta o serviço sem largar a tintura', !reservou(r1) && /Anotei Pigmentação Capilar/.test(r1.reply) && (r1.state?.services || []).includes(TINT), { reply: r1.reply, services: r1.state?.services })
+  const r2 = await turno({ msg: '1', state: r1.state, history: [...histSamuel, { role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: {} }, contexto: ctxCliente('Samuel Teste', { completed_visits: 0 }), vagas: { [dia1]: ['10:30'] } })
+  const criou = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('63a "1" reserva corte E tintura', /Corte de cabelo/.test(String(criou?.args?.p_service_name)) && String(criou?.args?.p_service_name).includes(TINT), { reply: r2.reply, servico: criou?.args?.p_service_name })
+}
+// 63b. "Sim" a "Corte + Tintura, quer que eu reserve?": a trava reconhece "pintar" e a tintura entra.
+{
+  const st = { services: ['Corte de cabelo', TINT], date: dia1, time: '10:30', name: 'Samuel Teste', upsell_offer_done: true, ditos: { nomes: [], fams: ['corte'] } }
+  const h = [...histSamuel, { role: 'user', content: 'Para pintar de preto' }, { role: 'user', content: 'Mas eu vou cortar o cabelo também' }]
+  const r = await turno({ msg: 'Sim', state: st, history: h, ai: { intent: 'book', reply: 'Reservado', updates: {} }, contexto: ctxCliente('Samuel Teste'), vagas: { [dia1]: ['10:30'] } })
+  const criou = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('63b "Sim" reserva com a tintura', String(criou?.args?.p_service_name).includes(TINT), { reply: r.reply, servico: criou?.args?.p_service_name })
+}
+// 63c. "1" com reserva montada e não feita não é "Obrigado! Se precisar de horário…".
+{
+  const st = { services: ['Corte de cabelo', TINT], date: dia1, time: '10:30', name: 'Samuel Teste', upsell_offer_done: true, ditos: { nomes: [TINT], fams: ['corte'] } }
+  const r = await turno({ msg: '1', state: st, history: histSamuel, ai: { intent: 'book', reply: 'Reservado', updates: {} }, contexto: ctxCliente('Samuel Teste'), vagas: { [dia1]: ['10:30'] } })
+  checar('63c "1" no meio da reserva não vira despedida', !/Se precisar de horário/.test(r.reply), r.reply)
+}
+// 63d. "Fica quanto tudo" depois de "quer incluir a lavagem?" responde o valor e não inclui nada.
+{
+  const st = { services: ['Corte de cabelo'], date: dia1, time: '10:30', name: 'Samuel Teste', completed: true, upsell_offer_options: ['Corte + Lavagem', '__none__'], upsell_post_booking: { id: 'bk-novo', date: dia1, time: '10:30', services: ['Corte de cabelo'] } }
+  const r = await turno({ msg: 'Fica quanto tudo', state: st, ai: { intent: 'other', reply: 'Ok' }, contexto: ctxCliente('Samuel Teste'), futuros: [{ id: 'bk-novo', booking_date: dia1, start_time: '10:30:00', service_name: 'Corte de cabelo' }] })
+  const trocou = r.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service')
+  checar('63d "fica quanto tudo" não aceita a lavagem', !trocou && !/Incluído/.test(r.reply), r.reply)
+  checar('63d "fica quanto tudo" diz os dois valores e mantém a oferta', /R\$\s?40,00/.test(r.reply) && /R\$\s?50,00/.test(r.reply) && /\*1\*/.test(r.reply), r.reply)
+}
+// 63e. Já reservado: "Mas é pintar o cabelo de preto" pede pra incluir a tintura no horário (não lista horários).
+{
+  const st = { services: ['Corte + Lavagem'], date: dia1, time: '10:30', name: 'Samuel Teste', completed: true }
+  const fut = [{ id: 'b63', booking_date: dia1, start_time: '10:30:00', service_name: 'Corte + Lavagem' }]
+  const r = await turno({ msg: 'Mas é pintar o cabelo de preto', state: st, ai: { intent: 'availability', reply: 'Hoje tenho 09:15, 09:30.', updates: {} }, contexto: ctxCliente('Samuel Teste'), futuros: fut, vagas: { [dia1]: ['09:15', '09:30'] } })
+  checar('63e incluir a tintura no horário já marcado', /incluir Pigmentação Capilar \(Tintura\)/.test(r.reply) && /Fica Corte \+ Lavagem \+ Pigmentação Capilar \(Tintura\)/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'Sim', state: r.state, ai: { intent: 'other', reply: 'Ok' }, contexto: ctxCliente('Samuel Teste'), futuros: fut })
+  const troca = r2.chamadas.find((x: any) => x.alvo === 'phone_change_booking_service')
+  checar('63e "Sim" grava Corte + Lavagem + Tintura', troca?.args?.p_service_name === `Corte + Lavagem + ${TINT}`, { reply: r2.reply, args: troca?.args })
+}
+// 63f. Pergunta de existência depois de reservado continua sendo só pergunta (não vira inclusão).
+{
+  const st = { services: ['Corte + Lavagem'], date: dia1, time: '10:30', name: 'Samuel Teste', completed: true }
+  const r = await turno({ msg: 'Vocês pinta cabelo', state: st, ai: { intent: 'faq', reply: 'Sim, fazemos Pigmentação Capilar (Tintura) por R$ 50,00.' }, contexto: ctxCliente('Samuel Teste'), futuros: [{ id: 'b63', booking_date: dia1, start_time: '10:30:00', service_name: 'Corte + Lavagem' }] })
+  checar('63f "vocês pinta cabelo" responde, não pede confirmação de inclusão', !/Responda sim ou não/.test(r.reply), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

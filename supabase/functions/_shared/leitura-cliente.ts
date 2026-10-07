@@ -195,6 +195,30 @@ export const palavrasDoServico = (nomeServico: string): string[] => {
   const n = String(nomeServico || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   return SINONIMOS.filter(([re]) => re.test(n)).flatMap(([, ps]) => ps)
 }
+// ---------------------------------------------------------------------------------------------
+// PINTAR É TINTURA — caso Samuel (07/10/2026, 06h22): "vocês vão ter que pintar o cabelo preto também"
+// e "para pintar de preto". A JuIA chegou a oferecer Corte + Tintura, ele disse "Sim" e a reserva saiu
+// só com o corte: a trava "não presume serviço" (v29.274.0) só reconhecia o nome do catálogo
+// ("pigmentação", "tintura") e achou que ele nunca tinha pedido a tintura. Devolve o serviço de pintura
+// que a frase pede (cabelo, barba ou sobrancelha), ou null. Passado ("já pintei", "cabelo pintado") e
+// negação ("sem pintar") não são pedido.
+// ---------------------------------------------------------------------------------------------
+export const pinturaPedida = (q: string): string | null => {
+  const t = String(q || '')
+  const m = /\b(pint(?!ei\b|ou\b|ado\b|ada\b|ados\b|adas\b)\w*|tintura\w*|tingi\w*|colorir|coloracao)\b/.exec(t)
+  if (!m) return null
+  const antes = t.slice(Math.max(0, m.index - 16), m.index)
+  if (/\b(sem|nao|nem|nunca)\s+(\w+\s+)?$/.test(antes)) return null
+  const trecho = t.slice(m.index, m.index + 40)
+  if (/\b(barba|bigode|cavanhaque)\b/.test(trecho)) return 'Pigmentação de Barba'
+  if (/\bsobrancelha/.test(trecho)) return 'Pigmentação de Sobrancelha'
+  return 'Pigmentação Capilar (Tintura)'
+}
+// "pintar o cabelo" fala do CABELO, mas não é pedido de corte — tira o trecho antes de procurar a
+// palavra da família ("cabelo" → corte).
+export const semTrechoDePintura = (q: string): string =>
+  String(q || '').replace(/\b(pint|tint|tingi|colori)\w*\s+(?:(?:o|os|a|as|meu|minha|meus|minhas|do|da|de|no|na)\s+)*(cabelo|barba|bigode|sobrancelha)s?\b/g, ' ')
+
 // O serviço apareceu só na pergunta ("você faz pintura?") e não no pedido? Então não entra.
 export const servicoSoPerguntado = (nomeServico: string, trechosPergunta: string[], restoDaMensagem: string): boolean => {
   const ps = palavrasDoServico(nomeServico)

@@ -213,3 +213,27 @@ describe('avisoDeAusencia (Newton, Rafael, Maurício)', () => {
     expect(avisoDeAusencia('nao. obrigado.')).toBeNull();
   });
 });
+
+// v29.276.0 — caso Samuel (07/10/2026): "pintar o cabelo de preto" é a Tintura; a trava não reconhecia.
+import { pinturaPedida, semTrechoDePintura } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('pinturaPedida (caso Samuel, 07/10)', () => {
+  it('pintar o cabelo / de preto / tintura = Tintura', () => {
+    expect(pinturaPedida('e, mas voces vao ter que pintar o cabelo preto tambem.')).toBe('Pigmentação Capilar (Tintura)');
+    expect(pinturaPedida('para pintar de preto')).toBe('Pigmentação Capilar (Tintura)');
+    expect(pinturaPedida('quero fazer a tintura')).toBe('Pigmentação Capilar (Tintura)');
+  });
+  it('barba e sobrancelha vão para a pigmentação certa', () => {
+    expect(pinturaPedida('queria pintar a barba')).toBe('Pigmentação de Barba');
+    expect(pinturaPedida('pintar a sobrancelha')).toBe('Pigmentação de Sobrancelha');
+  });
+  it('passado e negação não são pedido', () => {
+    expect(pinturaPedida('ja pintei em casa')).toBeNull();
+    expect(pinturaPedida('meu cabelo e pintado')).toBeNull();
+    expect(pinturaPedida('sem pintar dessa vez')).toBeNull();
+    expect(pinturaPedida('so o corte')).toBeNull();
+  });
+  it('"pintar o cabelo" não conta como pedido de corte', () => {
+    expect(semTrechoDePintura('vao ter que pintar o cabelo preto')).not.toMatch(/cabelo/);
+    expect(semTrechoDePintura('vou cortar o cabelo tambem')).toMatch(/cabelo/);
+  });
+});

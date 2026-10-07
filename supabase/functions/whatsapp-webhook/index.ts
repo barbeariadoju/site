@@ -934,7 +934,12 @@ Deno.serve(async (request: Request) => {
               .order('created_at', { ascending: false })
               .limit(1)
               .maybeSingle()
-            const desdeMs = Math.max(lastOutRow ? new Date(lastOutRow.created_at).getTime() : 0, Date.now() - 3 * 60 * 1000)
+            // v29.276.0 — caso Samuel (07/10/2026, 06h26): o "Sim" que reservou o horário foi juntado de
+            // novo à mensagem seguinte ("Fica quanto tudo"), porque a resposta da reserva ainda não tinha
+            // saído — e virou "sim" à oferta da lavagem. O que outro turno já processou não volta.
+            const { data: convProc } = await admin.from('whatsapp_conversations').select('processed_until').eq('phone', phone).maybeSingle()
+            const processadoMs = convProc?.processed_until ? new Date(convProc.processed_until).getTime() : 0
+            const desdeMs = Math.max(lastOutRow ? new Date(lastOutRow.created_at).getTime() : 0, processadoMs, Date.now() - 3 * 60 * 1000)
             const { data: semResposta } = await admin
               .from('whatsapp_messages')
               .select('body, created_at')
@@ -965,7 +970,8 @@ Deno.serve(async (request: Request) => {
         // mensagem mais nova que a própria (uma mais nova teria stamp maior e este turno
         // desistiria no teste do buffer acima), então a régua é exatamente inboundStampMs.
         obsoleteCutoffMs = inboundStampMs
-        await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null }).eq('phone', phone)
+        // processed_until (v29.276.0): tudo que entrou até a última mensagem deste turno já tem dono.
+        await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null, processed_until: new Date(inboundStampMs).toISOString() }).eq('phone', phone)
         // v29.17.1 — caso Helder (13/08/2026): mensagem morreu em silêncio total entre o ack e a
         // chamada da IA, sem UM log sequer pra dizer onde. Marcos de log baratos no caminho feliz:
         // se o silêncio se repetir, o último marco presente diz exatamente onde parou.
