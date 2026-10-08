@@ -21,7 +21,7 @@ import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-con
 import { comLocalizacao } from '../_shared/localizacao.ts'
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 // v29.190.0 — caso 12/09 18h41 (sábado à noite): "ele está atendendo na cadeira" com a barbearia
-// fechada. Mesma régua do webhook (naCadeira): terça a sábado, 8h às 19h, sábado até 15h.
+// fechada. Mesma régua do webhook (naCadeira): terça a sábado, 8h30 às 19h, sábado até 15h.
 const barbeariaAbertaAgora=()=>{const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));const wd=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();return wd>=2&&wd<=6&&h>=8&&h<(wd===6?15:19)}
 // Minutos desde a meia-noite, no horário de Brasília (pra "agora" da agenda).
 const agoraMinutosSP=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());return Number(p.slice(0,2))*60+Number(p.slice(3,5))}
@@ -1055,7 +1055,7 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Nunca assuma o serviço pelo histórico (last_services), a não ser que o cliente peça "o mesmo de sempre", "igual da última vez", "repetir".
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
-- Funcionamento: terça a sexta 08:00–19:00; sábado 08:00–15:00; domingo e segunda fechado. O primeiro horário de atendimento é 08:30 (nunca ofereça 08:00). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
+- Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00; domingo e segunda fechado. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
 - "Antes das X", "até as X" = limite de horário, não o horário escolhido. "Depois das X", "a partir das X", "após as X" = piso. Nos dois casos deixe updates.time em null e use intent "availability"; o sistema filtra.
@@ -3750,7 +3750,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const limite=wd===6?15:(wd>=2&&wd<=5?19:0)
   let aviso=''
   if(fechadoHoje)aviso='Hoje estamos excepcionalmente fechados.'
-  else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h.'
+  else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h30.'
   else if(hourNow>=limite)aviso=`Hoje já encerramos — atendemos até ${limite}h.`
   else if(encerradoPeloExpediente)aviso='Por hoje já encerramos o atendimento.'
   else aviso=/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
@@ -4299,7 +4299,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // v29.72.0 (caso Bruno, 25/08 ~12h, achado em teste): primeiroDoDia/ultimoDoDia eram o
     // primeiro/último horário LIVRE, não o expediente — com a manhã lotada, "tem 13:00?"
     // respondia "às 13:00 ainda estamos fechados" (mentira nova no lugar da antiga). A régua
-    // certa é o EXPEDIENTE teórico (abre 08:00; último início = fechamento − duração): fora
+    // certa é o EXPEDIENTE teórico (abre 08:30 desde v29.280.0; último início = fechamento − duração): fora
     // dele valem os textos de fechado/exceção; dentro dele, horário tomado é "reservado" e
     // cai no fluxo dos horários mais próximos, logo abaixo.
     const minX=(t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))
@@ -4316,8 +4316,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      actions=ultimoLivre?[{label:ultimoLivre,message:ultimoLivre}]:[]
      handoff=true
      extendedOffered=true // já respondido aqui; não cair no texto de horário ocupado
-    }else if(!extendedOffered&&minX(effectiveTime)<8*60){
-     reply=`${emDiaCap(next.date)} a gente começa a atender 08:00 — às ${effectiveTime} ainda estamos fechados. ${primeiroLivre?`O primeiro horário que consigo é ${primeiroLivre}. Serve pra você?`:'Quer que eu veja outro dia?'}`
+    }else if(!extendedOffered&&minX(effectiveTime)<8*60+30){ // v29.280.0: abre 08:30 (era 8*60)
+     reply=`${emDiaCap(next.date)} a gente começa a atender 08:30 — às ${effectiveTime} ainda estamos fechados. ${primeiroLivre?`O primeiro horário que consigo é ${primeiroLivre}. Serve pra você?`:'Quer que eu veja outro dia?'}`
      actions=slotsSample(allSlots).map((t:string)=>({label:t,message:t}))
      extendedOffered=true
     }

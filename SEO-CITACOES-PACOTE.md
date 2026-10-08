@@ -49,11 +49,11 @@ ordem, não coloque o CEP em campo de complemento.
 | Dia | Horário |
 |---|---|
 | Segunda | Fechado |
-| Terça | 08:00 – 19:00 |
-| Quarta | 08:00 – 19:00 |
-| Quinta | 08:00 – 19:00 |
-| Sexta | 08:00 – 19:00 |
-| Sábado | 08:00 – 15:00 |
+| Terça | 08:30 – 19:00 |
+| Quarta | 08:30 – 19:00 |
+| Quinta | 08:30 – 19:00 |
+| Sexta | 08:30 – 19:00 |
+| Sábado | 08:30 – 15:00 |
 | Domingo | Fechado |
 
 Feriados: fechado (marcar como "fechado em feriados" onde o diretório perguntar).
@@ -67,7 +67,7 @@ Barbearia no Centro de Bragança Paulista com hora marcada e atendimento individ
 ### Descrição longa (até 750 caracteres)
 
 ```
-A Barbearia do Ju fica na Rua Dr. Antônio da Cruz, 482, no Centro de Bragança Paulista. O atendimento é com hora marcada e individual: um barbeiro, um cliente por vez, sem fila. Quem atende é o Juliano, farmacêutico e barbeiro — orientação criteriosa sobre pele, couro cabeludo e produtos. Serviços: corte masculino e infantil, barba na navalha com toalha quente, Barboterapia com vaporizador de ozônio, Barba Express na máquina, sobrancelha, pigmentação, luzes e platinado. Café por conta da casa, Wi-Fi e ambiente climatizado. Cartão fidelidade automático: 10 atendimentos, 1 serviço por nossa conta. Nota 5,0 no Google. Terça a sexta, 8h às 19h; sábado, 8h às 15h. Agende em barbeariadoju.com.br ou pelo WhatsApp (11) 96707-3038.
+A Barbearia do Ju fica na Rua Dr. Antônio da Cruz, 482, no Centro de Bragança Paulista. O atendimento é com hora marcada e individual: um barbeiro, um cliente por vez, sem fila. Quem atende é o Juliano, farmacêutico e barbeiro — orientação criteriosa sobre pele, couro cabeludo e produtos. Serviços: corte masculino e infantil, barba na navalha com toalha quente, Barboterapia com vaporizador de ozônio, Barba Express na máquina, sobrancelha, pigmentação, luzes e platinado. Café por conta da casa, Wi-Fi e ambiente climatizado. Cartão fidelidade automático: 10 atendimentos, 1 serviço por nossa conta. Nota 5,0 no Google. Terça a sexta, 8h30 às 19h; sábado, 8h30 às 15h. Agende em barbeariadoju.com.br ou pelo WhatsApp (11) 96707-3038.
 ```
 
 Palavras que NÃO entram em nenhuma descrição (regra da casa): "premium", "de luxo",
@@ -85,7 +85,7 @@ visualizações), por isso três das cinco são do interior.
 | 1 | `assets/ambiente-corte.jpg` | Interior real, Juliano atendendo na cadeira, bancada, TV, geladeira | **Capa / principal** |
 | 2 | `assets/ia-referencia/interior-1.jpeg` | Interior visto da porta: sofá de espera, poste de barbeiro, letreiro na parede | Ambiente |
 | 3 | `assets/ia-referencia/interior-2.jpeg` | Cadeira, espelho com luz, geladeira de bebidas, poltrona, prateleira de produtos | Ambiente |
-| 4 | `assets/fachada.jpg` | Fachada com a placa de horário **correta** (8h–19h / sáb 8h–15h) | Fachada / exterior |
+| 4 | `assets/fachada.jpg` | Fachada com a placa de horário **correta** (8h30–19h / sáb 8h30–15h) | Fachada / exterior |
 | 5 | `assets/galeria-trio.jpg` | Café na poltrona, cliente no espelho, toalha quente na barba | Equipe / serviço |
 | Logo | `assets/marca-selo-transparente.png` | Selo da marca, fundo transparente | Logotipo / avatar |
 
@@ -170,7 +170,7 @@ Endereço: Rua Dr. Antônio da Cruz, 482 – Centro – Bragança Paulista/SP �
 Telefone/WhatsApp: (11) 96707-3038
 Site: https://www.barbeariadoju.com.br/?utm_source=guiadebraganca&utm_medium=citation&utm_campaign=citacoes-locais
 Instagram: @barbeariadoju_
-Horário: terça a sexta, 8h às 19h; sábado, 8h às 15h; domingo e segunda fechado
+Horário: terça a sexta, 8h30 às 19h; sábado, 8h30 às 15h; domingo e segunda fechado
 Descrição: [descrição longa acima]
 Fotos: as 5 do pacote + logo
 ```

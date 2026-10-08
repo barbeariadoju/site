@@ -57,7 +57,7 @@ const CLUBE_NO_AR = existsSync(join(RAIZ, 'scripts', 'reajuste-2026-10', 'APLICA
 
 export const RODAPE = '<footer class="site-footer"><strong>Barbearia do Ju</strong>'
   + '<p><a href="https://maps.app.goo.gl/VJAfv4MJpd84tmDY7" rel="noopener" target="_blank">Rua Dr. Antônio da Cruz, 482 · Centro · Bragança Paulista/SP</a>'
-  + `<br/>Terça a sexta, 8h às 19h · Sábado, 8h às 15h · <a href="${WA}" rel="noopener" target="_blank">(11) 96707-3038</a></p>`
+  + `<br/>Terça a sexta, 8h30 às 19h · Sábado, 8h30 às 15h · <a href="${WA}" rel="noopener" target="_blank">(11) 96707-3038</a></p>`
   + '<nav aria-label="Rodapé"><a href="/servicos.html">Serviços e preços</a><a href="/agendar/#servicos">Agendar</a>'
   + '<a href="/perguntas-frequentes.html">Dúvidas</a><a href="/blog.html">Blog</a>'
   + (CLUBE_NO_AR ? '<a href="/clube/">Clube do Ju</a>' : '')

@@ -1,3 +1,12 @@
+## 29.280.0 — Abertura às 8h30 em todo lugar: site, JuIA, Google e WhatsApp (08/10)
+
+**Pedido do Juliano (08/10):** *"corrige nosso horário de abertura para 8:30 todos os dias"*. Desde a 29.276.0 o primeiro horário oferecido já era 08:30, mas o horário publicado continuava 8h — o cliente lia "abre às 8h" e não achava vaga às 8h.
+- **Site (72 arquivos):** rodapé único (`scripts/casca.mjs`), FAQ, home (texto e `openingHoursSpecification` do schema, `opens` 08:30), `/precos/`, `/agendar/horario/`, `llms.txt`, vCard, artes das placas e o pacote de citações. Terça a sexta 8h30–19h, sábado 8h30–15h; fechamento não mudou. Conferido por contagem: 169 trocas, nenhum "8h às" sobrando fora de histórico.
+- **JuIA:** regra do prompt passa a dizer 08:30–19:00 / 08:30–15:00; "voltamos terça às 8h30"; pedido antes das 08:30 recebe "a gente começa a atender 08:30" (a régua era `< 8*60`). Simulador 165 ok.
+- **Google (GBP):** horário regular trocado pelo Windsor (`set_regular_hours`).
+- **Painel:** o rótulo "Permitir fora do horário" diz "antes das 8h30".
+- **Não mexido de propósito:** a validação do banco ainda aceita início a partir de 08:00 — é o que deixa o Juliano marcar à mão um cliente às 8h se quiser; a grade pública já começa 08:30 (migração 191). A placa física da fachada (8h30–18h / 8h30–14h) agora bate na abertura; o fechamento segue diferente.
+
 ## 29.279.0 — JuIA: a pergunta "manhã, tarde ou final do dia?" só cita o período que ainda tem vaga (07/10)
 
 **Pedido do Juliano (07/10):** *"é a tarde e a JuIA pergunta pro cliente pra qual horário você quer hoje: manhã, tarde ou noite. Se a JuIA avaliasse a hora ela diria: para agora à tarde ou para a noite?"*

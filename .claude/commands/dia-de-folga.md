@@ -31,7 +31,7 @@ Facebook com dados completos. O Juliano cria as contas; você prepara o pacote.
 O que entregar: o arquivo `SEO-CITACOES-PACOTE.md` na raiz do repo com, para CADA diretório, um
 bloco pronto para copiar e colar: nome exato ("Barbearia do Ju"), endereço completo (Rua Dr.
 Antônio da Cruz, 482, Centro, Bragança Paulista/SP — confira o CEP no JSON-LD de `index.html`),
-telefone/WhatsApp, site, horário (ter–sex 8h–19h, sáb 8h–15h, dom/seg fechado), categorias
+telefone/WhatsApp, site, horário (ter–sex 8h30–19h, sáb 8h30–15h, dom/seg fechado), categorias
 sugeridas, descrição curta (≤ 250 caracteres) e longa (≤ 750), 5 fotos indicadas (caminhos em
 `assets/`, priorize ambiente — a foto do interior é a mais vista no GBP), e o link de agendamento
 com UTM (`utm_source=<diretorio>&utm_medium=citation&utm_campaign=citacoes-locais`). Regras de
