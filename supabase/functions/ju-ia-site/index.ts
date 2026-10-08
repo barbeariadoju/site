@@ -403,6 +403,13 @@ const extractRequestedTime=(text='')=>{
  // usado direto no fluxo de reagendamento e não pode depender disso.
  const bare=String(text).match(/(?:^|\D)(0?[1-9]|1\d|2[0-3])\s*[hH](?![0-9])/)
  if(bare)return `${String(Number(bare[1])).padStart(2,'0')}:00`
+ // v29.282.0 — caso Marcelo (08/10/2026, 15h49): "quero após as 16" e, no mesmo dia, "pra depois das 4".
+ // Sem "h" nem minutos nada casava, o piso se perdia e saiu "Consigo te atender amanhã sim! … 12:10 e
+ // 15:45" duas vezes. Número depois de após/depois de/a partir de/antes de/até é hora; 1 a 7 é da tarde
+ // (abrimos 08:30, ninguém pede 4 da manhã).
+ const limite=String(text).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+  .match(/\b(?:apos|depois d[ae]s?|a partir d[ae]s?|antes d[ae]s?|ate)\s*(?:[ao]s?\s*)?(\d{1,2})(?![\d:.,\/]|\s*(?:de|do|dias?)\b)/)
+ if(limite){const h=Number(limite[1]);const hh=h>=1&&h<=7?h+12:h;if(hh>=8&&hh<=23)return `${String(hh).padStart(2,'0')}:00`}
  return ''
 }
 const slotHour=(slot:string)=>Number(String(slot).slice(0,2))
@@ -4389,8 +4396,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       dataPedidaOriginal=dataPedidaOriginal||next.date
       next.date=pisoOutroDia.date;next.time=null
       next.last_requested_time=effectiveTime;next.last_requested_date=pisoOutroDia.date
-      reply=`${diaSemVaga} depois das ${horaFalada(effectiveTime)} não tenho mais nada. ${emDiaCap(pisoOutroDia.date)} consigo te atender a partir das ${horaFalada(effectiveTime)}: ${slotsPhrase(pisoOutroDia.slots)}. Serve pra você?`
-      actions=slotsSample(pisoOutroDia.slots).map((t:string)=>({label:t,message:t}))
+      // v29.282.0 — caso Marcelo (08/10/2026): além do próximo dia com horário depois do piso, mostra
+      // os últimos horários ANTES dele no dia pedido (pedido do Juliano: "dizer que não tem após as
+      // 16, somente antes, e dar as opções, ou o próximo dia"). Botão do dia pedido leva o dia junto,
+      // porque o estado já passou para o outro dia.
+      // Piso obrigatório ("tem que ser depois das 18", caso Rodrigo v29.212.0) não leva os horários de antes.
+      const pisoObrigatorio=/\b(tem( que)?( ser)?|so (posso|consigo|da|pode)|preciso|precisa|nao (posso|consigo|da) antes|somente)\b/.test(normalizedQuestion)
+      const antesDoPiso=pisoObrigatorio?[]:allSlots.filter((t:string)=>minX(t)<minX(effectiveTime)).slice(-3)
+      const diaPedido=dataPedidaOriginal
+      reply=`${diaSemVaga} depois das ${horaFalada(effectiveTime)} não tenho mais nada${antesDoPiso.length?`; antes disso tenho ${slotsPhrase(antesDoPiso)}`:''}. Depois das ${horaFalada(effectiveTime)}, ${emDia(pisoOutroDia.date)} consigo te atender: ${slotsPhrase(pisoOutroDia.slots)}. Qual fica melhor pra você?`
+      actions=[...slotsSample(pisoOutroDia.slots).map((t:string)=>({label:`${diaHumano(pisoOutroDia.date)} ${t}`,message:t})),...antesDoPiso.map((t:string)=>({label:`${diaHumano(diaPedido)} ${t}`,message:`${emDia(diaPedido)} às ${t}`}))]
      }else if(flexivel&&depois&&minutos(depois)-alvo<=30&&(upsellOfferDone||next.upsell_offer_done)){
       next.time=depois
       serviceRuleNote=`${effectiveTime} já estava tomado${next.date===today()?'':' nesse dia'}, então deixei o próximo livre, ${depois} — chegando ${effectiveTime} é só esperar ${minutos(depois)-alvo} min ☕`

@@ -1,3 +1,11 @@
+## 29.282.0 — JuIA: "após as 16" sem o "h" vira piso de horário; mostra os horários de antes e o próximo dia (08/10)
+
+**Caso Marcelo (08/10, 15h49), print do Juliano:** *"quero após as 16"* recebeu duas vezes *"Consigo te atender amanhã sim! … entre 12:10 e 15:45"*. Pedido do Juliano: *"o cliente foi claro que quer após as 16hs, é só ela dizer que não tem horário após as 16, somente antes, e dar as opções, ou então dizer o próximo dia com horário disponível"*.
+- **Causa:** `extractRequestedTime` só lia hora com "h" ou minutos ("16h", "16:00"). "após as 16", "depois das 4" (caso das 14h54 do mesmo dia) e "a partir das 17" não davam hora, então a regra de piso (v29.166.0/v29.212.0) nunca disparava.
+- **Agora:** número depois de após/depois de/a partir de/antes de/até vira hora; de 1 a 7 é da tarde (abrimos 08:30). Sem vaga depois do piso no dia pedido, a resposta é uma só: *"Amanhã depois das 16h não tenho mais nada; antes disso tenho 14:00, 15:00 ou 15:45. Depois das 16h, na terça (13/10) consigo te atender: …"*. Os botões dos horários de antes levam o dia junto ("amanhã às 15:45"), porque o estado já passou para o outro dia.
+- **Mantido:** quem diz "tem que ser depois das 18" (caso Rodrigo, v29.212.0) não recebe os horários de antes — ele já tinha recusado.
+- Simulador: cenário 69a + os 3 do Rodrigo, **168 ok**.
+
 ## 29.281.1 — Só cache: ?v= novo nos arquivos da 29.281.0 (08/10)
 
 Erro meu: consultei os arquivos com `?v=29.281.0` por curl ANTES de o GitHub Pages terminar de publicar, e o Cloudflare guardou a versão velha nesse endereço por 10 min (`cf-cache-status: HIT`). Painel que recarregasse nessa janela pegaria o código antigo. Troquei para `?v=29.281.1`. Regra: smoke test só depois de `admin-version.json` mostrar a versão nova.

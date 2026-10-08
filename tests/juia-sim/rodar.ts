@@ -924,5 +924,13 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('68b pergunta normal de amanhã segue oferecendo', !/não dá para você/.test(r2.reply), r2.reply)
 }
 
+{
+  // v29.282.0 — caso Marcelo 08/10/2026 15h49: "quero após as 16" com o dia de amanhã só até 15:45
+  const amanhaISO = (() => { const d = new Date(Date.now() - 3 * 3600e3 + 86400e3); return d.toISOString().slice(0, 10) })()
+  const depois = (() => { const d = new Date(Date.now() - 3 * 3600e3 + 2 * 86400e3); return d.toISOString().slice(0, 10) })()
+  const r = await turno({ msg: 'quero após as 16', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: amanhaISO }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanhaISO } }, contexto: ctxCliente('Teste Piso'), vagas: { [amanhaISO]: ['12:10', '13:00', '14:00', '15:00', '15:45'], [depois]: ['10:00', '16:30', '17:30'] } })
+  checar('69a "após as 16" sem vaga depois: diz que não tem depois das 16', /depois d(as|e) 16|após as 16|depois disso não tenho/i.test(r.reply) && !/Consigo te atender amanhã sim/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
