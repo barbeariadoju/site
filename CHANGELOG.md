@@ -1,3 +1,7 @@
+## 29.281.1 — Só cache: ?v= novo nos arquivos da 29.281.0 (08/10)
+
+Erro meu: consultei os arquivos com `?v=29.281.0` por curl ANTES de o GitHub Pages terminar de publicar, e o Cloudflare guardou a versão velha nesse endereço por 10 min (`cf-cache-status: HIT`). Painel que recarregasse nessa janela pegaria o código antigo. Troquei para `?v=29.281.1`. Regra: smoke test só depois de `admin-version.json` mostrar a versão nova.
+
 ## 29.281.0 — Prêmio da fidelidade em combo desmembra (o mais caro é o prêmio); JuIA lê "nn" e "pk" e entende "amanhã não dá" (08/10)
 
 **Pedido do Juliano (08/10, print do Concluir):** *"são 2 serviços, 1 combo, o dele é um presente de fidelidade, então tem que desmembrar e cobrar só 1 deles e o outro bonificar"* e, em seguida, *"não permitir que o combo seja prêmio inteiro de fidelidade, sempre desmembrar os serviços e considerar prêmio o serviço mais caro e cobrar o mais barato"*.
