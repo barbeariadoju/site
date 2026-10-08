@@ -1,3 +1,11 @@
+## 29.284.0 — Terça a sexta: o último atendimento termina até 19h (08/10)
+
+**Pedido do Juliano (08/10, minutos depois do sábado da 29.283.0):** *"terça a sexta quero que o último agendamento termine às 19hs"*.
+- **Banco (migração 195):** `closing_rule` dá `latest_end` = 19:00 de terça a sexta (era 20:00). Último corte (45 min): **18:15**; combo de 75 min: 17:45. Sábado segue 15:00 (último corte 14:15).
+- **Fim do "o Ju estica":** a tolerância de 60 min depois do fechamento (v28.61.0/v29.167.0, caso Moisés) deixa de existir para o site e para a JuIA — `extended_close_slot_ok` e `create_public_booking_v15` somam no máximo 0 min com a extensão de 60 que a JuIA manda. Pedido depois do último horário cai no texto que já existia: "meu último horário é X; o Juliano às vezes abre exceção, vou falar com ele" (push para ele). O painel continua marcando o que ele quiser.
+- **JuIA:** prompt diz que o último atendimento termina no fechamento e que nunca se oferece esticar; o "último horário teórico" é o fechamento menos a duração.
+- **Já marcados não mudam:** 09/10, Sabrino 18:30–19:45 e o encaixe do Marcelo 19:00–19:45 (autorizado pelo Juliano). O fechamento automático do expediente usa o fim do último atendimento real.
+
 ## 29.283.0 — Sábado: o último atendimento termina até 15h (08/10)
 
 **Pedido do Juliano (08/10):** *"nos agendamentos de sábado não quero mais que disponibilize o agendamento pras 15hs, quero acabar o último serviço no máximo 15hs, assim eu aproveito mais, descanso um pouco, tô com dor nas costas"*.

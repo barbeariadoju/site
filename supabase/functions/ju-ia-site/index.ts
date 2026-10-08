@@ -1063,7 +1063,7 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
 - Abreviações comuns do cliente: "nn"/"n" = não, "pk"/"pq" = porque, "vc" = você, "hj" = hoje, "amnh" = amanhã, "tb"/"tbm" = também, "dps" = depois, "blz" = beleza. "Amanhã nn dá" é recusa do dia, nunca pedido.
-- Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00, e no sábado o último atendimento TERMINA até 15:00 (o último horário depende da duração do serviço); domingo e segunda fechado. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
+- Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00; domingo e segunda fechado. O último atendimento TERMINA no fechamento (19:00 de terça a sexta, 15:00 no sábado): o último horário depende da duração do serviço. Nunca ofereça esticar depois do fechamento; exceção é só com o Juliano. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
 - "Antes das X", "até as X" = limite de horário, não o horário escolhido. "Depois das X", "a partir das X", "após as X" = piso. Nos dois casos deixe updates.time em null e use intent "availability"; o sistema filtra.
@@ -4331,7 +4331,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     const fechamentoX=dowX===6?15*60:19*60
     // v29.167.0 (regra do Juliano, 10/09/2026): início até o fechamento, término até 60 min depois
     // (migration 149, closing_rule). O último início teórico segue a mesma régua do banco.
-    const ultimoInicioTeorico=fmtX(dowX===6?fechamentoX-duration:Math.min(fechamentoX,fechamentoX+60-duration)) // v29.283.0: sábado termina até 15:00
+    const ultimoInicioTeorico=fmtX(fechamentoX-duration) // v29.284.0: o último atendimento TERMINA no fechamento (sábado 15:00, demais 19:00)
     const primeiroLivre=allSlots[0]
     const ultimoLivre=allSlots.length?allSlots[allSlots.length-1]:''
     if(!extendedOffered&&minX(effectiveTime)>minX(ultimoInicioTeorico)){
