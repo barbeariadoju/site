@@ -6,6 +6,9 @@
 - **Google (GBP):** horário regular trocado pelo Windsor (`set_regular_hours`).
 - **Painel:** o rótulo "Permitir fora do horário" diz "antes das 8h30".
 - **Não mexido de propósito:** a validação do banco ainda aceita início a partir de 08:00 — é o que deixa o Juliano marcar à mão um cliente às 8h se quiser; a grade pública já começa 08:30 (migração 191). A placa física da fachada (8h30–18h / 8h30–14h) agora bate na abertura; o fechamento segue diferente.
+- **Perfil comercial do WhatsApp:** horário trocado para 08:30 (ter-sex até 19:00, sáb até 15:00). A terça estava fechando **18:00** lá, diferente do site — corrigido para 19:00.
+- **Catálogo do WhatsApp (pedido do Juliano no mesmo dia: "preço defasado"):** o catálogo nunca recebeu o reajuste de 30/09. Corrigidos pelo WhatsApp Business Web, um a um e conferidos na lista depois de salvar: Corte + Lavagem 60, Combo Corte + Barba na navalha 95, Combo Corte + Barba Express 80, Barba na navalha 50, Barboterapia com ozônio 60, Barba Express 35, Corte infantil 50, Pezinho 20, Sobrancelha 20, Hidratação 50, Pigmentação de barba 40, Pigmentação de sobrancelha 25, Depilação nasal 30, Depilação de orelha 30, Aparação corporal 150. **Ficaram para o celular** (o Web mostra só 3 itens por coleção e não chega neles): Corte de cabelo, Corte Degradê e Corte Social — todos R$ 50.
+- **Erro meu no deploy, registrado:** publiquei o `ju-ia-site` com `--no-verify-jwt`, o que desligou a exigência de chave da JuIA (o mesmo buraco da 29.103.0). Percebi pelo `config.toml` em seguida e republiquei sem a flag; conferido: chamada sem chave volta **401**. Ficou aberto ~2 minutos. Regra: deploy do `ju-ia-site` é sempre sem flag, o `config.toml` decide.
 
 ## 29.279.0 — JuIA: a pergunta "manhã, tarde ou final do dia?" só cita o período que ainda tem vaga (07/10)
 
