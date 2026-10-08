@@ -30,7 +30,7 @@ const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
 // "hoje", o dia pedido ficou vazio, a agenda foi pro próximo dia aberto sem explicar que segunda não
 // abre, e a resposta saiu "Consigo te atender amanhã sim!" a quem perguntou de HOJE. Abreviações de
 // WhatsApp viram a palavra inteira já na normalização, pra toda leitura do arquivo enxergar igual.
-const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha')
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque') // v29.281.0: vocabulário do Juliano (08/10/2026)
 
 // v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
 //
@@ -1055,6 +1055,7 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Nunca assuma o serviço pelo histórico (last_services), a não ser que o cliente peça "o mesmo de sempre", "igual da última vez", "repetir".
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
+- Abreviações comuns do cliente: "nn"/"n" = não, "pk"/"pq" = porque, "vc" = você, "hj" = hoje, "amnh" = amanhã, "tb"/"tbm" = também, "dps" = depois, "blz" = beleza. "Amanhã nn dá" é recusa do dia, nunca pedido.
 - Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00; domingo e segunda fechado. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
@@ -3661,9 +3662,24 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // horário de hoje, o Juliano recebe o aviso: é ele quem decide se dá para encaixar.
   const recusaDeHorario=!/\?/.test(q)&&/\b(outro horario|outra hora|outros horarios|esses horarios|esse horario|nesses horarios|nesse horario)\b[\s\S]{0,25}\b(dificil|complicad|nao da|nao consigo|nao posso|nao rola|nao serve|nao fica bom)|\b(fica|e|seria|ta|esta) (meio |bem |muito |mais )?(dificil|complicad)/.test(q)
    &&!extractRequestedTime(message)&&!detectPeriod(q)&&!weekdayDatesMentioned(q,today()).length&&!/\b(amanha|outro dia|semana que vem)\b/.test(q)
+  // v29.281.0 — recusa do DIA (caso 08/10/2026, 14h57): "Amanhã pra mim nn da pk eu sai do serviço e vou
+  // pra São Paulo" recebeu "Consigo te atender amanhã sim!". Um dia citado + "não dá/não posso/não consigo",
+  // sem horário e sem outro dia na mesma frase = esse dia está fora: reconhece e pergunta qual dia serve.
+  const diasCitados=new Set(q.match(/\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado)\b/g)||[])
+  const diaRecusado=!/\?/.test(q)&&!temPendencia&&diasCitados.size===1&&!extractRequestedTime(message)
+   ?(q.match(/\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado)\b[\s\S]{0,20}\b(nao|n) (da|dara|vai dar|consigo|posso|rola|vou poder|tenho como)\b/)||[])[1]||''
+   :''
+  if(diaRecusado&&intent!=='cancel'&&intent!=='reschedule'){
+   const rotulo=({hoje:'hoje',amanha:'amanhã',terca:'terça',sabado:'sábado'} as Record<string,string>)[diaRecusado]||diaRecusado
+   reply=`Entendi, ${rotulo} não dá para você. Qual outro dia fica melhor? Eu vejo os horários e já deixo reservado.`
+   actions=[]
+   intent='other'
+   handoff=false
+   next.date=null
+  }
   const pedidoDeHoje=recusaDeHorario&&state?.last_requested_time&&(state?.last_requested_date||state?.date)===today()?String(state.last_requested_time).slice(0,5):''
   const dispensaPura=q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
-  if(dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+  if(!diaRecusado&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
    reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar às ${pedidoDeHoje}; se der, te respondo por aqui.`:'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
    if(pedidoDeHoje&&!next.dismissed){
     const psE=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()

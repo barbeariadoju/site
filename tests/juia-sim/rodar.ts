@@ -915,5 +915,14 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('67c dia inteiro com vaga: pergunta os três períodos', /de manhã, à tarde ou no final do dia\?/.test(r3.reply), r3.reply)
 }
 
+{
+  // v29.281.0 — caso 08/10/2026 14h57: "nn" = não, "pk" = porque; amanhã recusado não vira oferta de amanhã
+  const amanhaISO = (() => { const d = new Date(Date.now() - 3 * 3600e3 + 86400e3); return d.toISOString().slice(0, 10) })()
+  const r = await turno({ msg: 'Amanhã pra mim nn da pk eu sai do serviço e vou pra São Paulo', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'] }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanhaISO } }, contexto: ctxCliente('Teste Recusa'), vagas: { [amanhaISO]: ['12:10', '13:00', '15:45'] } })
+  checar('68a "amanhã nn dá pk…" é recusa do dia: não oferece amanhã, pergunta outro dia', !/Consigo te atender/.test(r.reply) && /outro dia/.test(r.reply) && !/12:10/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'amanhã às 15:45 dá?', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'] }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanhaISO } }, contexto: ctxCliente('Teste Recusa'), vagas: { [amanhaISO]: ['12:10', '13:00', '15:45'] } })
+  checar('68b pergunta normal de amanhã segue oferecendo', !/não dá para você/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

@@ -208,3 +208,16 @@ describe('toggleServiceSelection (caixinhas do admin)', () => {
     expect(r.services).toEqual(['Corte de cabelo', 'Sobrancelha Masculina']);
   });
 });
+
+import { partesDoCombo } from '../../assets/js/service-rules.js';
+// v29.281.0 — prêmio da fidelidade num combo desmembra nas partes (Juliano, 08/10/2026)
+describe('partesDoCombo', () => {
+  it('desmembra os dois combos de corte + barba', () => {
+    expect(partesDoCombo('Corte + Barba Express')).toEqual(['Corte de cabelo', 'Barba Express']);
+    expect(partesDoCombo('Corte + Barba na navalha com toalha quente')).toEqual(['Corte de cabelo', 'Barba na navalha com toalha quente']);
+  });
+  it('serviço que não é combo de dois serviços devolve null', () => {
+    expect(partesDoCombo('Corte de cabelo')).toBeNull();
+    expect(partesDoCombo('Corte + Lavagem')).toBeNull();
+  });
+});

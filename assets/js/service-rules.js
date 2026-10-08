@@ -159,6 +159,12 @@ export function splitServiceNames(serviceName, known){
 // infantil) não se tocam. `prevNames` = lista atual; `mentionedNow` = só o que apareceu
 // nesta mensagem. Sem troca, devolve a lista como veio.
 const COMBO_PARTS = { 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] };
+// v29.281.0 — partes de um combo (null se não for combo de 2 serviços). Usado no Concluir do
+// painel: prêmio da fidelidade num combo desmembra e bonifica só uma parte (Juliano, 08/10/2026).
+export function partesDoCombo(name){
+  const key = Object.keys(COMBO_PARTS).find(k => same(k, name));
+  return key ? [...COMBO_PARTS[key]] : null;
+}
 export function swapWithinFamily(prevNames, mentionedNow){
   const prev = (prevNames || []).filter(Boolean);
   const mentioned = (mentionedNow || []).filter(Boolean);

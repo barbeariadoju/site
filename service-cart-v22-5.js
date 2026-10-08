@@ -1,5 +1,5 @@
 import { money, parseDuration } from './assets/js/booking-format.js?v=28.16.2';
-import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.249.0';
+import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules.js?v=29.281.0';
 
 (() => {
   const serviceStorageKey = 'bdj_services_v1';

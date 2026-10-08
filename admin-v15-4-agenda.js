@@ -303,6 +303,20 @@
     // os data-service-* continuam no checkbox, então readChecklistServices e a regra não mudam.
     return '<div class="catalogo-lista">'+window.BDJ_LISTA.html(catalog,{attrs:s=>`data-service-name="${esc(s.name)}" data-service-price="${s.price}" data-service-duration="${s.duration}"`,quantidade:true,quantidades})+'</div><small class="field-help checkout-help" data-service-rule-msg hidden></small>'
   }
+  // v29.281.0 — prêmio da fidelidade num combo (Juliano, 08/10/2026: "são 2 serviços, 1 combo,
+  // tem que desmembrar e cobrar só 1 deles e o outro bonificar"). Com "Bônus de fidelidade", o
+  // combo vira as partes pelo preço de tabela de cada uma (Corte + Barba Express → Corte de
+  // cabelo R$ 50 + Barba Express R$ 35): uma é o prêmio, a outra é cobrada. Antes o combo inteiro
+  // (R$ 80) virava prêmio e o total a cobrar dava R$ 0. Parte que não estiver no catálogo = combo fica.
+  function desmembrarCombos(services){
+    const partes=window.BDJ_SERVICE_RULES?.partesDoCombo;
+    if(!partes)return services;
+    return services.flatMap(s=>{
+      const p=partes(s.name);
+      const itens=p?p.map(n=>catalog.find(c=>c.name===n)).filter(Boolean):[];
+      return p&&itens.length===p.length?itens.map(c=>({name:c.name,price:Number(c.price),duration:Number(c.duration)})):[s];
+    });
+  }
   function readChecklistServices(modal){
     return window.BDJ_LISTA.expandir(modal.querySelectorAll('[data-service-name]:checked'),i=>({name:i.dataset.serviceName,price:Number(i.dataset.servicePrice),duration:Number(i.dataset.serviceDuration)}))
   }
@@ -537,27 +551,37 @@
       const loyaltyPick=modal.querySelector('[data-loyalty-pick]');
       loyaltyPick.hidden=true;loyaltyPick.innerHTML='';loyaltyPick.dataset.key='';
       const restPickerHtml=()=>`<div class="payment-method-grid">${[['pix','Pix'],['debito','Débito'],['credito','Crédito'],['dinheiro','Dinheiro']].map(([v,l])=>`<button type="button" data-rest-option="${v}" class="${selectedRestPayment===v?'is-selected':''}">${l}</button>`).join('')}</div>`;
+      const comboDesmembrado=()=>selectedPayment==='fidelidade'&&!courtesyBox.checked&&readChecklistServices(modal).some(x=>window.BDJ_SERVICE_RULES?.partesDoCombo?.(x.name));
+      const servicosCobrados=()=>{const list=readChecklistServices(modal);return selectedPayment==='fidelidade'&&!courtesyBox.checked?desmembrarCombos(list):list};
       const loyaltyFreeService=()=>{
-        const services=readChecklistServices(modal);
+        const services=servicosCobrados();
         if(selectedPayment!=='fidelidade'||courtesyBox.checked||!services.length)return null;
         if(services.length===1)return services[0];
+        // v29.281.0 — combo desmembrado: o prêmio é SEMPRE a parte mais cara, a mais barata é cobrada
+        if(comboDesmembrado())return services.reduce((a,s)=>Number(s.price)>Number(a.price)?s:a);
         const picked=loyaltyPick.querySelector('input[name="loyalty-free"]:checked')?.value;
         return services.find(s=>s.name===picked)||services[0];
       };
       const renderLoyaltyPick=()=>{
-        const services=readChecklistServices(modal);
+        const services=servicosCobrados();
         const show=selectedPayment==='fidelidade'&&!courtesyBox.checked&&services.length>=2;
         loyaltyPick.hidden=!show;
         if(!show)return;
         const key=services.map(s=>s.name).join('|');
         if(loyaltyPick.dataset.key===key)return;
         loyaltyPick.dataset.key=key;
+        if(comboDesmembrado()){
+          const free=loyaltyFreeService();
+          const cobrados=services.filter(s=>s!==free);
+          loyaltyPick.innerHTML=`<h3 style="margin:12px 0 4px">Combo desmembrado no prêmio da fidelidade</h3><p class="field-help" style="margin:0 0 8px">Prêmio: <strong>${esc(free.name)}</strong> (${money(free.price)}). Cobrado: <strong>${cobrados.map(s=>`${esc(s.name)} (${money(s.price)})`).join(' + ')}</strong>.</p><h3 style="margin:12px 0 4px">Como foi pago o restante?</h3>${restPickerHtml()}`;
+          return;
+        }
         loyaltyPick.innerHTML=`<h3 style="margin:12px 0 4px">Qual serviço é o prêmio da fidelidade?</h3><div class="products-modal-grid">${services.map((s,i)=>`<label class="products-modal-option"><input type="radio" name="loyalty-free" value="${esc(s.name)}" ${i===0?'checked':''}><span><strong>${esc(s.name)}</strong><small>${money(s.price)} por conta da fidelidade</small></span></label>`).join('')}</div><h3 style="margin:12px 0 4px">Como foi pago o restante?</h3>${restPickerHtml()}`;
       };
       const renderTotal=()=>{
         renderLoyaltyPick();
         const free=loyaltyFreeService();
-        const sv=readChecklistServices(modal).reduce((a,s)=>a+Number(s.price||0),0);
+        const sv=servicosCobrados().reduce((a,s)=>a+Number(s.price||0),0);
         const pr=readChecklistProducts(modal).reduce((a,p)=>a+Number(p.price||0),0);
         const isCourtesy=courtesyBox.checked;
         const premio=free?Number(free.price||0):0;
@@ -658,7 +682,7 @@
         productsPaymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===selectedProductsPayment));
       };
       const onConfirm=()=>{
-        const services=readChecklistServices(modal);
+        const services=servicosCobrados();
         if(!services.length){alert('Selecione ao menos um serviço.');return}
         // v29.20.0: cortesia dispensa forma de pagamento (não há pagamento)
         const isCourtesy=courtesyBox.checked;
@@ -709,7 +733,7 @@
           // grava service_price líquido + discount_amount/discount_reason (migration 147).
           // O motivo guarda a % escolhida junto com o texto, pra ficar legível no card.
           discount:(()=>{
-            const services=readChecklistServices(modal);
+            const services=servicosCobrados();
             const sv=services.reduce((a,s)=>a+Number(s.price||0),0);
             const premio=(!isCourtesy&&freeSvc)?Number(freeSvc.price||0):0;
             const amount=isCourtesy?0:readDiscount(Math.max(0,sv-premio));
