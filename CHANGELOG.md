@@ -1,3 +1,11 @@
+## 29.283.0 — Sábado: o último atendimento termina até 15h (08/10)
+
+**Pedido do Juliano (08/10):** *"nos agendamentos de sábado não quero mais que disponibilize o agendamento pras 15hs, quero acabar o último serviço no máximo 15hs, assim eu aproveito mais, descanso um pouco, tô com dor nas costas"*.
+- **Banco (migração 194):** `closing_rule` passa a dar, no sábado, `latest_end` = 15:00 (era 16:00). Como é a fonte única, vale para a agenda do site, a JuIA (inclusive o "estica" do WhatsApp, que no sábado não passa mais das 15h), o reagendamento, a senha digital e o fechamento automático do expediente. Último corte (45 min) no sábado: **14:15**. Terça a sexta não mudam (último corte 19:00).
+- **JuIA:** o prompt diz que no sábado o último atendimento termina até 15:00, e a conta do "último horário teórico" do sábado virou 15:00 menos a duração.
+- **Não mexido:** o painel do Juliano continua podendo marcar no sábado até 15:00 de início — é decisão dele na hora. Horário publicado (sábado 8h30–15h) continua certo.
+- Conferido antes: nenhum sábado futuro tinha atendimento terminando depois das 15h.
+
 ## 29.282.0 — JuIA: "após as 16" sem o "h" vira piso de horário; mostra os horários de antes e o próximo dia (08/10)
 
 **Caso Marcelo (08/10, 15h49), print do Juliano:** *"quero após as 16"* recebeu duas vezes *"Consigo te atender amanhã sim! … entre 12:10 e 15:45"*. Pedido do Juliano: *"o cliente foi claro que quer após as 16hs, é só ela dizer que não tem horário após as 16, somente antes, e dar as opções, ou então dizer o próximo dia com horário disponível"*.
