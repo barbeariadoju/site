@@ -1,3 +1,12 @@
+## 29.285.0 — JuIA: lavagem em cima do combo "Corte + Barba Express" some; remarcação quebrava o combo (09/10)
+
+**Caso Vicente (09/10, 08h16), print do Juliano:** reservou hoje 12:10 "Corte + Barba Express" (R$ 80), aceitou com "1" a oferta *"incluir a lavagem por mais R$ 10,00"* e recebeu *"Incluído. Fica Corte + Barba Express — R$ 80,00"*. A lavagem não entrou e nada avisou. O Juliano corrigiu à mão no painel e a soma deu R$ 95 (Corte + Lavagem 60 + Barba Express 35). Depois o cliente cancelou (confundiu o endereço com a Planejada) e a oferta de remarcação saiu para *"Corte de cabelo + Corte + Lavagem + Barba Express"*, seguida de um *"Só pra ajustar: Corte + Lavagem já inclui o que Corte de cabelo faria"* para quem não tinha pedido nada.
+- **Causa 1 (a oferta):** a inclusão só tirava "Corte de cabelo" antes de pôr "Corte + Lavagem". Com o combo, a lista ficava com dois cortes; a regra de famílias mantinha o combo (o mais completo) e descartava a lavagem — e a resposta dizia "Incluído" mesmo assim.
+- **Agora:** o combo é desmontado (o corte vira Corte + Lavagem, a barba fica): **Corte + Lavagem + Barba Express**. O preço é o **prometido na oferta**: o que já estava reservado + o acréscimo da lavagem = **R$ 90**, não os R$ 95 da soma avulsa. Promessa feita ao cliente não muda no "1". O "quanto fica tudo?" no meio da oferta mostra a mesma conta. Rede de segurança: se a inclusão não sobreviver à regra de famílias, a resposta diz que não incluiu, em vez de "Incluído".
+- **Causa 2 (a remarcação):** o nome do agendamento cancelado era cortado em cada "+", então "Corte + Lavagem + Barba Express" virava "Corte" (= Corte de cabelo) + "Lavagem" + "Barba Express". Passou a usar `servicosDaReserva` (casa o combo inteiro primeiro), a mesma função que o resto da JuIA já usava.
+- **Não mexido:** a resposta ao "achei que fosse na Planejada" ("Sem problema… Até mais!") não perguntou se ele mantinha o horário; o cliente esclareceu na mensagem seguinte e a JuIA cancelou certo. Fica de olho, sem regra nova por um caso.
+- Simulador: cenários 45c-45e (+ dublê de `phone_change_booking_service`), **171 ok**. O 69a falha também sem esta mudança: depende do dia (hoje "amanhã" é sábado, que fecha às 15h desde a 29.283.0) — pendência do teste, não da JuIA.
+
 ## 29.284.0 — Terça a sexta: o último atendimento termina até 19h (08/10)
 
 **Pedido do Juliano (08/10, minutos depois do sábado da 29.283.0):** *"terça a sexta quero que o último agendamento termine às 19hs"*.

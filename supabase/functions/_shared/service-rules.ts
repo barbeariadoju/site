@@ -124,6 +124,11 @@ export function splitServiceNames(serviceName: string, known: string[]): string[
 // infantil) não se tocam. `prevNames` = lista atual; `mentionedNow` = só o que apareceu
 // nesta mensagem. Sem troca, devolve a lista como veio.
 const COMBO_PARTS: Record<string, string[]> = { 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] }
+/** Partes avulsas de um combo do catálogo ("Corte + Barba Express" → ['Corte de cabelo', 'Barba Express']); null se não for combo. */
+export function partesDoCombo(name: string): string[] | null {
+  const key = Object.keys(COMBO_PARTS).find((k) => same(k, name))
+  return key ? COMBO_PARTS[key].slice() : null
+}
 export function swapWithinFamily(prevNames: string[], mentionedNow: string[]): { services: string[]; swaps: { from: string; to: string }[] } {
   const prev = (prevNames || []).filter(Boolean)
   const mentioned = (mentionedNow || []).filter(Boolean)

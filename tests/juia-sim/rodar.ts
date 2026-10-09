@@ -68,6 +68,7 @@ type Cenario = {
   clubeMotivo?: string // club_quote: motivo de não cobrir
   clubeVendas?: boolean // club_settings.vendas_abertas
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
+  cancelado?: string // service_name devolvido pelo whatsapp_cancel_booking (padrão: Corte de cabelo)
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -98,7 +99,8 @@ const turno = async (c: Cenario) => {
     get_available_slots_excluding: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
     create_public_booking_v15: () => ({ data: 'bk-novo', error: null }),
-    whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: 'Corte de cabelo' }], error: null }),
+    whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: c.cancelado || 'Corte de cabelo' }], error: null }),
+    phone_change_booking_service: (a: any) => ({ data: [{ id: a.p_booking_id }], error: null }),
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
   }
@@ -665,6 +667,23 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('45a "2 / somente corte" não inclui a lavagem', !trocou && !/Incluído/.test(r.reply), r.reply)
   const r2 = await turno({ msg: '1', state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
   checar('45b "1" continua incluindo', r2.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service'), r2.reply)
+}
+
+// 45c-e. Caso Vicente (09/10/2026): oferta da lavagem em cima do combo "Corte + Barba Express". "1" tem que
+//        desmontar o combo (Corte + Lavagem + Barba Express) e cobrar o prometido: combo + acréscimo da lavagem.
+{
+  const ctx = ctxCliente('Vicente Teste')
+  const st = { services: ['Corte + Barba Express'], date: dia1, time: '12:10', completed: true, upsell_offer_options: ['Corte + Lavagem', '__none__'], upsell_post_booking: { id: 'b45', date: dia1, time: '12:10', services: ['Corte + Barba Express'] } }
+  const r = await turno({ msg: '1', state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
+  const troca = r.chamadas.find((x: any) => x.alvo === 'phone_change_booking_service')
+  // simulador: combo R$ 65 + lavagem (50 - 40) = R$ 75; avulsos somariam 50 + 25 = R$ 75 também aqui, então confere o nome e o preço
+  checar('45c lavagem no combo grava Corte + Lavagem + Barba Express', troca?.args?.p_service_name === 'Corte + Lavagem + Barba Express' && Number(troca?.args?.p_service_price) === 75, { reply: r.reply, args: troca?.args })
+  checar('45c resposta cita a lavagem', /Incluído\. Fica Corte \+ Lavagem \+ Barba Express — R\$\s?75,00/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'fica quanto tudo?', state: st, ai: { intent: 'faq', reply: 'Ok', updates: {} }, contexto: ctx })
+  checar('45d "quanto fica" com combo mostra a lavagem e R$ 75', /Corte \+ Lavagem \+ Barba Express — R\$\s?75,00/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'pode cancelar meu horário', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctx, cancelado: 'Corte + Lavagem + Barba Express',
+    futuros: [{ id: 'b45', booking_date: dia1, start_time: '12:10:00', service_name: 'Corte + Lavagem + Barba Express' }], vagas: { [dia2]: ['12:30'] } })
+  checar('45e remarcação depois de cancelar não quebra o combo', cancelou(r3) && /para Corte \+ Lavagem \+ Barba Express\?/.test(r3.reply) && !/Corte de cabelo/.test(r3.reply), r3.reply)
 }
 
 // 46. Caso Paulo (29/09/2026): "dia 15 as 18:00" (sem mês) — o dia do cliente manda; o modelo não pode

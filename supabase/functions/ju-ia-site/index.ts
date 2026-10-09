@@ -9,7 +9,7 @@ const respond=(body:unknown,status=200)=>new Response(JSON.stringify(body),{stat
 // v29.62.0 — regra das famílias de serviço (1 corte + 1 barba por atendimento), mesma
 // lógica do site (assets/js/service-rules.js). Ver o bloco "serviceRuleNote" abaixo.
 import { OPCOES_SERVICO_CONVITE, servicoDaResposta } from '../_shared/convite-retorno.ts'
-import { normalizeServiceSet as normalizeServiceFamilies, swapWithinFamily, familiesOf as familiesOfService, splitServiceNames } from '../_shared/service-rules.ts'
+import { normalizeServiceSet as normalizeServiceFamilies, swapWithinFamily, familiesOf as familiesOfService, splitServiceNames, partesDoCombo } from '../_shared/service-rules.ts'
 import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
@@ -2206,7 +2206,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // de exemplo. "Sim" lista os horários daquele dia; horário, dia ou período na resposta segue o
     // fluxo normal de agendamento; "não"/"depois eu vejo" encerra sem insistir (bloco pending_rebook).
     const cancelledISO=String(cancelled.booking_date).slice(0,10)
-    const rebookServices=String(cancelled.service_name||'').split(/\s*\+\s*/).map((p:string)=>findService(p.trim())).filter(Boolean)
+    // v29.285.0 — caso Vicente (09/10/2026, 08h23): "Corte + Lavagem + Barba Express" cortado em cada "+"
+    // virou "Corte de cabelo + Corte + Lavagem + Barba Express" na oferta de remarcação, e o turno seguinte
+    // abriu com "Só pra ajustar: Corte + Lavagem já inclui o que Corte de cabelo faria" para quem nem tinha
+    // pedido nada. servicosDaReserva casa o combo inteiro antes de quebrar.
+    const rebookServices=servicosDaReserva(String(cancelled.service_name||''))
     const rebookNames=rebookServices.map((s:any)=>s.name)
     const rebookDuration=rebookServices.reduce((a:number,s:any)=>a+Number(s.duration||0),0)||Number(cancelled.duration_minutes)||40
     let rebookOffer:{date:string,slots:string[]}|null=null
@@ -3299,14 +3303,32 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const disse2=!perguntouValor&&(primeiroToken==='2'||simpleNo||negou||soOQueTinha)
   const disse1=!perguntouValor&&!disse2&&(primeiroToken==='1'||simpleYes||Boolean(addKey&&normalizedQuestion.includes(addKey)))
   const quando=`${emDia(String(postBooking.date||''))} às ${String(postBooking.time||'')}`
-  if(perguntouValor&&findService(addName)){
-   const dataPb=String(postBooking.date||'')||null
+  const dataPb=String(postBooking.date||'')||null
+  // v29.285.0 — caso Vicente (09/10/2026, 08h19): reserva "Corte + Barba Express" (R$ 80), oferta "lavagem por
+  // mais R$ 10", ele disse 1 e veio "Incluído. Fica Corte + Barba Express — R$ 80,00": a regra de famílias via
+  // dois cortes (o combo e o Corte + Lavagem), ficava com o combo e a lavagem sumia — sem aviso. O Juliano
+  // editou à mão e o painel somou R$ 95. Agora o combo é desmontado (o corte vira Corte + Lavagem, a barba
+  // fica) e o total é o PROMETIDO na oferta: o de antes + o acréscimo da lavagem (R$ 90, não R$ 95).
+  const comInclusao=()=>{
+   const lav=addName==='Corte + Lavagem'
+   let names:string[]=[]
+   for(const n of baseNames){
+    if(lav&&n==='Corte de cabelo')continue
+    const partes=lav?partesDoCombo(n):null
+    if(partes){partes.filter(p=>p!=='Corte de cabelo').forEach(p=>names.push(p));continue}
+    names.push(n)
+   }
+   if(!names.includes(addName))names.splice(lav?0:names.length,0,addName)
+   names=normalizeServiceFamilies(names.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}})).items.map((x:any)=>x.name)
+   const svcs=names.map(n=>findService(n)).filter(Boolean)
    const baseSvcs=baseNames.map(n=>findService(n)).filter(Boolean)
-   let comNames=baseNames.filter(n=>!(addName==='Corte + Lavagem'&&n==='Corte de cabelo'))
-   if(!comNames.includes(addName))comNames.push(addName)
-   comNames=normalizeServiceFamilies(comNames.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}})).items.map((x:any)=>x.name)
-   const comSvcs=comNames.map(n=>findService(n)).filter(Boolean)
-   reply=`${quando.charAt(0).toUpperCase()+quando.slice(1)}: ${baseNames.join(' + ')} — ${money(totalOn(baseSvcs,dataPb))}. Com a inclusão, fica ${comNames.join(' + ')} — ${money(totalOn(comSvcs,dataPb))}. Quer incluir? Digite *1* para sim ou *2* para não.`
+   const extra=lav&&names.includes(addName)?extraLavagem(dataPb):0
+   const total=extra?totalOn(baseSvcs,dataPb)+extra:totalOn(svcs,dataPb)
+   return{names,svcs,total,baseTotal:totalOn(baseSvcs,dataPb)}
+  }
+  if(perguntouValor&&findService(addName)){
+   const ci=comInclusao()
+   reply=`${quando.charAt(0).toUpperCase()+quando.slice(1)}: ${baseNames.join(' + ')} — ${money(ci.baseTotal)}. Com a inclusão, fica ${ci.names.join(' + ')} — ${money(ci.total)}. Quer incluir? Digite *1* para sim ou *2* para não.`
    intent='other';handoff=false;offerTurn=true;actions=[]
   }else{
   next.upsell_offer_options=null
@@ -3315,14 +3337,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   if(perguntouValor&&findService(addName)){
    // a oferta segue viva (upsell_offer_options e upsell_post_booking intactos)
   }else if(disse1&&findService(addName)){
-   let names=baseNames.slice()
-   if(addName==='Corte + Lavagem')names=names.filter(n=>n!=='Corte de cabelo')
-   if(!names.includes(addName))names.push(addName)
-   const fam=normalizeServiceFamilies(names.map(n=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
-   names=fam.items.map((x:any)=>x.name)
-   const newChosen=names.map(n=>findService(n)).filter(Boolean)
    // v29.260.0 (caso Paulo): preço da DATA do atendimento — em 20/10 vale a tabela de outubro.
-   const total=totalOn(newChosen,String(postBooking.date||'')||null),dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
+   const ci=comInclusao()
+   const names=ci.names,newChosen=ci.svcs,total=ci.total,dur=newChosen.reduce((a:number,s:any)=>a+s.duration,0)
+   if(!names.includes(addName)){
+    // Rede de segurança: se a inclusão não sobreviveu à regra de famílias, não dizer "Incluído".
+    reply=`Não consegui incluir ${addName} nesse atendimento. Mantive ${baseNames.join(' + ')} ${quando}, como estava.`
+   }else{
    const {data:chRows,error:chErr}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:postBooking.id,p_service_name:names.join(' + '),p_service_price:total,p_duration_minutes:dur})
    const ch=Array.isArray(chRows)?chRows[0]:chRows
    if(chErr||!ch){
@@ -3331,6 +3352,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=`Incluído. Fica ${names.join(' + ')} — ${money(total)} (aproximadamente ${dur} min), ${quando}.`
     next.services=names
     chosen=newChosen
+   }
    }
   }else if(disse2){
    reply=`Perfeito, fica ${baseNames.join(' + ')} ${quando}. Até lá!`
