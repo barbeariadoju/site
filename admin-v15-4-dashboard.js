@@ -39,6 +39,7 @@
   //     no mês (terça a sábado, sem os dias bloqueados inteiros). Sábado conta como dia cheio — conta
   //     simples de propósito, pra ele conferir de cabeça;
   //   - o mês: o que já entrou + o que ainda está marcado daqui pra frente, contra a meta.
+  //   v29.287.1: "marcado" no mês confundiu (Juliano, 09/10) — virou "agendado até o fim do mês (N horários)".
   const metaCache={}
   function liquidoAg(x){return x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)-(['pending','confirmed'].includes(x.status)?Number(x.discount_amount||0):0))+Number(x.products_price||0)}
   function metaDoMes(mes){
@@ -65,7 +66,8 @@
     if(diaEscolhido()!==today)return
     const doMes=allBookings.filter(x=>String(x.booking_date).slice(0,7)===mes)
     const mesEntrou=doMes.filter(x=>x.status==='completed').reduce((a,x)=>a+liquidoAg(x),0)
-    const mesMarcado=doMes.filter(x=>x.booking_date>=realHoje&&['pending','confirmed'].includes(x.status)).reduce((a,x)=>a+liquidoAg(x),0)
+    const mesFuturos=doMes.filter(x=>x.booking_date>=realHoje&&['pending','confirmed'].includes(x.status))
+    const mesMarcado=mesFuturos.reduce((a,x)=>a+liquidoAg(x),0)
     const concl=doMes.filter(x=>x.status==='completed').length,ticket=concl?mesEntrou/concl:70
     const atende=info.dias.includes(today),metaDia=info.meta&&info.dias.length?info.meta/info.dias.length:0
     const quando=ehHoje?'de hoje':today===(()=>{const d=new Date(realHoje+'T12:00:00');d.setDate(d.getDate()+1);return isoLocal(d)})()?'de amanhã':'do dia'
@@ -82,8 +84,8 @@
     const mesNome=new Date(mes+'-15T12:00:00').toLocaleDateString('pt-BR',{month:'long'})
     const mesPrev=mesEntrou+mesMarcado,mesFalta=info.meta-mesPrev
     const linhaMes=info.meta?`<div class="today-meta-mes"><div class="today-meta-bar is-thin"><i class="is-done" style="width:${Math.min(100,mesEntrou/info.meta*100)}%"></i><i class="is-booked" style="width:${Math.max(0,Math.min(100,mesPrev/info.meta*100)-Math.min(100,mesEntrou/info.meta*100))}%"></i></div>
-      <p><span>${mesNome.charAt(0).toUpperCase()+mesNome.slice(1)}:</span> entrou ${money(mesEntrou)} + marcado ${money(mesMarcado)} = <b>${money(mesPrev)}</b> de ${money(info.meta)}${mesFalta>0?` · faltam ${money(mesFalta)}`:' · meta do mês coberta'} <button type="button" class="link-btn" data-meta-editar>mudar meta</button></p></div>`:''
-    box.innerHTML=`<div class="today-meta-head"><span>Previsão ${quando}</span><strong>${money(previsao)}</strong><small>já entrou ${money(entrou)} · ainda marcado ${money(marcado)}</small></div><div class="today-meta-body">${linhaMeta}${linhaMes}</div>`
+      <p><span>${mesNome.charAt(0).toUpperCase()+mesNome.slice(1)}:</span> já entrou ${money(mesEntrou)} + agendados até o fim do mês ${money(mesMarcado)} (${mesFuturos.length} horário${mesFuturos.length===1?'':'s'}) = <b>${money(mesPrev)}</b> de ${money(info.meta)}${mesFalta>0?` · faltam ${money(mesFalta)}`:' · meta do mês coberta'} <button type="button" class="link-btn" data-meta-editar>mudar meta</button></p></div>`:''
+    box.innerHTML=`<div class="today-meta-head"><span>Previsão ${quando}</span><strong>${money(previsao)}</strong><small>já entrou ${money(entrou)} · agendados ${money(marcado)}</small></div><div class="today-meta-body">${linhaMeta}${linhaMes}</div>`
     box.querySelectorAll('[data-meta-editar]').forEach(b=>b.onclick=()=>editarMeta(mes,info.meta))
   }
   async function editarMeta(mes,atual){

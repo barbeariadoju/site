@@ -1,3 +1,7 @@
+## 29.287.1 — Tela Hoje: "marcado" virou "agendados" (09/10)
+
+O Juliano perguntou *"o que é este marcado?"* na linha do mês e pediu *"alterar o termo para agendados, seria mais fácil pra mim associar"*. É a soma dos agendamentos pendentes/confirmados de hoje até o fim do mês (pelo preço gravado, já sem desconto, fidelidade e cortesia). Linha do mês: "já entrou R$ X + agendados até o fim do mês R$ Y (N horários)"; linha do dia: "já entrou R$ X · agendados R$ Y". Só texto; conta igual.
+
 ## 29.287.0 — Tela Hoje: bloco "Previsão e meta", visível no celular (09/10)
 
 **Pedido do Juliano (09/10, com print do card "Faturado hoje" no computador):** *"este campo faturado hoje previsão de faturamento não aparece no mobile… poderíamos ter previsão futura do dia… aparecer no mobile pra eu já ver de manhã quanto vou fazer, quanto falta pra minha meta"*.

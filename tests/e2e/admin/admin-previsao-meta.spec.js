@@ -24,7 +24,7 @@ test('Tela Hoje no celular: previsão do dia, meta do dia e do mês', async ({ p
   await expect(box).toBeVisible();
   await expect(box.locator('.today-meta-head strong')).toHaveText(/R\$\s*190,00/);
   await expect(box).toContainText('já entrou R$ 130,00');
-  await expect(box).toContainText('ainda marcado R$ 60,00');
+  await expect(box).toContainText('agendados R$ 60,00');
 
   // meta do dia = 14.100 ÷ dias de terça a sábado do mês (sem bloqueios no mock)
   const [y, m] = mes.split('-').map(Number);
@@ -39,6 +39,7 @@ test('Tela Hoje no celular: previsão do dia, meta do dia e do mês', async ({ p
     await expect(box).toContainText('Dia sem atendimento');
   }
   await expect(box.locator('.today-meta-mes')).toContainText('de R$ 14.100,00');
+  await expect(box.locator('.today-meta-mes')).toContainText('agendados até o fim do mês R$ 60,00 (1 horário)');
 
   // no celular o bloco vem logo depois da faixa de números, antes da linha do dia
   const yMeta = (await box.boundingBox()).y, yLinha = (await page.locator('#dashboard-today-list').boundingBox()).y;
