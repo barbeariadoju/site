@@ -686,6 +686,23 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('45e remarcação depois de cancelar não quebra o combo', cancelou(r3) && /para Corte \+ Lavagem \+ Barba Express\?/.test(r3.reply) && !/Corte de cabelo/.test(r3.reply), r3.reply)
 }
 
+// 45f-g. Caso Cintia (09/10/2026): sem vaga no período pedido, mostra o resto do dia e o próximo dia com
+//        vaga no período (era "Posso mostrar outro período…" sem horário, e o "ver horários" repetia → "me embolei").
+{
+  const ctx = ctxCliente('Cintia Teste')
+  const dd = `${dia1.slice(8, 10)}/${dia1.slice(5, 7)}`
+  const r = await turno({ msg: `Dia ${dd} na parte da manhã`, state: { services: ['Corte de cabelo'], name: 'Cintia Teste' },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1, period: 'morning' } }, contexto: ctx,
+    vagas: { [dia1]: ['12:30', '13:00'], [dia2]: ['09:00', '10:30', '15:00'] } })
+  checar('45f sem vaga de manhã: mostra a tarde do dia e a manhã do próximo', /12:30/.test(r.reply) && /09:00/.test(r.reply) && !/Posso mostrar outro período/.test(r.reply) && !reservou(r), r.reply)
+  checar('45f período sai do estado (o próximo "ver horários" não repete a negativa)', !r.state?.period, r.state)
+}
+{
+  const foto = 'Cliente enviou uma foto de referência de corte/barba/cor. Descrição da imagem: Corte curto com volume no topo, laterais em degradê.\nFaz esse corte ?'
+  const r = await turno({ msg: foto, state: {}, ai: { intent: 'faq', reply: 'Sim, fazemos esse corte. O corte custa R$ 40,00.', updates: {} }, contexto: ctxCliente('Cintia Teste') })
+  checar('45g foto de corte não abre o menu de barba', !/Pra barba, qual você prefere/.test(r.reply), r.reply)
+}
+
 // 46. Caso Paulo (29/09/2026): "dia 15 as 18:00" (sem mês) — o dia do cliente manda; o modelo não pode
 //     pular pra outro dia e reservar em silêncio.
 {

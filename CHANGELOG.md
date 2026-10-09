@@ -1,3 +1,11 @@
+## 29.288.0 — JuIA: sem vaga no período mostra os horários; foto de corte não abre menu de barba (09/10)
+
+**Caso Cintia (09/10, 17h50–18h11), print do Juliano:** *"veja o que aconteceu"*.
+- **18h08 — "Amanhã na parte da manhã":** resposta *"Amanhã não tenho mais vaga no período da manhã. Posso mostrar outro período ou verificar outro dia."*, sem nenhum horário. Ela respondeu *"Ver horário disponível"*; o período "manhã" continuava guardado, a mesma frase saiu de novo, e a trava anti-repetição do webhook trocou por *"Desculpe, me embolei aqui…"* e chamou o Juliano. Sábado tinha 12:30–13:30 livres.
+  **Agora:** mesma regra da 29.282.0 (caso Marcelo, "após as 16"): *"Amanhã, no período da manhã, não tenho mais vaga. Nesse dia, fora desse período, tenho 12:30, 12:45… No período da manhã, na terça (13/10) tenho … Qual fica melhor pra você?"*. Os botões levam o dia junto. O período sai do estado, para um "ver horários" depois listar o dia inteiro em vez de repetir a negativa.
+- **17h50 — foto de um corte + "Faz esse corte?":** recebeu o menu de **barba**. A foto chega do webhook com o rótulo fixo *"foto de referência de corte/barba/cor"*, e o "barba" desse rótulo bastou para a leitura de serviço. O rótulo genérico agora sai da mensagem antes de qualquer leitura (a descrição da imagem e o que o cliente escreveu continuam). Às 18h02, perguntando de novo, ela recebeu a resposta certa.
+- Simulador: 45f, 45g (falham no código anterior, passam agora), **174 ok**; o 69a segue falhando por depender do dia (pendência do teste, ver 29.285.0).
+
 ## 29.287.1 — Tela Hoje: "marcado" virou "agendados" (09/10)
 
 O Juliano perguntou *"o que é este marcado?"* na linha do mês e pediu *"alterar o termo para agendados, seria mais fácil pra mim associar"*. É a soma dos agendamentos pendentes/confirmados de hoje até o fim do mês (pelo preço gravado, já sem desconto, fidelidade e cortesia). Linha do mês: "já entrou R$ X + agendados até o fim do mês R$ Y (N horários)"; linha do dia: "já entrou R$ X · agendados R$ Y". Só texto; conta igual.
