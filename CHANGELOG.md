@@ -1,3 +1,15 @@
+## 29.287.0 — Tela Hoje: bloco "Previsão e meta", visível no celular (09/10)
+
+**Pedido do Juliano (09/10, com print do card "Faturado hoje" no computador):** *"este campo faturado hoje previsão de faturamento não aparece no mobile… poderíamos ter previsão futura do dia… aparecer no mobile pra eu já ver de manhã quanto vou fazer, quanto falta pra minha meta"*.
+- **Por que sumia:** no celular a faixa compacta dos 4 números esconde o texto pequeno de cada card (29.205.x, para caber em uma linha), e a previsão do dia (29.271.0) morava justamente ali.
+- **Agora:** bloco próprio logo abaixo dos números, no celular e no computador:
+  - **Previsão do dia** = já entrou + ainda marcado (mesma conta do card). Com "Seguinte" vira **Previsão de amanhã** — é o que ele quer ver de manhã.
+  - **Meta do dia** = meta do mês ÷ dias que ele atende no mês (terça a sábado, sem os dias bloqueados inteiros). Barra com o que já entrou (cheio) e o que está marcado (claro), e "Faltam R$ X pra meta do dia — cerca de N atendimentos" (N pelo ticket médio do mês). Domingo/segunda/dia bloqueado: "não entra na conta da meta".
+  - **O mês:** entrou + marcado daqui pra frente = previsão, contra a meta, e quanto falta. Botão "mudar meta".
+- **A meta mora no banco** (tabela nova `revenue_goals`, migração 196, com GRANT explícito e só para o admin; anon revogado), para o celular e o computador mostrarem o mesmo número. Inicial: **R$ 14.100/mês** (200 atendimentos × ticket de outubro R$ 70,53), escolha do Juliano em 09/10. Vale para os meses seguintes até ele mudar.
+- **Decidido:** sábado conta como dia cheio na divisão, mesmo fechando às 15h. Conta simples de propósito, para ele conferir de cabeça; dá para refinar se o sábado sempre ficar "devendo".
+- Teste novo `admin-previsao-meta.spec.js`. `npm test`: 312 unit + 92 e2e.
+
 ## 29.286.0 — Painel: o calendário do Novo agendamento mostra os bloqueios (09/10)
 
 **Pedido do Juliano (09/10, 08h40), com print do calendário do Novo agendamento:** *"faz mostrar neste calendário os bloqueios pra não me confundir"*.

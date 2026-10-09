@@ -29,6 +29,73 @@
     if(h&&!h.dataset.bound){h.dataset.bound='1';h.onclick=()=>{hojeDia=isoLocal(new Date());renderDashboard()}}
   }
   function rotuloDia(id,titulo,sub){const el=$(id);const art=el&&el.closest('article');if(!art)return;const s=art.querySelector('span'),m=art.querySelector('small');if(s&&titulo)s.textContent=titulo;if(m&&sub)m.textContent=sub}
+  // v29.287.0 — PREVISÃO E META (pedido do Juliano, 09/10/2026: "este campo faturado hoje previsão de
+  // faturamento não aparece no mobile… aparecer no mobile pra eu já ver de manhã quanto vou fazer, quanto
+  // falta pra minha meta"). No celular a faixa de 4 números esconde o texto pequeno (é o que cabe), e a
+  // previsão morava ali. Agora tem bloco próprio, logo abaixo dos números, em qualquer tela:
+  //   - previsão do dia escolhido = já entrou + ainda marcado (mesma conta do card, v29.271.0) — em
+  //     "Seguinte" vira a previsão de amanhã, que é o que ele quer ver de manhã;
+  //   - meta do dia = meta do mês (tabela revenue_goals, R$ 14.100 desde out/2026) ÷ dias que ele atende
+  //     no mês (terça a sábado, sem os dias bloqueados inteiros). Sábado conta como dia cheio — conta
+  //     simples de propósito, pra ele conferir de cabeça;
+  //   - o mês: o que já entrou + o que ainda está marcado daqui pra frente, contra a meta.
+  const metaCache={}
+  function liquidoAg(x){return x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)-(['pending','confirmed'].includes(x.status)?Number(x.discount_amount||0):0))+Number(x.products_price||0)}
+  function metaDoMes(mes){
+    if(!metaCache[mes])metaCache[mes]=Promise.all([
+      sb.from('revenue_goals').select('month,revenue_goal').lte('month',mes+'-01').order('month',{ascending:false}).limit(1),
+      sb.from('schedule_blocks').select('block_date').eq('all_day',true).gte('block_date',mes+'-01').lte('block_date',mes+'-31')
+    ]).then(([g,b])=>{
+      if(g.error){delete metaCache[mes];throw g.error}
+      const [y,m]=mes.split('-').map(Number),fim=new Date(y,m,0).getDate(),bloq=new Set((b.data||[]).map(r=>r.block_date))
+      const dias=[];for(let d=1;d<=fim;d++){const dt=new Date(y,m-1,d),ds=isoLocal(dt);if(dt.getDay()>=2&&!bloq.has(ds))dias.push(ds)}
+      return {meta:g.data&&g.data[0]?Number(g.data[0].revenue_goal):0,dias,bloq}
+    })
+    return metaCache[mes]
+  }
+  async function renderMetaDoDia(today,ehHoje){
+    const box=$('today-meta');if(!box)return
+    const mes=today.slice(0,7),realHoje=isoLocal(new Date())
+    const doDia=allBookings.filter(x=>x.booking_date===today)
+    const entrou=doDia.filter(x=>x.status==='completed').reduce((a,x)=>a+liquidoAg(x),0)
+    const marcado=doDia.filter(x=>['pending','confirmed'].includes(x.status)).reduce((a,x)=>a+liquidoAg(x),0)
+    const previsao=entrou+marcado
+    let info
+    try{info=await metaDoMes(mes)}catch(e){console.error('[meta]',e);info={meta:0,dias:[],bloq:new Set()}}
+    if(diaEscolhido()!==today)return
+    const doMes=allBookings.filter(x=>String(x.booking_date).slice(0,7)===mes)
+    const mesEntrou=doMes.filter(x=>x.status==='completed').reduce((a,x)=>a+liquidoAg(x),0)
+    const mesMarcado=doMes.filter(x=>x.booking_date>=realHoje&&['pending','confirmed'].includes(x.status)).reduce((a,x)=>a+liquidoAg(x),0)
+    const concl=doMes.filter(x=>x.status==='completed').length,ticket=concl?mesEntrou/concl:70
+    const atende=info.dias.includes(today),metaDia=info.meta&&info.dias.length?info.meta/info.dias.length:0
+    const quando=ehHoje?'de hoje':today===(()=>{const d=new Date(realHoje+'T12:00:00');d.setDate(d.getDate()+1);return isoLocal(d)})()?'de amanhã':'do dia'
+    const pct=v=>metaDia?Math.min(100,Math.round(v/metaDia*100)):0
+    let linhaMeta=''
+    if(!info.meta)linhaMeta=`<p class="today-meta-msg">Sem meta cadastrada. <button type="button" class="link-btn" data-meta-editar>Definir meta do mês</button></p>`
+    else if(!atende)linhaMeta=`<p class="today-meta-msg">${info.bloq.has(today)?'Dia bloqueado':'Dia sem atendimento'} — não entra na conta da meta.</p>`
+    else{
+      const falta=metaDia-previsao
+      const n=Math.ceil(falta/ticket)
+      linhaMeta=`<div class="today-meta-bar" role="img" aria-label="Previsão ${money(previsao)} de ${money(metaDia)} da meta do dia"><i class="is-done" style="width:${pct(entrou)}%"></i><i class="is-booked" style="width:${Math.max(0,pct(previsao)-pct(entrou))}%"></i></div>
+        <p class="today-meta-msg">${falta>0?`Faltam <b>${money(falta)}</b> pra meta do dia (${money(metaDia)}) — cerca de ${n} atendimento${n===1?'':'s'}.`:`A previsão passa a meta do dia (${money(metaDia)}) em <b>${money(-falta)}</b>.`}</p>`
+    }
+    const mesNome=new Date(mes+'-15T12:00:00').toLocaleDateString('pt-BR',{month:'long'})
+    const mesPrev=mesEntrou+mesMarcado,mesFalta=info.meta-mesPrev
+    const linhaMes=info.meta?`<div class="today-meta-mes"><div class="today-meta-bar is-thin"><i class="is-done" style="width:${Math.min(100,mesEntrou/info.meta*100)}%"></i><i class="is-booked" style="width:${Math.max(0,Math.min(100,mesPrev/info.meta*100)-Math.min(100,mesEntrou/info.meta*100))}%"></i></div>
+      <p><span>${mesNome.charAt(0).toUpperCase()+mesNome.slice(1)}:</span> entrou ${money(mesEntrou)} + marcado ${money(mesMarcado)} = <b>${money(mesPrev)}</b> de ${money(info.meta)}${mesFalta>0?` · faltam ${money(mesFalta)}`:' · meta do mês coberta'} <button type="button" class="link-btn" data-meta-editar>mudar meta</button></p></div>`:''
+    box.innerHTML=`<div class="today-meta-head"><span>Previsão ${quando}</span><strong>${money(previsao)}</strong><small>já entrou ${money(entrou)} · ainda marcado ${money(marcado)}</small></div><div class="today-meta-body">${linhaMeta}${linhaMes}</div>`
+    box.querySelectorAll('[data-meta-editar]').forEach(b=>b.onclick=()=>editarMeta(mes,info.meta))
+  }
+  async function editarMeta(mes,atual){
+    const v=await BDJ_UX.prompt(`Meta de faturamento do mês (${mes.slice(5)}/${mes.slice(0,4)}). Vale daqui pra frente até você mudar.`,atual?String(atual).replace('.',','):'',{input:{placeholder:'14100'}})
+    if(v==null||v===false)return
+    const n=Number(String(v).replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',','.'))
+    if(!(n>0)){BDJ_UX.toast('Digite um valor, por exemplo 14100.','error');return}
+    const {error}=await sb.from('revenue_goals').upsert({month:mes+'-01',revenue_goal:n,updated_at:new Date().toISOString()})
+    if(error){BDJ_UX.toast(error.message,'error');return}
+    Object.keys(metaCache).forEach(k=>delete metaCache[k])
+    BDJ_UX.toast(`Meta de ${money(n)} salva.`,'success');renderMetaDoDia(diaEscolhido(),diaEscolhido()===isoLocal(new Date()))
+  }
   function renderDashboard(){bindDiaNav();const today=diaEscolhido(),realHoje=isoLocal(new Date()),ehHoje=today===realHoje,tomorrow=new Date(today+'T12:00:00');tomorrow.setDate(tomorrow.getDate()+1);const tmr=isoLocal(tomorrow),todayRows=allBookings.filter(x=>x.booking_date===today),tomorrowRows=allBookings.filter(x=>x.booking_date===tmr&&['pending','confirmed'].includes(x.status)),completed=todayRows.filter(x=>x.status==='completed'),noShowsToday=todayRows.filter(x=>x.status==='no_show');setText('metric-today',todayRows.filter(x=>x.status!=='cancelled').length);setText('metric-pending',todayRows.filter(x=>x.status==='pending').length);setText('metric-confirmed',todayRows.filter(x=>x.status==='confirmed').length);setText('metric-revenue',money(completed.reduce((a,x)=>a+(x.courtesy?0:Math.max(0,Number(x.service_price||0)-Number(x.loyalty_discount||0)))+Number(x.products_price||0),0)));setText('metric-completed',completed.length);
     // Pedido do Juliano: ticket médio e média de serviços por cliente do dia — mesma
     // lógica de contagem usada no snapshot da JuIA admin (split de combo por "+", telefone
@@ -99,6 +166,8 @@
 
     // ---- Caixa do dia ----
     renderCaixaDoDia(completed,completedTips,today);
+    // ---- Previsão e meta (v29.287.0) ----
+    renderMetaDoDia(today,ehHoje);
     // ---- Lista de espera pra hoje ----
     renderEsperaHoje(today);
     // ---- Clientes com ausência ----

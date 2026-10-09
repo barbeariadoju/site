@@ -1015,3 +1015,29 @@ body:has(.admin-modal:not([hidden])) :is(.admin-mobile-nav,.admin-install-tip){d
 .booking-date-blocks li.is-blocked{border-left-color:var(--danger)}
 .booking-date-blocks strong{color:var(--text)}
 .booking-date-cal-foot{display:flex;justify-content:flex-end;margin-top:10px}
+
+/* v29.287.0 — Previsão e meta na tela Hoje (pedido do Juliano, 09/10/2026): no celular a previsão ficava
+   no texto pequeno do card, que a faixa compacta esconde. Bloco próprio, logo abaixo dos números. */
+.today-meta{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:14px 22px;align-items:center;margin:0 0 24px;padding:16px 18px;border-radius:var(--r-md);background:var(--panel);border:1px solid var(--edge)}
+.today-meta:empty{display:none}
+.today-meta-head{display:grid;gap:2px}
+.today-meta-head span{color:var(--grey-3);font-size:var(--t-xs)}
+.today-meta-head strong{font-size:var(--t-4xl);color:var(--gold2);font-variant-numeric:tabular-nums;line-height:1.1}
+.today-meta-head small{color:var(--grey-3);font-size:var(--t-xs)}
+.today-meta-body{display:grid;gap:8px;min-width:0}
+.today-meta-bar{display:flex;height:10px;border-radius:var(--r-pill);background:var(--surface-4);overflow:hidden;border:1px solid var(--edge)}
+.today-meta-bar.is-thin{height:6px}
+.today-meta-bar i{display:block;height:100%}
+.today-meta-bar .is-done{background:var(--gold2)}
+.today-meta-bar .is-booked{background:var(--gold-a32)}
+.today-meta-msg,.today-meta-mes p{margin:0;font-size:var(--t-sm);color:var(--muted);line-height:1.45}
+.today-meta-msg b,.today-meta-mes b{color:var(--text)}
+.today-meta-mes{display:grid;gap:6px;padding-top:8px;border-top:1px solid var(--edge)}
+.today-meta-mes span{color:var(--text);font-weight:700}
+.today-meta .link-btn{background:none;border:0;padding:6px 2px;margin:-6px 0;min-height:32px;color:var(--gold2);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+@media (max-width:760px){
+  [data-admin-page="dashboard"] .admin-content>.today-meta{order:1;grid-template-columns:1fr;gap:10px;padding:12px 14px;margin-bottom:14px}
+  .today-meta-head{grid-template-columns:auto 1fr;align-items:baseline;column-gap:10px}
+  .today-meta-head small{grid-column:1/-1}
+  .today-meta-head strong{font-size:var(--t-3xl)}
+}
