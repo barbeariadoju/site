@@ -1,7 +1,97 @@
 // admin-v15-4-agendamento.js - parte 6/7 de admin-v15-4.js. Modo Novo
 // agendamento / remarcacao (admin-agendamento.html). Ver header de
 // admin-v15-4-core.js.
-  function initBookingForm(){$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();bindCustomerSearch();bindSlotsPanel();$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else{loadPrefillForm();bindDraftAutosave()}refreshSlots()}
+  // v29.286.0 — pedido do Juliano (09/10/2026): "faz mostrar neste calendário os bloqueios pra não me
+  // confundir". O calendário do <input type=date> é do navegador e não deixa marcar dia nenhum; virou o
+  // mesmo calendário da Agenda: cadeado = dia inteiro bloqueado (viagem, folga), relógio = bloqueio de parte
+  // do dia, "fechado" = domingo/segunda, e o motivo de cada bloqueio do mês embaixo. O #booking-date segue
+  // guardando a data ISO — rascunho, remarcação e salvar continuam lendo e escrevendo o mesmo campo.
+  let dateCalMonth=null
+  const dateCalCache={}
+  const DIA_SEM=['domingo','segunda','terça','quarta','quinta','sexta','sábado']
+  function initDateCalendar(){
+    const input=$('booking-date'),btn=$('booking-date-btn'),cal=$('booking-date-cal')
+    if(!input||!btn||!cal)return
+    // Quem escreve no campo (hoje, rascunho, remarcação, retorno) atualiza o botão sem precisar avisar.
+    const nativo=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')
+    Object.defineProperty(input,'value',{configurable:true,get(){return nativo.get.call(this)},set(v){nativo.set.call(this,v);dateCalLabel()}})
+    btn.onclick=()=>{cal.hidden?openDateCal():closeDateCal()}
+    cal.addEventListener('click',e=>{
+      const nav=e.target.closest('[data-cal-nav]');if(nav){dateCalMonth.setMonth(dateCalMonth.getMonth()+Number(nav.dataset.calNav));renderDateCal();return}
+      const dia=e.target.closest('[data-cal-date]');if(dia)pickDate(dia.dataset.calDate)
+    })
+    document.addEventListener('click',e=>{if(!cal.hidden&&!e.target.closest('.booking-date-field'))closeDateCal()})
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){closeDateCal();btn.focus()}})
+    dateCalLabel()
+  }
+  function blocksOfMonth(y,m){
+    const key=`${y}-${m}`
+    if(!dateCalCache[key])dateCalCache[key]=sb.from('schedule_blocks').select('block_date,all_day,start_time,end_time,reason').gte('block_date',isoLocal(new Date(y,m,1))).lte('block_date',isoLocal(new Date(y,m+1,0))).order('block_date').order('start_time',{nullsFirst:true}).then(({data,error})=>{if(error){console.error(error);delete dateCalCache[key];return []}return data||[]})
+    return dateCalCache[key]
+  }
+  async function blocksOn(ds){if(!ds)return [];const d=new Date(ds+'T12:00:00');return (await blocksOfMonth(d.getFullYear(),d.getMonth())).filter(b=>b.block_date===ds)}
+  const fmtBR=ds=>ds.slice(8,10)+'/'+ds.slice(5,7)
+  const motivoBloqueio=b=>b.reason||'Bloqueio administrativo'
+  const faixaHoras=b=>`${String(b.start_time).slice(0,5)}–${String(b.end_time).slice(0,5)}`
+  async function dateCalLabel(){
+    const btn=$('booking-date-btn'),ds=$('booking-date')?.value
+    if(!btn)return
+    btn.classList.remove('is-blocked','is-partial')
+    if(!ds){btn.textContent='Escolher data';return}
+    const d=new Date(ds+'T12:00:00'),base=`${DIA_SEM[d.getDay()]}, ${fmtBR(ds)}/${ds.slice(0,4)}`
+    btn.textContent=base
+    const bl=await blocksOn(ds)
+    if($('booking-date').value!==ds)return
+    const full=bl.find(b=>b.all_day)
+    if(full){btn.textContent=`${base} · bloqueado (${motivoBloqueio(full)})`;btn.classList.add('is-blocked')}
+    else if(bl.length){btn.textContent=`${base} · bloqueio ${bl.map(faixaHoras).join(', ')}`;btn.classList.add('is-partial')}
+  }
+  function openDateCal(){
+    const ds=$('booking-date').value||isoLocal(new Date())
+    dateCalMonth=new Date(ds+'T12:00:00');dateCalMonth.setDate(1)
+    $('booking-date-cal').hidden=false;$('booking-date-btn').setAttribute('aria-expanded','true')
+    renderDateCal()
+  }
+  function closeDateCal(){$('booking-date-cal').hidden=true;$('booking-date-btn').setAttribute('aria-expanded','false')}
+  function pickDate(ds){
+    const input=$('booking-date')
+    input.value=ds
+    input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))
+    closeDateCal();$('booking-date-btn').focus()
+  }
+  async function renderDateCal(){
+    const cal=$('booking-date-cal'),y=dateCalMonth.getFullYear(),m=dateCalMonth.getMonth()
+    const titulo=dateCalMonth.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase())
+    const head=`<div class="booking-date-cal-head"><button type="button" data-cal-nav="-1" aria-label="Mês anterior">‹</button><strong>${titulo}</strong><button type="button" data-cal-nav="1" aria-label="Próximo mês">›</button></div>`
+    cal.innerHTML=head+'<p class="field-help">Carregando bloqueios…</p>'
+    const blocks=await blocksOfMonth(y,m)
+    if(cal.hidden||dateCalMonth.getFullYear()!==y||dateCalMonth.getMonth()!==m)return
+    const sel=$('booking-date').value,hoje=isoLocal(new Date()),first=new Date(y,m,1),last=new Date(y,m+1,0),start=(first.getDay()+6)%7
+    const ico=(cls,nome)=>`<i class="day-flag ${cls}" aria-hidden="true">${BDJ_SHELL.icone(nome)}</i>`
+    let html=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>`<span class="calendar-weekday">${d}</span>`).join('')
+    for(let i=0;i<start;i++)html+='<span class="calendar-day is-empty"></span>'
+    for(let d=1;d<=last.getDate();d++){
+      const dt=new Date(y,m,d),ds=isoLocal(dt),closed=dt.getDay()===0||dt.getDay()===1
+      const dia=blocks.filter(b=>b.block_date===ds),full=dia.find(b=>b.all_day),partial=!full&&dia.length>0
+      const estado=closed?'não atende':full?`bloqueado: ${motivoBloqueio(full)}`:partial?`bloqueio ${dia.map(faixaHoras).join(', ')}`:''
+      const flag=closed?ico('day-flag-closed','fechado'):full?ico('day-flag-locked','cadeado'):partial?ico('day-flag-partial','espera'):''
+      const cls=['calendar-day',ds===sel?'is-selected':'',ds===hoje?'is-today':'',ds<hoje?'is-past':'',closed?'is-closed':'',full?'is-blocked':'',partial?'is-partial':''].filter(Boolean).join(' ')
+      html+=`<button type="button" class="${cls}" data-cal-date="${ds}"${estado?` title="${esc(estado)}"`:''} aria-label="${d} — ${esc(estado||'livre')}"${ds===sel?' aria-current="date"':''}>${flag}<span>${d}</span></button>`
+    }
+    // Lista do mês: dias inteiros seguidos com o mesmo motivo viram faixa ("15 a 17/10 · Viagem").
+    const linhas=[]
+    blocks.forEach(b=>{
+      const ant=linhas[linhas.length-1],r=motivoBloqueio(b)
+      if(b.all_day&&ant&&ant.all_day&&ant.reason===r){const prox=new Date(ant.fim+'T12:00:00');prox.setDate(prox.getDate()+1);if(isoLocal(prox)===b.block_date){ant.fim=b.block_date;return}}
+      linhas.push({all_day:b.all_day,ini:b.block_date,fim:b.block_date,reason:r,horas:b.all_day?'dia inteiro':faixaHoras(b)})
+    })
+    const lista=linhas.length
+      ?`<ul class="booking-date-blocks">${linhas.map(l=>`<li class="${l.all_day?'is-blocked':'is-partial'}"><strong>${l.ini===l.fim?fmtBR(l.ini):`${l.ini.slice(8,10)} a ${fmtBR(l.fim)}`}</strong> ${l.horas} · ${esc(l.reason)}</li>`).join('')}</ul>`
+      :'<p class="field-help">Nenhum bloqueio neste mês.</p>'
+    const legenda=`<div class="calendar-legend booking-date-legend"><span>${ico('day-flag-locked','cadeado')} Bloqueado</span><span>${ico('day-flag-partial','espera')} Parte do dia</span><span>${ico('day-flag-closed','fechado')} Não atende</span></div>`
+    cal.innerHTML=`${head}<div class="calendar-grid">${html}</div>${legenda}${lista}<div class="booking-date-cal-foot"><button type="button" class="btn" data-cal-date="${hoje}">Hoje</button></div>`
+  }
+  function initBookingForm(){initDateCalendar();$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();bindCustomerSearch();bindSlotsPanel();$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else{loadPrefillForm();bindDraftAutosave()}refreshSlots()}
   // v29.170.0 — HORÁRIOS QUE CABEM (pedido do Juliano, 11/09/2026, 08h43). Na noite anterior ele
   // foi encaixar o Venilson pelo painel e não tinha como saber quais horários comportavam
   // Alisamento + Corte no sábado — acabou abrindo o site como se fosse cliente e mandando print.
@@ -56,6 +146,9 @@ Prosseguir com o encaixe?`
     if(req!==slotsReq)return
     if(error){head.textContent='';hint.textContent='Não consegui consultar os horários agora.';console.error(error);return}
     renderAdminSlots((data||[]).map(r=>String(r.slot_time).slice(0,5)),duration)
+    // v29.286.0: dia bloqueado diz por quê, em vez de só "nenhum horário livre".
+    const full=(await blocksOn(date)).find(b=>b.all_day)
+    if(full&&req===slotsReq){head.textContent='Dia bloqueado';hint.textContent=`Esse dia está bloqueado na agenda (${motivoBloqueio(full)}). Pra atender mesmo assim, libere o bloqueio na Agenda.`}
   }
   function renderAdminSlots(slots,duration){
     const box=$('booking-slots'),head=$('booking-slots-count'),hint=$('booking-slots-hint')

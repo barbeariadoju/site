@@ -1,3 +1,13 @@
+## 29.286.0 — Painel: o calendário do Novo agendamento mostra os bloqueios (09/10)
+
+**Pedido do Juliano (09/10, 08h40), com print do calendário do Novo agendamento:** *"faz mostrar neste calendário os bloqueios pra não me confundir"*.
+- **Por que trocar o calendário:** o que abria era o do navegador (`<input type=date>`), que não deixa marcar dia nenhum. Virou um calendário próprio, com a mesma linguagem do calendário da Agenda: **cadeado e número riscado em vermelho** = dia inteiro bloqueado (viagem, folga); **relógio e traço dourado** = bloqueio de parte do dia; **apagado com o sinal de proibido** = domingo/segunda. Passar o dedo/mouse mostra o motivo, e embaixo vem a lista do mês ("15 a 17/10 dia inteiro · Viagem", "22/10 14:00–16:00 · Dentista"). Dias seguidos com o mesmo motivo viram uma faixa só.
+- **O campo da data mostra o dia da semana** ("sexta, 09/10/2026") e, se o dia escolhido estiver bloqueado, diz na hora: "· bloqueado (Viagem)". Os horários, em dia bloqueado, dizem "Esse dia está bloqueado na agenda (motivo)" em vez de só "nenhum horário livre".
+- **Não bloqueia a escolha:** o dia bloqueado continua clicável — o painel é do Juliano e às vezes ele vai querer marcar mesmo assim (libera o bloqueio na Agenda). O calendário só tira a dúvida.
+- **Nada mudou por baixo:** o `#booking-date` segue guardando a data em ISO; rascunho, remarcação, retorno e salvar leem e escrevem o mesmo campo (o botão se atualiza sozinho quando qualquer um deles muda a data).
+- Cache: `06-admin-reforma.css` e `admin-v15-4-agendamento.js` → `?v=29.286.0` em todas as páginas que carregam (o teste de integridade pegou 5 páginas que eu tinha esquecido — o `agendamento.js` é carregado por 6), `ADMIN_VERSION`/`admin-version.json` 29.286.0.
+- Teste novo `admin-calendario-bloqueios.spec.js` (banco simulado). `npm test`: 312 unit + 91 e2e.
+
 ## 29.285.0 — JuIA: lavagem em cima do combo "Corte + Barba Express" some; remarcação quebrava o combo (09/10)
 
 **Caso Vicente (09/10, 08h16), print do Juliano:** reservou hoje 12:10 "Corte + Barba Express" (R$ 80), aceitou com "1" a oferta *"incluir a lavagem por mais R$ 10,00"* e recebeu *"Incluído. Fica Corte + Barba Express — R$ 80,00"*. A lavagem não entrou e nada avisou. O Juliano corrigiu à mão no painel e a soma deu R$ 95 (Corte + Lavagem 60 + Barba Express 35). Depois o cliente cancelou (confundiu o endereço com a Planejada) e a oferta de remarcação saiu para *"Corte de cabelo + Corte + Lavagem + Barba Express"*, seguida de um *"Só pra ajustar: Corte + Lavagem já inclui o que Corte de cabelo faria"* para quem não tinha pedido nada.
