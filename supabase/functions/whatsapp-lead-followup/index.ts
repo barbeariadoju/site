@@ -196,6 +196,7 @@ Deno.serve(async (request: Request) => {
 
   if (waitlistOffersError) { console.error('[whatsapp-lead-followup] waitlist_offers', waitlistOffersError) }
 
+  const todayBRTOffer = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
   for (const offer of waitlistOffers || []) {
     try {
       const name = firstName(offer.customer_name)
@@ -215,7 +216,9 @@ Deno.serve(async (request: Request) => {
       }
       await sendWhatsapp(offer.customer_phone, atual
         ? `Olá${name ? `, ${name}` : ''}. Abriu um horário mais cedo no dia ${dateLabel}: às ${timeLabel}, antes do seu das ${atual}. Quer que eu passe o seu horário para as ${timeLabel}? Responda *sim* ou *não* — se for não, o das ${atual} continua garantido.`
-        : `Boa notícia${name ? `, ${name}` : ''}! Abriu uma vaga pra ${dateLabel} às ${timeLabel}${offer.service_name ? ` (${offer.service_name})` : ''} — o horário que você estava esperando. Ainda quer? Responda *sim* ou *não*.`)
+        // v29.289.0 (pedido do Juliano, caso Frei 09/10/2026): a oferta já diz o que cabe no horário que
+        // abriu (o banco só oferece se o serviço da espera cabe), para o "sim" ser a reserva e pronto.
+        : `Boa notícia${name ? `, ${name}` : ''}! Vagou um horário ${offer.offered_date === todayBRTOffer ? 'hoje' : `no dia ${dateLabel}`} às ${timeLabel} e consigo te atender para ${offer.service_name ? `o ${offer.service_name}` : 'o corte de cabelo'}. Posso confirmar? Responda *sim* ou *não*.`)
       await admin.from('waitlist').update({ notified_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', offer.id)
       waitlistOfferSent++
     } catch (error) {

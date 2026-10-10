@@ -69,6 +69,8 @@ type Cenario = {
   clubeVendas?: boolean // club_settings.vendas_abertas
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
   cancelado?: string // service_name devolvido pelo whatsapp_cancel_booking (padrão: Corte de cabelo)
+  reservaErro?: string // create_public_booking_v15 recusa com esta mensagem (ex.: 'Horário indisponível')
+  vagasPorDuracao?: (min: number) => string[] // get_available_slots que depende da duração pedida
 }
 const turno = async (c: Cenario) => {
   chamadas.length = 0; saidas.length = 0
@@ -95,10 +97,10 @@ const turno = async (c: Cenario) => {
     phone_current_bookings: () => c.emAndamento || [],
     phone_match_key: () => '1100000001',
     club_quote: () => [{ eligible: false, reason: c.clubeMotivo || null }],
-    get_available_slots: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
+    get_available_slots: (a: any) => (c.vagasPorDuracao ? c.vagasPorDuracao(a.p_duration_minutes) : ((c.vagas || {})[a.p_date] || [])).map((t) => ({ slot_time: t + ':00' })),
     get_available_slots_excluding: (a: any) => ((c.vagas || {})[a.p_date] || []).map((t) => ({ slot_time: t + ':00' })),
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
-    create_public_booking_v15: () => ({ data: 'bk-novo', error: null }),
+    create_public_booking_v15: () => (c.reservaErro ? { data: null, error: { message: c.reservaErro } } : { data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: c.cancelado || 'Corte de cabelo' }], error: null }),
     phone_change_booking_service: (a: any) => ({ data: [{ id: a.p_booking_id }], error: null }),
     waitlist_matches_for_slot: () => [],
@@ -966,6 +968,21 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const depois = (() => { const d = new Date(Date.now() - 3 * 3600e3 + 2 * 86400e3); return d.toISOString().slice(0, 10) })()
   const r = await turno({ msg: 'quero após as 16', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: amanhaISO }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanhaISO } }, contexto: ctxCliente('Teste Piso'), vagas: { [amanhaISO]: ['12:10', '13:00', '14:00', '15:00', '15:45'], [depois]: ['10:00', '16:30', '17:30'] } })
   checar('69a "após as 16" sem vaga depois: diz que não tem depois das 16', /depois d(as|e) 16|após as 16|depois disso não tenho/i.test(r.reply) && !/Consigo te atender amanhã sim/.test(r.reply), r.reply)
+}
+
+{
+  // v29.289.0 — caso Frei (09/10/2026, 13h22): 🙏🏿 depois de entrar na lista de espera não reabre a consulta
+  const r = await turno({ msg: '🙏🏿', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: hoje, name: 'Frei Teste', phone: '5511900000001' },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Frei Teste'), vagas: { [amanha]: ['09:25', '10:15'] } })
+  checar('70a emoji de agradecimento não repete "não tenho mais vaga"', !/não tenho mais vaga|Quer que eu reserve/i.test(r.reply) && !r.state?.pending_waitlist, r.reply)
+  // 13h50: corte + sobrancelha (60 min) não cabe às 16:45, o corte (45 min) cabe — oferece o corte e a sobrancelha fica pra hora
+  const st = { services: ['Corte de cabelo', 'Sobrancelha Masculina'], servicos_escolhidos: ['Corte de cabelo', 'Sobrancelha Masculina'], date: dia1, time: '16:45', name: 'Frei Teste', phone: '5511900000001', upsell_offer_done: true }
+  const base = { contexto: ctxCliente('Frei Teste'), vagasPorDuracao: (min: number) => (min <= 45 ? ['16:45'] : []), ai: { intent: 'book', reply: 'Vou ver.', updates: {} } }
+  const r2 = await turno({ ...base, reservaErro: 'Horário indisponível', msg: 'Consigo corte de cabelo e sobrancelha', state: st })
+  checar('70b oferece o corte às 16:45 e a sobrancelha na hora', /16:45 o tempo dá para Corte de cabelo/.test(r2.reply) && /Sobrancelha Masculina o Ju vê na hora/.test(r2.reply) && r2.state?.pending_fit_choice?.naHora === true, r2.reply)
+  const r3 = await turno({ ...base, msg: '1', state: r2.state })
+  const criou = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('70c "1" reserva só o corte às 16:45 com a sobrancelha anotada', criou?.args?.p_service_name === 'Corte de cabelo' && criou?.args?.p_start_time === '16:45' && /Sobrancelha Masculina/.test(criou?.args?.p_notes || ''), { reply: r3.reply, args: criou?.args })
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

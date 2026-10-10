@@ -1407,7 +1407,11 @@ Deno.serve(async (request: Request) => {
         const { data: pendingWaitlistOfferRows } = await admin.rpc('find_pending_waitlist_offer_by_phone', { p_phone: phone })
         const pendingWaitlistOffer = Array.isArray(pendingWaitlistOfferRows) ? pendingWaitlistOfferRows[0] : pendingWaitlistOfferRows
 
-        if (pendingWaitlistOffer && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'waitlist')) {
+        // v29.289.0 — caso Frei (09/10/2026, 13h45): a vaga das 16:45 saiu 23 min DEPOIS de uma pergunta
+        // aberta da JuIA ("Quer que eu reserve um?"), e o "Sim" dele foi tratado como resposta a ela: em vez
+        // de confirmar o corte, a JuIA mandou o menu de serviços e ele acabou não vindo. Mesma regra do
+        // convite de retorno (caso Mauricio): a oferta mais nova que a pergunta aberta é a que manda.
+        if (pendingWaitlistOffer && !juiaBloqueiaConvite({ sent_at: pendingWaitlistOffer.notified_at }) && (!quotedTarget || quotedTarget === 'waitlist')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
           const ambiguousShortReply = trimmedNormalized.length <= 40
@@ -1420,6 +1424,11 @@ Deno.serve(async (request: Request) => {
             const { data: confirmedRows, error: confirmError } = await admin.rpc('phone_confirm_waitlist_booking', { p_phone: phone, p_waitlist_id: pendingWaitlistOffer.id })
             const confirmed = Array.isArray(confirmedRows) ? confirmedRows[0] : confirmedRows
             if (!confirmError && confirmed) {
+              // v29.289.0 (caso Frei): a pergunta velha da JuIA morre aqui — senão a próxima mensagem
+              // ainda seria lida como resposta a ela.
+              if (conversation) {
+                await admin.from('whatsapp_conversations').update({ state: { ...aiState, last_question: null, pending_waitlist: null, date: null, time: null, completed: true }, updated_at: new Date().toISOString() }).eq('phone', phone)
+              }
               await sendWhatsapp(phone, `Prontinho! ✅ Confirmado pra ${formatDateBR(confirmed.booking_date)} às ${String(confirmed.start_time).slice(0, 5)} (${confirmed.service_name}). Te esperamos!`)
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {

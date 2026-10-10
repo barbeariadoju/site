@@ -1,3 +1,13 @@
+## 29.289.0 — JuIA: vaga da lista de espera vira reserva no "sim"; o que não cabe vai pra decisão do Juliano (10/10)
+
+**Caso Frei (09/10, 13h16–13h52), pedido do Juliano no plano do dia de 10/10:** *"quando avisar que liberou vaga calcular o tempo disponível… no caso tinha só para 1 corte e já avisar o cliente… eu poderia ter atendido ele ontem e feito rapidinho o que ele queria"*. Ele estava na lista de espera do dia (corte), abriu 16:45, e ele não veio.
+- **13h22 — o 🙏🏿 de agradecimento reabriu a agenda:** a JuIA repetiu *"Hoje não tenho mais vaga… Quer que eu reserve um?"*. Mensagem só de emoji agora conta como gentileza (igual a "obrigado") e não reabre consulta.
+- **13h45 — o "Sim" à vaga não reservou:** aquela pergunta repetida ficou aberta, e a trava "a JuIA está esperando resposta" mandou o "Sim" pra ela — que respondeu com o menu de 5 serviços. Agora vale a mesma regra do convite de retorno (29.262.0, caso Mauricio): **a oferta mais nova que a pergunta aberta é a que manda**, e o "sim" confirma direto. Depois de confirmar, a pergunta velha é apagada do estado.
+- **A oferta já diz o que cabe:** *"Boa notícia, Frei! Vagou um horário hoje às 16:45 e consigo te atender para o Corte de cabelo. Posso confirmar? Responda sim ou não."* (antes: "o horário que você estava esperando. Ainda quer?").
+- **13h50 — "corte de cabelo e sobrancelha":** ouviu *"não cabe… e não sobrou outro horário nesse dia. Quer que eu veja outro dia?"* e desistiu. Agora, quando o pedido tem mais de um serviço e, tirando o mais barato, o resto cabe no horário, a JuIA oferece: *"*1* — Corte de cabelo às 16:45, e Sobrancelha Masculina o Ju vê na hora, se o tempo permitir / *2* — Ver outro dia com os dois"*. O "1" reserva o corte; a anotação do agendamento e o push dizem "Pediu também Sobrancelha Masculina (não coube): você decide na hora".
+- **Decidido contra o óbvio:** a JuIA não reserva o combo "esticado" nem promete a sobrancelha — o limite físico do dia (10–12 clientes) é do Juliano, e é ele quem vê na cadeira se o anterior terminou cedo. Ela só não deixa o cliente ir embora.
+- Simulador: 70a, 70b, 70c (os três falham no código anterior com as mesmas frases da conversa real), **175 ok**; 45f/45g e 69a falham hoje (sábado) também no código anterior — dependem do dia, pendência do teste. `npm test`: 312 unit + 92 e2e.
+
 ## 29.288.0 — JuIA: sem vaga no período mostra os horários; foto de corte não abre menu de barba (09/10)
 
 **Caso Cintia (09/10, 17h50–18h11), print do Juliano:** *"veja o que aconteceu"*.

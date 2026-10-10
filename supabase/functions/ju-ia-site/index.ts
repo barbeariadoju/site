@@ -3269,6 +3269,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     next.services=manter
     chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
     next.time=pfc.time
+    // v29.289.0 (caso Frei): o que ficou de fora vai na anotação — o Juliano decide na cadeira.
+    if(pfc.naHora&&pfc.added)next.pedido_na_hora=String(pfc.added)
     intent='book';handoff=false
    }
   }
@@ -3507,7 +3509,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // respondeu "Sim, 13:00 está disponível. Quer reservar?" a um elogio, 1h30 depois de o
  // cliente já ter sido atendido. Gentileza, elogio e despedida nunca reabrem consulta de
  // agenda: só mensagem com algum sinal de pedido (horário, dia, período, serviço, pergunta).
- const soGentileza=normalizedQuestion.length<=80
+ // v29.289.0 — caso Frei (09/10/2026, 13h22): o 🙏🏿 de agradecimento, logo depois de entrar na lista
+ // de espera, reabriu a consulta e repetiu "Hoje não tenho mais vaga… Quer que eu reserve um?". A
+ // pergunta repetida ficou aberta e travou o "Sim" dele à vaga que abriu 20 min depois. Mensagem só de
+ // emoji é aceno, igual a "obrigado".
+ const soEmojiAceno=!String(message).replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}\s!.,]/gu,'').length&&/\p{Extended_Pictographic}/u.test(String(message))
+ const soGentileza=soEmojiAceno||normalizedQuestion.length<=80
   &&!/\?|\d{1,2}\s*(:|h)\b|\bhoje\b|\bamanha\b|\bsegunda|\bterca|\bquarta|\bquinta|\bsexta|\bsabado|\bmanha\b|\btarde\b|\bnoite\b|\bcort|\bbarb|\bsobrancelha|\bmarc|\bagend|\bhorari|\bvaga|\breserv|\bquero\b|\bpode ser\b|\bsim\b|\bnao\b/.test(normalizedQuestion)
   &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion)
  if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'&&!bareBarbaAsk&&!soGentileza){
@@ -4749,7 +4756,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    else{
     const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0),price=totalOn(chosen,next.date) // v29.155.0: tabela da data
     const selectedProducts=next.products.map((n:string)=>findProduct(n)).filter(Boolean).map((p:any)=>({name:p.name,price:p.price}))
-    const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
+    const {data:bookingId,error}=await supabase.rpc('create_public_booking_v15',{p_customer_name:next.name,p_customer_phone:phone,p_customer_email:next.email||null,p_service_name:chosen.map((s:any)=>s.name).join(' + '),p_service_price:price,p_duration_minutes:duration,p_booking_date:next.date,p_start_time:next.time,p_notes:next.pedido_na_hora?`Agendado pela JuIA no chat do site. Pediu também ${next.pedido_na_hora}: não coube no horário, avaliar na hora.`:'Agendado pela JuIA no chat do site',p_selected_products:selectedProducts,p_extend_close_minutes:verifiedPhone?60:0})
+    const pedidoNaHora=next.pedido_na_hora?String(next.pedido_na_hora):'';next.pedido_na_hora=undefined
     if(error){
      if(error.message.includes('cliente_bloqueado')){
       // v29.53.0 (política padronizada, pedido do Juliano 20/08): 2 furos (no_show) ou
@@ -4774,8 +4782,35 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       const alvo=String(next.time||'')
       const perto=list.slice().sort((a:string,b:string)=>Math.abs(mins(a)-mins(alvo))-Math.abs(mins(b)-mins(alvo))).slice(0,2)
       const nomes=chosen.map((s:any)=>s.name).join(' + ')
+      // v29.289.0 — caso Frei (09/10/2026, 13h50): vaga da lista de espera às 16:45, ele pediu "corte de
+      // cabelo e sobrancelha" e ouviu "não cabe… e não sobrou outro horário nesse dia. Quer que eu veja
+      // outro dia?". Não veio. O corte cabia — e o Juliano decide na hora se dá para a sobrancelha. Quando
+      // o pedido tem mais de um serviço e, tirando UM deles (o mais barato), o resto cabe no horário, a
+      // JuIA oferece isso primeiro; o que ficou de fora vai na anotação do agendamento para o Juliano.
+      let semUm:{fica:string,sai:string}|null=null
+      if(chosen.length>1&&alvo){
+       const porPreco=chosen.slice().sort((a:any,b:any)=>Number(a.price||0)-Number(b.price||0))
+       for(const sai of porPreco){
+        const resto=chosen.filter((s:any)=>s!==sai)
+        const dResto=resto.reduce((a:number,s:any)=>a+Number(s.duration||0),0)
+        const {data:slotsResto}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:dResto})
+        if((slotsResto||[]).some((x:any)=>String(x.slot_time).slice(0,5)===alvo)){semUm={fica:resto.map((s:any)=>s.name).join(' + '),sai:sai.name};break}
+       }
+      }
       // v29.138.0: curto e claro — o horário foi tomado (ou o serviço cresceu e não cabe),
       // e o próximo que existe. Uma pergunta só.
+      if(semUm){
+       const diaCap=emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)
+       reply=perto.length
+        ?`${diaCap} às ${alvo} o tempo dá para ${semUm.fica}; com ${semUm.sai} junto não cabe. Duas opções:\n*1* — ${nomes} às ${perto[0]}${perto[1]?` (ou ${perto[1]})`:''}\n*2* — ${semUm.fica} às ${alvo}, e ${semUm.sai} o Ju vê na hora, se o tempo permitir`
+        :`${diaCap} às ${alvo} o tempo dá para ${semUm.fica}; com ${semUm.sai} junto não cabe. Duas opções:\n*1* — ${semUm.fica} às ${alvo}, e ${semUm.sai} o Ju vê na hora, se o tempo permitir\n*2* — Ver outro dia com ${nomes}`
+       actions=perto.length
+        ?[{label:`${nomes} às ${perto[0]}`,message:'1'},{label:`${semUm.fica} às ${alvo}`,message:'2'}]
+        :[{label:`${semUm.fica} às ${alvo}`,message:'1'},{label:'Ver outro dia',message:'2'}]
+       next.pending_fit_choice={time:alvo,added:semUm.sai,alt:perto[0]||null,semOutroHorario:!perto.length,naHora:true}
+       next.time=null
+       respostaConferidaNaAgenda=true
+      }else{
       reply=perto.length
        ?`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (aproximadamente ${duration} min). O mais próximo que tenho é ${perto.join(' ou ')}. Serve pra você?`
        :`${emDia(next.date).charAt(0).toUpperCase()+emDia(next.date).slice(1)} às ${alvo} não cabe mais para ${nomes} (aproximadamente ${duration} min) e não sobrou outro horário nesse dia. Quer que eu veja outro dia?`
@@ -4787,6 +4822,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // Serve pra você?" → "pode ser" caía no modelo, que perguntou "manhã, tarde ou final do dia?"
       // e o Juliano fechou na mão. As alternativas oferecidas ficam guardadas pra o "sim" reservar.
       next.pending_fit_choice={time:alvo,added:null,alts:perto}
+      }
      }else if(error.message.includes('antecedência')){
       // v29.62.3 (caso Cleiton, 21/08/2026, 14h58): às 12h51 a JuIA ofereceu 15:00 com a
       // pergunta de complemento; ele só respondeu "4" (fechar) às 14h58 — 2 minutos antes
@@ -4819,7 +4855,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
         const nbSecret=Deno.env.get('PUSH_WEBHOOK_SECRET'),nbUrl=Deno.env.get('SUPABASE_URL')
         if(nbSecret&&nbUrl){
           const canal=verifiedPhone?'WhatsApp':'chat do site'
-          await fetch(`${nbUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':nbSecret},body:JSON.stringify({custom:{title:`💈 Novo agendamento pela JuIA (${canal})`,body:`${next.name||'Cliente'} • ${formatDateBR(next.date)} às ${String(next.time).slice(0,5)}\n${chosen.map((s:any)=>s.name).join(' + ')} • ${money(Number(price||0))}`,url:'/admin-agenda.html?app=1',tag:`booking-${bookingId}`}})}).catch(()=>{})
+          await fetch(`${nbUrl}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':nbSecret},body:JSON.stringify({custom:{title:`💈 Novo agendamento pela JuIA (${canal})`,body:`${next.name||'Cliente'} • ${formatDateBR(next.date)} às ${String(next.time).slice(0,5)}\n${chosen.map((s:any)=>s.name).join(' + ')} • ${money(Number(price||0))}${pedidoNaHora?`\nPediu também ${pedidoNaHora} (não coube): você decide na hora`:''}`,url:'/admin-agenda.html?app=1',tag:`booking-${bookingId}`}})}).catch(()=>{})
         }
       }catch(nbErr){console.error('[ju-ia-site] push novo agendamento',nbErr)}
 
