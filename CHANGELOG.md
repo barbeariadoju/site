@@ -1,3 +1,12 @@
+## 29.291.0 — JuIA: sem horário no dia da semana pedido, oferece o mesmo dia na semana seguinte (13/10)
+
+**Caso Venilson (12/10, 16h40), pendência da 29.290.0, regra do Juliano:** *"na falta de horário no dia que o cliente quer, oferecer o próximo dia igual — no caso, o próximo sábado"*. Ele pediu "Sábado / 9h"; o sábado 17/10 está fechado (viagem). A JuIA ofereceu amanhã e quarta, depois a terça 20/10, e ele respondeu "Não dá" — quem pede sábado é porque só pode sábado.
+- **Agora:** dia da semana dito pelo nome que está **fechado** ou **lotado** → a JuIA procura o mesmo dia nas 3 semanas seguintes e oferece direto: *"Sábado (17/10) a barbearia não abre (Viagem). No sábado (24/10) tenho 09:00. Posso reservar?"* (com o horário que ele disse, se estiver livre). Vale nos três caminhos: dia fechado pedido pelo nome, dia lotado, e dia citado em resposta ao "para qual dia?".
+- O dia aberto mais próximo **antes** continua numa linha embaixo ("Se preferir antes, …", regra do caso Paulo, 29.260.0), e no dia lotado a lista de espera do dia pedido também continua.
+- **Decidido:** só quando o cliente diz o dia **pelo nome**. "Hoje" ou "amanhã" lotados seguem oferecendo o próximo dia com vaga — quem pede hoje quer o quanto antes, não daqui a uma semana. Domingo e segunda não entram (não existe "próximo domingo" aberto).
+- **Ainda não resolvido:** o "Não dá" à data oferecida não é lido como recusa daquele dia — continua para uma próxima rodada.
+- Simulador: 73a (fechado), 73b (lotado), 73c ("Sábado / 9h" depois do "para qual dia"), **184 ok**; 45f segue falhando por depender do dia. Unit: 312.
+
 ## 29.290.0 — JuIA: menos texto, puxa pra hoje, oferta vencida morre; toque do dia seguinte mais curto (13/10)
 
 **Plano do dia de 13/10, prints do Juliano:** *"a gente gera muito texto, cliente fica com preguiça, não lê… menos perguntas, menas palavras, mais conversões"*.

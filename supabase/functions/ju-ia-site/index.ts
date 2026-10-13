@@ -581,6 +581,19 @@ async function findAvailableDatesInRange(supabase:any,fromISO:string,durationMin
  }
  return selecionarDiasOferta(out,maxDates).lista
 }
+// v29.291.0 — caso Venilson (12/10/2026, 16h40): pediu sábado, o sábado 17/10 está fechado (viagem) e a
+// JuIA ofereceu terça e quarta; ele respondeu "Não dá" — quem pede sábado é porque só pode sábado.
+// Regra do Juliano (13/10): sem horário no dia da semana que o cliente quer, oferece o MESMO dia da
+// semana seguinte (até 3 semanas à frente).
+async function mesmoDiaSemanaSeguinte(supabase:any,iso:string,durationMinutes:number,minTime=''){
+ for(let k=1;k<=3;k++){
+  const alvo=somarDiasIso(iso,7*k)
+  const {data}=await supabase.rpc('get_available_slots',{p_date:alvo,p_duration_minutes:durationMinutes})
+  const slots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5)).filter((t:string)=>!minTime||t>=minTime)
+  if(slots.length)return {date:alvo,slots}
+ }
+ return null
+}
 // Mesma varredura, mas só nos dias que o cliente citou pelo nome — e devolve TAMBÉM os que
 // ficaram sem vaga, porque "quarta eu não tenho" é informação que ele pediu (e evita que a
 // JuIA fique devendo resposta sobre um dos dias, que foi o que gerou a repetição).
@@ -3960,7 +3973,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // agenda vai pro próximo dia aberto E a resposta lá embaixo explica o motivo primeiro —
  // sem isso, "Consigo te atender na terça sim!" lê como recusa de atender hoje. Se o dia
  // pedido é aberto e o modelo não preencheu updates.date, a data é a que ele escreveu.
- let diaFechadoPedido:{date:string,reason:string|null,excepcional:boolean}|null=null
+ let diaFechadoPedido:{date:string,reason:string|null,excepcional:boolean,mesmoDia?:boolean}|null=null
  if(intent==='availability'&&chosen.length&&notSpecialFlow&&weekdayDatesMentioned(normalizedQuestion,today()).length<=1){
   const pedido=diaPedidoNaMensagem(message)
   if(pedido&&pedido>=today()){
@@ -3968,9 +3981,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const excepcional=closures.find((c:any)=>String(c?.date||'')===formatDateBR(pedido))
    if(wdPedido===0||wdPedido===1||excepcional){
     const durP=chosen.reduce((a:number,s:any)=>a+s.duration,0)
-    const nextAvail=await findNextAvailableDate(supabase,pedido,durP)
+    // v29.291.0 (caso Venilson): dia da semana dito pelo nome e fechado → o mesmo dia da semana seguinte.
+    // Domingo/segunda não entram: não existe "próximo domingo" aberto.
+    const mesmoDia=(wdPedido!==0&&wdPedido!==1&&weekdayDatesMentioned(normalizedQuestion,today()).length)?await mesmoDiaSemanaSeguinte(supabase,pedido,durP):null
+    const nextAvail=mesmoDia||await findNextAvailableDate(supabase,pedido,durP)
     if(nextAvail){
-     diaFechadoPedido={date:pedido,reason:excepcional?(excepcional.reason||null):null,excepcional:Boolean(excepcional)}
+     diaFechadoPedido={date:pedido,reason:excepcional?(excepcional.reason||null):null,excepcional:Boolean(excepcional),mesmoDia:Boolean(mesmoDia)}
      dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     }
    }else if(!next.date)next.date=pedido
@@ -4061,6 +4077,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     const listaTxt=`${lista.slice(0,-1).join(', ')} e ${lista[lista.length-1]}`
     reply=`Para ${serviceNames} (aproximadamente ${duration} min) tenho vaga ${minTime?`depois das ${horaFalada(minTime)} `:''}nestes dias: ${listaTxt}.${nota} ${emDiaCap(destaque.date)} consigo te atender ${slotsPhrase(destaque.slots)}. Qual dia fica melhor pra você?`
     actions=[destaque,...comVaga.filter((d:any)=>d!==destaque)].map((d:any)=>({label:diaHumano(d.date),message:`Quero ${diaHumano(d.date)}`}))
+   }else if(diasCitados.length&&await (async()=>{
+    // v29.291.0 (caso Venilson): o(s) dia(s) citado(s) pelo nome sem vaga → o mesmo dia da semana seguinte
+    for(const d of diasCitados){
+     const wd=new Date(d+'T12:00:00-03:00').getUTCDay()
+     if(wd===0||wd===1)continue
+     const prox=await mesmoDiaSemanaSeguinte(supabase,d,duration,minTime)
+     if(prox){
+      const amostra=slotsSample(prox.slots)
+      next.date=prox.date
+      reply=`${nota.trim()} ${emDiaCap(prox.date)} tenho ${minTime?`depois das ${horaFalada(minTime)}: `:''}${listaOu(amostra)}. ${amostra.length>1?'Qual fica melhor?':'Posso reservar?'}`.trim()
+      actions=amostra.map((t:string)=>({label:t,message:t}))
+      return true
+     }
+    }
+    return false
+   })()){
+    // resposta montada acima
    }else{
     // Nada dentro da restrição. O caso real é o piso alto demais: o Tiago pediu "após as
     // 19h" e a agenda abre até 18:30, porque fechamos às 19h. Dizer isso na hora, com o
@@ -4191,7 +4224,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // no site, agendar/horario/join-waitlist). Captura next.date ANTES de sobrescrever
    // com nextAvail.date logo abaixo.
    const waitlistOffer={date:next.date,period:(effectivePeriod&&!String(effectivePeriod).startsWith('not_'))?effectivePeriod:null,service_name:serviceNames,service_price:chosen.reduce((a:number,s:any)=>a+s.price,0),duration_minutes:duration}
-   const nextAvail=await findNextAvailableDate(supabase,next.date,duration,21,(maxTime||tetoInicioAtivo)?dentroDaRestricao(duration):null)
+   // v29.291.0 (regra do Juliano, caso Venilson): o dia da semana dito pelo nome está lotado → o mesmo dia
+   // da semana seguinte. Sem restrição de horário por cima (aí segue a varredura de sempre, que já filtra).
+   const wdLotado=new Date(next.date+'T12:00:00-03:00').getUTCDay()
+   const pediuPeloNome=wdLotado!==0&&wdLotado!==1&&weekdayDatesMentioned(normalizedQuestion,today()).includes(next.date)
+   const mesmoDiaLotado=pediuPeloNome&&!maxTime&&!tetoInicioAtivo?await mesmoDiaSemanaSeguinte(supabase,next.date,duration):null
+   const nextAvail=mesmoDiaLotado||await findNextAvailableDate(supabase,next.date,duration,21,(maxTime||tetoInicioAtivo)?dentroDaRestricao(duration):null)
    if(nextAvail){
     // v29.69.0 — caso de sábado (22/08/2026, 16h27): o cliente insistiu no mesmo dia
     // ("Precisava pra hoje…") e recebeu a NEGATIVA IDÊNTICA, palavra por palavra. Na
@@ -4610,7 +4648,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     ?(diaFechadoPedido.reason?` (${diaFechadoPedido.reason})`:' (fechada excepcionalmente nesse dia)')
     :' (domingo e segunda a gente não abre)'
    const generica=!effectiveTime&&!effectivePeriod&&/^(Consigo te atender|Perfeito! Para|Para )/.test(reply)
-   if(generica){
+   if(diaFechadoPedido.mesmoDia&&(generica||!effectiveTime||allSlots.includes(effectiveTime))){
+    // v29.291.0 (caso Venilson): "Sábado (17/10) a barbearia não abre (Viagem). No sábado (24/10) tenho 08:30, 10:15 ou 12:00."
+    const amostra=effectiveTime&&allSlots.includes(effectiveTime)?[effectiveTime]:slotsSample(allSlots)
+    reply=`${quando} a barbearia não abre${motivo}. ${emDiaCap(next.date)} tenho ${listaOu(amostra)}. ${amostra.length>1?'Qual fica melhor?':'Posso reservar?'}`
+    actions=amostra.map((t:string)=>({label:t,message:t}))
+   }else if(generica){
     const faixa=allSlots.length>1?`entre ${allSlots[0]} e ${allSlots[allSlots.length-1]}`:`às ${allSlots[0]}`
     if(allSlots.length>6){
      reply=`${quando} a barbearia não abre${motivo}. Voltamos ao trabalho ${emDia(next.date)} e aí consigo te atender ${faixa} para ${serviceNames} (aproximadamente ${duration} min). Você prefere manhã, tarde ou final do dia?`

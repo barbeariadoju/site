@@ -1008,5 +1008,23 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('72b avisa que dá pra trocar por barba mais completa', /mais completa/.test(r.reply), r.reply)
 }
 
+{
+  // v29.291.0 — caso Venilson (12/10/2026, 16h40): pediu sábado, sábado fechado (viagem) → oferece o PRÓXIMO sábado
+  let sab1 = hoje
+  while (new Date(sab1 + 'T12:00:00-03:00').getUTCDay() !== 6) sab1 = somar(sab1, 1)
+  const sab2 = somar(sab1, 7)
+  const dm2 = `${sab2.slice(8, 10)}/${sab2.slice(5, 7)}`
+  const terca = (() => { let d = somar(sab1, 1); while (new Date(d + 'T12:00:00-03:00').getUTCDay() !== 2) d = somar(d, 1); return d })()
+  const vagas = { [sab1]: [], [sab2]: ['08:30', '09:00', '10:15', '12:00'], [terca]: ['08:30', '15:00'], [amanha]: ['10:00'] }
+  const base = { state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], name: 'Venilson Teste' }, contexto: ctxCliente('Venilson Teste') }
+  const r1 = await turno({ ...base, msg: 'Sábado', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sab1 } }, fechados: [sab1], vagas })
+  checar('73a sábado fechado: oferece o sábado seguinte', new RegExp(`sábado \\(${dm2}\\)`).test(r1.reply) && /não abre/.test(r1.reply) && r1.state?.date === sab2, { reply: r1.reply, date: r1.state?.date })
+  const r2 = await turno({ ...base, msg: 'Tem sábado?', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sab1 } }, vagas })
+  checar('73b sábado lotado: oferece o sábado seguinte', new RegExp(`sábado \\(${dm2}\\)`).test(r2.reply) && r2.state?.date === sab2, { reply: r2.reply, date: r2.state?.date })
+  const r3 = await turno({ ...base, msg: 'Sábado\n9h\nSim', history: [{ role: 'assistant', content: 'Perfeito! Anotei Corte de cabelo. Para qual dia você quer ver os horários?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, fechados: [sab1], vagas })
+  checar('73c "Sábado / 9h" depois do "para qual dia": sábado seguinte, não terça/quarta', new RegExp(dm2).test(r3.reply) && !/terça|quarta/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
