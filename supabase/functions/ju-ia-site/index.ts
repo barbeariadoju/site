@@ -701,7 +701,7 @@ function servicosDitosPeloCliente(textos:string[],escolhidos:string[]){
 // Serviço de família (corte/barba/infantil) vale se o cliente falou da família; o resto (sobrancelha,
 // pigmentação, química, depilação…) só se ele falou daquele serviço.
 const servicoNaoDito=(nome:string,d:{nomes:Set<string>,fams:Set<string>})=>{const f=familiesOfService(nome);return f.size?[...f].some((x:string)=>!d.fams.has(x)):!d.nomes.has(nome)}
-const perguntaQualServico=()=>`Qual serviço vai ser?\n${OPCOES_SERVICO_CONVITE.map((o)=>`*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe for outro, é só me dizer qual.`
+const perguntaQualServico=()=>`É corte ou corte + barba?\n${OPCOES_SERVICO_CONVITE.map((o)=>`*${o.numero}* — ${o.rotulo}`).join('\n')}`
 const textFrom=(d:any)=>typeof d?.output_text==='string'?d.output_text.trim():(d?.output||[]).flatMap((x:any)=>x.content||[]).filter((x:any)=>x.type==='output_text').map((x:any)=>x.text).join('\n').trim()
 function parseJSON(text:string){try{return JSON.parse(text.replace(/^```json\s*|\s*```$/g,''))}catch{return null}}
 function serviceSuggestions(chosen:any[]){
@@ -1891,7 +1891,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // escolhida inclui a que vem dentro do combo; e resposta que já nomeia a barba não é pergunta genérica.
  const barbaJaEscolhida=chosen.some((s:any)=>s.category==='barba'||familiesOfService(String(s.name)).has('barba'))
  const nomeiaBarba=/navalha|toalha|ozon|express|maquina|barboterapia/.test(normalizedQuestion)
- const bareBarbaAsk=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!barbaJaEscolhida&&!nomeiaBarba&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
+ const pedidoBarbaGenerico=/\bbarba\b(?!\s*express)/i.test(message)&&!barbaNegated&&!barbaProduto&&!barbaJaEscolhida&&!nomeiaBarba&&!isPriceOrInfoQuestion&&!isExplainQuestion&&!barbaServicoEspecifico&&intent!=='handoff'
+ // v29.290.0 — caso Cauã (13/10/2026, 07h49): "Vou querer corte +barba" levou a lista das três barbas com
+ // preço e duração, e ele parou de responder. Pedido do Juliano: menos perguntas, menos palavras. Barba sem
+ // nome vira Barba Express (a mais simples) e a confirmação avisa que dá pra trocar por uma mais completa.
+ const bareBarbaAsk=false
  // v29.104.0 (pedido do Juliano, 01/09/2026): "barboterapia" sozinha, sem dizer se é com
  // ozônio, ficava ambígua entre as duas variantes de navalha/toalha quente (R$ 40 sem
  // ozônio, R$ 50 com ozônio) — o find* casava pelo nome mais curto e escolhia a de R$ 40
@@ -1967,6 +1971,21 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    cabeloAssumidoNota=corteLavagem?`(Anotei Corte de cabelo — se quiser com lavagem, o Corte + Lavagem sai ${money(corteLavagem.price)}, é só me dizer.)`:'(Anotei Corte de cabelo.)'
    handoff=false
   }
+  // v29.290.0 (caso Cauã) — roda depois de todos os serviços da mensagem já lidos: barba sem nome vira
+  // Barba Express; com corte junto (dito agora ou já anotado), o combo Corte + Barba Express.
+  // A palavra "barba" solta pode já ter entrado como Barba Express pelo servicosPorPalavra; aí o corte dito
+  // junto ("corte +barba") se perdia e a reserva saía só da barba.
+  const barbaJaNaLista=chosen.filter((s:any)=>s.category==='barba'||familiesOfService(String(s.name)).has('barba'))
+  if(pedidoBarbaGenerico&&barbaJaNaLista.every((s:any)=>ehBarbaExpress(s.name)&&s.category==='barba')){
+   const querCorte=/\b(corte|cabelo|cortar)\b/.test(normalizedQuestion)||chosen.some((c:any)=>normalize(c.name)==='corte de cabelo')
+   const combo=querCorte?findService('Corte + Barba Express'):null
+   const express=findService('Barba Express')
+   const semBarbaECorte=chosen.filter((c:any)=>!barbaJaNaLista.includes(c)&&!(combo&&normalize(c.name)==='corte de cabelo'))
+   if(combo){chosen=[...semBarbaECorte,combo];cabeloAssumidoNota=''}
+   else if(express)chosen=[...semBarbaECorte,express]
+   next.services=chosen.map((s:any)=>s.name)
+   if(combo||express)next.barba_padrao=true
+  }
  }
  // v28.56.1 (05/08/2026, bateria de auditoria): o menu genérico substituía a resposta do
  // modelo SEMPRE que intent='services' e nenhum serviço do catálogo era reconhecido —
@@ -1982,8 +2001,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // duas?", "minha namorada terminou comigo, um corte anima?" recebiam a tabela de precos no
  // lugar da resposta — o modelo classificou como 'services' e o menu atropelava. O menu so
  // entra em pedido GENERICO de catalogo; qualquer outra pergunta fica com a resposta do modelo.
- if(intent==='services'&&!chosen.length&&isGenericServiceAsk){
-  reply='Mais procurados:\n• Corte — R$ 40\n• Corte + Barba Express — R$ 65\n• Corte + Barba na navalha com toalha quente — R$ 80\n• Barba na navalha com toalha quente — R$ 40\nQual combina com você?'
+ // v29.290.0 — caso Joyce (10/10/2026, 16h04): os preços desta lista estavam escritos à mão e ficaram no
+ // valor de antes do reajuste de 30/09 (Corte R$ 40, hoje R$ 50). Agora vêm do catálogo. E o aviso do
+ // pedido pelo carrinho ("[pedido pelo catálogo] …") casava "catalogo" e abria esta lista no lugar do pedido.
+ const pedidoDoCarrinho=/^\[pedido pelo catalogo\]/.test(normalizedQuestion)
+ if(intent==='services'&&!chosen.length&&isGenericServiceAsk&&!pedidoDoCarrinho){
+  const maisProcurados=['Corte de cabelo','Corte + Barba Express','Barba Express'].map((n)=>findService(n)).filter(Boolean)
+  reply=`Mais procurados:\n${maisProcurados.map((s:any)=>`• ${s.name} — ${money(s.price)}`).join('\n')}\nQual vai ser?`
   actions=[{label:'Ver catálogo completo',url:'https://www.barbeariadoju.com.br/agendar/'}]
  }
  // Cliente já citou o(s) serviço(s) exato(s) (ex.: "barba e pezinho") — não faz sentido
@@ -4097,7 +4121,32 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // histórico do cliente), o que também é suposição: ele não citou serviço nenhum.
    const servicoSupostoAqui=!findServicesLoose(message).length&&!(Array.isArray(state?.services)&&state.services.length)
    if(servicoSupostoAqui&&!next.usual_assumed){next.usual_assumed=true;next.usual_origem=next.usual_origem||'padrao'} // sem "como da última vez": não sabemos se foi
-   reply=askedPrice
+   // v29.290.0 — caso Frei (13/10/2026, 07h48): "Preciso de um horário para corte e sobrancelha mais para o
+   // fim do dia" levou "Para qual dia você quer ver os horários?". Pedido do Juliano: a JuIA sabe que dia é
+   // hoje e puxa pra hoje. Sem dia dito, oferece hoje (no período pedido); se hoje não tiver, o próximo
+   // dia com vaga. A pergunta do dia só sobra quando a agenda não tem nada na semana.
+   const periodoPedido=String(next.period||'')
+   const filtraPeriodo=(slots:string[])=>{
+    if(!periodoPedido)return slots
+    // "fim do dia" aqui é a partir das 17h: o Juliano marcou o Frei às 17:30 (a casa fecha 19h)
+    const f=periodoPedido==='evening'?slots.filter((s:string)=>slotHour(s)>=17):slotsForPeriod(slots,periodoPedido)
+    // "fim do dia" e a agenda fecha 19h: sem vaga depois das 18, os últimos horários do dia servem
+    return f.length?f:(periodoPedido==='evening'?slots.slice(-3):[])
+   }
+   let oferta:{date:string,slots:string[]}|null=null
+   // horário dito sem dia ("tem às 17h?") segue pela pergunta de sempre, que carrega o horário
+   if(!requestedTime)for(const d of await findAvailableDatesInRange(supabase,today(),duration,7,7)){
+    const s=filtraPeriodo(d.slots)
+    if(s.length){oferta={date:d.date,slots:s};break}
+   }
+   if(oferta){
+    next.date=oferta.date
+    const anotei=askedPrice?`${linhaPreco(chosen)} `:(next.usual_assumed||precoJaDito)?'':`Anotei ${serviceNames} (${money(chosen.reduce((a:number,x:any)=>a+Number(x.price||0),0))}). `
+    const amostra=slotsSample(oferta.slots)
+    reply=`${anotei}${emDiaCap(oferta.date)} tenho ${listaOu(amostra)}. ${amostra.length>1?'Qual fica melhor?':'Posso reservar?'}`
+    actions=slotsSample(oferta.slots).map((t:string)=>({label:t,message:t}))
+    handoff=false
+   }else reply=askedPrice
     ?`${linhaPreco(chosen)} Para qual dia você quer ver os horários?`
     :next.usual_assumed
     ?`Para qual dia você quer ver os horários${requestedTime?` das ${horaFalada(requestedTime)}`:''}?`
@@ -5062,7 +5111,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
         }
        }catch(clubeErr){console.error('[ju-ia-site] clube na reserva',clubeErr)}
       }
-      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${valorSinal>0||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
+      // v29.290.0 (caso Cauã): barba sem nome foi reservada como Barba Express; o cliente sabe e pode trocar.
+      const barbaPadraoNota=next.barba_padrao&&chosen.some((s:any)=>ehBarbaExpress(s.name))?' A barba ficou na Barba Express (só na máquina); se quiser uma mais completa, na navalha com toalha quente, é só me avisar.':''
+      next.barba_padrao=false
+      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${barbaPadraoNota}${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${valorSinal>0||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       next.other_person=false

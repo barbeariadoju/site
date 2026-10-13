@@ -112,19 +112,26 @@ describe('linhaValor', () => {
 import { mensagemServicoConvite, servicoDaResposta, OPCOES_SERVICO_CONVITE } from '../../supabase/functions/_shared/convite-retorno.ts';
 
 describe('pergunta do serviço no convite (caso Sharles, 01/10/2026)', () => {
-  it('lista os serviços numerados, com o resumo da Barba Express', () => {
+  // v29.290.0 (caso Cauã, 13/10/2026): três opções curtas, sem lista de barbas.
+  it('pergunta curta: corte ou corte + barba', () => {
     const m = mensagemServicoConvite();
-    expect(m).toContain('Qual serviço vai ser?');
-    expect(m).toContain('*1* — Corte de cabelo');
-    expect(m).toContain('só na máquina');
-    expect(m).not.toMatch(/Pigmenta|Pezinho/);
+    expect(m).toContain('É corte ou corte + barba?');
+    expect(m).toContain('*1* — Corte');
+    expect(m).toContain('*2* — Corte + barba');
+    expect(m).toContain('*3* — Só a barba');
+    expect(m.length).toBeLessThan(90);
+    expect(m).not.toMatch(/Pigmenta|Pezinho|navalha/);
     expect(m).not.toMatch(/\p{Extended_Pictographic}/u);
   });
-  it('número escolhe o serviço; "corte" sozinho é o corte', () => {
+  it('número escolhe o serviço; corte / corte + barba / barba por extenso também', () => {
     expect(servicoDaResposta('1')).toBe('Corte de cabelo');
     expect(servicoDaResposta('2 ')).toBe('Corte + Barba Express');
+    expect(servicoDaResposta('3')).toBe('Barba Express');
     expect(servicoDaResposta('so corte')).toBe('Corte de cabelo');
     expect(servicoDaResposta('cabelo')).toBe('Corte de cabelo');
+    expect(servicoDaResposta('vou querer corte +barba')).toBe('Corte + Barba Express');
+    expect(servicoDaResposta('corte e barba')).toBe('Corte + Barba Express');
+    expect(servicoDaResposta('so a barba')).toBe('Barba Express');
   });
   it('qualquer outra coisa não escolhe nada (vai pra JuIA)', () => {
     expect(servicoDaResposta('9')).toBe('');

@@ -1414,7 +1414,10 @@ Deno.serve(async (request: Request) => {
         if (pendingWaitlistOffer && !juiaBloqueiaConvite({ sent_at: pendingWaitlistOffer.notified_at }) && (!quotedTarget || quotedTarget === 'waitlist')) {
           const normalizedReply = normalize(text)
           const trimmedNormalized = normalizedReply.trim()
-          const ambiguousShortReply = trimmedNormalized.length <= 40
+          // v29.290.0 — caso Frei (13/10): "Terça ou quarta tem vaga" e "Paz e bem!" recebiam o "Só confirmando"
+          // de novo. Pedido de outro dia/horário e cumprimento não são resposta à oferta: vão pra JuIA.
+          const outroAssunto = /\b(segunda|terca|quarta|quinta|sexta|sabado|domingo|hoje|hj|amanha|semana|vaga|horario)\b|\?|^(oi|ola|opa|bom dia|boa tarde|boa noite|paz e bem)\b/.test(trimmedNormalized)
+          const ambiguousShortReply = trimmedNormalized.length <= 40 && !outroAssunto
           const isDecline = /\bnao\b|nao vou|nao posso|nao quero|nao consigo|infelizmente/.test(normalizedReply)
           const isConfirm = !isDecline && /\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|\bquero\b|^ok$/.test(normalizedReply)
           const dateLabel = formatDateBR(pendingWaitlistOffer.offered_date)

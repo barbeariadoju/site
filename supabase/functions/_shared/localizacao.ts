@@ -22,7 +22,8 @@ export const blocoLocalizacao = () =>
 // reply: resposta já montada. aguardandoServico: a JuIA está pedindo o serviço e há horário guardado.
 export const comLocalizacao = (normalizedMessage: string, reply: string, aguardandoServico = false) => {
   if (!pediuLocalizacao(normalizedMessage) || jaTemLocalizacao(reply)) return reply
-  const aviso = aguardandoServico && /qual servi[cç]o vai ser/i.test(reply)
+  // v29.290.0: a pergunta do serviço virou "É corte ou corte + barba?" (as duas formas valem)
+  const aviso = aguardandoServico && /qual servi[cç]o vai ser|[eé] corte ou corte \+ barba/i.test(reply)
     ? 'Seu agendamento ainda não está concluído: falta escolher o serviço. '
     : ''
   // A saudação ("Boa tarde, Renan!") continua abrindo a mensagem.

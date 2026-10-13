@@ -90,6 +90,8 @@ export const escolheAvisoDaOferta = (q: string): boolean => {
   if (/\b(nao|n)\b/.test(t) && !/\bamanha\b/.test(t)) return false
   return /\b(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar|sobrar|cancelar|desistir)\b/.test(t)
     || /(^|\n)\s*(eu )?prefiro( (hoje|hj|pra hoje|pra hj|o aviso|esperar|aguardar|a lista|que avise|que me avise))?[\s!.]*($|\n)/.test(t)
+    // v29.289.0 (10/10/2026, 10h17): "Ok fico no aguardo obg" recebeu a mesma oferta de novo, sem entrar na lista.
+    || /\b(fico|to|estou|tou)? ?(no aguardo|aguardando|esperando)\b|\b(vou|irei) (aguardar|esperar)\b|\baguardo (o |seu )?(aviso|retorno|contato)\b/.test(t)
 }
 
 // ---------------------------------------------------------------------------------------------

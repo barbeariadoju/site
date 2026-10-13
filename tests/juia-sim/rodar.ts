@@ -249,14 +249,15 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r1 = await turno({ msg: 'Como vc está de horários, hoje ou amanhã cedo', state: st, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Rogerio Teste', { last_services: 'Barboterapia com vaporizador de ozônio' }), vagas: { [hoje]: ['11:50'], [amanha]: ['08:00'] } })
   checar('14a suposição continua de pé', r1.state?.usual_assumed === true, r1.state?.usual_assumed)
   const r2 = await turno({ msg: 'Sim, serve sim', state: { ...r1.state, time: '11:50', date: hoje }, ai: { intent: 'book', reply: 'Reservado', updates: { time: '11:50', date: hoje } }, contexto: ctxCliente('Rogerio Teste', { last_services: 'Barboterapia com vaporizador de ozônio' }), vagas: { [hoje]: ['11:50'] } })
-  checar('14b pergunta o serviço antes de reservar (numerada, sem presumir)', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/como da última vez/i.test(r2.reply), r2.reply)
+  checar('14b pergunta o serviço antes de reservar (numerada, sem presumir)', !reservou(r2) && /É corte ou corte \+ barba\?/.test(r2.reply) && !/como da última vez/i.test(r2.reply), r2.reply)
 }
 
 // 15. Barba escolhida dentro do combo não repete a pergunta "qual barba?" (19/09, 10h24 — cliente desistiu)
 {
   const ctx = ctxCliente('Danilo Teste')
   const r1 = await turno({ msg: 'Você tem horário para cabelo e barba hoje ?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
-  checar('15a pergunta qual barba (certo: barba genérica)', /Pra barba, qual/i.test(r1.reply), r1.reply)
+  // v29.290.0 (caso Cauã): barba genérica não abre mais a lista — vira Corte + Barba Express
+  checar('15a barba genérica vira Corte + Barba Express, sem lista', !/Pra barba, qual/i.test(r1.reply) && (r1.state?.services || []).includes('Corte + Barba Express'), { reply: r1.reply, services: r1.state?.services })
   const r2 = await turno({ msg: 'Barba na navalha com toalha sem ozônio', state: r1.state, history: [{ role: 'assistant', content: r1.reply }],
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte + Barba na navalha com toalha quente'], date: hoje } }, contexto: ctx, vagas: { [hoje]: ['16:00', '17:00'] } })
   checar('15b não repete a pergunta da barba', !/Pra barba, qual/i.test(r2.reply), r2.reply)
@@ -383,7 +384,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('24a suposição fica guardada no estado', r1.state?.usual_assumed === true, r1.state)
   const r2 = await turno({ msg: '10h', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '10:00' } }, contexto: ctx,
     vagas: { [amanha]: ['08:00', '09:00', '10:00'] } })
-  checar('24b fecha com a pergunta numerada do serviço, sem o de sempre', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/Sobrancelha/.test(r2.reply), r2.reply)
+  checar('24b fecha com a pergunta numerada do serviço, sem o de sempre', !reservou(r2) && /É corte ou corte \+ barba\?/.test(r2.reply) && !/Sobrancelha/.test(r2.reply), r2.reply)
 }
 {
   const r = await turno({ msg: 'tem horário hoje às 14h?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '14:00' } }, contexto: {},
@@ -391,7 +392,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('24c cliente novo: corte suposto sem "(Anotei…)"', !/anotei/i.test(r.reply), r.reply)
   const r2 = await turno({ msg: '13h então', state: r.state, history: [{ role: 'assistant', content: r.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '13:00' } }, contexto: {},
     vagas: { [hoje]: ['13:00', '15:00'] } })
-  checar('24d cliente novo: pergunta o serviço antes de reservar', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply) && !/última vez/.test(r2.reply), r2.reply)
+  checar('24d cliente novo: pergunta o serviço antes de reservar', !reservou(r2) && /É corte ou corte \+ barba\?/.test(r2.reply) && !/última vez/.test(r2.reply), r2.reply)
   const r3 = await turno({ msg: '1', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: {},
     vagas: { [hoje]: ['13:00', '15:00'] } })
   checar('24e "1" segue a reserva (reserva ou pede o nome)', reservou(r3) || /nome/i.test(r3.reply), r3.reply)
@@ -476,7 +477,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r3 = await turno({ msg: 'Final do dia', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'availability', reply: 'Vou ver.', updates: { period: 'evening' } }, contexto: ctx, vagas })
   checar('30b "final do dia": lista os horários do fim do dia', /17:00|18:00|18:30|19:00/.test(r3.reply) && !/manhã, tarde ou final do dia/.test(r3.reply), r3.reply)
   const r4 = await turno({ msg: '18h', state: r3.state, history: [{ role: 'assistant', content: r3.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '18:00' } }, contexto: ctx, vagas })
-  checar('30c "18h": fecha com a pergunta numerada do serviço', reservou(r4) || /Qual serviço vai ser\?/.test(r4.reply), r4.reply)
+  checar('30c "18h": fecha com a pergunta numerada do serviço', reservou(r4) || /É corte ou corte \+ barba\?/.test(r4.reply), r4.reply)
 }
 
 // 31. Convite do Instagram no fechamento da conversa (23/09, ideia do Juliano a partir do WhatsApp de um
@@ -787,7 +788,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r1 = await turno({ msg: 'Tem horário sábado cedo?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sabado } }, contexto: ctx, vagas })
   checar('57a consulta não cita pigmentação nem pezinho', !/Pigmenta|Pezinho/.test(r1.reply) && /08:45/.test(r1.reply), r1.reply)
   const r2 = await turno({ msg: '8:45', state: r1.state, history: [{ role: 'user', content: 'Tem horário sábado cedo?' }, { role: 'assistant', content: r1.reply }], ai: { intent: 'book', reply: 'Reservado', updates: { time: '08:45' } }, contexto: ctx, vagas })
-  checar('57b não reserva sem o serviço dito: pergunta numerada', !reservou(r2) && /Qual serviço vai ser\?/.test(r2.reply), r2.reply)
+  checar('57b não reserva sem o serviço dito: pergunta numerada', !reservou(r2) && /É corte ou corte \+ barba\?/.test(r2.reply), r2.reply)
   const r3 = await turno({ msg: '1', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'book', reply: 'Reservado', updates: {} }, contexto: ctx, vagas })
   const reserva = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('57c "1" reserva só o Corte de cabelo', reserva?.args?.p_service_name === 'Corte de cabelo', { reply: r3.reply, servico: reserva?.args?.p_service_name })
@@ -795,7 +796,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 // 58. O modelo enfia serviço que ninguém pediu (pigmentação) num pedido sem serviço → a trava segura.
 {
   const r = await turno({ msg: 'pode ser amanhã 10h', state: { name: 'Teste Trava', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Reservado', updates: { services: ['Corte de cabelo', 'Pigmentação Capilar (Tintura)'], date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Trava'), vagas: { [amanha]: ['10:00'] } })
-  checar('58 trava: serviço não dito não vira reserva', !reservou(r) && /Qual serviço vai ser\?/.test(r.reply), r.reply)
+  checar('58 trava: serviço não dito não vira reserva', !reservou(r) && /É corte ou corte \+ barba\?/.test(r.reply), r.reply)
 }
 // 59. Ele disse "corte" e o modelo somou pigmentação → reserva só o corte.
 {
@@ -850,7 +851,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
     vagas: { [hoje]: ['18:10', '18:15', '18:30'] } })
   checar('61 localização: manda o link do Maps', /maps\.app\.goo\.gl/.test(r.reply) && /Antônio da Cruz, 482/.test(r.reply), r.reply)
   checar('61 localização: não reserva sem o serviço', !reservou(r), r.reply)
-  checar('61 localização: avisa que não está concluído quando pede o serviço', !/Qual serviço vai ser/.test(r.reply) || /não está concluído/.test(r.reply), r.reply)
+  checar('61 localização: avisa que não está concluído quando pede o serviço', !/É corte ou corte \+ barba/.test(r.reply) || /não está concluído/.test(r.reply), r.reply)
 }
 // 62. Pedido do Juliano (06/10/2026, caso Lucas): a oferta da lavagem depois da reserva diz o ACRÉSCIMO
 // ("por mais R$ 10,00"), não o preço do combo ("Corte + Lavagem, vira R$ 50,00").
@@ -924,7 +925,7 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const st = { date: dia1, time: '10:30', name: 'Samuel Teste', services: [], upsell_offer_done: true }
   const r = await turno({ msg: 'Eu tou só bigode para fazer', state: st, ai: { intent: 'services', reply: 'Para fazer somente o bigode, não temos um serviço avulso no catálogo. A opção cadastrada é a Barba Express, no valor de R$ 35,00.', updates: { services: ['Barba Express'] } }, contexto: ctxCliente('Samuel Teste'), vagas: { [dia1]: ['10:30'] } })
   checar('65a só o bigode: cortesia, sem Barba Express', /cortesia da casa/.test(r.reply) && !/Barba Express, no valor|R\$ 35/.test(r.reply) && !(r.state?.services || []).includes('Barba Express'), { reply: r.reply, services: r.state?.services })
-  checar('65a só o bigode: volta a perguntar o serviço', /Qual serviço vai ser\?/.test(r.reply) && !reservou(r), r.reply)
+  checar('65a só o bigode: volta a perguntar o serviço', /É corte ou corte \+ barba\?/.test(r.reply) && !reservou(r), r.reply)
   const r2 = await turno({ msg: 'quero corte e o bigode amanhã às 10h', state: { name: 'Teste Bigode', upsell_offer_done: true }, ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo', 'Barba Express'], date: amanha, time: '10:00' } }, contexto: ctxCliente('Teste Bigode'), vagas: { [amanha]: ['10:00'] } })
   const criou = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('65b corte + bigode: reserva só o corte e avisa a cortesia', criou?.args?.p_service_name === 'Corte de cabelo' && /cortesia da casa/.test(r2.reply), { reply: r2.reply, servico: criou?.args?.p_service_name })
@@ -983,6 +984,28 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r3 = await turno({ ...base, msg: '1', state: r2.state })
   const criou = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('70c "1" reserva só o corte às 16:45 com a sobrancelha anotada', criou?.args?.p_service_name === 'Corte de cabelo' && criou?.args?.p_start_time === '16:45' && /Sobrancelha Masculina/.test(criou?.args?.p_notes || ''), { reply: r3.reply, args: criou?.args })
+  // 10/10, 10h17: "Ok fico no aguardo obg" à oferta "te aviso se abrir vaga hoje" é o aceite do aviso
+  const r5 = await turno({ msg: 'Ok fico no aguardo obg', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: hoje, name: 'Mr Teste', pending_waitlist: { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 50, duration_minutes: 45 } },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Mr Teste'), vagas: { [amanha]: ['09:25'] } })
+  checar('70d "fico no aguardo" entra na lista de espera', r5.saidas.some((s: any) => s.url.includes('/join-waitlist')) && /lista de espera/.test(r5.reply), r5.reply)
+}
+
+{
+  // v29.290.0 — caso Frei (13/10/2026, 07h48): serviço + "fim do dia" sem dia dito → oferece hoje, sem perguntar o dia
+  const r = await turno({ msg: 'Preciso de um horário para corte e sobrancelha mais para o fim do dia', state: {},
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo', 'Sobrancelha Masculina'] } }, contexto: ctxCliente('Frei Teste'),
+    vagas: { [hoje]: ['09:00', '14:00', '17:15', '17:30', '18:00'], [amanha]: ['18:00'] } })
+  checar('71a oferece hoje no fim do dia, sem "para qual dia"', !/qual dia/i.test(r.reply) && /^.*Hoje tenho/m.test(r.reply) && /18:00/.test(r.reply) && !/09:00/.test(r.reply), r.reply)
+  checar('71b resposta curta', r.reply.length < 160, r.reply.length)
+}
+
+{
+  // v29.290.0 — caso Cauã (13/10/2026, 07h49): "corte +barba" depois do horário escolhido reserva Corte + Barba Express e avisa
+  const r = await turno({ msg: 'Vou querer corte +barba', state: { date: hoje, time: '13:45', name: 'Caua Teste', phone: '5511900000001', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Caua Teste'), vagas: { [hoje]: ['13:45'] } })
+  const criou = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('72a reserva Corte + Barba Express sem a lista das barbas', criou?.args?.p_service_name === 'Corte + Barba Express' && !/Pra barba, qual/.test(r.reply), { reply: r.reply, args: criou?.args })
+  checar('72b avisa que dá pra trocar por barba mais completa', /mais completa/.test(r.reply), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

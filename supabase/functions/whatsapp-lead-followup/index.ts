@@ -378,7 +378,24 @@ Deno.serve(async (request: Request) => {
         // complemento, e este toque saiu vago ("a gente acabou não fechando"). Ele leu como
         // "está fechado", foi às 13:00 e o horário era de outro cliente. O toque agora diz
         // com todas as letras que NADA ficou reservado e pede a confirmação.
-        text = `Oi${name ? `, ${name}` : ''}! Só pra avisar: seu horário${lead.service_interest ? ` pra ${lead.service_interest}` : ''} ainda NÃO ficou reservado, a conversa parou antes de eu confirmar. Se ainda quiser, me diz o dia e o horário que eu reservo agora.`
+        // v29.290.0 — caso Angelo (13/10/2026, 08h00): a conversa parou no sábado e o toque saiu na terça com
+        // "seu horário ainda NÃO ficou reservado, a conversa parou antes de eu confirmar" — o Juliano achou ruim:
+        // longo, em maiúscula, e fala de um horário de dias atrás. Pedido dele: poucas palavras, sem insistir.
+        // No mesmo dia continua dizendo que não reservou (caso João); em outro dia, convite curto pra hoje.
+        const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(now))
+        const diaDaConversa = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(lead.last_message_at))
+        const oi = `Oi${name ? `, ${name}` : ''}!`
+        if (diaDaConversa === hojeSP) {
+          text = `${oi} Seu horário ainda não ficou reservado. Se quiser, me diz qual horário que eu reservo.`
+        } else {
+          const { data: slotsHoje } = await admin.rpc('get_available_slots', { p_date: hojeSP, p_duration_minutes: 30 })
+          const temHoje = Array.isArray(slotsHoje) && slotsHoje.length > 0
+          const soBarba = /barba/i.test(lead.service_interest || '') && !/corte|cabelo/i.test(lead.service_interest || '')
+          const feito = soBarba ? 'feito a barba' : 'cortado o cabelo'
+          text = temHoje
+            ? `${oi} Caso ainda não tenha ${feito}, hoje tenho alguns horários e posso te incluir na agenda.`
+            : `${oi} Caso ainda não tenha ${feito}, posso te incluir na agenda. É só me dizer o dia.`
+        }
       } else {
         text = `Oi${name ? `, ${name}` : ''}! 😊 Só passando pra saber se ainda tem interesse em ${lead.service_interest || 'agendar um horário'} — se quiser, posso já ver um horário pra você.`
       }
