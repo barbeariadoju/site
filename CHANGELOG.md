@@ -1,3 +1,13 @@
+## 29.292.0 — JuIA: "Não dá" seco depois de uma oferta de dia é recusa daquele dia (13/10)
+
+**Caso Venilson (12/10, 16h42), pedido do Juliano: "arruma isso".** Ele pediu sábado, ouviu *"voltamos na terça (20/10)…"*, respondeu *"Não dá"* e recebeu *"Consigo te atender na terça (20/10) sim!"* — a mesma terça. As recusas que a JuIA já conhecia precisavam do dia escrito na frase ("amanhã não posso", 29.281.0) ou de uma oferta de lista de espera aberta (29.69.0); o "Não dá" sozinho não casava com nenhuma.
+- **Agora:** "não dá", "não posso", "não consigo", "não rola", "não serve", "esse dia não", "fica difícil" — curtos, sem dia, horário ou período novos, logo depois de a JuIA oferecer um dia — tiram esse dia da conversa.
+  - **Se ele já disse o dia da semana que quer** (a JuIA agora guarda isso na conversa): oferece o mesmo dia da semana seguinte, regra da 29.291.0. *"Entendi, Venilson. No sábado (24/10) tenho 08:30, 09:00, 10:15 ou 12:00. Qual fica melhor?"* Recusou o sábado 24? Vem o 31.
+  - **Sem preferência:** *"Entendi, Venilson, na terça (20/10) não dá. Qual dia fica melhor pra você?"* — sem repetir os horários recusados.
+- **Não é desistência:** a recusa de um dia não marca a conversa como "adiada" (o "Sem problema, quando quiser me chama" fica para "não, obrigado" e companhia).
+- **Fora:** quando há outra pergunta pendente (cancelamento, troca de serviço, confirmação do serviço), o "não" continua respondendo a ela. A preferência de dia da semana vale por 7 dias.
+- Simulador: 74a, 74b, 74c (os três falham no código anterior repetindo o mesmo dia), **187 ok**; 45f segue falhando por depender do dia. Unit: 312.
+
 ## 29.291.0 — JuIA: sem horário no dia da semana pedido, oferece o mesmo dia na semana seguinte (13/10)
 
 **Caso Venilson (12/10, 16h40), pendência da 29.290.0, regra do Juliano:** *"na falta de horário no dia que o cliente quer, oferecer o próximo dia igual — no caso, o próximo sábado"*. Ele pediu "Sábado / 9h"; o sábado 17/10 está fechado (viagem). A JuIA ofereceu amanhã e quarta, depois a terça 20/10, e ele respondeu "Não dá" — quem pede sábado é porque só pode sábado.

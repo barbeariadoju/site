@@ -1024,6 +1024,21 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r3 = await turno({ ...base, msg: 'Sábado\n9h\nSim', history: [{ role: 'assistant', content: 'Perfeito! Anotei Corte de cabelo. Para qual dia você quer ver os horários?' }],
     ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, fechados: [sab1], vagas })
   checar('73c "Sábado / 9h" depois do "para qual dia": sábado seguinte, não terça/quarta', new RegExp(dm2).test(r3.reply) && !/terça|quarta/.test(r3.reply), r3.reply)
+
+  // v29.292.0 — 16h42: "Não dá" à terça oferecida recebeu a MESMA terça. É recusa daquele dia.
+  const sab3 = somar(sab2, 7)
+  const dm3 = `${sab3.slice(8, 10)}/${sab3.slice(5, 7)}`
+  const vagas2 = { ...vagas, [sab3]: ['08:30', '11:00'] }
+  const ofTerca = 'Sábado a barbearia não abre (Viagem). Voltamos ao trabalho na terça e aí consigo te atender entre 08:30 e 18:15. Você prefere manhã, tarde ou final do dia?'
+  const r4 = await turno({ ...base, msg: 'Não dá', state: { ...base.state, date: terca, dia_semana_pedido: sab1 }, history: [{ role: 'assistant', content: ofTerca }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: terca } }, fechados: [sab1], vagas: vagas2 })
+  checar('74a "Não dá" à terça: oferece o sábado seguinte ao que ele pediu, não a terça', new RegExp(dm2).test(r4.reply) && !/terça/.test(r4.reply) && r4.state?.date === sab2, { reply: r4.reply, date: r4.state?.date })
+  const r5 = await turno({ ...base, msg: 'Não posso', state: { ...base.state, date: sab2, dia_semana_pedido: sab1 }, history: [{ role: 'assistant', content: r4.reply }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sab2 } }, fechados: [sab1], vagas: vagas2 })
+  checar('74b "Não posso" ao sábado oferecido: o sábado depois dele', new RegExp(dm3).test(r5.reply) && r5.state?.date === sab3, { reply: r5.reply, date: r5.state?.date })
+  const r6 = await turno({ ...base, msg: 'Não dá', state: { ...base.state, date: terca }, history: [{ role: 'assistant', content: 'Na terça tenho 08:30 ou 15:00. Qual fica melhor?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: terca } }, vagas: vagas2 })
+  checar('74c "Não dá" sem dia preferido: pergunta qual dia, sem repetir a terça', /Qual dia fica melhor/.test(r6.reply) && !/08:30|15:00/.test(r6.reply) && !r6.state?.date, { reply: r6.reply, date: r6.state?.date })
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

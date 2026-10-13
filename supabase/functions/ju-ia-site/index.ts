@@ -3908,6 +3908,48 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }
  }
 
+ // v29.292.0 — caso Venilson (12/10/2026, 16h42): pediu sábado, ouviu "voltamos na terça (20/10)…", respondeu
+ // "Não dá" e recebeu "Consigo te atender na terça (20/10) sim!" — a mesma terça. "Não dá" seco, logo depois
+ // de uma oferta de dia, é recusa DAQUELE dia. Se ele já disse o dia da semana que quer, a JuIA oferece o
+ // mesmo dia da semana seguinte (regra do Juliano, 13/10); sem preferência, pergunta qual dia serve.
+ {
+  const wdsDitos=weekdayDatesMentioned(normalizedQuestion,today())
+  if(wdsDitos.length===1){const wd=new Date(wdsDitos[0]+'T12:00:00-03:00').getUTCDay();if(wd!==0&&wd!==1)next.dia_semana_pedido=wdsDitos[0]}
+  const recusaSecaDoDia=normalizedQuestion.length<=40&&!/\?/.test(normalizedQuestion)
+   &&/^(?:(?:ah|ih|poxa|putz|pois e|entao|mas|ai)[\s,.!]+)?(?:(?:nao|n)[\s,.!]*(?:da|dara|vai dar|posso|consigo|rola|serve|fica bom|tenho como|vou poder)|(?:esse|nesse|este|neste) dia (?:nao|n)(?: da| posso| consigo)?|fica dificil|complicado)\b/.test(normalizedQuestion)
+   &&!extractRequestedTime(message)&&!detectPeriod(normalizedQuestion)&&!wdsDitos.length&&!/\b(hoje|amanha|semana)\b/.test(normalizedQuestion)
+  const diaOferecido=String(state?.date||'')
+  const outraPendencia=Object.keys(state||{}).some(k=>k.startsWith('pending_')&&k!=='pending_waitlist'&&(state as any)[k])
+  if(recusaSecaDoDia&&diaOferecido&&diaOferecido>=today()&&chosen.length&&!outraPendencia&&!next.completed&&!['cancel','reschedule','change_service','update_products'].includes(intent)){
+   const durR=chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)
+   const pref=String(next.dia_semana_pedido||state?.dia_semana_pedido||'')
+   let alvo:{date:string,slots:string[]}|null=null
+   if(pref&&pref>=somarDiasIso(today(),-7)){
+    const wdPref=new Date(pref+'T12:00:00-03:00').getUTCDay()
+    const wdOferecido=new Date(diaOferecido+'T12:00:00-03:00').getUTCDay()
+    // ofereci o próprio dia da semana dele e não deu → a semana seguinte a essa; ofereci outro dia → a seguinte à que ele pediu
+    alvo=await mesmoDiaSemanaSeguinte(supabase,wdOferecido===wdPref?diaOferecido:pref,durR)
+    if(alvo&&alvo.date===diaOferecido)alvo=await mesmoDiaSemanaSeguinte(supabase,diaOferecido,durR)
+   }
+   const nomeR=hasCustomer&&customerFirstName!=='cliente'?`, ${customerFirstName}`:''
+   if(alvo){
+    const amostra=slotsSample(alvo.slots)
+    reply=`Entendi${nomeR}. ${emDiaCap(alvo.date)} tenho ${listaOu(amostra)}. ${amostra.length>1?'Qual fica melhor?':'Posso reservar?'}`
+    actions=amostra.map((t:string)=>({label:t,message:t}))
+    next.date=alvo.date
+   }else{
+    reply=`Entendi${nomeR}, ${emDia(diaOferecido)} não dá. Qual dia fica melhor pra você?`
+    actions=[]
+    next.date=null
+   }
+   next.time=null
+   next.pending_waitlist=null
+   if(next.sales_stage==='postponed')next.sales_stage=state?.sales_stage||null // não é desistência: ele quer outro dia
+   intent='other'
+   handoff=false
+  }
+ }
+
  dropPezinhoSeTemCorte()
  dropBarbaRedundante()
  // v29.64.0 — caso Helder (22/08, 09h52): a JuIA ofereceu "13:45 — serve pra você?", ele
