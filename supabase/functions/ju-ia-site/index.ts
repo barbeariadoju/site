@@ -381,7 +381,16 @@ const greetingNow=()=>{
 // v29.273.0 (caso Juliano Prando): tira da frase o horário que é de um compromisso do cliente ("ultrassom às
 // 7h55", "saio do trabalho 18h") para o extrator não confundir com o horário que ele quer na barbearia.
 const semHorarioDeCompromisso=(text='')=>String(text).replace(/\b(exame|ultrassom|ultra\s?som|ultrason|consulta|medic[oa]|médic[oa]|dentista|reuni[aã]o|trabalho|aula|compromisso|prova|voo|[oô]nibus|entrevista|audi[eê]ncia)\b[^.!?\n]{0,25}?(?:[aà]s\s*)?\d{1,2}(?:[:hH.,;]\d{2}|\s*h(?:s|rs?|oras?)?\b)/gi,' ')
+// v29.293.0 — caso Felipe (13/10/2026, 17h53): "De tarde, de 5:30 em diante" recebeu três vezes "às 05:30
+// ainda estamos fechados". Abrimos 08:30: hora de 1 a 7 sem "manhã/madrugada" na frase é da tarde.
 const extractRequestedTime=(text='')=>{
+ const t=extractRequestedTimeCru(text)
+ const h=Number(t.slice(0,2))
+ if(!t||h<1||h>7)return t
+ if(/\b(manha|madrugada|cedo)\b/.test(String(text).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()))return t
+ return `${String(h+12).padStart(2,'0')}${t.slice(2)}`
+}
+const extractRequestedTimeCru=(text='')=>{
  // v29.51.0 — caso Luiz André (19/08): "11.00 horas" caía no fallback de hora sem
  // minutos, que casava o "00" antes de "horas" e devolvia 00:00 ("meia-noite já está
  // reservado"). Hora com PONTO só vale quando é claramente horário: precedida de
@@ -526,6 +535,24 @@ const findService=(name:string)=>{
  const score=(s:typeof services[number])=>Math.abs(normalize(s.name).length-n.length)+((s.name.includes('+')&&!wantsCombo)?4:0)
  return candidates.reduce((best,s)=>score(s)<score(best)?s:best)
 }
+// v29.293.0 — caso Magno (13/10/2026, 14h48): o último atendimento foi "Corte de cabelo + Depilação nasal
+// (cera quente) + Depilação orelhas + Pigmentação Capilar (Tintura)" e a JuIA ofereceu repetir só a
+// Pigmentação. Nome de atendimento com vários serviços vira a lista deles; combo do catálogo ("Corte +
+// Barba Express") continua um serviço só.
+const servicosDoNome=(name:string)=>{
+ const inteiro=services.find(s=>normalize(s.name)===normalize(name))
+ if(inteiro)return [inteiro]
+ const partes=String(name).split(/\s+\+\s+/).map(p=>p.trim()).filter(Boolean)
+ const achados:typeof services=[]
+ for(let i=0;i<partes.length;){
+  let j=partes.length
+  for(;j>i+1;j--){const s=services.find(x=>normalize(x.name)===normalize(partes.slice(i,j).join(' + ')));if(s){achados.push(s);break}}
+  if(j===i+1){const s=findService(partes[i]);if(s)achados.push(s)}
+  i=j
+ }
+ return achados
+}
+const duracaoFalada=(min:number)=>min<60?`${min} min`:`${Math.floor(min/60)}h${min%60?String(min%60).padStart(2,'0'):''}`
 const findProduct=(name:string)=>products.find(p=>normalize(p.name)===normalize(name))||products.find(p=>normalize(p.name).includes(normalize(name))||normalize(name).includes(normalize(p.name)))
 // Pedido do Juliano (31/07/2026, dia em que fechou um sábado fora do padrão): quando o
 // dia pedido pelo cliente não tem horário nenhum (feriado, dia bloqueado, fechado), a JuIA
@@ -1411,10 +1438,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let pediuHumano=false
  {
   const q=normalize(message)
+  // v29.293.0 (caso Moisés, 13/10/2026, 18h06): "Falar com o Junior" recebeu a oferta de amanhã de novo —
+  // alguns clientes chamam o Juliano de Junior.
   // v29.212.0 (caso Rafael, 17/09/2026): "falo direto com o Juliano?" e, depois, "queria falar com ele"
   // não casavam — a JuIA respondeu que era assistente virtual e seguiu atendendo. Ver _shared/leitura-cliente.ts.
   const ultimaFalaCitaJuliano=/juliano/i.test(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
-  const pedeHumano=pedeFalarComJuliano(q,ultimaFalaCitaJuliano)||/\b(falar|conversar)\s+(com\s+)?(o\s+)?(juliano|ju|barbeiro|dono|humano|pessoa|atendente|alguem)\b|\b(juliano|ju)\s+(consegue|pode|poderia)\s+(falar|me atender|responder)\b|\b(nao|n)\s+(quero|gosto d[ae]|to querendo)\s+(a\s+)?(inteligencia artificial|ia\b|robo|bot|maquina)|\b(chama|chame|chamar|passa|passe)\s+(o\s+)?(juliano|ju|barbeiro|dono)\b|\bquero (uma )?pessoa\b|\b(e|eh|é) (um )?(robo|bot|inteligencia artificial)\?/.test(q)
+  const pedeHumano=pedeFalarComJuliano(q,ultimaFalaCitaJuliano)||/\b(falar|conversar)\s+(com\s+)?(o\s+)?(juliano|ju|junior|barbeiro|dono|humano|pessoa|atendente|alguem)\b|\b(juliano|ju)\s+(consegue|pode|poderia)\s+(falar|me atender|responder)\b|\b(nao|n)\s+(quero|gosto d[ae]|to querendo)\s+(a\s+)?(inteligencia artificial|ia\b|robo|bot|maquina)|\b(chama|chame|chamar|passa|passe)\s+(o\s+)?(juliano|ju|barbeiro|dono)\b|\bquero (uma )?pessoa\b|\b(e|eh|é) (um )?(robo|bot|inteligencia artificial)\?/.test(q)
   if(pedeHumano&&!/\bcancel|remarc|\bpix\b|chave/.test(q)){
    pediuHumano=true
    reply=barbeariaAbertaAgora()?'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder. 🙏':'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar. 🙏'
@@ -1439,6 +1468,22 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    intent='other';handoff=false;actions=[]
    next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+  }
+ }
+ // v29.293.0 — caso Juliano (cliente, 14/10/2026, 08h26): horário das 09:00, escreveu "Se puder antes me avisa /
+ // Tenho cliente as 10" e recebeu "Vamos remarcar seu agendamento… Para qual dia e horário?". Ele quer ADIANTAR
+ // se der, sem perder o horário. Resposta fixa, o horário fica como está e o Juliano recebe o pedido.
+ if(!pediuHumano&&!chegadaTratada&&verifiedPhone&&/\b(antes|mais cedo|adiantar|antecipar)\b/.test(normalize(message))&&/\b(avisa|avise|me chama|me fala|da um toque)\b|\bse (puder|der|conseguir|liberar)\b/.test(normalize(message))&&!/\b(cancel|remarc|outro dia)/.test(normalize(message))){
+  const deHoje=bookingsEmAndamento[0]||upcomingBookings.find((b:any)=>b&&b.booking_date===today())
+  if(deHoje){
+   chegadaTratada=true
+   const horaB=String(deHoje.start_time||'').slice(0,5)
+   reply=`Combinado. Seu horário das ${horaB} continua guardado; se der para te atender antes, te aviso por aqui.`
+   intent='other';handoff=false;actions=[]
+   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   const psA=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
+   if(psA)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psA},body:JSON.stringify({custom:{title:`Quer vir antes das ${horaB}`,body:`${String(context?.name||next.name||'Cliente')} pediu para ser atendido antes, se der. Responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`antes-${verifiedPhone}`}})}).catch(()=>{})
   }
  }
  // v29.234.0 — caso Juca (25/09/2026, 07h54): "a gente marcou o horário de hoje?" levou só a lista de vagas
@@ -1746,13 +1791,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
 
  if(hasCustomer && repeatRequest){
-  if(lastService){
-   next.services=[lastService.name]
-   if(!next.servicos_escolhidos.includes(lastService.name))next.servicos_escolhidos.push(lastService.name) // v29.274.0: ele pediu o de sempre
-   next.pending_repeat_service=lastService.name
+  const ultimos=servicosDoNome(lastServiceName)
+  if(lastService&&ultimos.length){
+   const nomes=ultimos.map(s=>s.name)
+   const minutos=ultimos.reduce((t,s)=>t+(s.duration||0),0)
+   next.services=nomes
+   for(const n of nomes)if(!next.servicos_escolhidos.includes(n))next.servicos_escolhidos.push(n) // v29.274.0: ele pediu o de sempre
+   next.pending_repeat_service=nomes.join(' + ')
    next.upsell_services_done=true
    next.sales_stage='repeat_confirmation'
-   reply=`${customerFirstName}, seu último atendimento foi ${lastService.name}${lastVisitBR?` em ${lastVisitBR}`:''}. Quer repetir esse serviço?`
+   // v29.293.0 (caso Magno): a pergunta era "quanto tempo pra fazer igual da última vez?" — a duração vai junto.
+   reply=`${customerFirstName}, seu último atendimento foi ${nomes.join(' + ')}${lastVisitBR?` em ${lastVisitBR}`:''}${minutos?`, leva aproximadamente ${duracaoFalada(minutos)}`:''}. Quer repetir ${nomes.length>1?'esses serviços':'esse serviço'}?`
    actions=[
     {label:'Sim, repetir',message:'Sim, quero repetir meu último atendimento'},
     {label:'Escolher outro',url:'https://www.barbeariadoju.com.br/agendar/'}
@@ -1767,14 +1816,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
 
  if(hasCustomer && simpleYes && state?.pending_repeat_service){
-  const repeated=findService(String(state.pending_repeat_service))
-  if(repeated){
-   next.services=[repeated.name]
+  const repetidos=servicosDoNome(String(state.pending_repeat_service))
+  if(repetidos.length){
+   next.services=repetidos.map(s=>s.name)
    next.pending_repeat_service=null
    next.upsell_services_done=true
    next.upsell_products_done=true
    next.sales_stage='schedule'
-   reply=`Perfeito, ${customerFirstName}! Vou repetir ${repeated.name}. Qual dia você prefere?`
+   reply=`Perfeito, ${customerFirstName}! Vou repetir ${next.services.join(' + ')}. Qual dia você prefere?`
    actions=[]
    intent='other'
    handoff=false
@@ -3733,7 +3782,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // Manhã, tarde ou final do dia?" — a oferta inteira de novo, e o Juliano entrou na mão. Recusar os
   // horários oferecidos, sem trazer dia, horário ou período novo, é dispensa. Se ele tinha pedido um
   // horário de hoje, o Juliano recebe o aviso: é ele quem decide se dá para encaixar.
-  const recusaDeHorario=!/\?/.test(q)&&/\b(outro horario|outra hora|outros horarios|esses horarios|esse horario|nesses horarios|nesse horario)\b[\s\S]{0,25}\b(dificil|complicad|nao da|nao consigo|nao posso|nao rola|nao serve|nao fica bom)|\b(fica|e|seria|ta|esta) (meio |bem |muito |mais )?(dificil|complicad)/.test(q)
+  // v29.293.0 — caso Antonio (13/10/2026, 17h54): "Infelizmente não consigo ir nesses horários" (a recusa
+  // ANTES do "nesses horários") recebeu a mesma lista de novo. Caso Ana (12h23): "Nossa então não consigo
+  // ir", logo depois da lista de horários de hoje, caiu no "me embolei aqui". As duas são recusa dos
+  // horários oferecidos.
+  const ofereceuHorarios=/\b\d{2}:\d{2}\b/.test(ultimaFalaJuIA)
+  const recusaCurtaDaLista=ofereceuHorarios&&q.length<=40&&/^(\S+ )?(entao )?(infelizmente )?(nao|n) (consigo|posso|da|vou conseguir)( ir)?[\s.!]*$/.test(q)
+  const recusaDeHorario=!/\?/.test(q)&&(/\b(outro horario|outra hora|outros horarios|esses horarios|esse horario|nesses horarios|nesse horario)\b[\s\S]{0,25}\b(dificil|complicad|nao da|nao consigo|nao posso|nao rola|nao serve|nao fica bom)|\b(fica|e|seria|ta|esta) (meio |bem |muito |mais )?(dificil|complicad)/.test(q)
+    ||/\b(nao|n) (consigo|posso|da|rola|serve|vou conseguir)\b[\s\S]{0,15}\b(n?esses?|n?esse) horarios?\b/.test(q)
+    ||recusaCurtaDaLista)
    &&!extractRequestedTime(message)&&!detectPeriod(q)&&!weekdayDatesMentioned(q,today()).length&&!/\b(amanha|outro dia|semana que vem)\b/.test(q)
   // v29.281.0 — recusa do DIA (caso 08/10/2026, 14h57): "Amanhã pra mim nn da pk eu sai do serviço e vou
   // pra São Paulo" recebeu "Consigo te atender amanhã sim!". Um dia citado + "não dá/não posso/não consigo",
@@ -3750,18 +3807,22 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    handoff=false
    next.date=null
   }
-  const pedidoDeHoje=recusaDeHorario&&state?.last_requested_time&&(state?.last_requested_date||state?.date)===today()?String(state.last_requested_time).slice(0,5):''
+  // v29.293.0 — caso Antonio: o horário que ele pediu era de AMANHÃ (18:30, por causa do trabalho). O
+  // Juliano encaixou na mão. Pedido de horário recusado vai para o Juliano hoje ou amanhã, não só hoje.
+  const diaDoPedido=String(state?.last_requested_date||state?.date||'')
+  const pedidoDeHoje=recusaDeHorario&&state?.last_requested_time&&(diaDoPedido===today()||diaDoPedido===addDaysISO(today(),1))?String(state.last_requested_time).slice(0,5):''
+  const diaDoPedidoFalado=diaDoPedido===today()?'hoje':'amanhã'
   const dispensaPura=q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(!diaRecusado&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
-   reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar às ${pedidoDeHoje}; se der, te respondo por aqui.`:'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
+   reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar ${diaDoPedidoFalado} às ${pedidoDeHoje}; se der, te respondo por aqui.`:recusaCurtaDaLista?'Entendi. Qual horário ficaria bom para você? Eu vejo se consigo, ou te ofereço outro dia.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
    if(pedidoDeHoje&&!next.dismissed){
     const psE=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
-    if(psE)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psE},body:JSON.stringify({custom:{title:`Pedido de encaixe às ${pedidoDeHoje}`,body:`${next.name||contextFullName||'Cliente'} queria hoje às ${pedidoDeHoje} e recusou os outros horários. Se der para encaixar, responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`encaixe-${verifiedPhone||'site'}-${pedidoDeHoje}`}})}).catch(()=>{})
+    if(psE)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psE},body:JSON.stringify({custom:{title:`Pedido de encaixe às ${pedidoDeHoje}`,body:`${next.name||contextFullName||'Cliente'} queria ${diaDoPedidoFalado} às ${pedidoDeHoje} e recusou os outros horários. Se der para encaixar, responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`encaixe-${verifiedPhone||'site'}-${pedidoDeHoje}`}})}).catch(()=>{})
    }
    actions=[]
    intent='other'
    handoff=false
-   next.dismissed=true
+   next.dismissed=!(recusaCurtaDaLista&&!pedidoDeHoje) // perguntou o horário que serve: a conversa segue aberta
   }else if(next.dismissed&&(temPedidoNovo||intent==='book'||intent==='availability')){
    // Cliente voltou com pedido de verdade depois da dispensa — conversa reabre normal.
    next.dismissed=null

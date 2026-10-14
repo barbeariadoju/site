@@ -1041,5 +1041,40 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('74c "Não dá" sem dia preferido: pergunta qual dia, sem repetir a terça', /Qual dia fica melhor/.test(r6.reply) && !/08:30|15:00/.test(r6.reply) && !r6.state?.date, { reply: r6.reply, date: r6.state?.date })
 }
 
+{
+  // v29.293.0 — revisão de 14/10/2026 (conversas de 13 e 14/10)
+  const svc = { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'] }
+  // Felipe 17h53: "De tarde, de 5:30 em diante" → é 17:30, não "às 05:30 ainda estamos fechados"
+  const r1 = await turno({ msg: 'De tarde, de 5:30 em diante', state: { ...svc, date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } },
+    contexto: ctxCliente('Felipe Teste'), vagas: { [amanha]: ['09:40', '14:00', '17:30', '18:00'] } })
+  checar('75a "5:30" à tarde é 17:30, não madrugada', !/05:30|ainda estamos fechados/.test(r1.reply) && /17:30/.test(r1.reply), r1.reply)
+  const r1b = await turno({ msg: 'às 7:30 da manhã tem?', state: { ...svc, date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } },
+    contexto: ctxCliente('Felipe Teste'), vagas: { [amanha]: ['09:40', '14:00'] } })
+  checar('75b "7:30 da manhã" continua sendo manhã (fechado)', /ainda estamos fechados/.test(r1b.reply), r1b.reply)
+  // Antonio 17h54: "Infelizmente não consigo ir nesses horários" depois da lista de amanhã → não repete a lista
+  const lista = 'Amanhã consigo te atender entre 09:40 e 13:30 — por exemplo 09:40, 10:45, 12:15 ou 13:30. Qual fica melhor pra você?'
+  const r2 = await turno({ msg: 'Infelizmente não consigo ir nesses horários', history: [{ role: 'assistant', content: lista }],
+    state: { ...svc, date: amanha, last_requested_time: '18:30', last_requested_date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Antonio Teste'), vagas: { [amanha]: ['09:40', '10:45', '12:15', '13:30'] } })
+  checar('75c recusa dos horários: não repete a lista, leva 18:30 de amanhã ao Juliano', !/09:40/.test(r2.reply) && /amanhã às 18:30/.test(r2.reply) && r2.saidas.some((s: any) => s.url.includes('send-push')), r2.reply)
+  // Ana 12h23: "Nossa então não consigo ir" depois dos horários de hoje → pergunta o horário que serve
+  const r3 = await turno({ msg: 'Nossa🥲 então não consigo ir', history: [{ role: 'assistant', content: 'Para Corte de cabelo hoje, estes são os horários disponíveis: 15:00, 15:15, 16:45. Qual você prefere?' }],
+    state: { ...svc, date: hoje }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Ana Teste'), vagas: { [hoje]: ['15:00', '15:15', '16:45'] } })
+  checar('75d "então não consigo ir": pergunta qual horário serve', /Qual horário ficaria bom/.test(r3.reply) && !/15:00/.test(r3.reply) && !r3.state?.dismissed, r3.reply)
+  // Moisés 18h06: "Falar com o Junior" → chama o Juliano
+  const r4 = await turno({ msg: 'Falar com o Junior', state: { ...svc, date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Moises Teste'), vagas: { [amanha]: ['09:40'] } })
+  checar('75e "Falar com o Junior" vira pedido de gente', /avisar o Juliano/.test(r4.reply) && !/09:40/.test(r4.reply), r4.reply)
+  // Magno 14h48: repetir o atendimento de 4 serviços, com a duração
+  const r5 = await turno({ msg: 'Quanto tempo pra fazer (corte tintura limpeza) igual da ultima vez ?', state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Magno Teste', { last_services: 'Corte de cabelo + Depilação nasal (cera quente) + Depilação orelhas + Pigmentação Capilar (Tintura)', last_visit: '2026-09-17' }) })
+  checar('75f repetir: os 4 serviços e a duração', /Corte de cabelo \+ Depilação nasal \(cera quente\) \+ Depilação orelhas \+ Pigmentação Capilar/.test(r5.reply) && /2h25/.test(r5.reply), r5.reply)
+  const r5b = await turno({ msg: 'Sim', state: r5.state, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctxCliente('Magno Teste', { last_services: 'Corte de cabelo + Depilação nasal (cera quente) + Depilação orelhas + Pigmentação Capilar (Tintura)' }) })
+  checar('75g "sim" guarda os 4 serviços', (r5b.state?.services || []).length === 4, r5b.state?.services)
+  // Juliano (cliente) 08h26: "Se puder antes me avisa" com horário de hoje → não abre remarcação
+  const r6 = await turno({ msg: 'Se puder antes me avisa\nTenho cliente as 10', state: {}, ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Juliano Teste'),
+    futuros: [{ id: 'b75', booking_date: hoje, start_time: '09:00:00', service_name: 'Barba na navalha com toalha quente', status: 'confirmed' }] })
+  checar('75h "se puder antes me avisa": mantém o horário e avisa o Juliano', /continua guardado/.test(r6.reply) && !/Vamos remarcar/.test(r6.reply) && r6.saidas.some((s: any) => s.url.includes('send-push')), r6.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

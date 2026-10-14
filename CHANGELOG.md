@@ -1,3 +1,17 @@
+## 29.293.0 — JuIA: revisão de 13 e 14/10 — "5:30" é da tarde, recusa da lista, "Junior", repetir o pacote inteiro, "se puder antes" (14/10)
+
+**Plano do dia de 14/10, varredura das conversas de 13 e 14/10 (37 telefones).**
+- **Caso Felipe (13/10, 17h53):** *"De tarde, de 5:30 em diante"* recebeu três vezes *"às 05:30 ainda estamos fechados"*. Hora de 1 a 7 sem "manhã/madrugada/cedo" na frase agora é da tarde (17:30). "7:30 da manhã" continua manhã.
+- **Caso Antonio (13/10, 17h54):** *"Infelizmente não consigo ir nesses horários"* (a recusa vinha antes do "nesses horários") recebeu a mesma lista. Agora conta como recusa. Como ele tinha pedido 18:30 de **amanhã**, a JuIA responde *"Vou ver com o Juliano se dá para te encaixar amanhã às 18:30"* e o Juliano recebe o push. Antes isso só valia para hoje, e foi o Juliano quem encaixou na mão.
+- **Caso Ana (13/10, 12h23):** *"Nossa então não consigo ir"* logo depois da lista de hoje caiu no *"Desculpe, me embolei aqui"*. Uma recusa curta logo depois de uma lista de horários agora recebe *"Entendi. Qual horário ficaria bom para você?"*, e a conversa continua aberta.
+- **Caso Moisés (13/10, 18h06):** *"Falar com o Junior"* recebeu a oferta de amanhã de novo. "Junior" entrou como nome do Juliano no pedido de falar com gente.
+- **Caso Magno (13/10, 14h48):** *"Quanto tempo pra fazer (corte tintura limpeza) igual da última vez?"* recebeu *"seu último atendimento foi Pigmentação Capilar (Tintura)"*, um dos quatro serviços e sem a duração. A pergunta ficou sem resposta duas vezes. Agora repete o atendimento inteiro (Corte + Depilação nasal + Depilação orelhas + Pigmentação, combo do catálogo continua um serviço só) e diz *"leva aproximadamente 2h25"*.
+- **Caso Rafael (13/10, 15h27):** três fotos no mesmo segundo geraram três avisos iguais de *"não consegui identificar nela um corte"*. As três chamadas checavam o "aviso recente" antes de qualquer uma enviar. Agora cada foto se registra antes, e só a primeira do lote (90 s) responde.
+- **Caso Juliano, cliente (14/10, 08h26):** *"Se puder antes me avisa / Tenho cliente as 10"* virou *"Vamos remarcar seu agendamento… Para qual dia e horário?"*. Agora o horário fica guardado (*"se der para te atender antes, te aviso por aqui"*) e o Juliano recebe o push.
+- **Já corrigidos na 29.290.0 (as conversas foram antes da publicação, às 12h04 de 13/10):** Frei (oferta vencida de 09/10), José Carlos e Cauã (lista das 3 barbas).
+- **Caso Gabriel (14/10, 17h06), decidido NÃO mudar:** ele pediu 17:30 e recebeu "hoje não tenho mais vaga". O Juliano achou que tinha horário, mas havia cliente às 18:00 e o corte dura 45 min. A JuIA estava certa. Ofereci deixar a JuIA encostar até 15 min no próximo cliente quando a cadeira está livre, e o Juliano respondeu "deixa como está".
+- Simulador: 75a–75h (casos acima), **195 ok**; 45f segue falhando por depender do dia. Unit 312, e2e 92.
+
 ## 29.292.0 — JuIA: "Não dá" seco depois de uma oferta de dia é recusa daquele dia (13/10)
 
 **Caso Venilson (12/10, 16h42), pedido do Juliano: "arruma isso".** Ele pediu sábado, ouviu *"voltamos na terça (20/10)…"*, respondeu *"Não dá"* e recebeu *"Consigo te atender na terça (20/10) sim!"* — a mesma terça. As recusas que a JuIA já conhecia precisavam do dia escrito na frase ("amanhã não posso", 29.281.0) ou de uma oferta de lista de espera aberta (29.69.0); o "Não dá" sozinho não casava com nenhuma.

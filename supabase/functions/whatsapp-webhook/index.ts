@@ -766,13 +766,22 @@ Deno.serve(async (request: Request) => {
           admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out')
             .like('body', '%não consegui identificar nela um corte%').gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString()).limit(1),
         ])
-        const silencioso = (textoRecente && textoRecente.length > 0) || (avisoRecente && avisoRecente.length > 0)
+        // v29.293.0 — caso Rafael (13/10/2026, 15h27): três fotos no mesmo segundo, três avisos iguais —
+        // as três chamadas checaram o "aviso recente" antes de qualquer uma ter enviado. Agora cada foto se
+        // registra ANTES e só a primeira do lote (90 s) pode responder.
+        const { data: fotoMinha } = await admin.from('whatsapp_messages')
+          .insert({ phone, direction: 'in', body: '[foto recebida, sem relação com corte/barba/cor identificada]' }).select('id').single()
+        const { data: fotosDoLote } = await admin.from('whatsapp_messages').select('id')
+          .eq('phone', phone).eq('direction', 'in').like('body', '[foto recebida, sem relação%')
+          .gte('created_at', new Date(Date.now() - 90 * 1000).toISOString())
+          .order('created_at', { ascending: true }).order('id', { ascending: true }).limit(1)
+        const primeiraDoLote = !fotoMinha?.id || !fotosDoLote?.length || fotosDoLote[0].id === fotoMinha.id
+        const silencioso = !primeiraDoLote || (textoRecente && textoRecente.length > 0) || (avisoRecente && avisoRecente.length > 0)
         if (!silencioso) {
           await sendWhatsapp(phone, `${greetingNow()}! 😊 Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?`)
         } else {
-          console.log('[whatsapp-webhook] foto nao relacionada: aviso suprimido (conversa em andamento ou aviso recente)', phone)
+          console.log('[whatsapp-webhook] foto nao relacionada: aviso suprimido (conversa em andamento, aviso recente ou outra foto do mesmo lote)', phone)
         }
-        await admin.from('whatsapp_messages').insert({ phone, direction: 'in', body: '[foto recebida, sem relação com corte/barba/cor identificada]' })
         return json({ ok: true, skipped: 'image_not_related' })
       } else if (description) {
         // v29.82.0 (caso Rodrigo, 27/08 12h35): cliente COM horário marcado mandou selfie
