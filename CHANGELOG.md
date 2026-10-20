@@ -1,3 +1,10 @@
+## 29.296.0 — JuIA: "terça ou quarta" na resposta à oferta de retorno fica na semana da oferta (20/10)
+
+**Caso Vanessa, continuação (20/10, 16h50).** Depois da 29.295.0 ela foi atendida às 11:30 (corte do filho, R$ 50 no Pix, respondeu "1 satisfeita"). À oferta de retorno *"Quinta (05/11) às 11:30"* respondeu *"Precisa ser após as 15:00 de terça ou quarta feira."* e saiu *"Reservado! na quinta (05/11) às 15:00"* — o horário certo no dia que ela tinha acabado de recusar. Com **dois** dias citados, o bloco da oferta de retorno não usava nenhum e ficava o dia oferecido.
+- **Agora:** os dias da semana citados viram as datas **da semana da oferta** (terça 03/11, quarta 04/11 — é desse retorno que se fala, não da semana que vem), e o primeiro com vaga no horário pedido vence. Vale também para um dia só.
+- **A cliente:** reserva passada para terça (03/11) às 15:00 e mensagem em nome do Juliano explicando a correção, com a quarta como alternativa. Conversa devolvida à JuIA.
+- Simulador 77a (falha no código anterior), **205 ok**. Unit 314, e2e 92.
+
 ## 29.295.0 — JuIA: mensagens cruzadas não viram "me embolei", e o "me embolei" não tranca a conversa (20/10)
 
 **Caso Vanessa (20/10, 10h20), print do Juliano: "arruma a JuIA e faz ela continuar a conversa e converter o agendamento".** A JuIA mandou a lista da manhã às 10:20:50 (10:45, 11:00, 11:15, 11:30, 11:45) e ela perguntou *"Q horario?"* às 10:20:52 — as mensagens se cruzaram, ela não tinha lido. A IA regerou a mesma lista (o certo) e o anti-papagaio do webhook trocou por *"Desculpe, me embolei aqui"* **com takeover**: o *"11:30"* que ela mandou 15 s depois e o *"Ok"* ficaram sem resposta.

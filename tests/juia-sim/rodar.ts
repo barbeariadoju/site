@@ -1112,5 +1112,17 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('76e "mas obrigado" encerra com porta aberta', /quando quiser/i.test(rl.reply) && !/10:50/.test(rl.reply), rl.reply)
 }
 
+{
+  // v29.296.0 — caso Vanessa (20/10/2026, 16h50): oferta de retorno numa quinta, "Precisa ser após as 15:00 de
+  // terça ou quarta feira" → terça ou quarta DAQUELA semana, nunca a quinta oferecida.
+  let quinta = somar(hoje, 14); while (new Date(quinta + 'T12:00:00-03:00').getUTCDay() !== 4) quinta = somar(quinta, 1)
+  const terca2 = somar(quinta, -2), quarta2 = somar(quinta, -1)
+  const r = await turno({ msg: 'Precisa ser após as 15:00 de terça ou quarta feira.', state: { services: ['Corte de cabelo'], date: quinta, pending_rebook: { date: quinta, time: '11:30', services: ['Corte de cabelo'] } },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { time: '15:00' } }, contexto: ctxCliente('Vanessa Teste'),
+    vagas: { [terca2]: ['15:00', '16:00'], [quarta2]: ['15:00'], [quinta]: ['11:30', '15:00'] } })
+  const dia = r.state?.date
+  checar('77a "terça ou quarta" à oferta de quinta: fica na terça/quarta da mesma semana', (dia === terca2 || dia === quarta2) && !new RegExp(`${quinta.slice(8, 10)}/${quinta.slice(5, 7)}`).test(r.reply), { dia, reply: r.reply })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

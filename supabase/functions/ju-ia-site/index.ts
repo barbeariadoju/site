@@ -2442,7 +2442,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // horário, dia, período ou "sim": segue o fluxo normal de disponibilidade/reserva, com o
    // serviço do agendamento cancelado já anotado e o dia oferecido como padrão.
    if(!next.services.length&&rbNames.length){next.services=rbNames;chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)}
-   if(rbSemana.length===1&&!ai.updates?.date)next.date=rbSemana[0]
+   // v29.296.0 — caso Vanessa (20/10/2026, 16h50): à oferta "quinta (05/11) às 11:30" respondeu "Precisa ser
+   // após as 15:00 de terça ou quarta feira" e a reserva saiu na QUINTA 15:00. Com dois dias citados, nenhum
+   // entrava e ficava o dia oferecido. Agora os dias da semana citados viram as datas da semana da oferta
+   // (terça 03/11, quarta 04/11) — é desse retorno que se está falando, não da semana que vem — e o primeiro
+   // com vaga no horário pedido vence.
+   if(rbSemana.length&&!ai.updates?.date&&rb.date){
+    const base=new Date(String(rb.date)+'T12:00:00-03:00')
+    const naSemanaDaOferta=rbSemana.map((iso:string)=>{
+     const alvo=new Date(iso+'T12:00:00-03:00').getUTCDay()
+     const d=new Date(base);d.setUTCDate(d.getUTCDate()+(((alvo-base.getUTCDay())+7)%7>3?((alvo-base.getUTCDay())+7)%7-7:((alvo-base.getUTCDay())+7)%7))
+     const out=d.toISOString().slice(0,10)
+     return out>=today()?out:iso
+    }).sort()
+    let escolhido=naSemanaDaOferta[0]
+    if(rbTime&&naSemanaDaOferta.length>1){
+     for(const iso of naSemanaDaOferta){
+      const {data:sl}=await supabase.rpc('get_available_slots',{p_date:iso,p_duration_minutes:rbNames.reduce((a:number,n:string)=>a+Number(findService(n)?.duration||0),0)||45})
+      if((sl||[]).some((x:any)=>String(x.slot_time).slice(0,5)===rbTime)){escolhido=iso;break}
+     }
+    }
+    next.date=escolhido
+   }
    else if(rbAmanha&&!ai.updates?.date){const am=new Date(today()+'T12:00:00-03:00');am.setDate(am.getDate()+1);next.date=am.toISOString().slice(0,10)}
    else if(/\bhoje\b/.test(normalizedQuestion)&&!ai.updates?.date)next.date=today()
    if(!next.date)next.date=rb.date
