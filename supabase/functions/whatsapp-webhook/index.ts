@@ -2363,10 +2363,11 @@ Deno.serve(async (request: Request) => {
           // papagaio (suprimir é certo). Repetir resposta para quem perguntou algo NOVO é a IA
           // travada — e aí silêncio é o pior desfecho possível. Nesse caso não calamos: a
           // JuIA assume que empacou, responde curto e honesto, e chama o Juliano.
+          let embolouSemTrancar = false
           if (lastOut && lastOut.body === reply && Date.now() - new Date(lastOut.created_at).getTime() < 10 * 60 * 1000) {
             const { data: ultimasEntradas } = await admin
               .from('whatsapp_messages')
-              .select('body')
+              .select('body, created_at')
               .eq('phone', phone)
               .eq('direction', 'in')
               .order('created_at', { ascending: false })
@@ -2374,15 +2375,26 @@ Deno.serve(async (request: Request) => {
             const norm = (s: string) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim()
             const clienteRepetiu =
               (ultimasEntradas?.length ?? 0) >= 2 && norm(ultimasEntradas![0].body) === norm(ultimasEntradas![1].body)
+            // v29.295.0 — caso Vanessa (20/10/2026, 10h20): a JuIA mandou a lista da manhã às 10:20:50 e ela
+            // perguntou "Q horario?" às 10:20:52 — as mensagens se cruzaram, ela ainda não tinha lido a lista.
+            // A IA regerou a mesma lista (certo), e este bloco trocou por "me embolei" + takeover: o "11:30"
+            // que ela mandou 15 s depois ficou sem resposta e o Juliano teve que ver pelo print. Pergunta que
+            // chegou até 30 s depois da nossa resposta foi feita sem ter lido: a resposta já está lá, silêncio.
+            const cruzou = Boolean(ultimasEntradas?.[0]?.created_at) &&
+              new Date(ultimasEntradas![0].created_at).getTime() - new Date(lastOut.created_at).getTime() <= 30 * 1000
 
-            if (clienteRepetiu) {
-              console.log('[whatsapp-webhook] anti-papagaio: cliente repetiu a mesma mensagem, resposta suprimida', phone)
+            if (clienteRepetiu || cruzou) {
+              console.log('[whatsapp-webhook] anti-papagaio: resposta suprimida', cruzou ? '(mensagens cruzadas)' : '(cliente repetiu)', phone)
+              await admin.from('whatsapp_conversations').update({ state: ai.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
               return
             }
 
             console.warn('[whatsapp-webhook] IA repetiu resposta para pergunta nova — contornando em vez de calar', phone)
             reply = 'Desculpe, me embolei aqui. Já estou vendo isso certinho com o Juliano e te respondo em instantes.'
-            handoff = true
+            // v29.295.0 (mesmo caso): o "me embolei" avisa o Juliano, mas não tranca a conversa — a próxima
+            // mensagem do cliente (um horário, um "sim") a JuIA resolve. Se o Juliano responder na mão, o eco
+            // dele liga o takeover como sempre.
+            embolouSemTrancar = true
           }
 
           // v29.43.0 — caso Guilherme Silva (17/08, 18:43): tres mensagens picadas em 14s
@@ -2443,7 +2455,7 @@ Deno.serve(async (request: Request) => {
             updated_at: new Date().toISOString(),
           }).eq('phone', phone)
 
-          if (handoff) {
+          if (handoff || embolouSemTrancar) {
             const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
             if (pushSecret) {
               await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -2452,7 +2464,9 @@ Deno.serve(async (request: Request) => {
                 body: JSON.stringify({
                   custom: {
                     title: '💬 WhatsApp precisa de você',
-                    body: `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`,
+                    body: handoff
+                      ? `A JuIA não conseguiu resolver com ${phone}. Continue a conversa pelo WhatsApp.`
+                      : `A JuIA se embolou com ${phone}. Ela segue atendendo a próxima mensagem; confira a conversa.`,
                     url: 'https://wa.me/' + phone,
                     tag: `whatsapp-handoff-${phone}`,
                   },

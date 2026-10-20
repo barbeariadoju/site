@@ -1,3 +1,11 @@
+## 29.295.0 — JuIA: mensagens cruzadas não viram "me embolei", e o "me embolei" não tranca a conversa (20/10)
+
+**Caso Vanessa (20/10, 10h20), print do Juliano: "arruma a JuIA e faz ela continuar a conversa e converter o agendamento".** A JuIA mandou a lista da manhã às 10:20:50 (10:45, 11:00, 11:15, 11:30, 11:45) e ela perguntou *"Q horario?"* às 10:20:52 — as mensagens se cruzaram, ela não tinha lido. A IA regerou a mesma lista (o certo) e o anti-papagaio do webhook trocou por *"Desculpe, me embolei aqui"* **com takeover**: o *"11:30"* que ela mandou 15 s depois e o *"Ok"* ficaram sem resposta.
+- **Mensagem cruzada:** se a pergunta do cliente chegou até 30 s depois da nossa resposta e a IA gerou a mesma resposta de novo, é porque ele ainda não tinha lido — silêncio (o estado é salvo), sem "me embolei".
+- **"Me embolei" sem trancar:** continua indo o push pro Juliano, mas a conversa não fica com ele. A próxima mensagem do cliente (um horário, um "sim") a JuIA resolve. Se o Juliano responder na mão, o eco dele liga o takeover como sempre. Antes, o takeover segurava a conversa por até 3 h.
+- **A cliente:** reservado na hora pela revisão, hoje às 11:30 (Corte de cabelo assumido, 45 min; corte + barba também cabe), mensagem em nome do Juliano perguntando "corte ou corte + barba?", e a conversa devolvida à JuIA com a reserva no estado.
+- Simulador 204 ok, unit 314, e2e 92.
+
 ## 29.294.0 — JuIA: revisão de 14 a 19/10 (viagem) — horário sem dia não vira reserva, foto não inventa barba, "qual o total?", adiamento com motivo, "até" confirma, robôs depois da pesquisa (20/10)
 
 **Plano do dia de 20/10, varredura das conversas de 14/10 (17h) a 20/10 (08h30), 44 telefones, 22 com resposta de cliente.**
