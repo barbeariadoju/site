@@ -1076,5 +1076,41 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('75h "se puder antes me avisa": mantém o horário e avisa o Juliano', /continua guardado/.test(r6.reply) && !/Vamos remarcar/.test(r6.reply) && r6.saidas.some((s: any) => s.url.includes('send-push')), r6.reply)
 }
 
+{
+  // v29.294.0 — revisão de 20/10/2026 (conversas de 14 a 19/10, viagem 15-17/10)
+  // Lucas 15/10 09h19 (dia fechado): "horário para corte às 14h?" → hoje não abre + OFERTA de outro dia, nunca reserva
+  for (const intentIA of ['availability', 'book']) {
+    const r = await turno({ msg: 'Gostaria de saber se teria horário para corte de cabelo, às 14h?', state: {},
+      ai: { intent: intentIA, reply: 'Vou ver.', updates: { date: amanha, time: '14:00', services: ['Corte de cabelo'] } },
+      contexto: ctxCliente('Lucas Teste'), fechados: [hoje], vagas: { [hoje]: [], [amanha]: ['10:50', '14:00', '15:00'] } })
+    checar(`76a (${intentIA}) "às 14h" sem dia com hoje fechado: oferece, não reserva`, !reservou(r) && /Hoje não/.test(r.reply) && /14:00/.test(r.reply), r.reply)
+  }
+  // Bruno 15/10 03h23: foto de raspado + desenho + cor → nada de Barba Express inventada
+  const foto = 'Cliente enviou uma foto de referência. Descrição da imagem: Corte bem curto e uniforme, raspado próximo à pele, com desenho de chamas em linhas bem definidas nas laterais e na parte traseira, preenchido com coloração rosa vibrante.'
+  const rb = await turno({ msg: foto, state: {}, ai: { intent: 'faq', reply: 'Consigo fazer a raspagem e o desenho. A cor precisa ser avaliada pelo Juliano antes. Você quer fazer a raspagem com o desenho?', updates: {} },
+    contexto: ctxCliente('Bruno Teste'), vagas: { [amanha]: ['10:50', '12:45'] } })
+  checar('76b foto sem barba não anota Barba Express', !(rb.state?.services || []).some((s: string) => /Barba/.test(s)) && !/Barba Express/.test(rb.reply), { reply: rb.reply, services: rb.state?.services })
+  const fotoAntiga = 'Cliente enviou uma foto de referência de corte/barba/cor. Descrição da imagem: Corte bem curto, raspado próximo à pele, com desenho de chamas nas laterais.'
+  const rb2 = await turno({ msg: fotoAntiga, state: {}, ai: { intent: 'faq', reply: 'Consigo fazer a raspagem com o desenho. Quer marcar?', updates: {} },
+    contexto: ctxCliente('Bruno Teste'), vagas: { [amanha]: ['10:50', '12:45'] } })
+  checar('76b2 cabeçalho antigo "corte/barba/cor" também não vira barba', !(rb2.state?.services || []).some((s: string) => /Barba/.test(s)), rb2.state?.services)
+  // Bruno 03h26: "Qual seria o total pf?" com serviço e dia na mesa → responde o valor (era "me embolei")
+  const rp = await turno({ msg: 'Qual seria o total pf?', history: [{ role: 'assistant', content: 'Consigo te atender na terça sim! Ainda tenho alguns horários para Raspar a cabeça + Freestyle (risquinho) (aproximadamente 60 min). Você prefere de manhã ou à tarde?' }],
+    state: { services: ['Raspar a cabeça', 'Freestyle (risquinho)'], date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Bruno Teste'), vagas: { [amanha]: ['08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] } })
+  checar('76c "qual o total?" responde o valor', /R\$ ?\d/.test(rp.reply), rp.reply)
+  // Alessandra 16/10 09h57: explica e adia ("vou ver com o meu marido e volto") → não repete a lista
+  const listaManha = 'Na terça, no período da manhã, estes são todos os horários disponíveis para aproximadamente 45 minutos: 10:50, 11:00, 11:15. Qual você prefere?'
+  const ra = await turno({ msg: 'De manhã meus filhos estudam! Vou ver com o meu marido e volto a falar com vc!!!', history: [{ role: 'assistant', content: listaManha }],
+    state: { services: ['Corte de cabelo'], date: amanha, period: 'morning' }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Alessandra Teste'), vagas: { [amanha]: ['10:50', '11:00', '11:15'] } })
+  checar('76d adiou com motivo: "fico no aguardo", sem a lista', /aguardo/.test(ra.reply) && !/10:50/.test(ra.reply), ra.reply)
+  // Laudiceia 16/10 18h47: "Só consigo amanhã / Mas obrigado" (amanhã fechado) → despedida, sem "me embolei"
+  const rl = await turno({ msg: 'Só consigo amanhã\nMas obrigado', history: [{ role: 'assistant', content: listaManha }],
+    state: { services: ['Corte de cabelo'], date: amanha }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Laudiceia Teste'), vagas: { [amanha]: ['10:50', '11:00', '11:15'] } })
+  checar('76e "mas obrigado" encerra com porta aberta', /quando quiser/i.test(rl.reply) && !/10:50/.test(rl.reply), rl.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

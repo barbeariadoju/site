@@ -781,6 +781,10 @@ Deno.serve(async req=>{
  })()
  let message=String(body.message||'').trim().slice(0,500)
  if(!message)return respond({error:'Mensagem vazia.'},400)
+ // v29.294.0 — caso Bruno (15/10/2026, 03h26): o cabeçalho da foto dizia "foto de referência de
+ // corte/barba/cor" e o "barba" do cabeçalho virou Barba Express na conta (R$ 140 por raspado + desenho).
+ // O webhook não escreve mais isso; aqui tira de conversas que ainda tenham o texto velho.
+ message=message.replace(/foto de referência de corte\/barba\/cor/gi,'foto de referência')
  // v29.2.0 — código de atribuição que viaja no texto quando a pessoa vem do site
  // pro WhatsApp (ex.: "[#abc12345]"). Tiramos da mensagem ANTES do modelo ver, pra
  // não poluir a conversa, e guardamos pra creditar o agendamento à visita de origem.
@@ -1638,7 +1642,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // nenhuma das formas acima — nem "quanto", nem "qual". Entram: "saber/passar/mandar/dizer o
  // valor", "valor?" sozinho (com ou sem "o"/"e o"/"qual" na frente) e "quanto?" solto.
  // v29.276.0 (caso Samuel): "Fica quanto tudo" — a ordem invertida não casava e virou "sim" à lavagem.
- const askedPrice=/(quanto (custa|e|fica|sai|da|deu|seria|vai (ficar|sair|dar)))|\b(fica|ficou|deu|sai|vai ficar|vai dar) quanto\b|\bquanto (tudo|no total|ao todo)\b|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$/.test(normalizedQuestion)
+ const askedPrice=/(quanto (custa|e|fica|sai|da|deu|seria|vai (ficar|sair|dar)))|\b(fica|ficou|deu|sai|vai ficar|vai dar) quanto\b|\bquanto (tudo|no total|ao todo)\b|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$|\bqual (seria|e|fica|ficaria|vai ser|deu) o (total|valor)\b|^(e )?(o )?total\s*\??\s*$/.test(normalizedQuestion)
  const isQuestion=/\?\s*$/.test(String(message||'').trim())||askedPrice
  // v29.153.0 — o valor do que já está escolhido, numa linha, pra sair (a) quando o cliente
  // pergunta o preço no meio do fluxo (rede de segurança no fim, e resposta própria no bloco
@@ -3812,9 +3816,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const diaDoPedido=String(state?.last_requested_date||state?.date||'')
   const pedidoDeHoje=recusaDeHorario&&state?.last_requested_time&&(diaDoPedido===today()||diaDoPedido===addDaysISO(today(),1))?String(state.last_requested_time).slice(0,5):''
   const diaDoPedidoFalado=diaDoPedido===today()?'hoje':'amanhã'
-  const dispensaPura=q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
+  // v29.294.0 — caso Alessandra (16/10/2026, 09h57): "De manhã meus filhos estudam! Vou ver com o meu marido e
+  // volto a falar com vc!!!" (70 letras) passou do limite de 60 e recebeu a MESMA lista da manhã de novo. Quem
+  // diz que vai ver com alguém e volta está adiando, mesmo explicando o porquê: até 140 letras, sem pergunta.
+  // Caso Laudiceia (16/10, 18h47): "Só consigo amanhã / Mas obrigado" (amanhã fechado) caiu no "me embolei" —
+  // "mas obrigado" fecha a conversa.
+  const adiouComMotivo=!temPedidoNovo&&!temPendencia&&q.length<=140&&!/\?/.test(q)&&(adiou||postponeSignal(q)||/\bvou (ver|falar|conversar) com (a |o |minha |meu )/.test(q))
+  const dispensaPura=adiouComMotivo||q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\bmas obrigad|\bagradeco mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(!diaRecusado&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
-   reply=next.dismissed?'':(adiou?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar ${diaDoPedidoFalado} às ${pedidoDeHoje}; se der, te respondo por aqui.`:recusaCurtaDaLista?'Entendi. Qual horário ficaria bom para você? Eu vejo se consigo, ou te ofereço outro dia.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
+   reply=next.dismissed?'':(adiou||adiouComMotivo?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar ${diaDoPedidoFalado} às ${pedidoDeHoje}; se der, te respondo por aqui.`:recusaCurtaDaLista?'Entendi. Qual horário ficaria bom para você? Eu vejo se consigo, ou te ofereço outro dia.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
    if(pedidoDeHoje&&!next.dismissed){
     const psE=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
     if(psE)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psE},body:JSON.stringify({custom:{title:`Pedido de encaixe às ${pedidoDeHoje}`,body:`${next.name||contextFullName||'Cliente'} queria ${diaDoPedidoFalado} às ${pedidoDeHoje} e recusou os outros horários. Se der para encaixar, responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`encaixe-${verifiedPhone||'site'}-${pedidoDeHoje}`}})}).catch(()=>{})
@@ -4095,6 +4105,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    }else if(!next.date)next.date=pedido
   }
  }
+ // v29.294.0 — caso Lucas (15/10/2026, 09h19, dia de viagem): "teria horário para corte às 14h?" — sem
+ // dia nenhum, o cliente quer HOJE. Hoje estava fechado, o dia foi pro próximo aberto e a reserva saiu
+ // direto: "Reservado! na terça (20/10) às 14:00". Ele respondeu "seria para hoje" e cancelou. Horário
+ // sem dia dito, sem dia combinado antes na conversa e caindo em outro dia que não hoje é OFERTA.
+ const diaNaoDito=Boolean(next.date)&&next.date!==today()&&!state?.date&&!diaPedidoNaMensagem(message)
+ const hojeFechadoNaoDito=diaNaoDito&&(diaFechadoInfo(today()).fechado||encerradoPeloExpediente)
  if(intent==='availability'&&!chosen.length){
   // v28.30.4: quando a pergunta é genérica mas já tem um DIA ("tem horário hoje?"),
   // responde na hora se aquele dia tem agenda aberta (sondando com duração mínima de
@@ -4412,7 +4428,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // pedir só o nome, e a mensagem seguinte (o nome) fecha a reserva com a oferta depois.
     // v29.212.0 (caso Tiago): pediu um dia em que não abrimos — o horário do dia seguinte é OFERTA
     // (a resposta explica o dia fechado e pergunta), nunca reserva direta.
-    if(verifiedPhone&&horarioNaMensagem&&!diaFechadoPedido){
+    if(verifiedPhone&&horarioNaMensagem&&!diaFechadoPedido&&!diaNaoDito){
      if(!next.name&&contextFullName&&!next.other_person)next.name=contextFullName
      // v29.140.0 (pedido do Juliano, 05/09/2026): a oferta de complemento só existe se o combo
      // CABE nesse horário — a agenda é consultada de novo com a duração somada; se não couber,
@@ -4698,12 +4714,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=`${emDiaCap(next.date)}, ${noPeriodo(effectivePeriod)}, estes são todos os horários disponíveis para aproximadamente ${duration} minutos: ${periodSlots.join(', ')}. Qual você prefere?`
     actions=periodSlots.map((t:string)=>({label:t,message:t}))
    }else{
-    reply=`${emDiaCap(next.date)} não tenho mais vaga ${noPeriodo(effectivePeriod)}. Posso mostrar outro período ou verificar outro dia.`
-    actions=[
-     {label:'Ver manhã',message:'Prefiro manhã'},
-     {label:'Ver tarde',message:'Prefiro tarde'},
-     {label:'Ver final do dia',message:'Prefiro final do dia'}
-    ]
+    // v29.294.0 — caso Cintia (09/10/2026): "Posso mostrar outro período ou verificar outro dia" sem
+    // nenhum horário; o "ver horários" seguinte repetia a negativa e caía no "me embolei". (A v29.288.0
+    // registrou o teste 45f, mas o código não foi junto — achado na revisão de 20/10.) Agora a resposta
+    // já traz o que sobra no dia e o próximo dia com vaga no período pedido; o período sai do estado.
+    const restoDia=allSlots.length?slotsSample(allSlots):[]
+    const proxPeriodo=await findNextAvailableDate(supabase,next.date,duration,14,(sl:string[])=>slotsForPeriod(sl,effectivePeriod))
+    const partes:string[]=[]
+    if(restoDia.length)partes.push(`${emDia(next.date)} ainda tenho ${listaOu(restoDia)}`)
+    if(proxPeriodo&&proxPeriodo.slots.length)partes.push(`${noPeriodo(effectivePeriod)}, ${emDia(proxPeriodo.date)} tenho ${listaOu(slotsSample(proxPeriodo.slots))}`)
+    reply=`${emDiaCap(next.date)} não tenho mais vaga ${noPeriodo(effectivePeriod)}.${partes.length?` ${partes.map((p)=>p.charAt(0).toUpperCase()+p.slice(1)).join('. ')}. Qual fica melhor pra você?`:' Quer que eu veja outro dia?'}`
+    actions=[...restoDia.map((t:string)=>({label:t,message:t})),...(proxPeriodo?slotsSample(proxPeriodo.slots).map((t:string)=>({label:`${diaHumano(proxPeriodo.date)} ${t}`,message:`${emDia(proxPeriodo.date)} às ${t}`})):[])]
+    next.period=null
    }
   }else if(allSlots.length>10&&anyPeriodOk){
    // Cliente já disse que qualquer horário serve: perguntar período de novo é o loop que
@@ -4785,6 +4807,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    }
   }
   }
+ }
+ // v29.294.0 (caso Lucas): a oferta do outro dia começa dizendo que hoje não abre — sem isso "Sim, na
+ // terça às 14:00 está livre" responde uma pergunta que ele não fez.
+ if(hojeFechadoNaoDito&&intent!=='book'&&reply&&!/não abre|não estamos abertos|agenda já está encerrada/.test(reply)){
+  reply=`${encerradoPeloExpediente&&!diaFechadoInfo(today()).fechado?'Por hoje a agenda já está encerrada':naoAbreFrase(today())}. ${reply.replace(/^Sim[!,]?\s*(✅\s*)?/i,'').replace(/^./,(c:string)=>c.toUpperCase())}`
  }
  dropPezinhoSeTemCorte()
  dropBarbaRedundante()
@@ -5142,8 +5169,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // calado sobre fidelidade (não sabe o contexto pra falar nada com segurança).
       const loyaltyRemaining=chosen.filter((s:any)=>s!==freedService)
       // v29.212.0: horário de outra pessoa (namorado, filho) não leva os pontos de quem é dono do telefone.
+      // v29.294.0 (caso Magno, 14/10): "seu Corte de hoje é por nossa conta" num horário de 12/11 — "desse dia".
       const loyaltyNote=!(verifiedPhone&&hasCustomer)||next.other_person?'':
-        rewardApplied&&freedService?(loyaltyRemaining.length?` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')} — e ainda pontua com ele(s) 😄`:` 🎁 Boa notícia: seu ${freedService.name} de hoje é por nossa conta, prêmio da fidelidade! Obrigado pela preferência 😄`):
+        rewardApplied&&freedService?(loyaltyRemaining.length?` 🎁 Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade! Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')} — e ainda pontua com ele(s) 😄`:` 🎁 Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade! Obrigado pela preferência 😄`):
         rewards>0?` A propósito, você já tem ${rewards} serviço(s) por nossa conta pela fidelidade — é só avisar quando quiser usar! 🎁`:
         // v29.189.0 — 1 ponto por serviço (combo do catálogo = 1 item de `chosen`): fecha o cartão quando os pontos + os serviços deste agendamento chegam a 10
         points+chosen.length>=10?` Ah, e esse atendimento vai completar seu cartão fidelidade — o próximo serviço é por nossa conta! 🎉`:

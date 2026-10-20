@@ -107,3 +107,15 @@ describe('servicosNegados', () => {
     expect(servicosNegados('Corte de cabelo', 'nao vou cortar')).toEqual([]);
   });
 });
+
+// v29.294.0 — caso Juliano (cliente, 20/10/2026): "Ate" ao aviso "até já" levava o 1/2/3 de novo.
+describe('lerRespostaConfirmacao — despedida curta', () => {
+  it('"até", "até já", "combinado", "beleza" confirmam', () => {
+    for (const t of ['ate', 'ate ja', 'ate mais!', 'combinado', 'beleza', 'blz', 'fechado', 'obrigado, ate ja']) {
+      expect(lerRespostaConfirmacao(t, 'hoje')).toBe('confirm');
+    }
+  });
+  it('frase com "até" no meio não vira confirmação', () => {
+    expect(lerRespostaConfirmacao('ate que horas voces ficam', 'hoje')).toBeNull();
+  });
+});

@@ -274,7 +274,7 @@ Deno.serve(async (request: Request) => {
   // liberou a vaga nem por quê.
   const { data: reopenedLeads, error: reopenedError } = await admin
     .from('conversation_leads')
-    .select('phone, customer_name, date_interest, service_interest, last_message_at')
+    .select('phone, customer_name, date_interest, service_interest, last_message_at, followup_stage')
     .not('slot_reopened_at', 'is', null)
     .is('slot_reopened_notified_at', null)
     .is('resolved_at', null)
@@ -293,6 +293,15 @@ Deno.serve(async (request: Request) => {
       // do lead tinha mudado às 09h59, e às 10h00 a vaga de hoje já nem existia mais. Agora: dia
       // passado ou sem vaga real = não avisa (e limpa a marca, pra uma reabertura de verdade poder
       // avisar depois). Com vaga, a mensagem traz os horários e o dia em português.
+      // v29.294.0 — casos Bruno e Alessandra (19/10/2026, 08h00): três dias depois da pesquisa "por que não
+      // fechou?" (sem resposta), saiu "Abriu vaga de novo amanhã, que era o dia que você queria". Mentira dupla:
+      // a terça foi o dia que a JuIA OFERECEU (o pedido era sábado, dia de viagem), e a vaga não tinha "aberto de
+      // novo". Lead que já recebeu a pesquisa está encerrado: a terceira mensagem sem resposta não sai.
+      if (Number(lead.followup_stage || 0) >= 2) {
+        await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
+        reopenedSkipped++
+        continue
+      }
       const dateISO = String(lead.date_interest || '').slice(0, 10)
       if (!dateISO || dateISO < todayBRT) {
         await admin.from('conversation_leads').update({ slot_reopened_at: null, slot_reopened_notified_at: null }).eq('phone', lead.phone)
@@ -314,7 +323,7 @@ Deno.serve(async (request: Request) => {
       const amanhaBRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 24 * 3600 * 1000))
       const diaLabel = dateISO === todayBRT ? 'hoje' : dateISO === amanhaBRT ? 'amanhã' : `pra ${formatDateBR(dateISO)}`
       const name = firstName(lead.customer_name)
-      await sendWhatsapp(lead.phone, `Boa notícia${name ? `, ${name}` : ''}! Abriu vaga de novo ${diaLabel}${lead.service_interest ? ` para ${lead.service_interest}` : ''}, que era o dia que você queria: tenho ${frase}. Quer que eu reserve um horário pra você?`)
+      await sendWhatsapp(lead.phone, `Boa notícia${name ? `, ${name}` : ''}! Abriu vaga ${diaLabel}${lead.service_interest ? ` para ${lead.service_interest}` : ''}, o dia que a gente tinha conversado: tenho ${frase}. Quer que eu reserve um horário pra você?`)
       await admin.from('conversation_leads').update({ slot_reopened_notified_at: new Date().toISOString() }).eq('phone', lead.phone)
       reopenedSent++
     } catch (error) {
@@ -439,6 +448,19 @@ Deno.serve(async (request: Request) => {
       if (await isResolved(lead.phone, lead.last_message_at, lead.kind)) {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
+      }
+      // v29.294.0 — viagem de 15 a 17/10/2026: seis clientes pediram horário com a barbearia fechada e
+      // dois dias depois levaram "por que não fechou o agendamento?". O motivo a gente sabe: estava fechado.
+      // Conversa feita em dia fechado (domingo, segunda ou "Fechar o dia inteiro") não recebe a pesquisa.
+      {
+        const diaConversa = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(lead.last_message_at))
+        const dow = new Date(diaConversa + 'T12:00:00-03:00').getUTCDay()
+        const { data: bloqueio } = await admin.from('schedule_blocks').select('id').eq('all_day', true).eq('block_date', diaConversa).limit(1)
+        if (dow === 0 || dow === 1 || (bloqueio && bloqueio.length)) {
+          await admin.from('conversation_leads').update({ followup_stage: 2, updated_at: new Date().toISOString() }).eq('phone', lead.phone)
+          nudge2Skipped++
+          continue
+        }
       }
       // v29.208.0: o "1️⃣" passava pelo semEmoji como "1⃣" (tecla ainda visível) — número em
       // negrito, como na confirmação de presença. O webhook lê a resposta pelo número/palavra.

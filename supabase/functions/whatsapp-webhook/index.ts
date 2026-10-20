@@ -804,7 +804,8 @@ Deno.serve(async (request: Request) => {
             body: JSON.stringify({ custom: { title: '📸 Foto de referência recebida', body: `${pushName || phone} mandou foto pro atendimento de ${quandoRef} — dá uma olhada no WhatsApp.`, url: `/admin-agenda.html?data=${bRef.booking_date}&app=1`, tag: `ref-photo-${bRef.id}` } }) }).catch(() => {})
           return json({ ok: true, reference_saved: bRef.id })
         }
-        text = `Cliente enviou uma foto de referência de corte/barba/cor. Descrição da imagem: ${description}${caption ? ` Legenda que o cliente escreveu junto: "${caption}"` : ''}`
+        // v29.294.0 (caso Bruno): sem "corte/barba/cor" aqui — o "barba" do cabeçalho virava Barba Express.
+        text = `Cliente enviou uma foto de referência. Descrição da imagem: ${description}${caption ? ` Legenda que o cliente escreveu junto: "${caption}"` : ''}`
         imageDescribed = true
       } else {
         const fallback = `${greetingNow()}! 😊 Recebi sua foto, mas no momento não consigo analisar imagens de referência por aqui — poderia descrever com palavras o que você gostaria? Assim já te ajudo certinho.`

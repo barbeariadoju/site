@@ -112,6 +112,10 @@ export const lerRespostaConfirmacao = (normalizedReply: string, dia?: 'hoje' | '
   }
   if (!negacaoDeServico(t) && (cancelaExplicito || (/\bnao\b/.test(t) && t.length <= 30))) return 'decline'
   if (/\bsim\b|confirmo|confirmado|\bpode ser\b|\bcerto\b|^ok$/.test(t)) return 'confirm'
+  // v29.294.0 — caso Juliano (cliente, 20/10/2026, 08h28): ao "seu horário é hoje às 09:00, até já" ele
+  // respondeu "Ate" e levou de volta o 1/2/3 ("só pra eu não te perder na agenda"). Despedida curta e
+  // acordo seco ("até já", "combinado", "beleza", "fechado") respondendo ao lembrete é presença.
+  if (/^(ate( ja| mais| logo| daqui a pouco| mais tarde| amanha)?|combinado|beleza|blz|fechado|perfeito|joia|show|ta bom|ta certo|tranquilo|ok obrigad[oa]|obrigad[oa],? ate( ja| mais| logo)?)[\s.!]*$/.test(t)) return 'confirm'
   return null
 }
 
