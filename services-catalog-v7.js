@@ -21,7 +21,6 @@ window.BDJ_SERVICES = [
   {category:'Química e tratamentos',name:'Reconstrução Química Pós-Alisamento',description:'Hidratação e reposição de massa e aminoácidos logo após o alisamento, para devolver resistência e maciez ao fio que passou pela química.',price:50,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Barba',description:'Pigmentação da barba para correção de falhas e aparência uniforme.',price:35,priceFrom:40,duration:30},
   {category:'Pigmentações',name:'Pigmentação de Sobrancelha',description:'Pigmentação suave da sobrancelha para correção de falhas.',price:20,priceFrom:25,duration:30},
-  {category:'Estética corporal',name:'Aparação Corporal Masculina',description:'Redução uniforme dos pelos corporais (peito, abdômen, costas, ombros, braços, pernas, axilas e virilha externa) com máquina profissional, sem cera e sem arrancar os fios pela raiz. Atendimento reservado, com horário exclusivo e total discrição. Não inclui região íntima.',price:120,priceFrom:150,duration:70}
 ];
 
 // v29.127.0 — O REAJUSTE DE 01/10 VIRA SOZINHO, sem ninguém publicar nada naquele dia.

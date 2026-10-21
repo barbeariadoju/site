@@ -27,7 +27,7 @@ export const FLUXO = new Set([
 // offline do service worker, pontes de QR, avaliação, e /precos/ (única sem o CSS do site;
 // vira redirecionamento para servicos.html depois de 01/10).
 export const FORA = new Set([
-  'agendar.html', 'admin-atendimento.html', 'servico-barboterapia-ozonio.html', 'avaliar/index.html',
+  'agendar.html', 'admin-atendimento.html', 'servico-barboterapia-ozonio.html', 'servico-aparacao-corporal.html', 'avaliar/index.html',
   'recibo.html', 'offline.html', 'whatsapp.html', 'instagram.html', 'salvar-contato.html',
   'avaliacao.html', 'experiencia.html', 'precos/index.html', 'precos/setembro/index.html',
 ]);

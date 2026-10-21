@@ -1,3 +1,14 @@
+## 29.298.0 — Aparação Corporal Masculina sai do catálogo: site, JuIA, Google e WhatsApp (21/10)
+
+**Pedido do Juliano (21/10):** "remove do catálogo depilação corporal de todos os catálogos". No catálogo, o único serviço corporal é a **Aparação Corporal Masculina** (R$ 150, 70 min). A depilação nasal e a de orelhas são do rosto e ficam.
+- **Banco:** `services.active = false`. Nenhum agendamento futuro com o serviço. A JuIA lê só os ativos (`.eq('active',true)`), então para de oferecer sem mexer no código dela.
+- **Site:** saiu de `services-catalog-v7.js` (`?v=` → 29.298.0 nas 11 páginas que carregam o arquivo, contagem conferida), da seção "Estética corporal" do `/agendar/`, da tabela e do ItemList de `servicos.html`, das duas listas de preço da FAQ (texto e JSON-LD), da tabela `/precos/` e do `sitemap.xml`.
+- **A página `servico-aparacao-corporal.html` virou redirecionamento** para `/servicos.html` (noindex + refresh + canonical, igual ao `agendar.html`), entrando no `FORA` do `scripts/casca.mjs`. Não apaguei a página: link antigo e o Google cairiam em 404.
+- **ItemList de `servicos.html`:** já vinha com defeito — o "Corte de cabelo (degradê)" estava na posição 24, duplicando outra, e `numberOfItems` (24) não batia com os 25 itens. Agora a lista vai de 1 a 24, em sequência, com `numberOfItems` 24.
+- **Google (perfil da empresa):** pelo Windsor `update_service_items`, a lista de 32 serviços foi reenviada sem a Aparação → 31. A primeira chamada voltou "Internal error" (com `language_code`); sem esse campo, deu certo.
+- **WhatsApp:** catálogo do WhatsApp Business, item ocultado pelo WhatsApp Web (ver nota no fim desta entrada).
+- Unit 314, e2e 92. JSON-LD de `servicos.html` e da FAQ validados.
+
 ## 29.297.0 — JuIA: data com ano errado vale pelo dia e mês, e a pesquisa de satisfação não engole pedido de e-mail (21/10)
 
 **Revisão do plano do dia (conversas de 20/10).** Duas falhas novas, cada uma com a correção no código.
