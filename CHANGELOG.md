@@ -6,7 +6,7 @@
 - **A página `servico-aparacao-corporal.html` virou redirecionamento** para `/servicos.html` (noindex + refresh + canonical, igual ao `agendar.html`), entrando no `FORA` do `scripts/casca.mjs`. Não apaguei a página: link antigo e o Google cairiam em 404.
 - **ItemList de `servicos.html`:** já vinha com defeito — o "Corte de cabelo (degradê)" estava na posição 24, duplicando outra, e `numberOfItems` (24) não batia com os 25 itens. Agora a lista vai de 1 a 24, em sequência, com `numberOfItems` 24.
 - **Google (perfil da empresa):** pelo Windsor `update_service_items`, a lista de 32 serviços foi reenviada sem a Aparação → 31. A primeira chamada voltou "Internal error" (com `language_code`); sem esse campo, deu certo.
-- **WhatsApp:** catálogo do WhatsApp Business, item ocultado pelo WhatsApp Web (ver nota no fim desta entrada).
+- **WhatsApp: PENDENTE.** A extensão do Chrome não estava conectada em 21/10 (nenhum navegador na lista), então o item do catálogo do WhatsApp Business não foi mexido por mim. Fica com o Juliano pelo celular, ou comigo quando o Chrome reconectar.
 - Unit 314, e2e 92. JSON-LD de `servicos.html` e da FAQ validados.
 
 ## 29.297.0 — JuIA: data com ano errado vale pelo dia e mês, e a pesquisa de satisfação não engole pedido de e-mail (21/10)
