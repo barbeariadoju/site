@@ -1959,6 +1959,11 @@ Deno.serve(async (request: Request) => {
           // assunto de agenda, não resposta de pesquisa.
           const asksSomethingElse = /\bpix\b|pagar|pagamento|transferir|chave|agendar|marcar|remarcar|cancelar|horario|hora marcada|amanha|quanto custa|pre[cç]o|valor|aberto|abre|funciona/.test(normalizedReply)
             || /\b(segunda|terca|quarta|quinta|sexta|sabado|domingo)(-feira)?\b|\bdia \d{1,2}\b|\b\d{1,2}\/\d{1,2}\b|\b\d{1,2}\s*(h|hs|hrs|horas)\b|\b\d{1,2}:\d{2}\b|\b(de|pela|a|na) (manha|tarde|noite)\b|\bfinal do dia\b|\b(fim|comeco|inicio) da (tarde|manha)\b/.test(normalizedReply)
+            // v29.297.0 — caso seu Zé (20/10/2026, 14h38): depois do comprovante, "Favor enviar o email" e
+            // "Email seu" levaram dois "Não entendi. Digite 1 se ficou satisfeito". Pedido de contato,
+            // documento ou envio — e qualquer pergunta que não comece pela nota — é outro assunto: vai pra JuIA.
+            || /e-?mail|\bendereco\b|\btelefone\b|\bcontato\b|\bnota fiscal\b|\brecibo\b|\bcupom\b|\b(favor|por favor|pfv|pf)\b|\b(envia|enviar|envie)\b|\bme (manda|mande|passa|passe)\b/.test(normalizedReply)
+            || (/\?/.test(text) && !/^[12]\b/.test(normalizedReply.trim()))
           // v28.67.0 (caso Marcelo, 06/08/2026): cliente mandou áudio elogiando e depois
           // escreveu "só elogios hein" — a JuIA respondeu "não entendi" e NÃO disparou o
           // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:

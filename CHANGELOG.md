@@ -1,3 +1,13 @@
+## 29.297.0 — JuIA: data com ano errado vale pelo dia e mês, e a pesquisa de satisfação não engole pedido de e-mail (21/10)
+
+**Revisão do plano do dia (conversas de 20/10).** Duas falhas novas, cada uma com a correção no código.
+- **Caso Dorta (20/10, 10h09).** Ao convite de retorno ele respondeu *"Dia 24/10/2016"* e ouviu *"Hoje tenho 10:30, 11:30…"*. O ano digitado errado fazia a data cair em 2016: o dia passado era descartado (tanto o que o modelo devolveu quanto o lido do texto) e a conversa seguia como se fosse hoje. Ele precisou repetir "Sábado 24". **Agora:** em `diaPedidoNaMensagem`, um ano que não é o atual nem o próximo é tratado como erro de digitação — valem o dia e o mês, como se o ano não tivesse sido escrito. Um ano atual com data já passada continua sendo dia passado.
+- **Caso seu Zé (20/10, 14h38).** Depois do comprovante, *"Favor enviar o email"* e *"Email seu"* levaram dois *"Não entendi. Digite 1 se ficou satisfeito"*, e o Juliano teve de responder na mão. A guarda `asksSomethingElse` da pesquisa só conhecia assunto de agenda e de pagamento. **Agora** também deixam passar para a JuIA: pedido de contato ou documento (e-mail, endereço, telefone, contato, nota fiscal, recibo, cupom), pedido de envio ("favor", "por favor", "enviar", "me manda", "me passa") e qualquer pergunta com "?" que não comece pela nota (1 ou 2). Conferido com frases reais: "1", "Satisfeito", "Muito bom, obrigado", "Eu que agradeço" e "obrigado meu amigo\n1" continuam sendo resposta da pesquisa.
+- **Contra o óbvio:** não pus "manda" e "passa" soltos na lista ("gostei, manda um abraço" deixaria de contar como satisfeito e perderia o pedido de avaliação). Só "me manda" e "me passa".
+- O que está no ar foi baixado e comparado com o HEAD antes do deploy: era igual (lição da 29.288.0). `verify_jwt` conferido depois: ju-ia-site true, whatsapp-webhook false.
+- Simulador 78a (falha no código anterior), **206 ok**. Unit 314, e2e 92.
+- **Pendente:** a Vanessa respondeu *"Quarta às 16:00"* às 18h10 de 20/10, depois da correção manual para terça 03/11, e ficou sem resposta. A reserva continua na terça às 15:00.
+
 ## 29.296.0 — JuIA: "terça ou quarta" na resposta à oferta de retorno fica na semana da oferta (20/10)
 
 **Caso Vanessa, continuação (20/10, 16h50).** Depois da 29.295.0 ela foi atendida às 11:30 (corte do filho, R$ 50 no Pix, respondeu "1 satisfeita"). À oferta de retorno *"Quinta (05/11) às 11:30"* respondeu *"Precisa ser após as 15:00 de terça ou quarta feira."* e saiu *"Reservado! na quinta (05/11) às 15:00"* — o horário certo no dia que ela tinha acabado de recusar. Com **dois** dias citados, o bloco da oferta de retorno não usava nenhum e ficava o dia oferecido.

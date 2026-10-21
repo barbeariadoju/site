@@ -1124,5 +1124,16 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('77a "terça ou quarta" à oferta de quinta: fica na terça/quarta da mesma semana', (dia === terca2 || dia === quarta2) && !new RegExp(`${quinta.slice(8, 10)}/${quinta.slice(5, 7)}`).test(r.reply), { dia, reply: r.reply })
 }
 
+{
+  // v29.297.0 — caso Dorta (20/10/2026, 10h09): "Dia 24/10/2016" (ano errado) virava dia passado e a resposta
+  // era "Hoje tenho…". O dia e o mês valem; o ano digitado errado é ignorado.
+  let alvo = somar(hoje, 4); while ([0, 1].includes(new Date(alvo + 'T12:00:00-03:00').getUTCDay())) alvo = somar(alvo, 1)
+  const escrito = `Dia ${alvo.slice(8, 10)}/${alvo.slice(5, 7)}/2016`
+  const r = await turno({ msg: escrito, history: [{ role: 'assistant', content: 'Certo. Pra quando você quer deixar reservado?\n*1* — Nos próximos dias\n*2* — Semana que vem\n*3* — Daqui a 15 dias' }],
+    state: { services: ['Corte de cabelo'] }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: `2016-${alvo.slice(5, 7)}-${alvo.slice(8, 10)}` } },
+    contexto: ctxCliente('Dorta Teste'), vagas: { [hoje]: ['10:30', '11:30'], [alvo]: ['08:30', '10:15'] } })
+  checar('78a data com ano errado ("/2016") fica no dia e mês pedidos', r.state?.date === alvo && !/^Hoje/.test(r.reply), { date: r.state?.date, reply: r.reply })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

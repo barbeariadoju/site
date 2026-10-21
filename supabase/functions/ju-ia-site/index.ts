@@ -221,6 +221,10 @@ const diaPedidoNaMensagem=(text:string):string|null=>{
   const dd=Number(m[1]),mm=Number(m[2]);let yy=m[3]?Number(m[3]):NaN
   if(!isNaN(yy)&&yy<100)yy+=2000
   const t=today()
+  // v29.297.0 — caso Dorta (20/10/2026, 10h09): "Dia 24/10/2016" virou 2016-10-24, dia passado, e o
+  // dia sumiu da conversa — a resposta foi "Hoje tenho 10:30…". Ano que não é o atual nem o próximo é
+  // erro de digitação: vale o dia e o mês, como se o ano não tivesse sido escrito.
+  if(!isNaN(yy)&&yy!==Number(t.slice(0,4))&&yy!==Number(t.slice(0,4))+1)yy=NaN
   if(dd>=1&&dd<=31&&mm>=1&&mm<=12){
    const pad=(n:number)=>String(n).padStart(2,'0')
    let iso=`${isNaN(yy)?t.slice(0,4):yy}-${pad(mm)}-${pad(dd)}`
