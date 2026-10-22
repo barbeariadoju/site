@@ -1,3 +1,13 @@
+## 29.300.0 — JuIA: "próxima semana" sai de hoje e oferece os dias da semana seguinte (22/10)
+
+**Caso Alexandre (22/10, 12h47), print do Juliano: "juia bugou".** Perguntou "Tem agenda hoje?", recebeu a lista de hoje e respondeu *"Pode ser na próxima semana 18:15"*. Saiu *"Hoje às 18:15 já está ocupado. O mais próximo que tenho é 16:45"*. Ele repetiu *"Pode ser na próxima semana"* e recebeu *"Hoje às 18:15. É corte ou corte + barba?"*, uma frase quebrada e ainda em hoje. O Juliano entrou na mão e marcou quinta (29/10) às 18:15, Corte + Lavagem (conferido no banco).
+- **Causa:** o dia de hoje ficou no estado da conversa, e "próxima semana" sem dia da semana não é lido como dia. O bloco que já sabia varrer a semana seguinte (v29.193.0) só roda quando não há dia nenhum, e havia: hoje.
+- **Agora:** "próxima semana"/"semana que vem", sem dia da semana nem data na frase e com o dia da conversa antes da segunda que vem, tem resposta própria: os dias da semana seguinte. Com horário dito (na frase ou já combinado), só os dias em que esse horário está livre: *"Na semana que vem, às 18:15, tenho terça (27/10), quarta (28/10) e quinta (29/10). Qual dia fica melhor pra você?"*. O horário fica guardado para a resposta seguinte.
+- **E a resposta seguinte:** *"Quinta tá bom"* numa quinta era lido como HOJE e vencia o dia que o modelo tinha entendido. Agora, se a última fala da JuIA ofereceu aquele dia da semana com data ("quinta (29/10)"), vale essa data.
+- **Contra o óbvio:** não mexi no adiamento ("te aviso semana que vem" continua sendo adiamento, `postponeSignal`), nem na remarcação, que tem fluxo próprio.
+- O que estava no ar foi baixado e comparado com o HEAD antes do deploy: igual. `verify_jwt` conferido depois: true.
+- Simulador 81a-c (os três falham no código anterior), **213 ok**. Unit 314. E2e: 91 de 92 na bateria completa. O que falhou (`routes.spec.js:19`, `/agendar/horario/` carrega direto) é do site, não da JuIA: passou sozinho e passou 3 de 3 repetido. Instabilidade sob carga, não regressão.
+
 ## 29.299.0 — JuIA: remarcar para o horário que já tem mantém o horário, e a pergunta "você é farmacêutico?" tem resposta (22/10)
 
 **Revisão do plano do dia (conversas de 21/10).** Duas falhas, cada uma com a correção no código.

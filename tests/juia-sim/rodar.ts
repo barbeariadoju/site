@@ -1161,5 +1161,34 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('80 pergunta sobre a formação do Juliano é respondida, sem a lista de novo', /farmac[eê]utico/i.test(r.reply) && !/10:30|15:15/.test(r.reply), r.reply)
 }
 
+{
+  // v29.300.0 — caso Alexandre (22/10/2026, 12h47): com a lista de hoje na mesa, "Pode ser na próxima semana 18:15"
+  // recebeu "Hoje às 18:15 já está ocupado" e, depois de "Pode ser na próxima semana", "Hoje às 18:15. É corte ou…".
+  // O Juliano assumiu na mão e marcou quinta da semana seguinte às 18:15.
+  const wdHoje = new Date(hoje + 'T12:00:00Z').getUTCDay()
+  const seg = somar(hoje, ((8 - wdHoje) % 7) || 7)
+  const [ter, qua, qui, sex] = [1, 2, 3, 4].map((n) => somar(seg, n))
+  const vagas = { [hoje]: ['13:15', '13:45', '16:15', '16:45'], [ter]: ['17:00', '18:15'], [qua]: ['18:15'], [qui]: ['09:00', '18:15'], [sex]: ['10:00'] }
+  const listaHoje = 'Consigo te atender hoje, entre 13:15 e 16:45. Por exemplo: 13:15, 13:45, 16:15, 16:45. Qual fica melhor pra você?'
+  const r1 = await turno({ msg: 'Pode ser na próxima semana 18:15', history: [{ role: 'assistant', content: listaHoje }],
+    state: { date: hoje }, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '18:15' } },
+    contexto: ctxCliente('Alexandre Teste'), vagas })
+  const dm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
+  checar('81a "próxima semana 18:15" não fica em hoje e oferece os dias da semana seguinte com 18:15',
+    !/^(Boa tarde, Alexandre! )?Hoje/i.test(r1.reply) && !/\bhoje\b/i.test(r1.reply) && new RegExp(dm(ter)).test(r1.reply) && new RegExp(dm(qui)).test(r1.reply) && !new RegExp(dm(sex)).test(r1.reply) && r1.state?.date !== hoje,
+    { reply: r1.reply, date: r1.state?.date })
+  const r2 = await turno({ msg: 'Pode ser na próxima semana', history: [{ role: 'assistant', content: 'Hoje às 18:15 já está ocupado. O mais próximo que tenho é 16:45.' }],
+    state: { date: hoje, time: '18:15' }, ai: { intent: 'book', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Alexandre Teste'), vagas })
+  checar('81b "próxima semana" sem horário novo sai de hoje', !/\bhoje\b/i.test(r2.reply) && r2.state?.date !== hoje && !reservou(r2), { reply: r2.reply, date: r2.state?.date })
+  // "Quinta tá bom" logo depois da oferta com "quinta (dd/mm)": vale a quinta oferecida, mesmo se hoje for quinta
+  const nomeQui = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][new Date(qui + 'T12:00:00Z').getUTCDay()]
+  const r3 = await turno({ msg: 'Quinta tá bom', history: [{ role: 'assistant', content: r1.reply }],
+    state: { ...(r1.state || {}), services: ['Corte de cabelo'] }, ai: { intent: 'book', reply: 'Vou ver.', updates: { date: qui, time: '18:15' } },
+    contexto: ctxCliente('Alexandre Teste'), vagas })
+  const reserva = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('81c "Quinta tá bom" fica na quinta oferecida', nomeQui === 'quinta' && (reserva ? reserva.args?.p_booking_date === qui : r3.state?.date === qui) && !/\bhoje\b/i.test(r3.reply), { reply: r3.reply, date: r3.state?.date, reserva: reserva?.args?.p_booking_date })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

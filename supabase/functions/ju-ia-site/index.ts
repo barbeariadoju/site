@@ -1272,7 +1272,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // agenda (não pela reserva direta): dia fechado é explicado e o dia seguinte vira pergunta.
  let diaDoClienteTrocado=false
  {
-  const diaNoTexto=diaPedidoNaMensagem(message)
+  let diaNoTexto=diaPedidoNaMensagem(message)
+  // v29.300.0 — caso Alexandre (22/10/2026, quinta): a JuIA oferece "quinta (29/10)" e ele responde "Quinta
+  // tá bom". Lido sozinho, "quinta" numa quinta é HOJE. O dia da semana que a última fala da JuIA ofereceu
+  // com data vale por essa data.
+  if(diaNoTexto){
+   const ultimaFala=normalize(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
+   const nomeDia=WEEKDAY_NAMES[new Date(diaNoTexto+'T12:00:00-03:00').getUTCDay()]
+   const oferta=weekdayDatesMentioned(normalize(message),today()).length===1?ultimaFala.match(new RegExp(`\\b${nomeDia}(?:-feira)?\\s*\\((\\d{2})\\/(\\d{2})\\)`)):null
+   if(oferta){
+    let iso=`${today().slice(0,4)}-${oferta[2]}-${oferta[1]}`
+    if(iso<today())iso=`${Number(today().slice(0,4))+1}-${oferta[2]}-${oferta[1]}`
+    if(new Date(iso+'T12:00:00-03:00').getUTCDay()===new Date(diaNoTexto+'T12:00:00-03:00').getUTCDay())diaNoTexto=iso
+   }
+  }
   const doModelo=String(ai.updates?.date||'').slice(0,10)
   if(diaNoTexto&&diaNoTexto>=today()&&doModelo&&doModelo!==diaNoTexto&&ai.intent!=='cancel'){
    console.log('[ju-ia-site] dia do cliente vence o do modelo',JSON.stringify({cliente:diaNoTexto,modelo:doModelo}))
@@ -1401,6 +1414,36 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
  if(diaDoClienteTrocado&&intent==='book')intent='availability'
+ // v29.300.0 — caso Alexandre (22/10/2026, 12h47): com a lista de hoje na mesa, "Pode ser na próxima semana
+ // 18:15" virou "Hoje às 18:15 já está ocupado" e, depois de "Pode ser na próxima semana", "Hoje às 18:15. É
+ // corte ou…". O dia de hoje ficou no estado e "próxima semana" sem dia da semana não era lido como dia.
+ // O Juliano assumiu na mão. Semana que vem sem dia dito = os dias da semana seguinte; com horário, só os
+ // dias em que esse horário está livre.
+ let semanaQueVemTratada=false
+ {
+  const qs=normalize(message)
+  const segQueVem=somarDiasIso(today(),((8-diaDaSemana(today()))%7)||7)
+  if(/\b(proxima semana|semana que vem)\b/.test(qs)&&!diaPedidoNaMensagem(message)&&!weekdayDatesMentioned(qs,today()).length
+   &&!['cancel','reschedule','change_service','update_products','handoff'].includes(intent)&&!next.pending_reschedule_booking_id
+   &&(!next.date||String(next.date)<segQueVem)&&!postponeSignal(qs)){
+   const horaPedida=extractRequestedTime(message)||(String(state?.date||'')<segQueVem?String(next.time||state?.time||'').slice(0,5):'')
+   const durS=chosen.length?chosen.reduce((a:number,s:any)=>a+s.duration,0):45
+   const dias=(await findAvailableDatesInRange(supabase,segQueVem,durS,7,5)).filter((d:any)=>!horaPedida||d.slots.includes(horaPedida))
+   if(dias.length){
+    semanaQueVemTratada=true
+    const lista=dias.map((d:any)=>diaHumano(d.date))
+    const listaTxt=lista.length===1?lista[0]:`${lista.slice(0,-1).join(', ')} e ${lista[lista.length-1]}`
+    reply=horaPedida
+     ?`Na semana que vem, às ${horaPedida}, tenho ${listaTxt}. Qual dia fica melhor pra você?`
+     :`Na semana que vem tenho vaga ${lista.length===1?'na':'nestes dias:'} ${listaTxt}. Qual dia e horário ficam melhores pra você?`
+    actions=dias.map((d:any)=>({label:diaHumano(d.date),message:`Quero ${diaHumano(d.date)}`}))
+    intent='other';handoff=false
+    next.date=null;next.period=null;next.asap=false
+    next.time=horaPedida||null
+    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   }
+  }
+ }
  // v29.212.0 — caso Amanda (11/09/2026): marcou o corte do namorado e a reserva saiu no nome dela (o
  // telefone tem cadastro e o nome do cadastro foi assumido). Horário pra outra pessoa pede o nome de
  // quem vai sentar na cadeira; a resposta seguinte (só o nome) fecha a reserva.
