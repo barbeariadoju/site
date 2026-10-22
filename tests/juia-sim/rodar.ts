@@ -1135,5 +1135,31 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('78a data com ano errado ("/2016") fica no dia e mês pedidos', r.state?.date === alvo && !/^Hoje/.test(r.reply), { date: r.state?.date, reply: r.reply })
 }
 
+{
+  // v29.299.0 — caso Filipe (21/10/2026, 14h09): marcado às 15:00, pediu 15:30 (ocupado). A lista de alternativas
+  // trazia o próprio 15:00, e "deixa as 15:00 então" virou "mudar de 15:00 para 15:00?".
+  const futuros = [{ id: 'b79', booking_date: dia1, start_time: '15:00:00', service_name: 'Corte de cabelo', status: 'confirmed', duration_minutes: 45 }]
+  const vagas = { [dia1]: ['15:00', '17:00', '17:45', '18:15'] }
+  const r1 = await turno({ msg: 'sim', state: { pending_reschedule_booking_id: 'b79', date: dia1, time: '15:30' },
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Filipe Teste'), futuros, vagas })
+  checar('79a alternativas da remarcação sem o horário que ele já tem', /17:00/.test(r1.reply) && !/15:00/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'deixa as 15:00 antão e obrigado', state: { pending_reschedule_booking_id: 'b79', date: dia1 },
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: { time: '15:00' } }, contexto: ctxCliente('Filipe Teste'), futuros, vagas })
+  checar('79b pedir o mesmo horário mantém, sem "mudar de 15:00 para 15:00"', /mantido/.test(r2.reply) && !/Confirmando|mudar/i.test(r2.reply) && !r2.state?.pending_reschedule_booking_id, { reply: r2.reply, st: r2.state?.pending_reschedule_booking_id })
+  // trocar para outro horário segue funcionando
+  const r3 = await turno({ msg: '17:00', state: { pending_reschedule_booking_id: 'b79', date: dia1 },
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: { time: '17:00' } }, contexto: ctxCliente('Filipe Teste'), futuros, vagas })
+  checar('79c outro horário continua pedindo confirmação da troca', /15:00/.test(r3.reply) && /17:00/.test(r3.reply) && /sim ou n/i.test(r3.reply), r3.reply)
+}
+
+{
+  // v29.299.0 — caso Rafa (21/10/2026, 10h13): "vc era farmaceutico?" no meio da oferta de horários recebeu só a lista.
+  const r = await turno({ msg: 'Hmm preciso verificar meus horarios qualquer coisa eu retorno\nso uma duvida vc era farmaceutico?',
+    history: [{ role: 'assistant', content: 'Hoje tenho 10:30, 12:15, 15:15. Qual fica melhor pra você?' }],
+    state: { services: ['Corte de cabelo'], date: hoje }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} },
+    contexto: ctxCliente('Rafa Teste'), vagas: { [hoje]: ['10:30', '12:15', '15:15'] } })
+  checar('80 pergunta sobre a formação do Juliano é respondida, sem a lista de novo', /farmac[eê]utico/i.test(r.reply) && !/10:30|15:15/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

@@ -1494,13 +1494,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    if(psA)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psA},body:JSON.stringify({custom:{title:`Quer vir antes das ${horaB}`,body:`${String(context?.name||next.name||'Cliente')} pediu para ser atendido antes, se der. Responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`antes-${verifiedPhone}`}})}).catch(()=>{})
   }
  }
+ // v29.299.0 — caso Rafa (21/10/2026, 10h13): "Hmm preciso verificar meus horarios qualquer coisa eu retorno /
+ // so uma duvida vc era farmaceutico?" recebeu a lista de horários de hoje, sem resposta à pergunta; o Juliano
+ // respondeu na mão. Pergunta sobre a formação dele tem resposta fixa (na 3ª pessoa: a JuIA nunca finge ser o
+ // Juliano) e a oferta de horário não volta por cima.
+ let formacaoRespondida=false
+ {
+  const qf=normalize(message)
+  if(!pediuHumano&&!chegadaTratada&&/\bfarmaceutic/.test(qf)&&/\b(voce|vc|ce|o juliano|o ju|ele)\b/.test(qf)&&/\?|\b(e|eh|era|foi)\b/.test(qf)){
+   formacaoRespondida=true
+   reply='Sim, o Juliano é farmacêutico de formação (especialista em Farmácia Clínica e Prescrição Farmacêutica) e é ele quem faz todos os atendimentos aqui na barbearia. Quando quiser marcar, é só me dizer o dia e o horário que eu reservo.'
+   intent='other';handoff=false;actions=[]
+   next.date=null;next.time=null;next.period=null;next.asap=false
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+  }
+ }
  // v29.234.0 — caso Juca (25/09/2026, 07h54): "a gente marcou o horário de hoje?" levou só a lista de vagas
  // de hoje, sem resposta à pergunta. Com reserva no dia perguntado: a resposta é a reserva (e a conversa de
  // agenda não abre). Sem reserva: a resposta de agenda segue, com a frase que responde a pergunta na frente.
  let reservaConsultada=false
  let prefixoSemReserva=''
  {
-  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada?perguntaSeTemReserva(normalize(message)):null
+  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada&&!formacaoRespondida?perguntaSeTemReserva(normalize(message)):null
   if(diaPerg){
    const amanhaR=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
    const alvo=diaPerg==='hoje'?today():diaPerg==='amanha'?amanhaR:''
@@ -2525,7 +2540,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // de qualquer etapa do fluxo: mantém o agendamento original e limpa o estado.
   const keepSignal=includesAny(normalizedQuestion,['pode manter','pode deixar como esta','deixa como esta','deixar como esta','mantem o horario','manter o horario','mantem o mesmo','mantem assim','deixa assim','fica como esta','fica assim','nao precisa mudar','nao precisa remarcar','nao precisa trocar','nao vou mais remarcar','desisti de remarcar','vou hoje mesmo','mantem hoje','pode ser hoje mesmo'])
   const keepTarget=rescheduleTarget||(upcomingBookings.length===1?upcomingBookings[0]:null)
-  if(keepSignal&&keepTarget){
+  // v29.299.0 — caso Filipe (21/10/2026, 14h11): marcado às 15:00, pediu 15:30 (não tinha) e respondeu
+  // "deixa as 15:00 então e obrigado" — saiu "Confirmando: mudar de hoje às 15:00 para hoje às 15:00?" e,
+  // depois do sim, "Mudei de 15:00 para 15:00". Remarcação em andamento cujo horário pedido é o que ele já
+  // tem (mesmo dia, um horário só na frase) é desistir de remarcar.
+  const horasNaFrase=(message.match(/\b\d{1,2}\s*(?::\d{2}|h\d{0,2})\b/gi)||[]).length
+  const horaPedidaKeep=horasNaFrase===1?extractRequestedTime(message):null
+  const pediuOMesmo=Boolean(rescheduleTarget)&&Boolean(horaPedidaKeep)&&horaPedidaKeep===String(rescheduleTarget.start_time).slice(0,5)
+   &&String(next.pending_reschedule_new_date||next.date||rescheduleTarget.booking_date)===String(rescheduleTarget.booking_date)
+  if((keepSignal||pediuOMesmo)&&keepTarget){
    reply=`Perfeito! 😊 Então fica mantido: ${formatDateBR(keepTarget.booking_date)} às ${String(keepTarget.start_time).slice(0,5)} (${keepTarget.service_name}). Te espero!`
    actions=[]
    handoff=false
@@ -2699,7 +2722,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // v29.142.0: sem o próprio agendamento na conta (migration 138) — mover 15:00 pra 14:30 é livre.
     const {data,error}=await supabase.rpc('get_available_slots_excluding',{p_date:next.date,p_duration_minutes:duration,p_exclude_booking_id:target.id})
     if(error)return respond({error:error.message},500)
-    const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+    // v29.299.0 (caso Filipe): o horário que ele já tem não entra na lista de alternativas da remarcação.
+    const horaAtual=String(next.date)===String(target.booking_date)?String(target.start_time).slice(0,5):''
+    const allSlots=(data||[]).map((x:any)=>String(x.slot_time).slice(0,5)).filter((t:string)=>t!==horaAtual)
     const time=extractRequestedTime(message)||next.time
     if(!time){
      if(!allSlots.length){
@@ -5557,7 +5582,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada||formacaoRespondida
   // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
   // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
   // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com

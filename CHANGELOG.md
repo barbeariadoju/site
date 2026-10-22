@@ -1,3 +1,12 @@
+## 29.299.0 — JuIA: remarcar para o horário que já tem mantém o horário, e a pergunta "você é farmacêutico?" tem resposta (22/10)
+
+**Revisão do plano do dia (conversas de 21/10).** Duas falhas, cada uma com a correção no código.
+- **Caso Filipe (21/10, 14h09).** Marcado às 15:00, pediu 15:30 (ocupado). A lista de alternativas trazia *"15:00, 17:00, 17:45 ou 18:15"* — o 15:00 era o horário dele, que entra como livre porque a busca exclui o próprio agendamento (migration 138). Ele respondeu *"deixa as 15:00 então e obrigado"* e recebeu *"Confirmando: mudar seu agendamento de hoje às 15:00 para hoje às 15:00?"* e, depois do sim, *"Mudei de 15:00 para 15:00"*. **Agora:** o horário atual sai da lista de alternativas no mesmo dia, e, com remarcação em andamento, pedir o horário que ele já tem (mesmo dia, um horário só na frase) é desistir de remarcar: *"Então fica mantido: hoje às 15:00"*, estado limpo.
+- **Caso Rafa (21/10, 10h13).** *"Preciso verificar meus horários, qualquer coisa eu retorno / só uma dúvida, você era farmacêutico?"* recebeu a lista de horários de hoje, sem resposta à pergunta. O Juliano respondeu na mão. **Agora:** pergunta sobre a formação do Juliano tem resposta fixa, na 3ª pessoa (o prompt proíbe a JuIA de fingir ser ele), com a formação e *"é ele quem faz todos os atendimentos"*. A oferta de horário não volta por cima e o lead sai da cobrança, como na consulta de reserva.
+- **Contra o óbvio:** a desistência pelo mesmo horário só vale com **um** horário na frase. *"Em vez das 15:00, pode ser às 17:00?"* tem dois e segue como troca.
+- O que estava no ar foi baixado e comparado com o HEAD antes do deploy: igual.
+- Simulador 79a-c e 80 (falham no código anterior), **210 ok**. `npm test` sem falha (e2e 92). `verify_jwt` conferido depois do deploy: ju-ia-site true.
+
 ## 29.298.0 — Aparação Corporal Masculina sai do catálogo: site, JuIA, Google e WhatsApp (21/10)
 
 **Pedido do Juliano (21/10):** "remove do catálogo depilação corporal de todos os catálogos". No catálogo, o único serviço corporal é a **Aparação Corporal Masculina** (R$ 150, 70 min). A depilação nasal e a de orelhas são do rosto e ficam.
