@@ -1,6 +1,34 @@
 // admin-v15-4-crm.js - parte 5/7 de admin-v15-4.js. Modo Clientes/CRM
 // (admin-clientes.html). Ver header de admin-v15-4-core.js.
-  function initCRM(){const search=$('crm-search'),button=$('crm-search-button'),clear=$('crm-search-clear');let timer=null;const run=()=>{clearTimeout(timer);renderCRM()};search.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(renderCRM,180)});search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run();const rows=filteredCustomers();if(rows.length===1)setTimeout(()=>document.querySelector('.crm-card')?.scrollIntoView({behavior:'smooth',block:'center'}),20)}});button?.addEventListener('click',run);clear?.addEventListener('click',()=>{search.value='';renderCRM();search.focus()});$('crm-add-customer').onclick=()=>openCustomerModal();document.querySelectorAll('[data-close-customer-modal]').forEach(x=>x.onclick=closeCustomerModal);$('crm-customer-save').onclick=saveCustomer;document.querySelectorAll('[data-close-merge-modal]').forEach(x=>x.onclick=closeMergeModal);$('crm-merge-search').addEventListener('input',()=>{mergeSelectedCustomer=null;$('crm-merge-confirm').disabled=true;$('crm-merge-summary').hidden=true;renderMergeResults($('crm-merge-search').value)});$('crm-merge-confirm').onclick=confirmMerge;renderBirthdaySummary();renderCRM()}
+  function initCRM(){const search=$('crm-search'),button=$('crm-search-button'),clear=$('crm-search-clear');let timer=null;const run=()=>{clearTimeout(timer);renderCRM()};search.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(renderCRM,180)});search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run();const rows=filteredCustomers();if(rows.length===1)setTimeout(()=>document.querySelector('.crm-card')?.scrollIntoView({behavior:'smooth',block:'center'}),20)}});button?.addEventListener('click',run);clear?.addEventListener('click',()=>{search.value='';renderCRM();search.focus()});$('crm-add-customer').onclick=()=>openCustomerModal();document.querySelectorAll('[data-close-customer-modal]').forEach(x=>x.onclick=closeCustomerModal);$('crm-customer-save').onclick=saveCustomer;document.querySelectorAll('[data-close-merge-modal]').forEach(x=>x.onclick=closeMergeModal);$('crm-merge-search').addEventListener('input',()=>{mergeSelectedCustomer=null;$('crm-merge-confirm').disabled=true;$('crm-merge-summary').hidden=true;renderMergeResults($('crm-merge-search').value)});$('crm-merge-confirm').onclick=confirmMerge;renderBirthdaySummary();renderCRM();loadDuplicados()}
+  // v29.301.0 (Juliano, 22/10/2026): Douglas (faltou um dígito) e Marcos (dois dígitos trocados) viraram
+  // cadastros duplicados com o mesmo e-mail. Mesmo e-mail com telefone novo o banco já liga sozinho
+  // (trg_bookings_a_liga_por_email); o que pode ser engano (e-mail quase igual, telefone com dígito
+  // diferente, mesmo nome) aparece aqui e quem decide é o Juliano. O número que o cliente usa no WhatsApp
+  // é o que deve ficar como principal: é para ele que vão lembrete e comprovante.
+  async function loadDuplicados(){
+    const box=$('crm-duplicados');if(!box)return;
+    const {data,error}=await sb.rpc('admin_possiveis_duplicados');
+    if(error||!data||!data.length){box.hidden=true;box.innerHTML='';return}
+    const lado=(n,ph,em,v,z)=>`<b>${esc(n)}</b> · ${esc(formatPhone(ph))}${z?' <small>(usa no WhatsApp)</small>':''}${em?` · ${esc(em)}`:''} · ${v} atendimento${v===1?'':'s'}`;
+    box.hidden=false;
+    box.innerHTML=`<strong>Possíveis cadastros duplicados (${data.length})</strong><p>Confira se é a mesma pessoa. Ao juntar, histórico e pontos vão para um cadastro só e o outro telefone fica guardado nele. Deixe como principal o número que o cliente usa no WhatsApp.</p>${data.map((d,i)=>`<div class="crm-merge-summary"><p><b>${esc(d.motivo)}</b></p><p>${lado(d.a_name,d.a_phone,d.a_email,d.a_visits,d.a_whatsapp)}</p><p>${lado(d.b_name,d.b_phone,d.b_email,d.b_visits,d.b_whatsapp)}</p><div class="crm-actions"><button type="button" data-dup-keep="a" data-dup="${i}">Juntar, fica ${esc(formatPhone(d.a_phone))}</button><button type="button" data-dup-keep="b" data-dup="${i}">Juntar, fica ${esc(formatPhone(d.b_phone))}</button><button type="button" data-dup-dispensar="${i}">Não é a mesma pessoa</button></div></div>`).join('')}`;
+    box.querySelectorAll('[data-dup-keep]').forEach(b=>b.onclick=async()=>{
+      const d=data[Number(b.dataset.dup)],aFica=b.dataset.dupKeep==='a';
+      const keep=aFica?{id:d.a_id,name:d.a_name}:{id:d.b_id,name:d.b_name},sai=aFica?{id:d.b_id,name:d.b_name}:{id:d.a_id,name:d.a_name};
+      if(!await BDJ_UX.confirm(`Juntar ${sai.name} em ${keep.name}? O histórico, os pontos e o telefone de ${sai.name} passam para ${keep.name}, e o cadastro de ${sai.name} é apagado. Essa ação não pode ser desfeita.`))return;
+      b.disabled=true;
+      const {error:e}=await sb.rpc('admin_merge_customers',{p_keep_id:keep.id,p_merge_id:sai.id});
+      if(e){alert(friendlyDb(e.message));b.disabled=false;return}
+      await loadBaseData();renderBirthdaySummary();await loadCrmPhoneAliases();loadDuplicados();
+    });
+    box.querySelectorAll('[data-dup-dispensar]').forEach(b=>b.onclick=async()=>{
+      const d=data[Number(b.dataset.dupDispensar)];b.disabled=true;
+      const {error:e}=await sb.rpc('admin_dispensar_duplicado',{p_a:d.a_id,p_b:d.b_id});
+      if(e){alert(friendlyDb(e.message));b.disabled=false;return}
+      loadDuplicados();
+    });
+  }
   // Mesclar cadastro duplicado: mesmo cliente com 2 telefones diferentes vira 2 cards
   // sem ligação nenhuma no CRM (bookings.customer_phone é a chave, não tem customer_id) —
   // achado em 2026-07-30 com "Carlos Rodrigues" duplicado no autocomplete do Novo

@@ -44,3 +44,30 @@ test('preenche o fluxo até a revisão sem confirmar', async ({ page }) => {
   await expect(page.locator('#agenda-submit')).toBeEnabled();
   // Fim do teste aqui de propósito — não confirmamos o agendamento.
 });
+
+// v29.301.0 — caso Douglas (21/10/2026): (11) 9581-1438, celular sem um dígito, passou e virou cadastro
+// duplicado. Dez dígitos com 6-9 depois do DDD não avança para a revisão e explica o motivo.
+test('celular sem um dígito não avança e explica', async ({ page }) => {
+  await page.goto('/agendar/');
+  await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+  await page.locator('.service-card', { hasText: 'Corte de cabelo' }).first()
+    .getByRole('button', { name: 'Adicionar' }).click();
+  await page.locator('#open-service-cart').click();
+  await page.locator('#send-services').click();
+  await page.waitForURL(/\/agendar\/horario\/?$/);
+  const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await page.locator('#agenda-date').fill(future);
+  const firstSlot = page.locator('#agenda-slots .agenda-slot').first();
+  await expect(firstSlot).toBeVisible({ timeout: 15000 });
+  await firstSlot.click();
+  await page.locator('[data-next-step="3"]').click();
+  await page.locator('#agenda-name').fill('TESTE Playwright (ignorar)');
+  await page.locator('#agenda-phone').fill('(11) 9581-1438');
+  await page.locator('[data-next-step="4"]').click();
+  await expect(page.locator('#erro-agenda-phone')).toContainText('Faltou um dígito');
+  await expect(page.locator('#review-summary')).not.toBeVisible();
+  // fixo de verdade (2-5 depois do DDD) continua passando
+  await page.locator('#agenda-phone').fill('(11) 4033-1234');
+  await page.locator('[data-next-step="4"]').click();
+  await expect(page.locator('#review-summary')).toContainText('Corte de cabelo');
+});

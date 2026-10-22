@@ -25,6 +25,13 @@ Deno.serve(async(req:Request)=>{
       }
     }
 
+    // v29.301.0 — caso Douglas (21/10/2026): (11) 9581-1438, celular sem um dígito. O navegador já barra
+    // (agenda-v15.js); aqui pega cache velho do site. Dez dígitos com 6-9 depois do DDD não é fixo.
+    {
+     const tel=String(body.customer_phone).replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'')
+     if(tel.length===10&&/[6-9]/.test(tel[2]))return json({error:'Faltou um dígito no WhatsApp: o celular tem 9 números depois do DDD, ex.: (11) 91234-5678.'},400)
+    }
+
     const url=Deno.env.get('SUPABASE_URL')!
     const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const pushSecret=Deno.env.get('PUSH_WEBHOOK_SECRET')

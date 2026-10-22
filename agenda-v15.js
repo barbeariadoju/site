@@ -89,11 +89,14 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
     $('review-client-note').textContent=[$('agenda-name').value,fmtTel($('agenda-phone').value),$('agenda-email').value].filter(Boolean).join(' · ');
     updateButtons();
   }
-  function validPhone(){return $('agenda-phone').value.replace(/\D/g,'').length>=10}
+  // v29.301.0 — caso Douglas (21/10/2026): agendou com (11) 9581-1438, faltando um dígito. Dez dígitos com
+  // 6, 7, 8 ou 9 depois do DDD é celular sem o 9 da frente: o WhatsApp não existe e o lembrete não chega.
+  function celularSemNove(d){d=String(d||'').replace(/^55(?=\d{10,11}$)/,'');return d.length===10&&/[6-9]/.test(d[2])}
+  function validPhone(){const d=$('agenda-phone').value.replace(/\D/g,'');return d.length>=10&&!celularSemNove(d)}
   function fmtTel(v){const p=String(v||'').replace(/\D/g,'');return p.length===11?`(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`:p.length===10?`(${p.slice(0,2)}) ${p.slice(2,6)}-${p.slice(6)}`:v}
   // v29.205.4 — validação que explica: cada campo com problema recebe o motivo embaixo.
   function avisoCampo(id,texto){const el=$(id);if(!el)return;const eid='erro-'+id;let aviso=document.getElementById(eid);if(!texto){el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');aviso?.remove();return}if(!aviso){aviso=document.createElement('small');aviso.id=eid;aviso.className='agenda-field-error';el.insertAdjacentElement('afterend',aviso)}aviso.textContent=texto;el.setAttribute('aria-invalid','true');el.setAttribute('aria-describedby',eid)}
-  function validarDados(){const nome=$('agenda-name').value.trim(),dig=$('agenda-phone').value.replace(/\D/g,''),mail=$('agenda-email').value.trim();const erros=[['agenda-name',!nome?'Digite seu nome.':nome.length<2?'Digite o nome completo — como a gente vai te chamar na cadeira.':''],['agenda-phone',!dig?'Digite seu WhatsApp com DDD.':dig.length<10?'Número incompleto: são 11 dígitos com o DDD, ex.: (11) 91234-5678.':''],['agenda-email',mail&&!$('agenda-email').checkValidity()?'E-mail incompleto — confira o @ e o domínio, ou deixe em branco.':'']];erros.forEach(([id,t])=>avisoCampo(id,t));const primeiro=erros.find(e=>e[1]);if(primeiro){$(primeiro[0]).focus();return false}return true}
+  function validarDados(){const nome=$('agenda-name').value.trim(),dig=$('agenda-phone').value.replace(/\D/g,''),mail=$('agenda-email').value.trim();const erros=[['agenda-name',!nome?'Digite seu nome.':nome.length<2?'Digite o nome completo — como a gente vai te chamar na cadeira.':''],['agenda-phone',!dig?'Digite seu WhatsApp com DDD.':dig.length<10?'Número incompleto: são 11 dígitos com o DDD, ex.: (11) 91234-5678.':celularSemNove(dig)?'Faltou um dígito: o celular tem 9 números depois do DDD, ex.: (11) 91234-5678.':''],['agenda-email',mail&&!$('agenda-email').checkValidity()?'E-mail incompleto — confira o @ e o domínio, ou deixe em branco.':'']];erros.forEach(([id,t])=>avisoCampo(id,t));const primeiro=erros.find(e=>e[1]);if(primeiro){$(primeiro[0]).focus();return false}return true}
   function updateButtons(){
     document.querySelector('[data-next-step="3"]').disabled=!selectedTime;
     document.querySelector('[data-next-step="4"]').disabled=false;
