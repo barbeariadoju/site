@@ -31,6 +31,9 @@ Deno.serve(async(req:Request)=>{
      const tel=String(body.customer_phone).replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'')
      if(tel.length===10&&/[6-9]/.test(tel[2]))return json({error:'Faltou um dígito no WhatsApp: o celular tem 9 números depois do DDD, ex.: (11) 91234-5678.'},400)
     }
+    // v29.302.0 — caso Marcio (convite de 22/10 saiu "Oi, Marciopaulavicius@hotmail."): o e-mail
+    // digitado no campo do nome virava o nome do cadastro e de toda mensagem automática.
+    if(String(body.customer_name||'').includes('@'))return json({error:'Aqui vai o seu nome. O e-mail tem campo próprio, logo abaixo.'},400)
 
     const url=Deno.env.get('SUPABASE_URL')!
     const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

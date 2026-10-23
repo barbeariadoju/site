@@ -127,6 +127,19 @@ Deno.serve(async(req:Request)=>{
         continue
       }
     }
+    // v29.302.0 (caso 01/10, final 1456) — o envio imediato do Concluir e o cron das 12:15
+    // pegaram o MESMO registro pendente com 0,8 s de diferença, e o cliente recebeu o cupom
+    // duas vezes. Agora quem envia reserva o registro antes (só passa quem achou ele ainda
+    // pending/failed); quem chega depois encontra 'sent' e pula. O 'enviando' em last_error
+    // só fica para trás se a function morrer no meio — é o rastro para achar o caso.
+    const {data:reservado}=await admin.from('experience_requests')
+      .update({status:'sent',last_error:'enviando',updated_at:new Date().toISOString()})
+      .eq('id',row.id).in('status',['pending','failed']).select('id')
+    if(!reservado?.length){
+      console.log('[satisfaction-dispatch] outro envio já reservou este comprovante',row.booking_id)
+      skipped++
+      continue
+    }
     if(phone.length>=12 && evolutionApiUrl && evolutionApiKey && evolutionInstance){
       // v29.30.0 — a pesquisa virou COMPROVANTE + pesquisa numa mensagem só (pedido do
       // Juliano, 16/08/2026). Duas razões, e a segunda vale mais que a primeira:

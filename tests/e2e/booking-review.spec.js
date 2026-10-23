@@ -71,3 +71,26 @@ test('celular sem um dígito não avança e explica', async ({ page }) => {
   await page.locator('[data-next-step="4"]').click();
   await expect(page.locator('#review-summary')).toContainText('Corte de cabelo');
 });
+
+// v29.302.0 — caso Marcio (convite de 22/10 saiu "Oi, Marciopaulavicius@hotmail."): e-mail no
+// campo do nome não avança.
+test('e-mail no campo do nome não avança e explica', async ({ page }) => {
+  await page.goto('/agendar/');
+  await page.getByRole('button', { name: 'Somente essenciais' }).click().catch(() => {});
+  await page.locator('.service-card', { hasText: 'Corte de cabelo' }).first()
+    .getByRole('button', { name: 'Adicionar' }).click();
+  await page.locator('#open-service-cart').click();
+  await page.locator('#send-services').click();
+  await page.waitForURL(/\/agendar\/horario\/?$/);
+  const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await page.locator('#agenda-date').fill(future);
+  const firstSlot = page.locator('#agenda-slots .agenda-slot').first();
+  await expect(firstSlot).toBeVisible({ timeout: 15000 });
+  await firstSlot.click();
+  await page.locator('[data-next-step="3"]').click();
+  await page.locator('#agenda-name').fill('teste.playwright@hotmail');
+  await page.locator('#agenda-phone').fill('(11) 4033-1234');
+  await page.locator('[data-next-step="4"]').click();
+  await expect(page.locator('#erro-agenda-name')).toContainText('O e-mail tem campo próprio');
+  await expect(page.locator('#review-summary')).not.toBeVisible();
+});

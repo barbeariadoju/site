@@ -1,3 +1,13 @@
+## 29.302.0 — Comprovante sem envio em dobro, nome com e-mail barrado, Central de Conteúdo destravada (23/10)
+
+**Plano do dia de 23/10.** Revisão das conversas de 22/10 + pedido do Juliano sobre a Central ("tentei rejeitar diversas postagens que estão encalhadas… pode excluir tudo").
+- **Comprovante em dobro (caso 01/10, final 1456).** O envio imediato do Concluir e o cron das 12:15 pegaram o mesmo registro pendente com 0,8 s de diferença: duas mensagens, dois ids da Evolution. Agora o `satisfaction-dispatch` reserva o registro (`pending/failed → sent`, com `last_error='enviando'`) ANTES de mandar; quem chega depois pula. Se a function morrer no meio, o rastro `enviando` fica no registro.
+- **Erro meu no briefing:** apontei o Marcos (22/10) como comprovante duplicado. Não era: agrupei por final de telefone, e os dois números dele terminam em 5745. O 1º foi para o número trocado, o 2º para o certo depois da correção da 29.301.0. Fica registrado para eu não agrupar mais por 4 dígitos.
+- **Caso Marcio.** O convite de retorno de 22/10 saiu "Oi, Marciopaulavicius@hotmail." porque ele digitou o e-mail no campo do nome (08/10). Cadastro e agendamento corrigidos para "Marcio Paulavicius". O site (`agenda-v15.js`) e o `create-public-booking` recusam "@" no nome, com teste e2e novo.
+- **Central de Conteúdo: 7 Status do WhatsApp (12–18/10) presos em "Publicando…".** O `content-publish-whatsapp` deixa `aprovado` quando a Evolution não responde (de propósito: não dá para confirmar se saiu), e o Rejeitar só aceitava `rascunho/agendado`. Agora o Rejeitar aceita `aprovado` com mais de 3 min, o mesmo prazo que a function já usa para nova tentativa. Os 7 foram para "Rejeitados" (não apagados, a pedido de "excluir": rejeitado some da fila e preserva o histórico).
+- **Por que os carrosséis sumiram:** nunca foram do robô. Vieram do Plano de 30 dias (29.169.0), cujas peças acabaram em 07/10. Desde então só sai o post automático (uma imagem + legenda), e a campanha de sexta repetiu "toalha quente antes da navalha" quatro vezes. O próximo plano é trabalho à parte.
+- E2e `routes.spec.js:19` falhou de novo na bateria completa e passou isolado (2/2), igual a 22/10.
+
 ## 29.301.0 — Cadastro duplicado por telefone errado: o e-mail liga, o painel aponta, o site barra o celular sem dígito (22/10)
 
 **Pedido do Juliano (22/10, print do card do Douglas com "1ª visita" e "O sistema nunca viu este cliente"):** "analisa tudo, cria um mecanismo pra gente poder filtrar… pelo email pra tentar determinar quando é a mesma pessoa, e unifica os cadastros por conta do bônus".

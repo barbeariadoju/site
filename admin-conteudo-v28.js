@@ -378,7 +378,13 @@ Publicar agora mesmo assim? Ele sai na hora e não sai de novo na data marcada.`
     // servidor continuaria e sobrescreveria pra 'publicado' no final — a tela diria
     // "rejeitado" mas o post sairia de verdade. A condição de status no update torna
     // a checagem atômica (não dá pra rejeitar "no meio").
-    const { data, error } = await sb.from('content_posts').update({ status: 'rejeitado', scheduled_for: null }).eq('id', id).in('status', ['rascunho', 'agendado']).select('id');
+    // v29.302.0 — 'aprovado' com mais de 3 min é publicação travada (Status do WhatsApp
+    // que deu timeout fica assim de propósito, sem confirmação): a function já trata isso
+    // como lease vencida, então rejeitar também pode. Antes, 7 cards de 12-18/10 ficaram
+    // presos em "Publicando…" e o Rejeitar só mostrava o alerta.
+    const leaseCutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const { data, error } = await sb.from('content_posts').update({ status: 'rejeitado', scheduled_for: null }).eq('id', id)
+      .or(`status.in.(rascunho,agendado),and(status.eq.aprovado,approved_at.lt.${leaseCutoff})`).select('id');
     if (error) { alert(`Erro: ${error.message}`); return; }
     if (!data || !data.length) {
       alert('Esse post está sendo publicado agora (ou acabou de mudar de situação) — não dá mais pra rejeitar. Atualize a página pra ver como ficou.');
