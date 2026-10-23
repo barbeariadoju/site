@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -5526,7 +5526,24 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // desfeita) e, se ele disse quando volta, o contato fica agendado pra esse dia pela mesma fila do
  // convite de retorno (return_invites 'deferred') — o que impede o convite dos 5/12 dias de sair no meio
  // da viagem, como saiu pro Maurício em 21/09.
- const ausencia=!jaFezFora&&!['cancel','reschedule','change_service','update_products','join_waitlist','handoff'].includes(intent)&&!pediuHumano?avisoDeAusencia(normalizedQuestion):null
+ // v29.303.0 — NOTÍCIA DIFÍCIL (caso Adriana, 23/10 10h06): respondeu o convite de retorno com "Meu pai
+ // está internado" e ouviu "Consigo te atender na terça (27/10) sim!". Quem conta doença, internação ou
+ // luto não pediu horário: solidariedade, agenda zerada, lead fora da cobrança (dismissed) e push pro
+ // Juliano, que conhece o cliente e decide se escreve pessoalmente.
+ const noticiaTriste=!jaFezFora&&!['cancel','reschedule','change_service','update_products','join_waitlist'].includes(intent)&&noticiaDificil(message)
+ if(noticiaTriste){
+  const nomeN=String(contextFullName||body?.whatsapp_name||'').trim()
+  const luto=/\b(faleceu|falecid[oa]|falecimento|morreu|morte|luto|velorio|velório|enterro|sepultamento)\b/i.test(message)
+  reply=luto
+   ?`Sinto muito${nomeN?`, ${firstName(nomeN)}`:''}. Meus sentimentos a você e à sua família. Quando for o momento, é só me chamar por aqui.`
+   :`Sinto muito${nomeN?`, ${firstName(nomeN)}`:''}. Desejo força para vocês e uma boa recuperação. Quando for o momento, é só me chamar por aqui.`
+  next.date=null;next.time=null;next.period=null;next.pending_waitlist=null;next.pending_rebook=undefined;next.usual_assumed=false
+  next.dismissed=true
+  intent='other';handoff=false;actions=[]
+  const pushSecretN=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrlN=Deno.env.get('SUPABASE_URL')
+  if(pushSecretN&&supabaseUrlN)await fetch(`${supabaseUrlN}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretN},body:JSON.stringify({custom:{title:'Cliente contou uma notícia difícil',body:`${nomeN||verifiedPhone}: "${String(message).slice(0,120)}". A JuIA respondeu com solidariedade, sem oferecer horário.`,url:'/admin-atendimento.html?app=1',tag:`noticia-${verifiedPhone}`}})}).catch(()=>{})
+ }
+ const ausencia=!noticiaTriste&&!jaFezFora&&!['cancel','reschedule','change_service','update_products','join_waitlist','handoff'].includes(intent)&&!pediuHumano?avisoDeAusencia(normalizedQuestion):null
  let ausenciaAvisada=false
  {
   const dLemb=pediuLembrete(normalizedQuestion)?diasPedidos(normalizedQuestion):(ausencia?ausencia.dias:null)

@@ -1190,5 +1190,23 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('81c "Quinta tá bom" fica na quinta oferecida', nomeQui === 'quinta' && (reserva ? reserva.args?.p_booking_date === qui : r3.state?.date === qui) && !/\bhoje\b/i.test(r3.reply), { reply: r3.reply, date: r3.state?.date, reserva: reserva?.args?.p_booking_date })
 }
 
+// 82. Caso Adriana (23/10/2026, 10h06): respondeu o convite de retorno com "Ola" / "Meu pai está internado" e
+// ouviu "Consigo te atender na terça (27/10) sim!". Notícia difícil = solidariedade, sem horário, conversa fechada.
+{
+  const conviteTxt = 'Oi, Adriana. Já faz quase duas semanas do seu corte aqui na barbearia. Quer deixar o próximo horário reservado?\n*1* — Quero sim\n*2* — Agora não, obrigado'
+  const r1 = await turno({ msg: 'Ola\nMeu pai está internado', history: [{ role: 'assistant', content: conviteTxt }],
+    state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } },
+    contexto: ctxCliente('Adriana Teste', { last_services: 'Corte de cabelo' }), vagas: { [dia1]: ['09:00', '10:00', '14:00'] } })
+  checar('82a notícia difícil: solidariedade', /Sinto muito/.test(r1.reply) && /recupera/.test(r1.reply), r1.reply)
+  checar('82a notícia difícil: sem oferta de horário', !/Consigo te atender|\d{2}:\d{2}|manh[ãa]|tarde/i.test(r1.reply), r1.reply)
+  checar('82a notícia difícil: conversa fechada, sem reserva', r1.state?.dismissed === true && !r1.chamadas.some((x: any) => x.alvo === 'create_public_booking_v15'), r1.state)
+  const r2 = await turno({ msg: 'Minha mãe faleceu ontem, depois eu remarco', history: [{ role: 'assistant', content: conviteTxt }],
+    state: {}, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Adriana Teste'), vagas: { [dia1]: ['09:00'] } })
+  checar('82b luto: sentimentos, sem horário', /sentimentos/.test(r2.reply) && !/\d{2}:\d{2}/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'Meu pai saiu do hospital, tem horário sábado?', history: [], state: {},
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Adriana Teste'), vagas: { [dia1]: ['09:00', '10:00'] } })
+  checar('82c pediu horário na mesma frase: atendimento normal', !/Sinto muito/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

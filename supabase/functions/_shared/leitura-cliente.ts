@@ -318,3 +318,18 @@ const diasPedidosAusencia = (t: string): number | null => {
   if (/\b(uma quinzena|quinze dias)\b/.test(t)) return 15
   return null
 }
+
+// ---------------------------------------------------------------------------------------------
+// NOTÍCIA DIFÍCIL — doença, internação, luto. Caso Adriana (23/10/2026, 10h06): o convite de
+// retorno saiu às 10h01, ela respondeu "Ola" / "Meu pai está internado" e ouviu "Consigo te
+// atender na terça (27/10) sim! … Você prefere de manhã, à tarde ou no final do dia?". O
+// Juliano teve que pedir desculpas na mão. Quem conta um momento difícil não pediu horário:
+// a resposta é solidariedade, sem agenda, sem cobrança, e o Juliano fica sabendo.
+// Não é notícia difícil quando a mesma mensagem pede horário ("ele saiu do hospital, tem
+// horário sábado?") — aí segue o atendimento normal.
+// ---------------------------------------------------------------------------------------------
+export const noticiaDificil = (q: string): boolean => {
+  const t = String(q || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  if (/\b(tem|teria|consegue|conseguiria|da pra|pode|poderia|quero|queria|preciso|gostaria|encaixa)\b[^.!?]{0,60}\b(hoje|amanha|horario|encaix|atender|marcar|agendar|reservar|sabado|terca|quarta|quinta|sexta)\b/.test(t)) return false
+  return /\b(internad[oa]s?|internaram|hospitalizad[oa]|na uti|no hospital|no pronto.?socorro|cirurgia|operad[oa] as pressas|faleceu|falecid[oa]|falecimento|morreu|morte d[oa]|luto|velorio|enterro|sepultamento|sofreu um acidente|sofri um acidente|esta doente|estou doente|to doente|tou doente|cancer|quimioterapia|quimio\b|momento dificil|nao estou bem)\b/.test(t)
+}

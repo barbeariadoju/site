@@ -143,3 +143,23 @@ describe('pergunta do serviço no convite (caso Sharles, 01/10/2026)', () => {
     for (const o of OPCOES_SERVICO_CONVITE) expect(o.nome).toMatch(/^(Corte de cabelo|Corte \+ Barba Express|Corte \+ Barba na navalha com toalha quente|Barba Express|Barba na navalha com toalha quente)$/);
   });
 });
+
+import { recusaDoConvite } from '../../supabase/functions/_shared/convite-retorno.ts';
+describe('recusaDoConvite (casos Antony e Adriana, 23/10)', () => {
+  it('Antony: "viu deixar pra marcar mais pra frente / ainda ta bem curto rsrs" é recusa', () => {
+    expect(recusaDoConvite('viu deixar pra marcar mais pra frente ainda ta bem curto rsrs')).toBe(true);
+    expect(recusaDoConvite('ainda ta bem curto rsrs')).toBe(true);
+  });
+  it('outras recusas sem "não"', () => {
+    expect(recusaDoConvite('depois eu vejo')).toBe(true);
+    expect(recusaDoConvite('por enquanto to bem')).toBe(true);
+    expect(recusaDoConvite('vou deixar crescer mais um pouco')).toBe(true);
+    expect(recusaDoConvite('to sem tempo essa semana')).toBe(true);
+    expect(recusaDoConvite('eu te chamo quando der')).toBe(true);
+  });
+  it('quem pede horário não é recusa', () => {
+    expect(recusaDoConvite('quero sim, tem horario sabado?')).toBe(false);
+    expect(recusaDoConvite('1')).toBe(false);
+    expect(recusaDoConvite('pode ser quinta a tarde')).toBe(false);
+  });
+});

@@ -155,3 +155,15 @@ export const linhaValor = (servico: string, preco: number | null | undefined): s
   if (!Number.isFinite(v) || v <= 0 || !String(servico || '').trim()) return ''
   return `${servico}: ${moeda.format(v)}.`
 }
+
+// v29.303.0 — RECUSA SEM A PALAVRA "NÃO" (casos Antony e Adriana, 23/10/2026). A trava do convite
+// só reconhecia 1/2/sim/não; o resto ia pra JuIA, que lia o convite no histórico e oferecia horário.
+// Antony respondeu "Viu [vou] deixar pra marcar mais pra frente / Ainda tá bem curto rsrs" e ouviu
+// "Consigo te atender na terça (27/10) sim!". Adriana contou que o pai estava internado e ouviu a
+// mesma frase. Recebe o texto já normalizado (minúsculo, sem acento).
+export const recusaDoConvite = (t: string): boolean => {
+  const s = String(t || '')
+  // pedido de horário na mesma frase ("mais pra frente, tipo sexta tem?") não é recusa
+  if (/\b(tem|teria|consegue|da pra|pode ser|quero|queria|gostaria)\b[^.!?]{0,40}\b(hoje|amanha|horario|sabado|terca|quarta|quinta|sexta|marcar|reservar)\b/.test(s) && !/\b(nao|depois|mais pra frente|mais para frente)\b/.test(s)) return false
+  return /\bmais (pra|para) frente\b|\b(ainda|tá|ta|esta|está) (ta |esta |tá )?(bem |muito |bem )?curto\b|\bainda (nao|n)\b|\bpor enquanto (nao|n|nada|to bem|estou bem|ta bom)\b|\boutra hora\b|\bdepois eu (vejo|marco|te chamo|chamo|aviso|falo|te falo|agendo)\b|\b(eu )?te (chamo|aviso|falo) (depois|quando)\b|\bvou (deixar|esperar|ver depois)\b|\b(vou|vamos) ver (ainda|depois|mais pra frente)\b|\b(sem|to sem|estou sem|tou sem) (tempo|grana|dinheiro)\b|\bcresce(r)? mais\b|\bdeixar crescer\b|\bdeixa (pra|para) (depois|mais)\b|\bmes que vem eu\b|\bnao precis/.test(s)
+}

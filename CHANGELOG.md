@@ -1,3 +1,15 @@
+## 29.303.0 — JuIA: recusa sem "não" e notícia difícil não recebem mais oferta de horário (casos Antony e Adriana, 23/10)
+
+**Pedido do Juliano (23/10, dois prints):** "ensinar juia" / "tem que ensinar a juia a lidar com a recusa das pessoas, quando ela responde assim depois da recusa é muito ruim".
+- **Caso Adriana (10h06).** Respondeu o convite de retorno com "Ola" / "Meu pai está internado" e ouviu "Consigo te atender na terça (27/10) sim! … Você prefere de manhã, à tarde ou no final do dia?". O Juliano pediu desculpas na mão.
+- **Caso Antony (10h37).** "Viu [vou] deixar pra marcar mais pra frente" / "Ainda tá bem curto rsrs" levou a mesma frase.
+- **Causa comum:** a trava do convite (`whatsapp-webhook`) só reconhecia 1/2/sim/não. Qualquer outra frase virava "outro assunto" e ia para a JuIA, que lia o convite no histórico como pedido de horário.
+- **Recusa sem "não"** (`recusaDoConvite` em `_shared/convite-retorno.ts`, com teste): "mais pra frente", "ainda tá curto", "depois eu vejo", "por enquanto to bem", "vou deixar crescer", "sem tempo", "eu te chamo". Resposta: "Tudo bem, Fulano! Quando quiser marcar, é só me chamar por aqui." O convite vira `declined` e a cobrança de lead é apagada. Quem pede horário na mesma frase segue o fluxo normal.
+- **Notícia difícil** (`noticiaDificil` em `_shared/leitura-cliente.ts`, com teste): internação, hospital, UTI, cirurgia, doença, luto. No convite e em qualquer conversa, a JuIA responde "Sinto muito… desejo força e uma boa recuperação" (ou "meus sentimentos" no luto), sem horário. A conversa fica fechada (`dismissed`) e o Juliano recebe um push com a frase do cliente, para decidir se escreve pessoalmente. Não vale quando a mesma mensagem pede horário ("saiu do hospital, tem horário sábado?").
+- A resposta de recusa do convite perdeu o 👍 e o 💈 (regra da casa).
+- Simulador: cenário 82 (5 checagens, todas ok). **69a e 73b falham em HEAD também, e só às sextas:** os dois usam "amanhã" como dia útil e amanhã é sábado (fecha às 15h). A resposta da 69a prova isso ("Amanhã meu último horário é 15:45"). Os cenários precisam fixar a data; a JuIA está certa.
+- `deno check` acusa 2 erros de tipo na linha 4736 do `ju-ia-site`, que já existiam antes desta versão (não são linhas mexidas hoje).
+
 ## 29.302.0 — Comprovante sem envio em dobro, nome com e-mail barrado, Central de Conteúdo destravada (23/10)
 
 **Plano do dia de 23/10.** Revisão das conversas de 22/10 + pedido do Juliano sobre a Central ("tentei rejeitar diversas postagens que estão encalhadas… pode excluir tudo").

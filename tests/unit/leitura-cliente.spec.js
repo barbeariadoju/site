@@ -263,3 +263,25 @@ describe('soBigode (caso Samuel, 07/10)', () => {
     expect(soBigode('corte de cabelo')).toBe(false);
   });
 });
+
+import { noticiaDificil } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('noticiaDificil (caso Adriana, 23/10)', () => {
+  it('"Meu pai está internado" é notícia difícil', () => {
+    expect(noticiaDificil('Meu pai está internado')).toBe(true);
+    expect(noticiaDificil('ola meu pai esta internado')).toBe(true);
+  });
+  it('luto, doença e hospital contam', () => {
+    expect(noticiaDificil('minha mae faleceu semana passada')).toBe(true);
+    expect(noticiaDificil('estou no hospital com meu filho')).toBe(true);
+    expect(noticiaDificil('to doente, depois eu vejo')).toBe(true);
+  });
+  it('quem pede horário na mesma mensagem segue o atendimento', () => {
+    expect(noticiaDificil('ele saiu do hospital, tem horario sabado?')).toBe(false);
+    expect(noticiaDificil('meu pai ta internado mas queria marcar quinta')).toBe(false);
+  });
+  it('frase comum não é notícia difícil', () => {
+    expect(noticiaDificil('tem horario hoje?')).toBe(false);
+    expect(noticiaDificil('morri de rir kkk')).toBe(false);
+    expect(noticiaDificil('1')).toBe(false);
+  });
+});

@@ -3,7 +3,8 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
-import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta } from '../_shared/convite-retorno.ts'
+import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta, recusaDoConvite } from '../_shared/convite-retorno.ts'
+import { noticiaDificil } from '../_shared/leitura-cliente.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
 // v29.195.1 — resposta ao pedido de confirmação de presença (caso Sr. Magno): número na frente
@@ -1781,7 +1782,10 @@ Deno.serve(async (request: Request) => {
           const inviteAcceptWords = /^1+[\s!.,]*$/.test(inviteTrimmed) || /\bsim\b|\bquero\b|pode reservar|pode marcar|\breserva\b|confirmo|confirmado|fechou|fechado|\bbora\b|\bpode ser\b/.test(inviteReply)
           const inviteDeferDays = !inviteOtherDay && (pediuLembrete(inviteReply) || !inviteAcceptWords) ? diasPedidos(inviteReply) : null
           const inviteDeferAsk = !inviteDeferDays && !inviteOtherDay && pediuLembrete(inviteReply)
-          const inviteDecline = !inviteOtherDay && !inviteDeferDays && !inviteDeferAsk && ((inviteV2 ? /^2+[\s!.,]*$/.test(inviteTrimmed) : /^3+[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply))
+          // v29.303.0 (casos Antony e Adriana, 23/10): recusa sem "não" ("mais pra frente", "ainda tá
+          // curto") e notícia difícil ("meu pai está internado") também tiram o convite do caminho.
+          const inviteNoticiaDificil = noticiaDificil(text)
+          const inviteDecline = !inviteOtherDay && !inviteDeferDays && !inviteDeferAsk && ((inviteV2 ? /^2+[\s!.,]*$/.test(inviteTrimmed) : /^3+[\s!.,]*$/.test(inviteTrimmed)) || /\bnao\b|agora nao|deixa pra depois|sem interesse|nao precisa/.test(inviteReply) || recusaDoConvite(inviteReply) || inviteNoticiaDificil)
           const inviteAccept = !inviteOtherDay && !inviteDecline && !inviteDeferDays && !inviteDeferAsk && inviteAcceptWords
           const canonInvitePhone = (v: unknown) => {
             const d = String(v || '').replace(/\D/g, '')
@@ -1853,12 +1857,16 @@ Deno.serve(async (request: Request) => {
             await admin.from('return_invites').update({ status: 'declined', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
             // v29.264.0 (caso Mauricio): "agora não" encerra qualquer cobrança de horário pendente.
             await admin.from('conversation_leads').delete().eq('phone', phone)
-            await sendWhatsapp(phone, 'Tudo bem! 👍 Obrigado de novo pela visita — quando quiser marcar, é só me chamar por aqui. 💈')
-            return
+            // Notícia difícil segue pra JuIA, que responde com solidariedade e avisa o Juliano —
+            // "obrigado de novo pela visita" aqui soaria frio.
+            if (!inviteNoticiaDificil) {
+              await sendWhatsapp(phone, `Tudo bem${inviteFirstName ? `, ${inviteFirstName}` : ''}! Quando quiser marcar, é só me chamar por aqui.`)
+              return
+            }
           }
           // Outro assunto: convite sai do caminho (não intercepta mais nada) e a mensagem
           // segue pro fluxo normal da JuIA, que vê o convite no histórico da conversa.
-          await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
+          if (!inviteNoticiaDificil) await admin.from('return_invites').update({ status: 'counter', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', returnInvite.id)
         }
 
         // v29.29.0 — ETAPA 2 da avaliação: o cliente já respondeu a pesquisa (1 = satisfeito),
