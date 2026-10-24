@@ -1,3 +1,14 @@
+## 29.304.0 — JuIA: quem cancela porque se machucou ou adoeceu recebe solidariedade, não oferta de horário (caso Anderson, 24/10)
+
+**Pedido do Juliano (24/10, print):** "ensina a juia ser empática nestes casos".
+- **Caso Anderson (06h31).** Respondeu o lembrete de presença das 09h30 com "hoje não vou conseguir ir, acabei machucando no trabalho ontem, não estou nem andando, peço desculpas, deixa para a próxima" e ouviu "Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário. Quer já deixar outro horário marcado? Na terça (27/10) tenho…".
+- **Causa:** a resposta não saiu da JuIA, saiu do atalho do "3 — Preciso cancelar" no `whatsapp-webhook`, que desde a v29.186.0 cancela e já oferece outro horário. A notícia difícil da v29.303.0 não valia ali, e na JuIA ficava desligada de propósito quando o pedido era cancelar. E a lista da v29.303.0 só conhecia internação, doença e luto: "machucando", "não estou nem andando" passavam.
+- **Leitura:** `noticiaDificil` passou a reconhecer machucado e doença do dia a dia (me machuquei, acabei machucando, quebrei o pé, torci o tornozelo, acidente, febre, gripado, dengue, passando mal, de atestado, não estou nem andando). "Machucou" sozinho fica de fora de propósito: "a navalha machucou" é reclamação do serviço, não acidente.
+- **Texto, fonte única:** `respostaSolidaria` em `_shared/leitura-cliente.ts`, usado pelo webhook e pela JuIA. Para o Anderson sai: "Sinto muito, Anderson. Não precisa pedir desculpas. Já liberei seu horário, não se preocupe com isso. Desejo uma boa recuperação. Quando estiver melhor, é só me chamar por aqui que eu vejo um horário para você." Doença de parente → "força para vocês"; luto → "meus sentimentos". Sem emoji: o 🙏 é de agradecimento, não de pêsames.
+- **O cancelamento continua** (o horário precisa ser liberado), só a oferta sai. Na JuIA, machucado avisando que não vem hoje ou amanhã cancela sem a pergunta "remarcar ou cancelar?" — perguntar isso a quem não está andando é surdez. A conversa fecha (`dismissed`), sem cobrança, e o push do Juliano traz a frase do cliente para ele decidir se liga.
+- Simulador: cenário 83 (4 checagens). Cancelamento comum continua oferecendo outro horário (83d).
+
+---
 ## 29.303.0 — JuIA: recusa sem "não" e notícia difícil não recebem mais oferta de horário (casos Antony e Adriana, 23/10)
 
 **Pedido do Juliano (23/10, dois prints):** "ensinar juia" / "tem que ensinar a juia a lidar com a recusa das pessoas, quando ela responde assim depois da recusa é muito ruim".

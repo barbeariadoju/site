@@ -1208,5 +1208,20 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('82c pediu horário na mesma frase: atendimento normal', !/Sinto muito/.test(r3.reply), r3.reply)
 }
 
+// 83. Caso Anderson (24/10/2026, 06h31): "acabei machucando no trabalho ontem, não estou nem andando, peço
+// desculpas, deixa para a próxima" levou "Quer já deixar outro horário marcado? Na terça…". Machucado avisando
+// que não vem hoje: cancela sem perguntar, solidariedade, nenhuma oferta, conversa fechada.
+{
+  const msg = 'Bom dia estou mandando msg para avisar que hoje não vou conseguir ir eu acabei machucando no trabalho ontem não estou nem andando e peço desculpas deixa para a próxima'
+  const r = await turno({ msg, ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Anderson Teste'),
+    futuros: [{ id: 'b83', booking_date: hoje, start_time: '09:30:00', service_name: 'Corte de cabelo' }], vagas: { [dia1]: ['08:30', '11:45', '15:00'] } })
+  checar('83a machucado: cancela sem perguntar remarcar ou cancelar', cancelou(r) && !/Remarcar|Responda sim/.test(r.reply), r.reply)
+  checar('83b solidariedade sem oferta de horário', /Anderson/.test(r.reply) && /Sinto muito/.test(r.reply) && /recupera/.test(r.reply) && !/\d{2}:\d{2}|Quer já deixar/i.test(r.reply), r.reply)
+  checar('83c conversa fechada', r.state?.dismissed === true && !r.state?.pending_rebook, r.state)
+  const r2 = await turno({ msg: 'pode cancelar meu horário', ai: { intent: 'cancel', reply: 'Ok' }, contexto: ctxCliente('Carlos Teste'),
+    futuros: [{ id: 'b83b', booking_date: dia1, start_time: '10:00:00', service_name: 'Corte de cabelo' }], vagas: { [dia2]: ['12:30'] } })
+  checar('83d cancelamento comum continua oferecendo outro horário', cancelou(r2) && /Quer já deixar outro horário/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

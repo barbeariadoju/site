@@ -4,7 +4,7 @@ import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
 import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta, recusaDoConvite } from '../_shared/convite-retorno.ts'
-import { noticiaDificil } from '../_shared/leitura-cliente.ts'
+import { noticiaDificil, respostaSolidaria } from '../_shared/leitura-cliente.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
 // v29.195.1 — resposta ao pedido de confirmação de presença (caso Sr. Magno): número na frente
@@ -1259,8 +1259,11 @@ Deno.serve(async (request: Request) => {
               // remarcar outro dia, é só me chamar" e a conversa morria — a mesma lição da v29.181.0
               // (JuIA conduz a remarcação), agora também neste caminho. A oferta vai pro estado da
               // JuIA (pending_rebook), então "sim", horário ou dia na resposta caem no bloco dela.
+              // v29.304.0 (caso Anderson, 24/10/2026): quem avisa que se machucou ou adoeceu não recebe
+              // oferta de horário. Solidariedade, horário liberado, e o Juliano fica sabendo pelo push.
+              const declineNoticia = noticiaDificil(text)
               let ofertaTxt = ''
-              try {
+              if (!declineNoticia) try {
                 const nomesServ = String(cancelled.service_name || '').split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
                 const { data: svcRows } = await admin.from('services').select('name, duration_minutes').in('name', nomesServ)
                 const durTotal = (svcRows || []).reduce((a: number, s: any) => a + Number(s.duration_minutes || 0), 0) || Number(cancelled.duration_minutes) || 40
@@ -1291,7 +1294,10 @@ Deno.serve(async (request: Request) => {
                   await admin.from('whatsapp_conversations').update({ state: { ...st, services: nomesServ, date: oferta.date, time: null, period: null, completed: false, pending_rebook: { date: oferta.date, services: nomesServ, cancelled_date: cancelISO }, last_question: { kind: 'rebook', at: new Date().toISOString(), reply: 'Quer já deixar outro horário marcado' } }, updated_at: new Date().toISOString() }).eq('phone', phone)
                 }
               } catch (e) { console.error('[whatsapp-webhook] oferta de remarcação pós-cancelamento', e) }
-              await sendWhatsapp(phone, `Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário.${ofertaTxt || ' Se quiser remarcar outro dia, é só me chamar.'}`)
+              const declineNome = String(cancelled.customer_name || '').trim().split(/\s+/)[0] || ''
+              await sendWhatsapp(phone, declineNoticia
+                ? respostaSolidaria(text, declineNome, true)
+                : `Tudo bem, obrigado por avisar! 🙏 Já liberei seu horário.${ofertaTxt || ' Se quiser remarcar outro dia, é só me chamar.'}`)
               const pushSecret = Deno.env.get('PUSH_WEBHOOK_SECRET')
               if (pushSecret) {
                 await fetchWithTimeout(`${supabaseUrl}/functions/v1/send-push`, {
@@ -1300,7 +1306,9 @@ Deno.serve(async (request: Request) => {
                   body: JSON.stringify({
                     custom: {
                       title: '❌ Cliente avisou que não vai',
-                      body: `${cancelled.customer_name || phone} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0, 5)} — respondeu que não confirma presença.`,
+                      body: declineNoticia
+                        ? `${cancelled.customer_name || phone} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0, 5)}: "${String(text).slice(0, 120)}". A JuIA respondeu com solidariedade, sem oferecer horário.`
+                        : `${cancelled.customer_name || phone} cancelou ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0, 5)} — respondeu que não confirma presença.`,
                       url: '/admin-agenda.html?app=1',
                       tag: `booking-confirmation-declined-${cancelled.id}`,
                     },

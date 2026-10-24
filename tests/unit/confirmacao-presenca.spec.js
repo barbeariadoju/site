@@ -36,6 +36,8 @@ describe('lerRespostaConfirmacao', () => {
     expect(lerRespostaConfirmacao('nao vou poder ir, pode cancelar')).toBe('decline');
     expect(lerRespostaConfirmacao('infelizmente nao vou conseguir')).toBe('decline');
     expect(lerRespostaConfirmacao('nao')).toBe('decline');
+    // caso Anderson (24/10): o cancelamento continua; o que muda é a resposta (respostaSolidaria)
+    expect(lerRespostaConfirmacao('bom dia estou mandando msg para avisar que hoje nao vou conseguir ir eu acabei machucando no trabalho ontem nao estou nem andando e peco desculpas deixa para a proxima', 'hoje')).toBe('decline');
   });
   it('negação sobre SERVIÇO não cancela', () => {
     expect(lerRespostaConfirmacao('so vou cortar o cabelo, nao vou pintar')).not.toBe('decline');

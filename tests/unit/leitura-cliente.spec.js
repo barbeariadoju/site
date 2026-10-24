@@ -285,3 +285,32 @@ describe('noticiaDificil (caso Adriana, 23/10)', () => {
     expect(noticiaDificil('1')).toBe(false);
   });
 });
+
+import { respostaSolidaria } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('machucado e doença do dia a dia (caso Anderson, 24/10)', () => {
+  const anderson = 'Bom dia estou mandando msg para avisar que hoje não vou conseguir ir eu acabei machucando no trabalho ontem não estou nem andando e peço desculpas deixa para a próxima';
+  it('a frase real do Anderson é notícia difícil', () => {
+    expect(noticiaDificil(anderson)).toBe(true);
+  });
+  it('outras formas de machucado e doença', () => {
+    expect(noticiaDificil('me machuquei no futebol, nao vou conseguir ir')).toBe(true);
+    expect(noticiaDificil('quebrei o pe ontem')).toBe(true);
+    expect(noticiaDificil('to com febre desde ontem')).toBe(true);
+    expect(noticiaDificil('estou gripado, deixa pra semana que vem')).toBe(true);
+    expect(noticiaDificil('tive um acidente de moto')).toBe(true);
+  });
+  it('reclamação do serviço não é acidente', () => {
+    expect(noticiaDificil('a navalha machucou um pouco')).toBe(false);
+    expect(noticiaDificil('me machuquei, tem horario sabado?')).toBe(false);
+  });
+  it('resposta ao Anderson: solidária, sem horário, sem emoji', () => {
+    const r = respostaSolidaria(anderson, 'Anderson', true);
+    expect(r).toBe('Sinto muito, Anderson. Não precisa pedir desculpas. Já liberei seu horário, não se preocupe com isso. Desejo uma boa recuperação. Quando estiver melhor, é só me chamar por aqui que eu vejo um horário para você.');
+    expect(r).not.toMatch(/\d{2}:\d{2}|terça|quer já deixar/i);
+    expect(r).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+  it('doença de outra pessoa e luto', () => {
+    expect(respostaSolidaria('meu pai esta internado', 'Adriana')).toMatch(/força para vocês/);
+    expect(respostaSolidaria('minha mae faleceu', '', true)).toMatch(/^Sinto muito\. Meus sentimentos.*Já liberei seu horário.*Quando for o momento/);
+  });
+});

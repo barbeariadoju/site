@@ -332,4 +332,30 @@ export const noticiaDificil = (q: string): boolean => {
   const t = String(q || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   if (/\b(tem|teria|consegue|conseguiria|da pra|pode|poderia|quero|queria|preciso|gostaria|encaixa)\b[^.!?]{0,60}\b(hoje|amanha|horario|encaix|atender|marcar|agendar|reservar|sabado|terca|quarta|quinta|sexta)\b/.test(t)) return false
   return /\b(internad[oa]s?|internaram|hospitalizad[oa]|na uti|no hospital|no pronto.?socorro|cirurgia|operad[oa] as pressas|faleceu|falecid[oa]|falecimento|morreu|morte d[oa]|luto|velorio|enterro|sepultamento|sofreu um acidente|sofri um acidente|esta doente|estou doente|to doente|tou doente|cancer|quimioterapia|quimio\b|momento dificil|nao estou bem)\b/.test(t)
+    || LESAO.test(t)
+}
+// v29.304.0 — caso Anderson (24/10/2026, 06h31): respondeu o lembrete com "acabei machucando no trabalho
+// ontem, não estou nem andando, peço desculpas, deixa para a próxima" e ouviu "Tudo bem, obrigado por
+// avisar! Já liberei seu horário. Quer já deixar outro horário marcado? Na terça…". Machucado, acidente,
+// doença do dia a dia (febre, gripe, dengue) também são notícia difícil. "Machucou" sozinho fica de fora
+// de propósito: "a navalha machucou" é reclamação do serviço, não acidente.
+const LESAO = /\b((me |acabei (me )?)?machuquei|acabei (me )?machucando|(estou|to|tou|fiquei|ando) machucad[oa]|me acidentei|(sofri|tive|sofreu|teve) (um |uma )?(acidente|queda|fratura|lesao|torcao|entorse)|quebrei (o|a|meu|minha) \w+|fraturei|torci (o|a|meu|minha) (pe|tornozelo|joelho|braco|pulso|mao|costas)|engessad[oa]|(nao (estou|to|tou) (nem )?|nem (estou|to|tou) )(andando|conseguindo andar|conseguindo levantar)|nao consigo (nem )?andar|de repouso|de atestado|com atestado|com febre|to com febre|estou com febre|gripad[oa]|com (gripe|dengue|covid|virose|pneumonia|catapora|caxumba)|passando mal|passei mal|pronto atendimento)\b/
+
+// Resposta a quem contou notícia difícil. Uma fonte só para o webhook (atalho da confirmação de
+// presença) e a JuIA. Luto pede sentimentos; doença de outra pessoa pede "força para vocês"; o próprio
+// cliente machucado ou doente pede "boa recuperação". Pediu desculpas: "não precisa pedir desculpas".
+// Sem emoji (regra de 01/09): o 🙏 é de agradecimento, não de pêsames.
+export const respostaSolidaria = (q: string, primeiroNome = '', cancelado = false): string => {
+  const t = String(q || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const nome = primeiroNome ? `, ${primeiroNome}` : ''
+  const luto = /\b(faleceu|falecid[oa]|falecimento|morreu|morte|luto|velorio|enterro|sepultamento)\b/.test(t)
+  const outraPessoa = /\b(meu|minha|meus|minhas) (pai|mae|filh[oa]s?|esposa|marido|mulher|irmao|irma|avo|avos|sogr[oa]|tia|tio|familia|namorad[oa]|noiv[oa]|primo|prima|enteado|enteada)\b/.test(t)
+  const desculpa = /\b(desculp\w*|perdao|foi mal|me perdoe?)\b/.test(t)
+  const partes = [`Sinto muito${nome}.`]
+  if (luto) partes.push('Meus sentimentos a você e à sua família.')
+  if (desculpa) partes.push('Não precisa pedir desculpas.')
+  if (cancelado) partes.push('Já liberei seu horário, não se preocupe com isso.')
+  if (!luto) partes.push(outraPessoa ? 'Desejo força para vocês e uma boa recuperação.' : 'Desejo uma boa recuperação.')
+  partes.push(luto || outraPessoa ? 'Quando for o momento, é só me chamar por aqui.' : 'Quando estiver melhor, é só me chamar por aqui que eu vejo um horário para você.')
+  return partes.join(' ')
 }

@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -2341,7 +2341,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  if(!conflictHandled&&(cancelarDireto||cancelPickAnswer||(next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical)))intent='cancel'
 
+ let fechouSolidario=false
  if(intent==='cancel'){
+  // v29.304.0 — caso Anderson (24/10/2026, 06h31): "acabei machucando no trabalho, não estou nem andando,
+  // deixa para a próxima" levou oferta de horário na terça. Quem cancela por machucado, doença ou luto
+  // recebe solidariedade, o horário liberado e nenhuma oferta; a conversa fecha (dismissed).
+  const cancelSolidario=noticiaDificil(message)
   const doCancel=async(bookingId:string)=>{
    const {data:cancelledRows,error:cancelError}=await supabase.rpc('whatsapp_cancel_booking',{p_phone:verifiedPhone,p_booking_id:bookingId})
    const cancelled=Array.isArray(cancelledRows)?cancelledRows[0]:cancelledRows
@@ -2366,7 +2371,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     const rebookNames=rebookServices.map((s:any)=>s.name)
     const rebookDuration=rebookServices.reduce((a:number,s:any)=>a+Number(s.duration||0),0)||Number(cancelled.duration_minutes)||40
     let rebookOffer:{date:string,slots:string[]}|null=null
-    if(rebookNames.length){
+    if(rebookNames.length&&!cancelSolidario){
      try{
       // findNextAvailableDate começa no dia SEGUINTE ao informado: partir de "ontem" inclui hoje.
       const ontem=new Date(today()+'T12:00:00-03:00');ontem.setDate(ontem.getDate()-1)
@@ -2374,7 +2379,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       if(rebookOffer&&rebookOffer.date===cancelledISO)rebookOffer=await findNextAvailableDate(supabase,cancelledISO,rebookDuration)
      }catch(rbErr){console.error('[ju-ia-site] remarcação pós-cancelamento: slots',rbErr)}
     }
-    if(rebookOffer){
+    if(cancelSolidario){
+     const nomeS=String(contextFullName||context?.name||body?.whatsapp_name||'').trim()
+     reply=respostaSolidaria(message,nomeS?firstName(nomeS):'',true)
+     next.date=null;next.time=null;next.period=null;next.pending_rebook=undefined
+     next.dismissed=true
+     actions=[]
+     fechouSolidario=true
+    }else if(rebookOffer){
      reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Quer já deixar outro horário marcado para ${rebookNames.join(' + ')}? ${emDiaCap(rebookOffer.date)} ${tenhoSlots(rebookOffer.slots)}. Se preferir outro dia, é só me dizer qual.`
      next.services=rebookNames
      next.date=rebookOffer.date
@@ -2439,7 +2451,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }else if(upcomingBookings.length===1){
    const b=upcomingBookings[0]
    next.pending_cancel_booking_id=b.id
-   if(!cancelAsk&&!cancelPickAnswer){
+   if(cancelSolidario&&!cancelNegated&&!/\?/.test(message)&&String(b.booking_date).slice(0,10)<=addDaysISO(today(),1)){
+    // Machucado/doente avisando que não vem hoje ou amanhã: não pergunta "remarcar ou cancelar?".
+    await doCancel(b.id)
+   }else if(!cancelAsk&&!cancelPickAnswer){
     // v29.212.0 — foi o modelo que leu cancelamento ("tenho exame de sangue 8:30"), não o cliente que
     // pediu. Quem avisa que não pode naquele horário quase sempre quer OUTRO horário: pergunta primeiro.
     next.pending_cancel_or_reschedule=true
@@ -3926,7 +3941,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    intent='other'
    handoff=false
    next.dismissed=!(recusaCurtaDaLista&&!pedidoDeHoje) // perguntou o horário que serve: a conversa segue aberta
-  }else if(next.dismissed&&(temPedidoNovo||intent==='book'||intent==='availability')){
+  }else if(next.dismissed&&!fechouSolidario&&(temPedidoNovo||intent==='book'||intent==='availability')){
    // Cliente voltou com pedido de verdade depois da dispensa — conversa reabre normal.
    next.dismissed=null
   }
@@ -5592,7 +5607,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  const avisouFalta=/\bdespertador\b|perdi a hora|nao consegui (ir|chegar|vir)|nao deu (pra|para) (ir|vir)|nao pude (ir|vir)|acabei nao (indo|vindo)|tive um imprevisto|\bimprevisto\b|me atrasei|dormi demais|\besqueci\b|passei mal|fiquei doente/.test(normalizedQuestion)
  const pediuDesculpa=/desculp\w*|\bperdao\b|foi mal|mil perdoes/.test(normalizedQuestion)
- if((avisouFalta||pediuDesculpa)&&!/imagina|acontece|sem problema/i.test(reply)){
+ if((avisouFalta||pediuDesculpa)&&!fechouSolidario&&!/imagina|acontece|sem problema/i.test(reply)){
   const abertura=avisouFalta?'Imagina, acontece. Obrigado por avisar.':'Imagina, sem problema.'
   reply=`${perguntouComoEstou?'Tudo bem por aqui! ':''}${abertura} ${reply.replace(/^(?:tudo (?:bem|[óo]timo|certo|joia)[^.!?]*[.!?]\s*)?(?:(?:sem problema|imagina|n[ãa]o tem problema|fique tranquil[oa])[^.!?]*[.!?]\s*)?/i,'')}`.trim()
  }else if(respondeuComoEsta&&semPedidoEmAberto)reply='Que bom! Me diz o que você precisa que eu já vejo pra você.'
