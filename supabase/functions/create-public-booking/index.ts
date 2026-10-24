@@ -18,6 +18,19 @@ Deno.serve(async(req:Request)=>{
 
   try{
     const body=await req.json()
+    // v29.307.0 — rastro anti-trote (Juliano, 24/10/2026: "pode vir da mesma pessoa com dados diferentes
+    // porém mesmo IP"). IP e navegador de toda tentativa, criada ou barrada, vão pra booking_trail (90 dias,
+    // descrito na política de privacidade). O banco (trote_alerta) compara com faltas, bloqueados e
+    // tentativas barradas. Nunca derruba nem bloqueia o agendamento: IP de celular é compartilhado.
+    const ipCliente=String(req.headers.get('x-real-ip')||req.headers.get('cf-connecting-ip')||String(req.headers.get('x-forwarded-for')||'').split(',')[0]||'').trim().slice(0,64)
+    const navegador=String(req.headers.get('user-agent')||'').slice(0,400)
+    const rastrearBarrado=async(resultado:'bloqueado'|'numero_inventado')=>{
+      try{
+        const a=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+        const {error}=await a.from('booking_trail').insert({ip:ipCliente||null,user_agent:navegador||null,resultado,nome:String(body?.customer_name||'').slice(0,120),telefone:String(body?.customer_phone||'').replace(/\D/g,'').slice(0,20),email:String(body?.customer_email||'').trim().toLowerCase().slice(0,120)||null})
+        if(error)console.error('[create-public-booking] rastro barrado',error)
+      }catch(e){console.error('[create-public-booking] rastro barrado exception',e)}
+    }
     const required=['customer_name','customer_phone','service_name','service_price','duration_minutes','booking_date','start_time']
     for(const key of required){
       if(body?.[key]===undefined||body?.[key]===null||body?.[key]===''){
@@ -36,7 +49,7 @@ Deno.serve(async(req:Request)=>{
      const loc=tel.slice(2),cont:Record<string,number>={}
      for(const c of loc)cont[c]=(cont[c]||0)+1
      const fim=loc.slice(-8)
-     if(loc.length>=8&&(Math.max(...Object.values(cont))>=7||'0123456789'.includes(fim)||'9876543210'.includes(fim)))return json({error:'Confira o número: é pelo seu WhatsApp que a gente confirma o horário.'},400)
+     if(loc.length>=8&&(Math.max(...Object.values(cont))>=7||'0123456789'.includes(fim)||'9876543210'.includes(fim))){await rastrearBarrado('numero_inventado');return json({error:'Confira o número: é pelo seu WhatsApp que a gente confirma o horário.'},400)}
     }
     // v29.302.0 — caso Marcio (convite de 22/10 saiu "Oi, Marciopaulavicius@hotmail."): o e-mail
     // digitado no campo do nome virava o nome do cadastro e de toda mensagem automática.
@@ -92,7 +105,7 @@ Deno.serve(async(req:Request)=>{
     })
     // v29.52.0 — cliente bloqueado por furo repetido (trigger bookings_block_guard):
     // mensagem neutra, sem expor o bloqueio; encaixe só na conversa com o Juliano.
-    if(createError&&String(createError.message||'').includes('cliente_bloqueado'))return json({error:'Não foi possível concluir o agendamento online para este horário. Fale com a gente pelo WhatsApp que encontramos juntos um horário pra você.'},400)
+    if(createError&&String(createError.message||'').includes('cliente_bloqueado')){await rastrearBarrado('bloqueado');return json({error:'Não foi possível concluir o agendamento online para este horário. Fale com a gente pelo WhatsApp que encontramos juntos um horário pra você.'},400)}
     if(createError)return json({error:createError.message},400)
 
     const managementToken=token()
@@ -158,6 +171,18 @@ Deno.serve(async(req:Request)=>{
         if(clickError)console.error('[create-public-booking] clique do anuncio',clickError)
       }
     }catch(clickErr){console.error('[create-public-booking] clique do anuncio exception',clickErr)}
+
+    // v29.307.0 — rastro anti-trote: grava IP/navegador e, se bater com falta, bloqueado ou tentativa
+    // barrada de OUTRO telefone, marca o agendamento (o cartão do painel mostra) e avisa o Juliano.
+    try{
+      const {data:alerta}=await admin.rpc('trote_alerta',{p_ip:ipCliente||null,p_user_agent:navegador||null,p_phone:String(body.customer_phone)})
+      const {error:trailError}=await admin.from('booking_trail').insert({booking_id:id,ip:ipCliente||null,user_agent:navegador||null,resultado:'criado'})
+      if(trailError)console.error('[create-public-booking] rastro',trailError)
+      if(alerta){
+        await admin.from('bookings').update({alerta_trote:String(alerta)}).eq('id',id)
+        if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:'Possível trote no agendamento',body:`${String(body.customer_name).trim().slice(0,40)} · ${String(body.booking_date).split('-').reverse().join('/')} ${String(body.start_time).slice(0,5)}. ${String(alerta)}`,url:'/admin-agenda.html?app=1',tag:`trote-${id}`}})}).catch((e)=>console.error('[create-public-booking] push trote',e))
+      }
+    }catch(trailErr){console.error('[create-public-booking] rastro exception',trailErr)}
 
     // v29.240.0 — sinal de 50% depois de dois cancelamentos em cima da hora (regra do Juliano, 26/09/2026).
     // O banco decide (sinal_cancelamentos_ativo). Igual ao da JuIA: o horário fica reservado, o sinal vai

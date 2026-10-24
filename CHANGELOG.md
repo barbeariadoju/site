@@ -1,3 +1,15 @@
+## 29.307.0 — Rastro anti-trote: mesma internet de uma falta ou de um bloqueado vira alerta no painel
+
+**Pedido do Juliano (24/10):** "pense em algo e crie, pois pode vir da mesma pessoa com dados diferentes porém mesmo IP". Contexto: Miguel Camargo (v29.306.0) e um agendamento parecido feito por um funcionário do Google. Os dados do Miguel (IP, operadora Premium Telecom, Bragança, Android 10, veio do Google Ads) só apareceram porque os logs do servidor de 16/10 ainda existiam.
+- **`booking_trail`** (migração 200): IP e navegador de TODA tentativa de agendamento pelo site, criada ou barrada (número inventado, cliente bloqueado). A barrada guarda nome, telefone e e-mail digitados, porque não tem agendamento. Retenção de 90 dias por cron diário (`bdj-booking-trail-retencao`). RLS: só o admin lê. GRANT explícito (regra de 30/10).
+- **`trote_alerta(ip, navegador, telefone)`**: procura nos últimos 90 dias o mesmo IP numa falta (`no_show`), num cliente bloqueado ou numa tentativa barrada, com OUTRO telefone. Mesmo IP e mesmo navegador = "Mesmo celular e internet de…"; só o IP = "Mesma internet (IP) de…".
+- **No agendamento novo** (`create-public-booking`): o texto vai para `bookings.alerta_trote`, aparece no cartão do painel (mesmo estilo do "Número sem WhatsApp") e o Juliano recebe push "Possível trote no agendamento".
+- **Decidido contra o óbvio:** alerta, nunca bloqueio por IP. IP de celular é compartilhado pela operadora (CGNAT) e muda; bloquear barraria cliente de verdade de Bragança e o trote trocaria de IP no dia seguinte. A decisão fica com o Juliano, que vê o alerta e pode bloquear pelo telefone e e-mail.
+- **Privacidade:** `/privacidade.html` descreve o IP/aparelho, a finalidade (prevenção de fraude, legítimo interesse, art. 7º, IX, LGPD), os 90 dias e que nunca recusa cliente automaticamente. Última atualização 24/10/2026.
+- O rastro do Miguel foi gravado a partir dos logs de 16/10. Conferido no banco: mesmo aparelho dele com outro telefone gera o alerta; o telefone dele próprio e outro IP não geram.
+- `?v=` do `admin-v15-4-agenda.js` e do `core` em 29.307.0; `ADMIN_VERSION` 29.307.0.
+
+---
 ## 29.306.0 — Agendamento: número inventado não passa mais (caso Miguel, 24/10)
 
 **Pedido do Juliano (24/10, print):** "suspeito que este agendamento foi trote, vamos ter que criar mecanismos antitrote melhores" / "o que deu a entender foi o telefone 999999966".
