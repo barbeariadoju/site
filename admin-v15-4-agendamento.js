@@ -20,7 +20,10 @@
       const nav=e.target.closest('[data-cal-nav]');if(nav){dateCalMonth.setMonth(dateCalMonth.getMonth()+Number(nav.dataset.calNav));renderDateCal();return}
       const dia=e.target.closest('[data-cal-date]');if(dia)pickDate(dia.dataset.calDate)
     })
-    document.addEventListener('click',e=>{if(!cal.hidden&&!e.target.closest('.booking-date-field'))closeDateCal()})
+    // v29.305.0: composedPath, não e.target.closest — a seta ‹ › redesenha o calendário no meio do
+    // clique, o botão sai da página e o closest() achava que o clique foi fora: o calendário fechava
+    // em vez de trocar de mês (o Juliano não conseguia chegar em 07/11, 24/10/2026).
+    document.addEventListener('click',e=>{if(!cal.hidden&&!e.composedPath().some(el=>el.classList?.contains('booking-date-field')))closeDateCal()})
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){closeDateCal();btn.focus()}})
     dateCalLabel()
   }

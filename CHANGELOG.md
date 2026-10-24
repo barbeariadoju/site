@@ -1,3 +1,11 @@
+## 29.305.0 — Painel: a seta do calendário do Novo agendamento fechava o calendário em vez de trocar de mês
+
+**Pedido do Juliano (24/10, print):** "to tentando fazer um agendamento pra 07/11 mas não to conseguindo".
+- **Causa:** a seta ‹ › redesenha o calendário no meio do clique. O botão clicado sai da página, e a regra "clicou fora do campo de data → fecha" (`e.target.closest('.booking-date-field')`) não acha mais o campo e fecha. Ao reabrir, o calendário volta para o mês da data escolhida: era impossível passar de outubro. Veio na v29.286.0 (calendário com bloqueios).
+- **Correção:** a regra usa `e.composedPath()`, que guarda o caminho do clique mesmo com o botão já removido. Provado no navegador com o mesmo mecanismo: antes, o calendário fechava (`aberto: false`); agora fica aberto em novembro.
+- Bump do `?v=` do `admin-v15-4-agendamento.js` e do `core` nas 6 páginas do painel, e `ADMIN_VERSION`/`admin-version.json` em 29.305.0 para o painel aberto recarregar.
+
+---
 ## 29.304.0 — JuIA: quem cancela porque se machucou ou adoeceu recebe solidariedade, não oferta de horário (caso Anderson, 24/10)
 
 **Pedido do Juliano (24/10, print):** "ensina a juia ser empática nestes casos".
