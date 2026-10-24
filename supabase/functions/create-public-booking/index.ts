@@ -30,6 +30,13 @@ Deno.serve(async(req:Request)=>{
     {
      const tel=String(body.customer_phone).replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'')
      if(tel.length===10&&/[6-9]/.test(tel[2]))return json({error:'Faltou um dígito no WhatsApp: o celular tem 9 números depois do DDD, ex.: (11) 91234-5678.'},400)
+     // v29.306.0 — anti-trote (caso Miguel, 24/10/2026: (11) 99999-9966, barba de R$ 50 guardada 8 dias e
+     // ninguém veio). Sete ou mais dígitos iguais depois do DDD, ou os oito últimos em sequência. Mesma regra
+     // do agenda-v15.js (numeroInventado).
+     const loc=tel.slice(2),cont:Record<string,number>={}
+     for(const c of loc)cont[c]=(cont[c]||0)+1
+     const fim=loc.slice(-8)
+     if(loc.length>=8&&(Math.max(...Object.values(cont))>=7||'0123456789'.includes(fim)||'9876543210'.includes(fim)))return json({error:'Confira o número: é pelo seu WhatsApp que a gente confirma o horário.'},400)
     }
     // v29.302.0 — caso Marcio (convite de 22/10 saiu "Oi, Marciopaulavicius@hotmail."): o e-mail
     // digitado no campo do nome virava o nome do cadastro e de toda mensagem automática.

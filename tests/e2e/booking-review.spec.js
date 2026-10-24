@@ -66,6 +66,11 @@ test('celular sem um dígito não avança e explica', async ({ page }) => {
   await page.locator('[data-next-step="4"]').click();
   await expect(page.locator('#erro-agenda-phone')).toContainText('Faltou um dígito');
   await expect(page.locator('#review-summary')).not.toBeVisible();
+  // v29.306.0 — número inventado (caso Miguel, 24/10) não passa
+  await page.locator('#agenda-phone').fill('(11) 99999-9966');
+  await page.locator('[data-next-step="4"]').click();
+  await expect(page.locator('#erro-agenda-phone')).toContainText('Confira o número');
+  await expect(page.locator('#review-summary')).not.toBeVisible();
   // fixo de verdade (2-5 depois do DDD) continua passando
   await page.locator('#agenda-phone').fill('(11) 4033-1234');
   await page.locator('[data-next-step="4"]').click();

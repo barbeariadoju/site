@@ -1,3 +1,13 @@
+## 29.306.0 — Agendamento: número inventado não passa mais (caso Miguel, 24/10)
+
+**Pedido do Juliano (24/10, print):** "suspeito que este agendamento foi trote, vamos ter que criar mecanismos antitrote melhores" / "o que deu a entender foi o telefone 999999966".
+- **Caso Miguel.** Barba na navalha (R$ 50) para 24/10 às 13h15, marcada pelo site em 16/10 com (11) 9999-9966 e observação "122323". Não respondeu à confirmação de 23/10 e a localização das 12h40 ficou com um tique só. O horário ficou guardado oito dias.
+- **Por que passou:** o anti-trote da v29.208.0 só pega número SEM WhatsApp (a confirmação falha e o Juliano recebe push). Este número existe no WhatsApp, a mensagem saiu normalmente. Hoje ele já esbarraria na v29.301.0 (celular com 10 dígitos), mas "(11) 99999-9999" ainda passaria.
+- **Regra nova** (`numeroInventado` no `agenda-v15.js` e a mesma conta no `create-public-booking`): sete ou mais dígitos iguais depois do DDD, ou os oito últimos em sequência (12345678, 87654321), recebem "Confira o número: é pelo seu WhatsApp que a gente confirma o horário." Conferida contra números reais (o da barbearia, o do Juliano, clientes da semana): nenhum é barrado.
+- **Decidido contra o óbvio:** não pedir código de verificação no WhatsApp para todo agendamento (como no Clube). Seria a trava mais forte, mas põe uma etapa a mais na frente de todo cliente de verdade para pegar um trote raro. Fica como opção se os trotes continuarem.
+- Teste e2e `booking-review` cobre o caso. `?v=` do `agenda-v15.js` em 29.306.0.
+
+---
 ## 29.305.0 — Painel: a seta do calendário do Novo agendamento fechava o calendário em vez de trocar de mês
 
 **Pedido do Juliano (24/10, print):** "to tentando fazer um agendamento pra 07/11 mas não to conseguindo".
