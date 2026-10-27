@@ -1,3 +1,10 @@
+## 29.309.1 — WhatsApp: mídia sem texto não cala mais a resposta da JuIA (caso Tatiane)
+
+**Pergunta do Juliano (27/10, 10h40):** "juia parece ter parado de responder, aconteceu alguma coisa?"
+- **O que houve:** Tatiane mandou "Olá bom dia!" e "Tem horário disponível hoje as 12:30" e, 14 s depois, uma mídia sem texto. A JuIA preparou as duas respostas e descartou as duas pela trava "o cliente escreveu de novo antes do envio" (v29.43.0), mas a mídia sem texto não é processada (vira só o registro "[mídia ou mensagem sem texto]"). Ninguém respondeu até o Juliano, 11 min depois. Os logs mostram a JuIA respondendo normalmente antes e depois; não teve relação com o deploy da 29.309.0.
+- **Correção:** a trava de resposta velha ignora a mídia sem texto. Publicado só o `whatsapp-webhook`.
+
+---
 ## 29.309.0 — Fim do programa de pontos (último prêmio para quem já tinha) e uma mensagem só para lead calado
 
 **Pedido do Juliano (27/10):** "acabar com os pontos de fidelidade, quem tem tem quem não tem não vai ter mais… quem tem vai até ganhar um prêmio, acabou não acumula mais", e limpar toda menção no site, nas redes, no WhatsApp e no marketing "para não recebermos reclamação depois". Regra confirmada com ele: quem tinha pontos em 27/10 continua até completar 10 e ganha UM último prêmio, desde que complete até 31/03/2027; quem tinha 0 ou chega agora não junta mais. Prêmio já ganho continua valendo.

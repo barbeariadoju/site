@@ -524,6 +524,11 @@ Deno.serve(async (request: Request) => {
         .select('id')
         .eq('phone', phone)
         .eq('direction', 'in')
+        // v29.309.1 — caso Tatiane (27/10/2026, 10h23): "Olá bom dia!" + "Tem horário hoje as 12:30" e, 14 s
+        // depois, uma mídia sem texto. As duas respostas da JuIA foram descartadas por causa da mídia, e a
+        // mídia não gera resposta nenhuma (linha ~832): ninguém respondeu até o Juliano, 11 min depois.
+        // Mídia sem texto não torna a resposta velha.
+        .neq('body', '[mídia ou mensagem sem texto]')
         .gt('created_at', new Date(obsoleteCutoffMs).toISOString())
         .limit(1)
       return !!(data && data.length > 0)
