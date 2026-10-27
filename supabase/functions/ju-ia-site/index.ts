@@ -847,8 +847,17 @@ Deno.serve(async req=>{
  let servicoEscolhidoNaLista=''
  const manterNaEscolha:string[]=Array.isArray(state?.pending_service_pick?.manter)?state.pending_service_pick.manter.map(String):[]
  if(state?.pending_service_pick&&!body._segunda_parte){
-  servicoEscolhidoNaLista=servicoDaResposta(normalize(message))
-  if(servicoEscolhidoNaLista)message=`Quero ${servicoEscolhidoNaLista}`
+  // v29.310.0 — caso Josue (27/10/2026, 10h13): "1" + "Com sobrancelha e quanto?" no mesmo buffer. O "1" reservou só o
+  // corte e a sobra virou um turno à parte que caiu em "trocar o serviço — qual você quer no lugar?". Número da lista
+  // seguido de complemento é UM pedido só: "Quero Corte de cabelo com sobrancelha e quanto?".
+  const numMaisResto=String(message).trim().match(/^([1-9])[\s!.,]*\n+([\s\S]+)$/)
+  const complemento=(numMaisResto?numMaisResto[2]:restoDaMensagem).trim()
+  const numero=numMaisResto?numMaisResto[1]:message
+  servicoEscolhidoNaLista=servicoDaResposta(normalize(numero))
+  if(servicoEscolhidoNaLista&&complemento&&/\b(com|mais|e|tambem|junto)\b|\?|quanto|valor|preco/.test(normalize(complemento))){
+   message=`Quero ${servicoEscolhidoNaLista} ${complemento}`
+   restoDaMensagem=''
+  }else if(servicoEscolhidoNaLista)message=`Quero ${servicoEscolhidoNaLista}`
   delete state.pending_service_pick
  }
  const sessionId=String(body.session_id||crypto.randomUUID()).slice(0,80)
@@ -3519,11 +3528,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const primeiroToken=bareResp.split(/\s+/)[0]
   const negou=/(^|\s)(nao|n)(\s|$)/.test(normalizedQuestion)
   const soOQueTinha=/\b(somente|so|apenas|soh)\b/.test(normalizedQuestion)&&!(addKey&&normalizedQuestion.includes(addKey))
+  // v29.310.0 — caso Fernando (27/10/2026, 16h49): "Sem lavagem" virou "Corte + Lavagem" (R$ 60) e o Pix saiu
+  // com o valor errado — a palavra do item ("lavagem") contava como sim e o "sem" na frente não era negação.
+  const semOItem=Boolean(addKey)&&new RegExp(`\\b(sem|dispenso|dispensa)\\s+(a\\s+|o\\s+)?${addKey}`).test(normalizedQuestion)
   // v29.276.0 — caso Samuel (07/10/2026, 06h26): "Fica quanto tudo" depois de "quer incluir a lavagem?"
   // virou "Incluído. Fica Corte + Lavagem". Pergunta de valor não é resposta à oferta: responde o total
   // dos dois jeitos e a oferta continua de pé.
   const perguntouValor=askedPrice&&primeiroToken!=='1'&&primeiroToken!=='2'
-  const disse2=!perguntouValor&&(primeiroToken==='2'||simpleNo||negou||soOQueTinha)
+  const disse2=!perguntouValor&&(primeiroToken==='2'||simpleNo||negou||soOQueTinha||semOItem)
   const disse1=!perguntouValor&&!disse2&&(primeiroToken==='1'||simpleYes||Boolean(addKey&&normalizedQuestion.includes(addKey)))
   const quando=`${emDia(String(postBooking.date||''))} às ${String(postBooking.time||'')}`
   const dataPb=String(postBooking.date||'')||null
@@ -3615,13 +3627,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // sobrancelha"); a palavra-chave é o plano B quando a mensagem não tem negação.
    const previousServices=Array.isArray(state?.services)?state.services:[]
    const modelAdded=pendingOffer.find(n=>n!=='__none__'&&next.services.includes(n)&&!previousServices.includes(n))
-   const keywordPick=/(^|\s)nao(\s|$)/.test(normalizedQuestion)?null:pendingOffer.find(n=>n!=='__none__'&&normalizedQuestion.includes(offerKeyword(n)))
+   // v29.310.0 (caso Fernando): "sem lavagem" cita o item para recusar, não para pedir.
+   const semItem=(kw:string)=>new RegExp(`\\b(sem|dispenso|dispensa)\\s+(a\\s+|o\\s+)?${kw}`).test(normalizedQuestion)
+   const keywordPick=/(^|\s)nao(\s|$)/.test(normalizedQuestion)?null:pendingOffer.find(n=>n!=='__none__'&&normalizedQuestion.includes(offerKeyword(n))&&!semItem(offerKeyword(n)))
+   const recusouItem=pendingOffer.some(n=>n!=='__none__'&&semItem(offerKeyword(n)))
    // v29.273.0 — caso Chaccal (30/09/2026, 13h41): a opção "nenhum" da lista é "Não, pode fechar assim"; ele
    // escreveu "Pode fechar assim" e ouviu "Qual deles você quer incluir?" — o "pode" contava como sim antes
    // de alguém olhar o texto da própria opção. Repetir a opção "nenhum" (ou dizer que está bom assim) é recusa.
    const recusaPorExtenso=/\b(pode fechar|fecha assim|fechar assim|so isso|somente isso|apenas isso|nada mais|mais nada|ta bom assim|esta bom assim|assim mesmo|assim ta bom|assim esta bom|nenhum|nao precisa)\b/.test(normalizedQuestion)
    if(modelAdded||keywordPick){addName=String(modelAdded||keywordPick);resolved=true}
-   else if(recusaPorExtenso||simpleNo){declined=true;resolved=true}
+   else if(recusaPorExtenso||simpleNo||(recusouItem&&pendingOffer.filter(n=>n!=='__none__').length===1)){declined=true;resolved=true}
    else if(simpleYes){
     // "sim, quero" sem dizer o quê — repete só o pedido do número, sem reabrir a lista inteira.
     reply='Qual deles você quer incluir? Pode me responder só com o número 😊'

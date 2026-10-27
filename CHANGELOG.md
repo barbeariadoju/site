@@ -1,3 +1,12 @@
+## 29.310.0 — JuIA: "sem lavagem" é recusa (caso Fernando), "1 + com sobrancelha" é um pedido só (caso Josue), "ops / satisfeita" corrige a pesquisa (caso Monique)
+
+**Revisão do dia 27/10, à tarde, pedida pelo Juliano depois do print do Fernando.**
+- **Fernando (16h49):** reservado Corte de cabelo às 17h40, a JuIA ofereceu a lavagem por mais R$ 10 e ele respondeu "Sem lavagem / Manda o pix / Por favor". Resultado: o agendamento virou Corte + Lavagem e o Pix saiu com R$ 60. Na resposta à oferta depois da reserva, a palavra do item ("lavagem") contava como sim, e "sem" não era negação. Agora "sem/dispenso + item" é recusa, depois e antes da reserva. O agendamento foi corrigido à mão no banco (Corte de cabelo, R$ 50, 45 min).
+- **Josue (10h13):** à pergunta "É corte ou corte + barba?" (horário já escolhido) veio "1" e "Com sobrancelha e quanto?". O "1" reservou só o corte, e a sobra virou um turno à parte que caiu em "qual serviço você quer no lugar?", com o "2" seguinte respondido como "já é Corte de cabelo". Agora o número da lista seguido de complemento ("com", "e", "quanto", "?") é um pedido só: "Quero Corte de cabelo com sobrancelha e quanto?". O Juliano cobrou certo na cadeira (R$ 70).
+- **Monique (14h51):** na pesquisa, "2", "Ops", "1" e depois "Sempre satisfeita Ju, muito obrigada…" foram registrados como relato de cliente insatisfeito, com push para o Juliano. Agora "satisfeito/a" em qualquer ponto da frase (sem "in" nem "não" na frente) e o "ops" de quem apertou errado contam como correção. A pesquisa dela foi corrigida para satisfeita e o atendimento humano liberado.
+- Simulador: cenários 86 (Fernando) e 87 (Josue), 233 ok. `npm test` verde. Publicados `ju-ia-site` e `whatsapp-webhook`.
+
+---
 ## 29.309.1 — WhatsApp: mídia sem texto não cala mais a resposta da JuIA (caso Tatiane)
 
 **Pergunta do Juliano (27/10, 10h40):** "juia parece ter parado de responder, aconteceu alguma coisa?"

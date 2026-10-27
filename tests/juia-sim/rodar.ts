@@ -1255,5 +1255,29 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('85c sem saldo: explica que o programa foi encerrado', /encerrado/.test(r4.reply) && !/Seu cartão está pronto/.test(r4.reply), r4.reply)
 }
 
+// 86. Caso Fernando (27/10/2026, 16h49): "Sem lavagem" à oferta da lavagem depois da reserva virou Corte + Lavagem
+// e o Pix saiu com R$ 60. Citar o item com "sem" na frente é recusa — depois e antes da reserva.
+{
+  const ctx = ctxCliente('Fernando Teste', { last_services: 'Corte de cabelo' })
+  const st = { services: ['Corte de cabelo'], date: dia1, time: '17:40', completed: true, upsell_offer_options: ['Corte + Lavagem', '__none__'], upsell_post_booking: { id: 'b86', date: dia1, time: '17:40', services: ['Corte de cabelo'] } }
+  for (const msg of ['Sem lavagem', 'Sem lavagem\nManda o pix\nPor favor', 'dispenso a lavagem']) {
+    const r = await turno({ msg, state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
+    const trocou = r.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service')
+    checar(`86a "${msg.split('\n')[0]}" não inclui a lavagem`, !trocou && !/Incluído/.test(r.reply), r.reply)
+  }
+  const r2 = await turno({ msg: 'com lavagem', state: st, ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctx })
+  checar('86b "com lavagem" continua incluindo', r2.chamadas.some((x: any) => x.alvo === 'phone_change_booking_service'), r2.reply)
+}
+
+// 87. Caso Josue (27/10/2026, 10h13): à pergunta "É corte ou corte + barba?" (horário já escolhido) ele mandou "1" e
+// "Com sobrancelha e quanto?" juntos. Reservou só o corte e a sobra virou "qual serviço você quer no lugar?".
+{
+  const st = { date: dia1, time: '14:30', name: 'Josue Teste', pending_service_pick: { at: new Date().toISOString() }, last_question: { kind: 'service_pick', at: new Date().toISOString(), reply: 'É corte ou corte + barba?' } }
+  const r = await turno({ msg: '1\nCom sobrancelha e quanto?', state: st, history: [{ role: 'assistant', content: 'Hoje às 14:30 está livre. É corte ou corte + barba?' }],
+    ai: { intent: 'book', reply: 'Ok', updates: { services: ['Corte de cabelo', 'Sobrancelha Masculina'] } }, contexto: ctxCliente('Josue Teste'), vagas: { [dia1]: ['14:30'] } })
+  const soCorte = r.chamadas.some((x: any) => x.alvo === 'create_public_booking_v15' && !/Sobrancelha/.test(JSON.stringify(x.args)))
+  checar('87a "1 / com sobrancelha" fica com corte + sobrancelha num turno só', JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo', 'Sobrancelha Masculina']) && !soCorte && !/no lugar\?/.test(r.reply), { reply: r.reply, svcs: r.state?.services })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

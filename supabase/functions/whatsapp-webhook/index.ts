@@ -1505,7 +1505,10 @@ Deno.serve(async (request: Request) => {
             // apertou errado — registra satisfeito, solta o takeover e avisa o Juliano.
             const rawUnsat = normalize(text).replace(/^(?:(?:oi|ola|opa|bom dia|boa tarde|boa noite|juliano|ju|tudo bem)[\s,.!]*)+/, '').trim()
             const nUnsat = /^([123])\1*[\s!.,]*$/.test(rawUnsat) ? Number(rawUnsat[0]) : 0
-            const corrigiuSatisfeito = !/insatisfeit/.test(rawUnsat) && (/^(?:foi |fiquei |estou |to |ta |tava |fico )?satisfeit[oa]\b/.test(rawUnsat) || /\b(errei|foi engano|me enganei|apertei errado|cliquei errado|era (o )?1\b|queria (o )?1\b|fiquei satisfeit)/.test(rawUnsat))
+            // v29.310.0 — caso Monique (27/10/2026, 14h51): "2", "Ops", "1" e depois "Sempre satisfeita Ju, muito obrigada"
+            // virou "relato do cliente insatisfeito". "Satisfeito" em qualquer lugar da frase (sem "in"/"não" na frente) e o
+            // "ops" de quem apertou errado são correção.
+            const corrigiuSatisfeito = !/insatisfeit|\bnao (?:fiquei |estou |to |fui |sai )?satisfeit/.test(rawUnsat) && (/\bsatisfeit[oa]s?\b/.test(rawUnsat) || /^(ops|opa errei|opss+)\b/.test(rawUnsat) || /\b(errei|foi engano|me enganei|apertei errado|cliquei errado|era (o )?1\b|queria (o )?1\b)/.test(rawUnsat))
             const clearUnsat = async () => {
               await admin.from('whatsapp_conversations').update({ state: { ...unsatState, pending_unsat: null }, updated_at: new Date().toISOString() }).eq('phone', phone)
             }
