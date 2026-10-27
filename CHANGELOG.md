@@ -1,3 +1,11 @@
+## 29.311.0 — /servicos.html com a tabela de preços de setembro (caso do corte infantil)
+
+**Print do Juliano (27/10, 17h38):** uma cliente mostrou o site com o corte infantil a R$ 40 e ele cobrou R$ 40, quando o preço é R$ 50.
+- **O que houve:** a tabela de `/servicos.html` ficou com os preços de antes do reajuste em 17 dos 24 serviços (corte R$ 40, Corte + Lavagem R$ 50, combos R$ 65/R$ 80, Barba Express R$ 25…) desde 30/09. O script do reajuste (v29.268.0) procurava "R$ 40" e esta tabela escreve `<small>R$</small>40`, então a página inteira ficou de fora, e ninguém conferiu a contagem por arquivo. **Erro meu, de quase um mês:** a regra da casa é conferir a contagem depois de script de edição em massa.
+- **Correção:** os 24 preços da página agora batem com o banco (`services`) e com a `/precos/`. Na varredura do site inteiro não apareceu outro preço velho: os R$ 40 e R$ 25 que sobraram são Raspar, Pigmentação de Barba e Pigmentação de Sobrancelha, que custam isso mesmo.
+- **Trava nova:** `tests/unit/tabelas-de-preco.spec.js` confere cada linha das duas tabelas (`/servicos.html` e `/precos/`) contra o `services-catalog-v7.js`, o mesmo catálogo do `/agendar/`. Na página antiga, falham exatamente as 17 linhas erradas.
+
+---
 ## 29.310.0 — JuIA: "sem lavagem" é recusa (caso Fernando), "1 + com sobrancelha" é um pedido só (caso Josue), "ops / satisfeita" corrige a pesquisa (caso Monique)
 
 **Revisão do dia 27/10, à tarde, pedida pelo Juliano depois do print do Fernando.**
