@@ -1,3 +1,11 @@
+## 29.308.0 — JuIA: "Ju, consegue me atender?" é pedido de horário, e "adiantar" só oferece o que vem antes (caso Jessica)
+
+**Revisão da JuIA de 27/10 (conversas de sábado à tarde até terça de manhã).**
+- **Segunda 26/10, 15h08 (dia fechado):** "Oi Ju / Consegue me atender hoje?" casou com o pedido de gente ("Ju consegue me atender") e saiu "Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje". O "Claro" soou como sim, o "encerrou o expediente" não era verdade (segunda não abre) e o Juliano respondeu na mão. O WhatsApp É o Juliano: chamar de "Ju" e pedir para ser atendido é pedido de horário. O pedido de gente agora só conta "falar"/"responder" depois de "Juliano/Ju consegue".
+- **Terça 27/10, 08h36:** com 10:00 marcado, "adiantar o horário?" recebeu "para qual dia você quer mudar?" e "Hoje mais cedo" recebeu "entre 09:00 e 11:55 — por exemplo 09:00, 09:30, 10:15 ou 11:55" (dois desses DEPOIS do horário dela). Agora "mais cedo/adiantar/antecipar" fica no dia do próprio agendamento e só oferece o que vem antes ("mais tarde", só o que vem depois); sem nada antes, diz que mais cedo não dá e que o horário continua garantido.
+- Simulador: cenário 84 (a, b, c). 225 ok.
+
+---
 ## 29.307.0 — Rastro anti-trote: mesma internet de uma falta ou de um bloqueado vira alerta no painel
 
 **Pedido do Juliano (24/10):** "pense em algo e crie, pois pode vir da mesma pessoa com dados diferentes porém mesmo IP". Contexto: Miguel Camargo (v29.306.0) e um agendamento parecido feito por um funcionário do Google. Os dados do Miguel (IP, operadora Premium Telecom, Bragança, Android 10, veio do Google Ads) só apareceram porque os logs do servidor de 16/10 ainda existiam.

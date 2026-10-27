@@ -1491,10 +1491,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const q=normalize(message)
   // v29.293.0 (caso Moisés, 13/10/2026, 18h06): "Falar com o Junior" recebeu a oferta de amanhã de novo —
   // alguns clientes chamam o Juliano de Junior.
+  // v29.308.0 — caso Jessica (segunda 26/10/2026, 15h08): "Oi Ju / Consegue me atender hoje?" virou pedido
+  // de gente ("Claro. Vou avisar o Juliano; ele já encerrou o expediente") num dia em que a barbearia nem
+  // abre, e o Juliano respondeu na mão. O WhatsApp É o Juliano: "Ju, consegue me atender?" é pedido de
+  // horário, não de falar com uma pessoa. Só "falar"/"responder" contam.
   // v29.212.0 (caso Rafael, 17/09/2026): "falo direto com o Juliano?" e, depois, "queria falar com ele"
   // não casavam — a JuIA respondeu que era assistente virtual e seguiu atendendo. Ver _shared/leitura-cliente.ts.
   const ultimaFalaCitaJuliano=/juliano/i.test(String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||''))
-  const pedeHumano=pedeFalarComJuliano(q,ultimaFalaCitaJuliano)||/\b(falar|conversar)\s+(com\s+)?(o\s+)?(juliano|ju|junior|barbeiro|dono|humano|pessoa|atendente|alguem)\b|\b(juliano|ju)\s+(consegue|pode|poderia)\s+(falar|me atender|responder)\b|\b(nao|n)\s+(quero|gosto d[ae]|to querendo)\s+(a\s+)?(inteligencia artificial|ia\b|robo|bot|maquina)|\b(chama|chame|chamar|passa|passe)\s+(o\s+)?(juliano|ju|barbeiro|dono)\b|\bquero (uma )?pessoa\b|\b(e|eh|é) (um )?(robo|bot|inteligencia artificial)\?/.test(q)
+  const pedeHumano=pedeFalarComJuliano(q,ultimaFalaCitaJuliano)||/\b(falar|conversar)\s+(com\s+)?(o\s+)?(juliano|ju|junior|barbeiro|dono|humano|pessoa|atendente|alguem)\b|\b(juliano|ju)\s+(consegue|pode|poderia)\s+(falar|responder)\b|\b(nao|n)\s+(quero|gosto d[ae]|to querendo)\s+(a\s+)?(inteligencia artificial|ia\b|robo|bot|maquina)|\b(chama|chame|chamar|passa|passe)\s+(o\s+)?(juliano|ju|barbeiro|dono)\b|\bquero (uma )?pessoa\b|\b(e|eh|é) (um )?(robo|bot|inteligencia artificial)\?/.test(q)
   if(pedeHumano&&!/\bcancel|remarc|\bpix\b|chave/.test(q)){
    pediuHumano=true
    reply=barbeariaAbertaAgora()?'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder. 🙏':'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar. 🙏'
@@ -2768,7 +2772,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser remarcar outro, me avise.'
     next.pending_reschedule_booking_id=null
     handoff=false
-   }else if(!next.date&&!extractRequestedTime(message)){
+   }else if(!next.date&&!extractRequestedTime(message)&&!/\b(mais cedo|mais tarde|adiantar|adianta|antecipar|antecipa)\b/.test(normalizedQuestion)){
     reply=`Para qual dia você quer mudar o agendamento de ${formatDateBR(target.booking_date)} às ${String(target.start_time).slice(0,5)}?`
     handoff=false
    }else{
@@ -2800,6 +2804,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        next.date=null
       }
      }else{
+      // v29.308.0 — caso Jessica (27/10/2026, 08h36): com o horário das 10:00, pediu "adiantar" e "hoje
+      // mais cedo" e recebeu "para qual dia?" e depois uma lista com 10:15 e 11:55 — horários DEPOIS do
+      // dela. "Mais cedo"/"adiantar" no mesmo dia = só o que vem antes do horário atual ("mais tarde", só
+      // o que vem depois), e o dia já é o do próprio agendamento (acima, sem perguntar).
+      const dirRem=horaAtual?(/\b(mais cedo|adiantar|adianta|antecipar|antecipa)\b/.test(normalizedQuestion)?'antes':/\bmais tarde\b/.test(normalizedQuestion)?'depois':''):''
+      if(dirRem){
+       const lista=allSlots.filter((t:string)=>dirRem==='antes'?t<horaAtual:t>horaAtual)
+       reply=lista.length
+        ?`${emDiaCap(next.date)} ${dirRem==='antes'?'antes':'depois'} das ${horaFalada(horaAtual)} consigo ${slotsPhrase(lista)}. Qual fica melhor pra você?`
+        :`${emDiaCap(next.date)} ${dirRem==='antes'?'mais cedo':'mais tarde'} não tenho como. Seu horário das ${horaFalada(horaAtual)} continua garantido.`
+       actions=slotsSample(lista).map((t:string)=>({label:t,message:t}))
+      }else{
       // v29.170.0 — caso Venilson: "Estou ocupado pela manhã" recebeu a mesma lista com 08:00 e 09:30.
       const perRem=detectPeriod(normalizedQuestion)||String(next.period||'')
       const slotsRem=perRem?slotsForPeriod(allSlots,perRem):allSlots
@@ -2807,6 +2823,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       const notaRem=perRem&&!slotsRem.length?`${periodoFalado(perRem).charAt(0).toUpperCase()+periodoFalado(perRem).slice(1)} não sobrou nada. `:''
       reply=`${notaRem}${emDiaCap(next.date)}${perRem&&slotsRem.length?` ${periodoFalado(perRem)}`:''} consigo te atender ${slotsPhrase(listaRem)}. Qual fica melhor pra você?`
       actions=slotsSample(listaRem).map((t:string)=>({label:t,message:t}))
+      }
      }
      handoff=false
     }else if(allSlots.includes(time)){

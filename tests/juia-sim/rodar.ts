@@ -1223,5 +1223,22 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('83d cancelamento comum continua oferecendo outro horário', cancelou(r2) && /Quer já deixar outro horário/.test(r2.reply), r2.reply)
 }
 
+// 84. Caso Jessica (26-27/10/2026). (a) Segunda, dia fechado: "Oi Ju / Consegue me atender hoje?" virou pedido de
+// gente ("Vou avisar o Juliano; ele já encerrou o expediente"). (b) Com 10:00 marcado, "adiantar o horário?" recebeu
+// "para qual dia?" e "Hoje mais cedo" recebeu uma lista com 10:15 e 11:55.
+{
+  const r1 = await turno({ msg: 'Oi Ju\nConsegue me atender hoje?', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } },
+    contexto: ctxCliente('Jessica Teste', { last_services: 'Corte de cabelo' }), vagas: { [hoje]: ['09:00', '14:00'] } })
+  checar('84a "Ju, consegue me atender?" é pedido de horário, não de gente', !r1.handoff && !/Vou avisar o Juliano/.test(r1.reply), r1.reply)
+  const futuros = [{ id: 'b84', booking_date: hoje, start_time: '10:00:00', service_name: 'Corte de cabelo', status: 'confirmed', duration_minutes: 30 }]
+  const vagas = { [hoje]: ['09:00', '09:30', '10:15', '11:55'] }
+  const r2 = await turno({ msg: 'Oi Ju Será que é possível adiantar o horário?', state: { pending_reschedule_booking_id: 'b84' },
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Jessica Teste'), futuros, vagas })
+  checar('84b "adiantar" não pergunta o dia e só oferece antes das 10h', !/Para qual dia/.test(r2.reply) && /09:00/.test(r2.reply) && !/10:15|11:55/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'Hoje mais cedo. É possível?', state: { pending_reschedule_booking_id: 'b84', date: hoje },
+    ai: { intent: 'reschedule', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Jessica Teste'), futuros, vagas: { [hoje]: ['10:15', '11:55'] } })
+  checar('84c sem nada antes: mantém o horário, sem lista depois', /garantido/.test(r3.reply) && !/10:15|11:55/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
