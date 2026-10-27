@@ -1,3 +1,8 @@
+## 29.311.1 — Plaquinha do reajuste sem a aparação corporal
+
+**Pedido do Juliano (27/10):** conferir se a página de serviços ainda tinha raspagem ou depilação corporal. A  não tinha (só depilação nasal e de orelhas, que são do rosto); a  já redireciona desde a 29.298.0 e o banco não tem o serviço. Sobrava a nota da arte da plaquinha (), que ainda dizia "tratamentos e aparação corporal — na tabela completa". Tirado. A placa já impressa pode ter essa frase.
+
+---
 ## 29.311.0 — /servicos.html com a tabela de preços de setembro (caso do corte infantil)
 
 **Print do Juliano (27/10, 17h38):** uma cliente mostrou o site com o corte infantil a R$ 40 e ele cobrou R$ 40, quando o preço é R$ 50.
