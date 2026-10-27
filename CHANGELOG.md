@@ -1,6 +1,6 @@
 ## 29.311.1 — Plaquinha do reajuste sem a aparação corporal
 
-**Pedido do Juliano (27/10):** conferir se a página de serviços ainda tinha raspagem ou depilação corporal. A  não tinha (só depilação nasal e de orelhas, que são do rosto); a  já redireciona desde a 29.298.0 e o banco não tem o serviço. Sobrava a nota da arte da plaquinha (), que ainda dizia "tratamentos e aparação corporal — na tabela completa". Tirado. A placa já impressa pode ter essa frase.
+**Pedido do Juliano (27/10):** conferir se a página de serviços ainda tinha raspagem ou depilação corporal. A `/servicos.html` não tinha (só depilação nasal e de orelhas, que são do rosto); a `servico-aparacao-corporal.html` já redireciona desde a 29.298.0 e o banco não tem o serviço. Sobrava a nota da arte da plaquinha (`artes/placa-reajuste-outubro.html`), que ainda dizia "tratamentos e aparação corporal — na tabela completa". Tirado. A placa já impressa pode ter essa frase.
 
 ---
 ## 29.311.0 — /servicos.html com a tabela de preços de setembro (caso do corte infantil)
