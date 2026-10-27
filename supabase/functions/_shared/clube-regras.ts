@@ -4,13 +4,14 @@
 // da régua em assets/js/clube.js. Mudou aqui, muda lá (o teste tests/unit/clube-regras.spec.js confere).
 // Nenhum texto para cliente leva emoji (regra de 01/09/2026); a saída passa pelo semEmoji de qualquer jeito.
 
-export const TERMS_VERSION = 'v3'
+export const TERMS_VERSION = 'v4'
 export const TERMS_URL = 'https://www.barbeariadoju.com.br/clube/contrato/'
-export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v3.txt'
+export const TERMS_TXT_URL = 'https://www.barbeariadoju.com.br/clube/contrato/v4.txt'
+// v29.309.0: v4 = v3 sem a promessa do cartão fidelidade (4.8): o programa de pontos não aceita adesão nova desde 27/10/2026. v3, v2 e v1 ficam guardados intactos.
 // v29.266.0: v3 = v2 com a cobrança automática no cartão (3.2, 3.5 e 12.2). v2 e v1 ficam guardados intactos.
 // v29.238.0: v2 = v1 sem a Cadeira Cativa (tirada antes do lançamento). SHA-256 do clube/contrato/v2.txt com quebras de linha LF (.gitattributes fixa eol=lf).
 // O teste recalcula e falha se o texto mudar sem trocar a versão.
-export const TERMS_SHA256 = 'b316b7f82e7669095544dad6833fe83f38a1524e72a67382d434f945d727ad94'
+export const TERMS_SHA256 = '22215ea71b91c76401c9611f315078e0fa8587bd7dfab7504819bf688f24b68d'
 export const PAGINA_CLUBE = 'https://www.barbeariadoju.com.br/clube/'
 export const PAGINA_MINHA = 'https://www.barbeariadoju.com.br/clube/minha-assinatura/'
 

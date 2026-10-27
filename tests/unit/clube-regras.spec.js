@@ -35,9 +35,9 @@ describe('régua de desconto e mensalidades aprovadas', () => {
 
 describe('contrato', () => {
   it('o hash do texto é o registrado (mudou o texto = versão nova)', () => {
-    const txt = readFileSync('clube/contrato/v3.txt').toString('utf8').replace(/\r\n/g, '\n');
+    const txt = readFileSync('clube/contrato/v4.txt').toString('utf8').replace(/\r\n/g, '\n');
     expect(createHash('sha256').update(txt, 'utf8').digest('hex')).toBe(TERMS_SHA256);
-    expect(TERMS_VERSION).toBe('v3');
+    expect(TERMS_VERSION).toBe('v4');
   });
   // v29.238.0 — a Cadeira Cativa saiu antes do lançamento; v29.266.0 — v3 traz a cobrança automática
   // no cartão. v1 e v2 ficam guardados intactos (registro).
@@ -50,13 +50,18 @@ describe('contrato', () => {
     const hash = (f) => createHash('sha256').update(readFileSync(f).toString('utf8').replace(/\r\n/g, '\n'), 'utf8').digest('hex');
     expect(hash('clube/contrato/v1.txt')).toBe('64c9488de8d25676756d4190a4cbd419045289b27105ab8c7e843359f5dc3e46');
     expect(hash('clube/contrato/v2.txt')).toBe('cf820c75386cebeaec924886e9ea961e94ede4783d910a6f08d0faeddca59311');
+    expect(hash('clube/contrato/v3.txt')).toBe('b316b7f82e7669095544dad6833fe83f38a1524e72a67382d434f945d727ad94');
+    // v29.309.0 — v4: a 4.8 não promete mais o cartão fidelidade (programa sem adesão nova desde 27/10/2026).
+    const v4 = readFileSync('clube/contrato/v4.txt', 'utf8');
+    expect(v4).toContain('Versão v4');
+    expect(v4).not.toMatch(/cartão fidelidade continua/);
     const html = readFileSync('clube/contrato/index.html', 'utf8');
     expect(html).not.toMatch(/cativa/i);
     expect(html).toContain(TERMS_SHA256);
     expect(html).toContain('cobrança automática');
   });
   it('as regras em destaque estão no texto', () => {
-    const txt = readFileSync('clube/contrato/v3.txt', 'utf8');
+    const txt = readFileSync('clube/contrato/v4.txt', 'utf8');
     expect(txt).toContain('NO MÍNIMO 7 DIAS e NO MÁXIMO 30 DIAS');
     expect(txt).toContain('CANCELAR COM MENOS DE 24 HORAS OU FALTAR SEM AVISO CONTA COMO VISITA USADA');
     expect(txt).toMatch(/terça a quinta-feira/);

@@ -1240,5 +1240,20 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('84c sem nada antes: mantém o horário, sem lista depois', /garantido/.test(r3.reply) && !/10:15|11:55/.test(r3.reply), r3.reply)
 }
 
+// 85. Programa de pontos encerrado (Juliano, 27/10/2026). Quem tem 0 ponto não ouve falar de fidelidade na
+// reserva; quem tem saldo ouve que é o último prêmio. "Quantos pontos eu tenho?" sem saldo explica o encerramento.
+{
+  const reserva = (pontos: number) => turno({ msg: '18', state: { services: ['Corte de cabelo'], ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] }, date: dia1, period: 'evening', name: 'Paulo Teste', upsell_offer_done: true },
+    history: [{ role: 'assistant', content: 'No fim do dia tenho 18:00 ou 18:15. Qual você prefere?' }],
+    ai: { intent: 'book', reply: 'Reservado!', updates: { time: '18:00' } }, contexto: ctxCliente('Paulo Teste', { points: pontos }),
+    vagas: { [dia1]: ['18:00', '18:15'] } })
+  const r0 = await reserva(0)
+  checar('85a reserva com 0 ponto: nada de fidelidade', reservou(r0) && !/ponto|fidelidade/i.test(r0.reply), r0.reply)
+  const r3 = await reserva(3)
+  checar('85b reserva com saldo: último prêmio e prazo', reservou(r3) && /último prêmio/.test(r3.reply) && /31 de março de 2027/.test(r3.reply), r3.reply)
+  const r4 = await turno({ msg: 'quantos pontos eu tenho?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 0 }) })
+  checar('85c sem saldo: explica que o programa foi encerrado', /encerrado/.test(r4.reply) && !/Seu cartão está pronto/.test(r4.reply), r4.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

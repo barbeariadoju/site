@@ -253,8 +253,6 @@ function themeTextFor(context: Record<string, unknown>, campanha = ''): string {
       return `natureza-morta de barbearia que ilustre este assunto: ${String(context.assunto || '').slice(0, 160)} — ferramentas ou produtos ligados a ele, em close, sem pessoas, sem rótulo legível e sem texto na imagem.`
     case 'humor':
       return `cena bem-humorada de barbearia sugerida só por objetos, ligada a esta situação: ${String(context.assunto || '').slice(0, 160)} — sem pessoas, sem rosto, sem texto na imagem.`
-    case 'fidelidade':
-      return 'clima de recompensa e cuidado contínuo — detalhes do ambiente e do ritual de barbearia, sem texto na imagem.'
     default:
       return 'a experiência de ser bem atendido — acolhimento, poltrona, ferramentas cuidadas, ambiente arrumado, sem texto na imagem.'
   }
@@ -489,7 +487,7 @@ Deno.serve(async (request: Request) => {
     //      como sinal de procura alta ("últimos horários de hoje") — escassez verdadeira.
     //   2. Caso contrário, NUNCA mencionar a agenda de hoje. O post do dia vende marca:
     //      campanha ativa (marketing_memory categoria "campanha"), ou rotação de temas
-    //      positivos (experiência da loja / cartão fidelidade / serviço em destaque).
+    //      positivos (experiência da loja / serviço em destaque; o cartão fidelidade saiu na v29.309.0).
     const { data: slots } = await admin.rpc('get_available_slots', { p_date: todaySP, p_duration_minutes: 30 })
     const slotList = Array.isArray(slots) ? slots : []
     const openSlotsCount = slotList.length
@@ -766,12 +764,11 @@ ${tipoHoje === 'educativo' ? REGRAS_EDUCATIVO : REGRAS_HUMOR} Isto vale ACIMA de
         // diretor de escola: é o oceano azul da casa). v29.78.1 — o Juliano LIBEROU a palavra
         // "exclusivo" (diferente de "premium", que segue proibido: exclusivo é fato, premium
         // é auto-elogio) — mas SEMPRE ancorada no fato que a prova, nunca solta como enfeite.
-        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE, sem listar os outros: o ATENDIMENTO EXCLUSIVO (um barbeiro, um cliente por vez — a barbearia inteira é sua na sua hora, você chega e o Juliano está pronto te esperando, e a conversa na cadeira não tem plateia); café na chegada; atendimento com hora marcada respeitada (sem fila e sem espera); atendimento sem pressa; ambiente climatizado; cartão fidelidade (a cada 10 cortes, 1 é grátis). REGRA da palavra "exclusivo": pode usar, mas SEMPRE colada no fato que a prova ("atendimento exclusivo: um cliente por vez") — nunca solta como enfeite ("experiência exclusiva", "ambiente exclusivo" são proibidos). ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
+        contextFact = `Tema de hoje: a EXPERIÊNCIA real de ser atendido na Barbearia do Ju — escolha 1 (no máximo 2) destes fatos verdadeiros e construa o texto NELE, sem listar os outros: o ATENDIMENTO EXCLUSIVO (um barbeiro, um cliente por vez — a barbearia inteira é sua na sua hora, você chega e o Juliano está pronto te esperando, e a conversa na cadeira não tem plateia); café na chegada; atendimento com hora marcada respeitada (sem fila e sem espera); atendimento sem pressa; ambiente climatizado. REGRA da palavra "exclusivo": pode usar, mas SEMPRE colada no fato que a prova ("atendimento exclusivo: um cliente por vez") — nunca solta como enfeite ("experiência exclusiva", "ambiente exclusivo" são proibidos). ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
         context = { tipo: 'experiencia' }
-      } else if (rotation === 1) {
-        contextFact = `Tema de hoje: o CARTÃO FIDELIDADE da Barbearia do Ju — a cada 10 cortes, 1 é grátis, e todo corte conta automaticamente, sem precisar carimbar nada. ${VOZ_CONCRETA} ${NO_AGENDA_TALK}`
-        context = { tipo: 'fidelidade' }
       } else {
+        // v29.309.0 — o tema "cartão fidelidade" saiu da rotação: o programa de pontos foi encerrado em
+        // 27/10/2026 (Juliano). O dia que era dele virou serviço em destaque.
         const { data: featuredRows } = await admin.rpc('pick_featured_service')
         const featured = Array.isArray(featuredRows) ? featuredRows[0] : featuredRows
         if (featured) {
@@ -813,7 +810,6 @@ ${NAO_INVASIVO}`
       // v29.213.0 — educativo e humor: o texto de reserva vem da própria pauta (_shared/pautas.ts).
       educativo: pautaHoje?.fallback || '',
       humor: pautaHoje?.fallback || '',
-      fidelidade: '🎁 Cartão fidelidade Barbearia do Ju: a cada 10 cortes, 1 é por nossa conta — e todo corte conta automaticamente. Agende o seu!',
       servico_destaque: context.tipo === 'servico_destaque' ? `✂️ Hoje em destaque: ${context.servico} por R$${Number(context.preco || 0).toFixed(2).replace('.', ',')}. Agende o seu!` : '',
       // Fallback de domingo: sem venda, sem agenda — só o recado do dia. Também rotaciona,
       // pra que uma falha de IA em dois domingos seguidos não repita a mesma frase.

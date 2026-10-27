@@ -449,6 +449,18 @@ Deno.serve(async (request: Request) => {
         await admin.from('conversation_leads').delete().eq('phone', lead.phone)
         continue
       }
+      // v29.309.0 — caso Vitor (24-27/10/2026): não respondeu à oferta de sábado, levou o toque na segunda às
+      // 08h00 e a pesquisa de motivo na terça às 08h00 — dois robôs em dois dias para quem estava calado.
+      // Pedido do Juliano: uma mensagem só. Quem não respondeu ao toque não recebe a pesquisa.
+      {
+        const { data: respondeu } = await admin.from('whatsapp_messages').select('id')
+          .like('phone', `%${chaveFone(lead.phone)}`).eq('direction', 'in').gte('created_at', lead.followup_1_sent_at).limit(1)
+        if (!respondeu || !respondeu.length) {
+          await admin.from('conversation_leads').update({ followup_stage: 2, updated_at: new Date().toISOString() }).eq('phone', lead.phone)
+          nudge2Skipped++
+          continue
+        }
+      }
       // v29.294.0 — viagem de 15 a 17/10/2026: seis clientes pediram horário com a barbearia fechada e
       // dois dias depois levaram "por que não fechou o agendamento?". O motivo a gente sabe: estava fechado.
       // Conversa feita em dia fechado (domingo, segunda ou "Fechar o dia inteiro") não recebe a pesquisa.

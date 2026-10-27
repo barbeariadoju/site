@@ -1,3 +1,18 @@
+## 29.309.0 — Fim do programa de pontos (último prêmio para quem já tinha) e uma mensagem só para lead calado
+
+**Pedido do Juliano (27/10):** "acabar com os pontos de fidelidade, quem tem tem quem não tem não vai ter mais… quem tem vai até ganhar um prêmio, acabou não acumula mais", e limpar toda menção no site, nas redes, no WhatsApp e no marketing "para não recebermos reclamação depois". Regra confirmada com ele: quem tinha pontos em 27/10 continua até completar 10 e ganha UM último prêmio, desde que complete até 31/03/2027; quem tinha 0 ou chega agora não junta mais. Prêmio já ganho continua valendo.
+- **Banco (migração 201):** o gatilho `v21_sync_loyalty_on_completed_booking` só credita ponto para conta com saldo > 0 e antes de `loyalty_fim_do_acumulo()` (01/04/2027 00h). Ao chegar a 10, gera um prêmio só e zera o saldo (o que passou de 10 vira um evento `adjustment`). Testado no banco com transação desfeita: 9 pontos + atendimento = prêmio e saldo 0; 0 ponto + atendimento = nada. Na data: 212 clientes com pontos, 4 prêmios em aberto.
+- **Decidido contra o óbvio:** sem coluna nova de "participante". Depois de hoje, só tem saldo quem já tinha, então `points > 0` já é a lista; o merge de cadastros, que soma saldos, continua certo sem mexer.
+- **JuIA:** quem tem 0 ponto não ouve falar de fidelidade na reserva; quem tem saldo ouve "faltam N para o seu último prêmio… até 31 de março de 2027" (por extenso: a troca de datas do fim da função transformava 31/03/2027 em "quarta (31/03)"). A resposta a "quantos pontos eu tenho?" explica o encerramento. O cartão fidelidade saiu dos argumentos de preço e da instrução do modelo. Simulador: cenário 85.
+- **Cupom:** saiu "O cartão já recomeçou, o que você fez hoje já conta pro próximo". Aviso de prêmio (`loyalty-rewards-notify`) diz que é o último do programa.
+- **Conteúdo:** o tema "cartão fidelidade" saiu da rotação do `content-generate-daily` (o dia virou serviço em destaque) e da memória de marketing (fatos e ganchos). Apagados no Facebook e no Instagram os dois posts de 12/08 que divulgavam os pontos (`content-unpublish`, tabela de token criada e apagada de novo). Perfil do Google conferido: descrição e posts não citam fidelidade.
+- **Site:** fora da home ("Fidelidade que vale serviço"), do blog de preço e do de agendamento, do FAQ (agora explica o encerramento e o prazo), dos benefícios, do chat do site (botão "Minha fidelidade") e da área do cliente (o quadro só aparece para quem ainda tem pontos ou prêmio). `SEO-CITACOES-PACOTE.md` sem a linha do cartão.
+- **Clube:** contrato **v4** (a 4.8 prometia "o cartão fidelidade continua valendo"); v1-v3 intactos, hash novo no teste e no `club_terms`. Nenhum assinante ativo hoje.
+- **Lead calado, uma mensagem só (caso Vitor, 24-27/10):** quem não respondeu ao toque do `whatsapp-lead-followup` não recebe mais a pesquisa de motivo no dia seguinte. Pedido do Juliano.
+- **Não verificado:** textos dos anúncios do Google Ads e da Meta (não dá para ler por aqui); conferir pelo navegador.
+- `?v=` de `cliente-v30.js`, `juia-chat.js` (54 páginas) e `clube.js` em 29.309.0.
+
+---
 ## 29.308.0 — JuIA: "Ju, consegue me atender?" é pedido de horário, e "adiantar" só oferece o que vem antes (caso Jessica)
 
 **Revisão da JuIA de 27/10 (conversas de sábado à tarde até terça de manhã).**

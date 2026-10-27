@@ -277,10 +277,12 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
   // recebe o agradecimento na abertura do próprio comprovante — é a mensagem que já sai na hora,
   // com o cliente na porta. Diz QUAL serviço foi por nossa conta (no combo só um é o prêmio) e
   // que o cartão recomeçou: a visita de hoje já vale o primeiro ponto do próximo. Sem emoji.
+  // v29.309.0 — o programa de pontos foi encerrado (Juliano, 27/10/2026): o cartão NÃO recomeça mais.
+  // Quem usa o prêmio está usando o último; a frase "o que você fez hoje já conta pro próximo" saiu.
   const usouPremio = !d.cortesia && (Number(d.descontoFidelidade || 0) > 0 || String(d.pagamentoServico || '').toLowerCase() === 'fidelidade')
   const qualPremio = String(d.fidelidadeServico || '').trim()
   const agradecePremio = usouPremio
-    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: você fechou os 10 pontos do cartão fidelidade e este é o seu prêmio. Obrigado por ser cliente de casa, ${primeiro}. O cartão já recomeçou — o que você fez hoje já conta pro próximo.`
+    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: você fechou os 10 pontos do cartão fidelidade e este é o seu prêmio. Obrigado por ser cliente de casa, ${primeiro}.`
     : ''
   return [
     `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,

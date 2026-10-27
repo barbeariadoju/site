@@ -84,7 +84,7 @@ Deno.serve(async (request: Request) => {
     // Juliano e se contradizia ("é só chamar" + "sem precisar pedir"); e "1 serviço grátis" não
     // dizia o que acontece no combo — no Concluir o prêmio cobre UM serviço (v29.138.0).
     const nomeFid = firstName(c.name) === 'você' ? '' : firstName(c.name)
-    const text = `Olá${nomeFid ? `, ${nomeFid}` : ''}. Você completou os 10 pontos do cartão fidelidade da Barbearia do Ju: o próximo serviço é por nossa conta.\n\nO prêmio vale até ${expiresLabel} e é pessoal, só para você. Se o atendimento for um combo, ele cobre um dos serviços. Não precisa pedir nada: fica registrado no seu cadastro e é aplicado no dia.\n\nPara agendar, é só me responder aqui. Obrigado pela preferência 🙏`
+    const text = `Olá${nomeFid ? `, ${nomeFid}` : ''}. Você completou os 10 pontos do cartão fidelidade da Barbearia do Ju: o próximo serviço é por nossa conta. Como o programa de pontos foi encerrado, este é o último prêmio dele.\n\nO prêmio vale até ${expiresLabel} e é pessoal, só para você. Se o atendimento for um combo, ele cobre um dos serviços. Não precisa pedir nada: fica registrado no seu cadastro e é aplicado no dia.\n\nPara agendar, é só me responder aqui. Obrigado pela preferência 🙏`
     try {
       const sendResponse = await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
         method: 'POST',

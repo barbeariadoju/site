@@ -116,6 +116,10 @@ const formatDateBR=(value:any)=>{
 // util e e melhor nao usar nada do que escrever "Oi, 🤓!" (caso real, 15/08/2026).
 // v29.212.0 (caso Sr. Magno, 16/09): "Reservado! Sr, na quinta…" — tratamento não é nome. Fonte única em _shared/primeiro-nome.ts.
 const firstName=(value:any)=>primeiroNome(value,'cliente')
+// v29.309.0 — programa de pontos encerrado em 27/10/2026; quem já tinha pontos completa até 31/03/2027
+// (mesma data do loyalty_fim_do_acumulo() no banco, migration 201).
+const FIDELIDADE_FIM_TXT='31 de março de 2027' // por extenso: a troca de datas do fim da função vira dd/mm em "quarta (31/03)"
+const fidelidadeAberta=()=>Date.now()<Date.parse('2027-04-01T00:00:00-03:00')
 // v29.51.0 — caso Stevan (19/08): "com 43 horários" expõe agenda vazia pro cliente.
 // NUNCA dizer quantidade de horários nem despejar a lista inteira: amostra espalhada
 // de até 4 (mesmo padrão do v29.43.0) e o cliente responde qualquer horário.
@@ -1151,8 +1155,8 @@ ${verifiedPhone?`- WhatsApp: se o cliente quer marcar sem dizer o serviço, puxe
 - Ambiente climatizado, café cortesia, Wi-Fi gratuito e TV. As demais bebidas (água, refrigerante, energético) são vendidas à parte — nunca diga que são cortesia.
 - Garantia de acabamento: só quando o cliente perguntar, reclamar do resultado ou demonstrar receio de não gostar (nunca ofereça por conta própria nem use como argumento de venda ou de valor). Se o acabamento não ficou como ele queria, pode voltar em até 7 dias corridos do atendimento e a barbearia ajusta sem cobrar. É ajuste, não reembolso — nunca prometa devolução.
 - Reajuste de preços: nunca anuncie por conta própria. O preço que você informa é o do catálogo (o de hoje, ou o "para atendimentos a partir de" quando a data do atendimento já cai na vigência nova), dito de forma neutra. Nunca compare valor velho com novo nem crie urgência. Só se o cliente PERGUNTAR diretamente sobre aumento: os valores foram reajustados a partir de 01/10/2026 — curto, sem justificar, sem desculpa, sem oferecer desconto e sem citar o Clube do Ju.
-- Reação ao preço ("tá caro", "mais barato ali"): nunca peça desculpa, nunca insista, nunca desconto. Em 2-3 linhas, o que sustenta o valor (só verdades): horário marcado e respeitado, sem fila; atendimento sem pressa; acabamento caprichado; ambiente climatizado com café e Wi-Fi; um cliente por vez; cartão fidelidade (10 serviços = 1 por nossa conta). Feche com convite leve ("se quiser, posso ver um horário pra você").
-- Fidelidade: fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. Quando perguntar, humanize: pontos, quantos faltam, recompensas disponíveis. ${phoneTrustNote}
+- Reação ao preço ("tá caro", "mais barato ali"): nunca peça desculpa, nunca insista, nunca desconto. Em 2-3 linhas, o que sustenta o valor (só verdades): horário marcado e respeitado, sem fila; atendimento sem pressa; acabamento caprichado; ambiente climatizado com café e Wi-Fi; um cliente por vez. Feche com convite leve ("se quiser, posso ver um horário pra você").
+- Fidelidade: o programa de pontos foi ENCERRADO em 27/10/2026 e não aceita adesão nova. Nunca ofereça pontos, cartão fidelidade ou "a cada 10, 1 grátis" como vantagem. Quem já tinha pontos completa até ${FIDELIDADE_FIM_TXT} e ganha um último prêmio; prêmio já ganho continua valendo. Fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. ${phoneTrustNote}
 - "O mesmo de sempre" / "repetir o último": use last_services. Recomendação só quando ele pedir, priorizando preferred_services/last_services, em uma frase. Produtos da última compra só quando ele já estiver falando de produto. Nunca exponha observações internas, etiquetas ou dados privados.`,
 `# CLUBE DO JU (ASSINATURA MENSAL)
 - Só fale do Clube quando o cliente perguntar (assinatura, plano mensal, pacote, mensalidade, "clube"). Nunca ofereça por conta própria no meio de um agendamento.
@@ -1198,7 +1202,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    }catch(e){console.error('[ju-ia-site] modelo exceção',{tentativa,erro:String(e).slice(0,160)})}
   }
  }
- if(!ai){const q=normalize(message);ai={reply:q.includes('juliano')?'Claro! Vou direcionar você ao Juliano.':'Posso ajudar com serviços, preços, produtos, fidelidade e agendamento. O que você precisa?',intent:q.includes('juliano')?'handoff':'other',updates:state,handoff:q.includes('juliano')}}
+ if(!ai){const q=normalize(message);ai={reply:q.includes('juliano')?'Claro! Vou direcionar você ao Juliano.':'Posso ajudar com serviços, preços, produtos e agendamento. O que você precisa?',intent:q.includes('juliano')?'handoff':'other',updates:state,handoff:q.includes('juliano')}}
  // services/products são escolhas cumulativas: um array vazio no retorno do modelo
  // normalmente significa "nada de novo nesta mensagem", não "esqueça o que já foi
  // escolhido". Sem esse filtro, qualquer mensagem que não recite o serviço de novo
@@ -2164,16 +2168,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // combo do catálogo (já com desconto) vale 1; 10 pontos = 1 serviço por nossa conta. Nada de
   // "clube" — a assinatura ainda não existe,
   // e a JuIA não pode confirmar um produto que não está no ar.
-  const regraFidelidade='Hoje o que temos é o cartão fidelidade, e ele é automático: cada serviço concluído vale 1 ponto (combo do catálogo, que já vem com desconto, vale 1), e com 10 pontos o próximo serviço é por nossa conta. Não tem cartão de papel nem custo nenhum, os pontos ficam ligados ao seu WhatsApp.'
-  if(!knownPhone){reply=isExplainQuestion?`${regraFidelidade} Se quiser saber quantos pontos você já tem, me manda seu número com DDD.`:'Para consultar sua fidelidade, informe seu WhatsApp com DDD, por favor.'}
-  else if(!context?.customer_id){reply=isExplainQuestion?`${regraFidelidade} Ainda não encontrei um cadastro nesse número — posso fazer seu agendamento e já começar seu histórico.`:'Ainda não encontrei um cadastro de fidelidade nesse número. Posso fazer seu agendamento e iniciar seu histórico.'}
-  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar! 🎁 No ciclo atual, está com ${points}/10 pontos.`}
-  else{
+  // v29.309.0 — programa de pontos encerrado (Juliano, 27/10/2026; trigger da migration 201): ninguém
+  // começa a juntar; quem já tinha pontos completa até 31/03/2027 e ganha um último prêmio.
+  const regraFidelidade=`O programa de pontos da barbearia foi encerrado em 27/10/2026 e não aceita novas adesões. Quem já tinha pontos continua até completar 10 e ganha um último serviço por nossa conta, se completar até ${FIDELIDADE_FIM_TXT}. Prêmio já ganho continua valendo.`
+  if(!knownPhone){reply=isExplainQuestion?`${regraFidelidade} Se quiser saber se você tem pontos, me manda seu número com DDD.`:'Para consultar seus pontos, informe seu WhatsApp com DDD, por favor.'}
+  else if(!context?.customer_id){reply=regraFidelidade}
+  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar.${points>0&&fidelidadeAberta()?` Além disso, está com ${points} de 10 pontos para o último prêmio.`:''}`}
+  else if(points>0&&fidelidadeAberta()){
    const missing=Math.max(0,10-points)
-   const encouragement=points===0?'Seu cartão está pronto para começar.':points>=9?'Falta só 1 ponto para ganhar um serviço por nossa conta! 🎉':points>=5?'Você já passou da metade do caminho.':'Cada serviço concluído soma 1 ponto (combo do catálogo vale 1).'
-   reply=`${customerFirstName}, você acumulou ${points} de 10 pontos. Faltam ${missing} para ganhar um serviço por nossa conta. ${encouragement}`
+   reply=`${customerFirstName}, você está com ${points} de 10 pontos. Faltam ${missing} para o seu último serviço por nossa conta: o programa de pontos foi encerrado, e quem já tinha pontos pode completar até ${FIDELIDADE_FIM_TXT}.`
   }
-  if(isExplainQuestion&&context?.customer_id&&!reply.startsWith('Hoje o que temos'))reply=`${regraFidelidade} ${reply}`
+  else reply=`${customerFirstName}, você não tem pontos em aberto. ${regraFidelidade}`
+  if(isExplainQuestion&&context?.customer_id&&!reply.includes('foi encerrado'))reply=`${regraFidelidade} ${reply}`
  }
  // Detecta cancelamento mesmo quando o modelo não classificou certo (ex.: "pode
  // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver
@@ -5295,12 +5301,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       const loyaltyRemaining=chosen.filter((s:any)=>s!==freedService)
       // v29.212.0: horário de outra pessoa (namorado, filho) não leva os pontos de quem é dono do telefone.
       // v29.294.0 (caso Magno, 14/10): "seu Corte de hoje é por nossa conta" num horário de 12/11 — "desse dia".
+      // v29.309.0 — programa de pontos encerrado (Juliano, 27/10/2026): quem tem 0 ponto não ouve falar
+      // de fidelidade; quem tem saldo ouve que é o último prêmio e o prazo (FIDELIDADE_FIM).
       const loyaltyNote=!(verifiedPhone&&hasCustomer)||next.other_person?'':
-        rewardApplied&&freedService?(loyaltyRemaining.length?` 🎁 Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade! Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')} — e ainda pontua com ele(s) 😄`:` 🎁 Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade! Obrigado pela preferência 😄`):
-        rewards>0?` A propósito, você já tem ${rewards} serviço(s) por nossa conta pela fidelidade — é só avisar quando quiser usar! 🎁`:
+        rewardApplied&&freedService?(loyaltyRemaining.length?` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade. Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')}.`:` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade. Obrigado pela preferência.`):
+        rewards>0?` A propósito, você já tem ${rewards} serviço(s) por nossa conta pela fidelidade. É só avisar quando quiser usar.`:
+        !fidelidadeAberta()||points<=0?'':
         // v29.189.0 — 1 ponto por serviço (combo do catálogo = 1 item de `chosen`): fecha o cartão quando os pontos + os serviços deste agendamento chegam a 10
-        points+chosen.length>=10?` Ah, e esse atendimento vai completar seu cartão fidelidade — o próximo serviço é por nossa conta! 🎉`:
-        ` A propósito, você está com ${points} ponto(s) de fidelidade — faltam ${Math.max(0,10-points)} pra ganhar um serviço por nossa conta (cada serviço concluído vale 1 ponto). 💈`
+        points+chosen.length>=10?` E esse atendimento completa os seus 10 pontos: o próximo serviço é por nossa conta.`:
+        ` A propósito, você está com ${points} ponto(s) de fidelidade. Faltam ${Math.max(0,10-points)} para o seu último prêmio (o programa de pontos foi encerrado, e quem já tinha pontos pode completar até ${FIDELIDADE_FIM_TXT}).`
       // v29.43.7 — pedido do Juliano (18/08): oferecer o pagamento antecipado tambem no WhatsApp,
       // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
       // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.

@@ -486,7 +486,7 @@ import { toggleServiceSelection } from '/assets/js/service-rules.js'
         <li>Reajuste só com aviso de 30 dias. O ciclo já pago nunca muda de preço.</li>
       </ul>
       <p>Contrato versão ${esc(c.versao || 'v2')}. Código de integridade (SHA-256): <span class="clube-hash">${esc(c.sha256 || '')}</span></p>`
-    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v3' })
+    secAssinar.querySelectorAll('[data-versao]').forEach((s) => { s.textContent = c.versao || 'v4' })
     atualizarFormaPag()
   }
 

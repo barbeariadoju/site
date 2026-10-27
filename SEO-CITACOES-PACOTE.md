@@ -67,7 +67,7 @@ Barbearia no Centro de Bragança Paulista com hora marcada e atendimento individ
 ### Descrição longa (até 750 caracteres)
 
 ```
-A Barbearia do Ju fica na Rua Dr. Antônio da Cruz, 482, no Centro de Bragança Paulista. O atendimento é com hora marcada e individual: um barbeiro, um cliente por vez, sem fila. Quem atende é o Juliano, farmacêutico e barbeiro — orientação criteriosa sobre pele, couro cabeludo e produtos. Serviços: corte masculino e infantil, barba na navalha com toalha quente, Barboterapia com vaporizador de ozônio, Barba Express na máquina, sobrancelha, pigmentação, luzes e platinado. Café por conta da casa, Wi-Fi e ambiente climatizado. Cartão fidelidade automático: 10 atendimentos, 1 serviço por nossa conta. Nota 5,0 no Google. Terça a sexta, 8h30 às 19h; sábado, 8h30 às 15h. Agende em barbeariadoju.com.br ou pelo WhatsApp (11) 96707-3038.
+A Barbearia do Ju fica na Rua Dr. Antônio da Cruz, 482, no Centro de Bragança Paulista. O atendimento é com hora marcada e individual: um barbeiro, um cliente por vez, sem fila. Quem atende é o Juliano, farmacêutico e barbeiro — orientação criteriosa sobre pele, couro cabeludo e produtos. Serviços: corte masculino e infantil, barba na navalha com toalha quente, Barboterapia com vaporizador de ozônio, Barba Express na máquina, sobrancelha, pigmentação, luzes e platinado. Café por conta da casa, Wi-Fi e ambiente climatizado. Nota 5,0 no Google. Terça a sexta, 8h30 às 19h; sábado, 8h30 às 15h. Agende em barbeariadoju.com.br ou pelo WhatsApp (11) 96707-3038.
 ```
 
 Palavras que NÃO entram em nenhuma descrição (regra da casa): "premium", "de luxo",
