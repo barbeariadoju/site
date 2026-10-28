@@ -1,3 +1,11 @@
+## 29.312.0 — JuIA: saudação sem "cliente" quando o nome do WhatsApp é só emoji
+
+**Revisão da JuIA de 28/10 (conversas de 27/10 08h40 a 28/10 09h).**
+- **Final 0175 (27/10, 18h04):** "Boa tarde" recebeu "Boa noite, cliente! Espero que esteja tudo bem…". Sem cadastro, a saudação usa o nome do WhatsApp, e um nome sem letra (emoji) caía no padrão `'cliente'` do `firstName`. Na saudação agora sem nome é sem nome ("Boa noite! …"). O resto da function continua com o mesmo padrão.
+- O "Boa noite" para quem disse "Boa tarde" às 18h04 ficou como está: a régua da casa é o relógio (18h em diante é noite), não espelhar o cliente.
+- Simulador: cenário 88, 234 ok. `npm test` verde. Publicado só o `ju-ia-site`.
+
+---
 ## 29.311.1 — Plaquinha do reajuste sem a aparação corporal
 
 **Pedido do Juliano (27/10):** conferir se a página de serviços ainda tinha raspagem ou depilação corporal. A `/servicos.html` não tinha (só depilação nasal e de orelhas, que são do rosto); a `servico-aparacao-corporal.html` já redireciona desde a 29.298.0 e o banco não tem o serviço. Sobrava a nota da arte da plaquinha (`artes/placa-reajuste-outubro.html`), que ainda dizia "tratamentos e aparação corporal — na tabela completa". Tirado. A placa já impressa pode ter essa frase.

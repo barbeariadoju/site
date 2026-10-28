@@ -1279,5 +1279,11 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('87a "1 / com sobrancelha" fica com corte + sobrancelha num turno só', JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo', 'Sobrancelha Masculina']) && !soCorte && !/no lugar\?/.test(r.reply), { reply: r.reply, svcs: r.state?.services })
 }
 
+// 88. Final 0175 (27/10/2026, 18h04): "Boa tarde" de quem tem nome de WhatsApp só com emoji saiu "Boa noite, cliente!".
+{
+  const r = await turno({ msg: 'Boa tarde', nomeWhats: '🔥🔥', ai: { intent: 'other', reply: 'Espero que esteja tudo bem com você! Como posso te ajudar hoje?' } })
+  checar('88 sem nome no WhatsApp: saudação sem "cliente"', !/cliente/i.test(r.reply) && /^(Bom dia|Boa tarde|Boa noite)! /.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

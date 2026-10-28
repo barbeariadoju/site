@@ -5664,7 +5664,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  if(isFirstMessage||saudacaoIsolada){
   const crmName=hasCustomer?String(context?.name||'').trim():''
-  const greetName=crmName?firstName(crmName):(String(body?.whatsapp_name||'').trim()?firstName(String(body.whatsapp_name)):'')
+  // v29.312.0 (final 0175, 27/10 18h04): nome do WhatsApp sem letra (emoji) caía no padrão do
+  // firstName e saía "Boa noite, cliente!". Na saudação, sem nome é sem nome.
+  const greetName=primeiroNome(crmName||String(body?.whatsapp_name||''),'')
   // v29.64.0 (caso Helder, 22/08 09h49): saiu "Bom dia, Helder! Tudo bem, Helder! Obrigada por
   // perguntar" — o modelo repetiu o nome que o prefixo já traz. Tira a 1ª menção do nome nos
   // primeiros 60 caracteres da resposta antes de colar a saudação.
