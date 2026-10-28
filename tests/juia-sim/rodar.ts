@@ -1250,9 +1250,12 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r0 = await reserva(0)
   checar('85a reserva com 0 ponto: nada de fidelidade', reservou(r0) && !/ponto|fidelidade/i.test(r0.reply), r0.reply)
   const r3 = await reserva(3)
-  checar('85b reserva com saldo: último prêmio e prazo', reservou(r3) && /último prêmio/.test(r3.reply) && /31 de março de 2027/.test(r3.reply), r3.reply)
+  // v29.313.0 (Juliano, 28/10): o encerramento ele comunica pessoalmente; a JuIA dá só o saldo.
+  checar('85b reserva com saldo: só o saldo, sem encerramento nem prazo', reservou(r3) && /Faltam 7 para um serviço por nossa conta/.test(r3.reply) && !/encerrad|último|2027/.test(r3.reply), r3.reply)
   const r4 = await turno({ msg: 'quantos pontos eu tenho?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 0 }) })
-  checar('85c sem saldo: explica que o programa foi encerrado', /encerrado/.test(r4.reply) && !/Seu cartão está pronto/.test(r4.reply), r4.reply)
+  checar('85c sem saldo: não conta que o programa foi encerrado', /não tem pontos/.test(r4.reply) && !/encerrad|último|2027/.test(r4.reply), r4.reply)
+  const r5 = await turno({ msg: 'como funciona a fidelidade?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 4 }) })
+  checar('85d com saldo, pergunta de regra: só o saldo', /Faltam 6/.test(r5.reply) && !/encerrad|último|2027/.test(r5.reply), r5.reply)
 }
 
 // 86. Caso Fernando (27/10/2026, 16h49): "Sem lavagem" à oferta da lavagem depois da reserva virou Corte + Lavagem

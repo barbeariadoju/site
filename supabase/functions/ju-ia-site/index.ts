@@ -1165,7 +1165,7 @@ ${verifiedPhone?`- WhatsApp: se o cliente quer marcar sem dizer o serviço, puxe
 - Garantia de acabamento: só quando o cliente perguntar, reclamar do resultado ou demonstrar receio de não gostar (nunca ofereça por conta própria nem use como argumento de venda ou de valor). Se o acabamento não ficou como ele queria, pode voltar em até 7 dias corridos do atendimento e a barbearia ajusta sem cobrar. É ajuste, não reembolso — nunca prometa devolução.
 - Reajuste de preços: nunca anuncie por conta própria. O preço que você informa é o do catálogo (o de hoje, ou o "para atendimentos a partir de" quando a data do atendimento já cai na vigência nova), dito de forma neutra. Nunca compare valor velho com novo nem crie urgência. Só se o cliente PERGUNTAR diretamente sobre aumento: os valores foram reajustados a partir de 01/10/2026 — curto, sem justificar, sem desculpa, sem oferecer desconto e sem citar o Clube do Ju.
 - Reação ao preço ("tá caro", "mais barato ali"): nunca peça desculpa, nunca insista, nunca desconto. Em 2-3 linhas, o que sustenta o valor (só verdades): horário marcado e respeitado, sem fila; atendimento sem pressa; acabamento caprichado; ambiente climatizado com café e Wi-Fi; um cliente por vez. Feche com convite leve ("se quiser, posso ver um horário pra você").
-- Fidelidade: o programa de pontos foi ENCERRADO em 27/10/2026 e não aceita adesão nova. Nunca ofereça pontos, cartão fidelidade ou "a cada 10, 1 grátis" como vantagem. Quem já tinha pontos completa até ${FIDELIDADE_FIM_TXT} e ganha um último prêmio; prêmio já ganho continua valendo. Fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. ${phoneTrustNote}
+- Fidelidade: o programa de pontos foi ENCERRADO em 27/10/2026 e não aceita adesão nova. Nunca ofereça pontos, cartão fidelidade ou "a cada 10, 1 grátis" como vantagem. Quem já tinha pontos completa até ${FIDELIDADE_FIM_TXT} e ganha um último prêmio; prêmio já ganho continua valendo. NUNCA conte ao cliente que o programa foi encerrado, nem fale em "último prêmio" ou prazo: isso o Juliano comunica pessoalmente. Fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. ${phoneTrustNote}
 - "O mesmo de sempre" / "repetir o último": use last_services. Recomendação só quando ele pedir, priorizando preferred_services/last_services, em uma frase. Produtos da última compra só quando ele já estiver falando de produto. Nunca exponha observações internas, etiquetas ou dados privados.`,
 `# CLUBE DO JU (ASSINATURA MENSAL)
 - Só fale do Clube quando o cliente perguntar (assinatura, plano mensal, pacote, mensalidade, "clube"). Nunca ofereça por conta própria no meio de um agendamento.
@@ -2179,16 +2179,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // e a JuIA não pode confirmar um produto que não está no ar.
   // v29.309.0 — programa de pontos encerrado (Juliano, 27/10/2026; trigger da migration 201): ninguém
   // começa a juntar; quem já tinha pontos completa até 31/03/2027 e ganha um último prêmio.
-  const regraFidelidade=`O programa de pontos da barbearia foi encerrado em 27/10/2026 e não aceita novas adesões. Quem já tinha pontos continua até completar 10 e ganha um último serviço por nossa conta, se completar até ${FIDELIDADE_FIM_TXT}. Prêmio já ganho continua valendo.`
-  if(!knownPhone){reply=isExplainQuestion?`${regraFidelidade} Se quiser saber se você tem pontos, me manda seu número com DDD.`:'Para consultar seus pontos, informe seu WhatsApp com DDD, por favor.'}
-  else if(!context?.customer_id){reply=regraFidelidade}
-  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar.${points>0&&fidelidadeAberta()?` Além disso, está com ${points} de 10 pontos para o último prêmio.`:''}`}
+  // v29.313.0 (Juliano, 28/10): "não quero que alerte que o programa de pontos foi encerrado, isso eu
+  // faço aqui". A JuIA responde só o saldo; nunca fala em encerramento, "último prêmio" nem prazo.
+  if(!knownPhone){reply='Para consultar seus pontos, informe seu WhatsApp com DDD, por favor.'}
+  else if(!context?.customer_id){reply='Não encontrei pontos de fidelidade no seu cadastro.'}
+  else if(rewards>0){reply=`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar.${points>0&&fidelidadeAberta()?` Além disso, está com ${points} de 10 pontos.`:''}`}
   else if(points>0&&fidelidadeAberta()){
    const missing=Math.max(0,10-points)
-   reply=`${customerFirstName}, você está com ${points} de 10 pontos. Faltam ${missing} para o seu último serviço por nossa conta: o programa de pontos foi encerrado, e quem já tinha pontos pode completar até ${FIDELIDADE_FIM_TXT}.`
+   reply=`${customerFirstName}, você está com ${points} de 10 pontos. Faltam ${missing} para um serviço por nossa conta.`
   }
-  else reply=`${customerFirstName}, você não tem pontos em aberto. ${regraFidelidade}`
-  if(isExplainQuestion&&context?.customer_id&&!reply.includes('foi encerrado'))reply=`${regraFidelidade} ${reply}`
+  else reply=`${customerFirstName}, você não tem pontos de fidelidade em aberto no momento.`
  }
  // Detecta cancelamento mesmo quando o modelo não classificou certo (ex.: "pode
  // cancelar", "desmarcar"), e sempre retoma o fluxo de cancelamento enquanto houver
@@ -5324,7 +5324,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
         !fidelidadeAberta()||points<=0?'':
         // v29.189.0 — 1 ponto por serviço (combo do catálogo = 1 item de `chosen`): fecha o cartão quando os pontos + os serviços deste agendamento chegam a 10
         points+chosen.length>=10?` E esse atendimento completa os seus 10 pontos: o próximo serviço é por nossa conta.`:
-        ` A propósito, você está com ${points} ponto(s) de fidelidade. Faltam ${Math.max(0,10-points)} para o seu último prêmio (o programa de pontos foi encerrado, e quem já tinha pontos pode completar até ${FIDELIDADE_FIM_TXT}).`
+        // v29.313.0 (Juliano, 28/10, print do Marcelo): o encerramento do programa ele mesmo comunica, na
+        // cadeira. A JuIA dá só o saldo, sem "último prêmio" e sem prazo.
+        ` A propósito, você está com ${points} ponto(s) de fidelidade. Faltam ${Math.max(0,10-points)} para um serviço por nossa conta.`
       // v29.43.7 — pedido do Juliano (18/08): oferecer o pagamento antecipado tambem no WhatsApp,
       // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
       // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.

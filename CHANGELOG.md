@@ -1,3 +1,14 @@
+## 29.313.0 — WhatsApp não anuncia mais o fim do programa de pontos
+
+**Pedido do Juliano (28/10, print da reserva do Marcelo):** "não quero que alerte que o programa de pontos foi encerrado, isso eu faço aqui". A reserva saía com "Faltam 5 para o seu último prêmio (o programa de pontos foi encerrado, e quem já tinha pontos pode completar até 31 de março de 2027)".
+- **JuIA, na reserva:** só o saldo, "você está com 5 ponto(s) de fidelidade. Faltam 5 para um serviço por nossa conta." Sem "último", sem prazo.
+- **JuIA, em "quantos pontos eu tenho?" / "como funciona?":** só o saldo; quem não tem ponto ouve "você não tem pontos de fidelidade em aberto no momento". O texto da regra com o encerramento saiu, e a instrução do modelo agora proíbe contar o encerramento, falar em último prêmio ou dar o prazo.
+- **Aviso de prêmio (`loyalty-rewards-notify`):** saiu "Como o programa de pontos foi encerrado, este é o último prêmio dele."
+- **Não mexido:** a regra em si (gatilho do banco, 31/03/2027) continua igual. O FAQ e a área do cliente no site continuam explicando o encerramento: o pedido foi sobre as mensagens do WhatsApp.
+- **Erro meu, corrigido em seguida:** o primeiro deploy do `loyalty-rewards-notify` saiu com `verify_jwt` ligado (o padrão), e o cron chama essa function só com `x-webhook-secret`. Republicado com `--no-verify-jwt` um minuto depois e conferido no servidor (`verify_jwt: false`). Entrou no `config.toml` para não se repetir.
+- Simulador: cenário 85 refeito (85b, 85c, 85d), 235 ok. `npm test` verde.
+
+---
 ## 29.312.0 — JuIA: saudação sem "cliente" quando o nome do WhatsApp é só emoji
 
 **Revisão da JuIA de 28/10 (conversas de 27/10 08h40 a 28/10 09h).**

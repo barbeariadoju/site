@@ -212,3 +212,7 @@ verify_jwt = false
 # v29.242.0 — rotina do expediente (cron bdj-expediente, x-webhook-secret conferido no código).
 [functions.expediente-dia]
 verify_jwt = false
+
+[functions.loyalty-rewards-notify]
+# v29.313.0: o cron bdj-loyalty-rewards-notify chama só com x-webhook-secret, sem JWT.
+verify_jwt = false
