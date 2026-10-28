@@ -1288,5 +1288,13 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('88 sem nome no WhatsApp: saudação sem "cliente"', !/cliente/i.test(r.reply) && /^(Bom dia|Boa tarde|Boa noite)! /.test(r.reply), r.reply)
 }
 
+// 89. Caso Kelvin (28/10/2026, 11h09): "bom dia", "tudo bem por aí?" e "pode me dizer quais são os horários disponíveis
+// hoje" chegaram juntos e a resposta foi só a lista de horários, sem o cumprimento e sem o "tudo bem por aqui".
+{
+  const r = await turno({ msg: 'bom dia\ntudo bem por ai?\npode me dizer quais são os horarios disponiveis hoje', history: [{ role: 'assistant', content: 'Oi, Kelvin! Caso ainda não tenha cortado o cabelo, hoje tenho alguns horários e posso te incluir na agenda.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Kelvin Teste'), vagas: { [hoje]: ['15:45', '16:30', '18:15'] } })
+  checar('89 cumprimenta e responde o "tudo bem?" antes dos horários', /^(Bom dia|Boa tarde|Boa noite), Kelvin! Tudo bem por aqui, e você\?/.test(r.reply) && /15:45/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

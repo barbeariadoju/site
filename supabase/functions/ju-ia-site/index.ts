@@ -5536,13 +5536,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // "?", "." ou "!"); mensagem longa só ganha a resposta ao "tudo bem?", nunca vira saudação
  // isolada — o pedido que vem depois continua sendo respondido pelo fluxo normal.
  const saudLonga=saudTexto.length>60
- const saudCabeca=saudLonga?(saudTexto.match(/^[^?.!\n]{0,60}[?.!]/)?.[0]||''):saudTexto
- const saudMatch=saudCabeca?saudCabeca.match(/^((?:(?:oi+|ola|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*ai|eai|fala|salve)\b[\s,!.?]*)+)?(?:(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)\b[\s,!.?]*){0,3}(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\s,!.?]*$/):null
+ // v29.314.0 — caso Kelvin (28/10/2026, 11h09): "bom dia" / "tudo bem por aí?" / "pode me dizer quais são os
+ // horários disponíveis hoje" chegaram juntos, em linhas separadas. A cabeça parava no primeiro "\n" sem
+ // pontuação e ficava vazia: saiu só a lista de horários, sem cumprimento nem "tudo bem por aqui". Em
+ // mensagem de várias linhas, a cabeça são as primeiras linhas que, juntas, ainda são só saudação.
+ const SAUDACAO_RE=/^((?:(?:oi+|ola|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*ai|eai|fala|salve)\b[\s,!.?]*)+)?(?:(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)\b[\s,!.?]*){0,3}(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\s,!.?]*$/
+ const linhasSaud=saudTexto.split(/\n+/).map((l:string)=>l.trim()).filter(Boolean)
+ let cabecaLinhas=''
+ if(saudLonga&&linhasSaud.length>1)for(const l of linhasSaud){const tent=cabecaLinhas?`${cabecaLinhas} ${l}`:l;if(SAUDACAO_RE.test(tent))cabecaLinhas=tent;else break}
+ const saudCabeca=saudLonga?(cabecaLinhas||saudTexto.match(/^[^?.!\n]{0,60}[?.!]/)?.[0]||''):saudTexto
+ const saudMatch=saudCabeca?saudCabeca.match(SAUDACAO_RE):null
  // A resposta dele ao nosso "e você?" ("tudo bem também", "ótimo, obrigado") não é saudação
  // nova nem pergunta: reage curto e vai pro que ele precisa — sem "e você?" de novo (loop).
  const respondeuComoEsta=/e voce\?/.test(normalize(ultimaFalaJuIA))&&saudTexto.length<=50&&/^(?:(?:tudo|td|to|tou|estou|ta|eu tb|eu tbm|aqui)\s*)?(?:bem|otimo|otima|joia|tranquilo|certo|de boa|suave|na paz|melhor|firme|beleza|blz)(?:\s*(?:tambem|tbm|demais|por aqui|gracas a deus|e voce\??|e vc\??))*[\s!.,]*(?:obrigad[oa]|valeu|brigado)?(?:\s*por perguntar)?[\s!.,?]*$/.test(saudTexto)
  const perguntouComoEstou=Boolean(!respondeuComoEsta&&saudMatch&&saudMatch[2]&&(/\?/.test(saudTexto)||/^(tudo|td|como)/.test(saudMatch[2])))
  const saudacaoIsolada=!saudLonga&&!respondeuComoEsta&&Boolean(saudMatch&&(saudMatch[1]||perguntouComoEstou))
+ // v29.314.0 (caso Kelvin): "bom dia" na frente de um pedido também ganha o "Bom dia, Kelvin!" de volta.
+ const cumprimentouComPedido=saudLonga&&!respondeuComoEsta&&Boolean(saudMatch&&saudMatch[1])
  const semPedidoEmAberto=!saudLonga&&!chosen.length&&!next.date&&!next.time&&!next.completed&&!['cancel','reschedule','change_service','update_products','handoff'].includes(intent)
  // v29.182.0 (caso Amanda): quem se justifica ("meu despertador não tocou", "perdi a hora",
  // "desculpa") ouve primeiro que está tudo bem — a agenda vem depois. Sem isso a resposta
@@ -5664,7 +5674,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    ?`Espero que esteja tudo bem com você! Seu horário de hoje às ${String(hojeB.start_time||'').slice(0,5)} (${hojeB.service_name}) está guardado — te espero. Se precisar de algo antes, é só me dizer.`
    :'Espero que esteja tudo bem com você! Como posso te ajudar hoje?'
  }
- if(isFirstMessage||saudacaoIsolada){
+ if(isFirstMessage||saudacaoIsolada||cumprimentouComPedido){
   const crmName=hasCustomer?String(context?.name||'').trim():''
   // v29.312.0 (final 0175, 27/10 18h04): nome do WhatsApp sem letra (emoji) caía no padrão do
   // firstName e saía "Boa noite, cliente!". Na saudação, sem nome é sem nome.

@@ -55,12 +55,13 @@
     $('client-login').hidden=true;$('client-result').hidden=false;
     $('client-name').textContent=`Olá, ${data.first_name}!`;
     // v29.309.0 — programa de pontos encerrado em 27/10/2026: o quadro só aparece para quem ainda tem
-    // pontos ou prêmio, e diz que é o último prêmio e o prazo (31/03/2027).
+    // pontos ou prêmio. v29.314.0 (Juliano, 28/10): sem "último prêmio" nem prazo, o encerramento ele
+    // mesmo comunica.
     const pts=Number(data.points||0),premios=Number(data.rewards_available||0),aberto=Date.now()<Date.parse('2027-04-01T00:00:00-03:00');
     $('client-points').closest('article').hidden=!(premios>0||(pts>0&&aberto));
     $('client-points').textContent=`${pts}/10`;
     $('client-progress-bar').style.width=`${Math.min(100,pts*10)}%`;
-    $('client-reward-text').textContent=premios>0?`Você tem ${premios} serviço(s) por nossa conta para usar.`:`Faltam ${Math.max(0,10-pts)} pontos para o seu último prêmio. O programa de pontos foi encerrado; quem já tinha pontos pode completar até 31/03/2027.`;
+    $('client-reward-text').textContent=premios>0?`Você tem ${premios} serviço(s) por nossa conta para usar.`:`Faltam ${Math.max(0,10-pts)} pontos para um serviço por nossa conta.`;
     $('client-visits').textContent=Number(data.completed_visits||0);
     if(data.next_booking){$('client-next-title').textContent=`${dateBR(data.next_booking.date)} às ${data.next_booking.time}`;$('client-next-text').textContent=`${data.next_booking.services} • ${data.next_booking.status==='confirmed'?'Confirmado':data.next_booking.status==='pending'?'Aguardando confirmação':data.next_booking.status}`}
     else{$('client-next-title').textContent='Nenhum horário marcado';$('client-next-text').textContent='Escolha um serviço e reserve seu próximo atendimento.'}

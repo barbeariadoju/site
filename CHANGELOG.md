@@ -1,3 +1,16 @@
+## 29.314.0 — Site sem o aviso de encerramento dos pontos + JuIA cumprimenta quem manda "bom dia / tudo bem?" junto com o pedido (caso Kelvin)
+
+**Pedido do Juliano (28/10):** "tira a explicação do encerramento do FAQ e da área do cliente também", continuação da 29.313.0.
+- **`/perguntas-frequentes.html`:** saiu a pergunta "Vocês ainda têm programa de fidelidade?", na página e no JSON-LD (24 perguntas nos dois, conferido). **Decidido contra o óbvio:** apagar a pergunta, não reescrever. Qualquer resposta sobre "ainda têm fidelidade?" leva ao assunto que ele quer tratar pessoalmente.
+- **`blog-como-funciona-agendamento-juia.html`:** saíram a seção "E a fidelidade?", a pergunta do FAQ da página e a entrada do JSON-LD. Era o mesmo texto, e ele não estava na lista do pedido; tirei pela mesma razão.
+- **Área do cliente (`cliente-v30.js`):** "Faltam N pontos para um serviço por nossa conta.", sem "último prêmio" e sem prazo. O quadro continua aparecendo só para quem tem pontos ou prêmio. `?v=29.314.0` no `cliente.html`.
+
+**Caso Kelvin (28/10, 11h09), print do Juliano: "a JuIA não respondeu ele direito".** Ele mandou "bom dia", "tudo bem por aí?" e "pode me dizer quais são os horários disponíveis hoje" em 17 s. A resposta veio só com a lista de horários, sem cumprimento e sem o "tudo bem por aqui". Eram dois defeitos:
+- **`whatsapp-webhook`:** o turno do "bom dia / tudo bem" teve a resposta descartada, porque o cliente escreveu de novo, mas o `processed_until` da 29.276.0 (caso Samuel) já tinha marcado esse texto como processado. O turno seguinte respondeu só a última mensagem. Agora a resposta descartada devolve o `processed_until` ao valor anterior, a não ser que um turno mais novo já o tenha mudado. Resposta que confirma reserva nunca é descartada, então o caso Samuel segue protegido.
+- **`ju-ia-site`:** mesmo com as três mensagens juntas, a cabeça da saudação parava no primeiro "\n" sem pontuação e ficava vazia. Agora, em mensagem de várias linhas, a cabeça são as primeiras linhas que juntas ainda são saudação. "Bom dia" na frente de um pedido também ganha "Bom dia, Kelvin!" de volta. A regex da saudação virou a constante `SAUDACAO_RE`.
+- Simulador: cenário 89, 236 ok. `npm test` verde. Publicados `ju-ia-site` e `whatsapp-webhook`.
+
+---
 ## 29.313.0 — WhatsApp não anuncia mais o fim do programa de pontos
 
 **Pedido do Juliano (28/10, print da reserva do Marcelo):** "não quero que alerte que o programa de pontos foi encerrado, isso eu faço aqui". A reserva saía com "Faltam 5 para o seu último prêmio (o programa de pontos foi encerrado, e quem já tinha pontos pode completar até 31 de março de 2027)".

@@ -533,6 +533,19 @@ Deno.serve(async (request: Request) => {
         .limit(1)
       return !!(data && data.length > 0)
     }
+    // v29.314.0 — caso Kelvin (28/10/2026, 11h09): "bom dia", "tudo bem por aí?" e, 11 s depois, "pode me
+    // dizer quais são os horários disponíveis hoje". O turno do "bom dia / tudo bem" teve a resposta
+    // descartada (o cliente escreveu de novo), mas o processed_until da v29.276.0 já marcava esse texto
+    // como "tem dono" — e o turno seguinte respondeu só os horários, sem cumprimento nem "tudo bem por
+    // aqui". Resposta descartada nunca sai, então o texto volta: o processed_until retorna ao que era,
+    // se nenhum turno mais novo já o mudou. Resposta que confirma reserva não é descartada (caso
+    // Samuel segue protegido).
+    let processadoAntes: string | null = null
+    let processadoPorEste: string | null = null
+    const devolverTurno = async () => {
+      if (!processadoPorEste) return
+      await admin.from('whatsapp_conversations').update({ processed_until: processadoAntes }).eq('phone', phone).eq('processed_until', processadoPorEste)
+    }
 
     // v29.138.0 (caso João, 05/09/2026, 14h30): ele respondeu "1" à pesquisa e, segundos
     // depois, "Vc é top demais" e "Parabéns e q Deus te abençoe". A pesquisa foi registrada
@@ -987,7 +1000,10 @@ Deno.serve(async (request: Request) => {
         // desistiria no teste do buffer acima), então a régua é exatamente inboundStampMs.
         obsoleteCutoffMs = inboundStampMs
         // processed_until (v29.276.0): tudo que entrou até a última mensagem deste turno já tem dono.
-        await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null, processed_until: new Date(inboundStampMs).toISOString() }).eq('phone', phone)
+        const { data: procAntes } = await admin.from('whatsapp_conversations').select('processed_until').eq('phone', phone).maybeSingle()
+        processadoAntes = procAntes?.processed_until ?? null
+        processadoPorEste = new Date(inboundStampMs).toISOString()
+        await admin.from('whatsapp_conversations').update({ buffer_text: null, buffer_updated_at: null, processed_until: processadoPorEste }).eq('phone', phone)
         // v29.17.1 — caso Helder (13/08/2026): mensagem morreu em silêncio total entre o ack e a
         // chamada da IA, sem UM log sequer pra dizer onde. Marcos de log baratos no caminho feliz:
         // se o silêncio se repetir, o último marco presente diz exatamente onde parou.
@@ -2437,6 +2453,7 @@ Deno.serve(async (request: Request) => {
           const confirmaReserva = /Reservado!|Prontinho! Mudei|Prontinho! Troquei/.test(reply)
           if (!confirmaReserva && await respostaFicouObsoleta()) {
             console.warn('[whatsapp-webhook] resposta da IA descartada: cliente escreveu de novo antes do envio', phone)
+            await devolverTurno()
             return
           }
           // v29.64.0 (caso Helder): resposta VAZIA é a JuIA escolhendo silêncio de propósito
