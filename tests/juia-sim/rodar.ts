@@ -48,7 +48,7 @@ const [dia1, dia2] = diasAbertos
 const catalogo = [
   ['Corte + Lavagem', 50, 50, 'corte'], ['Corte de cabelo', 40, 45, 'corte'], ['Raspar a cabeça', 40, 40, 'corte'],
   ['Corte de cabelo infantil', 40, 40, 'corte'], ['Corte + Barba na navalha com toalha quente', 80, 70, 'combo'],
-  ['Corte + Barba Express', 65, 60, 'combo'], ['Barboterapia com vaporizador de ozônio', 50, 50, 'barba'],
+  ['Corte + Barba Express', 65, 60, 'combo'], ['Corte + Lavagem + Barba Express', 70, 80, 'combo'], ['Barboterapia com vaporizador de ozônio', 50, 50, 'barba'],
   ['Barba na navalha com toalha quente', 40, 40, 'barba'], ['Barba Express', 25, 30, 'barba'],
   ['Pezinho (acabamento)', 15, 15, 'adicional'], ['Sobrancelha Masculina', 15, 15, 'adicional'],
   ['Depilação nasal (cera quente)', 25, 30, 'adicional'], ['Depilação orelhas', 25, 30, 'adicional'],
@@ -1332,6 +1332,15 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     history: [{ role: 'assistant', content: 'Reservado! Thiago, sábado às 14:00: Corte + Lavagem.' }],
     ai: { intent: 'other', reply: 'De nada!' }, contexto: ctxCliente('Thiago Teste'), futuros })
   checar('93 despedida carinhosa recebe agradecimento, retribuição e "até sábado"', /(Eu que agrade[çc]o|Obrigado)/i.test(r.reply) && /(abra[çc]o|Deus)/i.test(r.reply) && /At[ée] (amanh[ãa]|domingo|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|\d)/.test(r.reply) && !/hor[áa]rio|prefere/i.test(r.reply), r.reply)
+}
+
+// 94. Combo Corte + Lavagem + Barba Express (R$ 90, Juliano, 29/10/2026). Pedido pelas partes ou pelo nome, o valor
+// dito ao cliente é o do combo, igual ao que o banco cobra — nunca a soma avulsa. No catálogo do simulador (preços
+// antigos) o combo vale 70 e as partes somam 75.
+{
+  const r = await turno({ msg: 'quero corte com lavagem e barba express amanhã às 10', state: { name: 'Paulo Teste', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Reservado!', updates: { services: ['Corte + Lavagem', 'Barba Express'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Paulo Teste'), vagas: { [dia1]: ['10:00'] } })
+  checar('94 corte com lavagem + barba express sai pelo preço do combo, não pela soma', /70,00/.test(r.reply) && !/75,00/.test(r.reply), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

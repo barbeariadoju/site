@@ -1,3 +1,16 @@
+## 29.320.0 — Combo Corte + Lavagem + Barba Express por R$ 90
+
+**Pedido do Juliano (29/10):** "cria combo corte + lavagem + barba express por 90,00".
+- **O que é:** Corte + Lavagem (R$ 60) + Barba Express (R$ 35) somam R$ 95 avulso; o combo sai por **R$ 90**, em **80 min** (50 do corte com lavagem + 30 da barba). A descrição diz "barba só na máquina (sem navalha e sem toalha quente)", a regra de toda oferta de Barba Express desde 01/09.
+- **Banco (migração 204):** serviço novo em `services` (categoria Cortes e combos, `combo`, ordem 6). O `service_price_on` casa o nome mais longo, então "Corte + Lavagem + Barba Express" gravado numa reserva sai a R$ 90, venha do combo ou das duas partes nessa ordem. Conferido: combo 90, Corte + Lavagem 60, Corte + Barba Express 80.
+- **JuIA:** `totalOn` faz a mesma conta do banco, nome mais longo primeiro. Antes, quem pedia "corte com lavagem e barba express" ouviria a soma (R$ 95) e pagaria R$ 90. A oferta "lavagem por mais R$ 10" em cima do Corte + Barba Express (29.285.0, caso Vicente) continua dando R$ 90, agora porque é o preço do combo.
+- **Regras de família** (`assets/js/service-rules.js` e a cópia em `_shared/service-rules.ts`): o combo conta como corte E barba, como os outros combos, e `COMBO_PARTS` sabe que ele é Corte + Lavagem + Barba Express (o prêmio da fidelidade no Concluir desmonta certo).
+- **Site:** catálogo (`services-catalog-v7.js`, preço 90, sem `priceFrom`), cartão no /agendar/, tabelas de `/servicos.html` e `/precos/`, resposta "Quais são todos os preços?" do FAQ (texto e JSON-LD) e lista do blog "quanto custa". Sem página própria de serviço por enquanto: a linha da tabela fica sem link.
+- **Cache:** `?v=29.320.0` em `services-catalog-v7.js` (11 páginas), `service-rules.js` (4) e nos .js que importam esses dois (`admin-service-rules-v30.js`, `agenda-v15.js`, `reagendar-v26-5.js`, `service-cart-v22-5.js`). `ADMIN_VERSION` 29.320.0.
+- Publicados `ju-ia-site`, `create-public-booking`, `create-rebooking`, `clube` e `senha-digital` (importam as regras). Simulador: cenário 94 (o catálogo do simulador ganhou o combo, com preço diferente da soma), 243 ok. `npm test` verde (378 unit + 94 e2e).
+- **Ainda não feito:** o catálogo do WhatsApp Business e os serviços do perfil do Google. A regra é o catálogo espelhar o site; fica para a confirmação do Juliano, porque é publicação externa.
+
+---
 ## 29.319.0 — JuIA devolve o carinho: "tudo bem?", pedido de tabela e de link, despedida
 
 **Pedido do Juliano (29/10, prints do Rogério e do Thiago):** "os clientes foram super carinhosos, e a JuIA foi meio seca, precisamos ensinar ela a responder o que o cliente pergunta".

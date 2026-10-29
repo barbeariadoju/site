@@ -887,7 +887,18 @@ Deno.serve(async req=>{
  // o cliente lê um preço novo, não o acréscimo. Vende melhor dizer quanto ela soma: "por mais R$ 10,00".
  // 0 = não dá pra calcular (serviço fora do catálogo): volta o texto antigo.
  const extraLavagem=(dateIso?:string|null)=>{const l=findService('Corte + Lavagem'),c=findService('Corte de cabelo');if(!l||!c)return 0;const d=svcPriceOn(l,dateIso)-svcPriceOn(c,dateIso);return d>0?d:0}
- const totalOn=(lista:any[],dateIso?:string|null)=>lista.reduce((a:number,s:any)=>a+svcPriceOn(s,dateIso),0)
+ // v29.320.0 — combo Corte + Lavagem + Barba Express (R$ 90, pedido do Juliano em 29/10/2026). A reserva grava os
+ // nomes juntos com " + ", e o banco (service_price_on) cobra pelo nome MAIS LONGO do catálogo: "Corte + Lavagem" +
+ // "Barba Express" vira o combo. A conta que o cliente ouve segue a mesma regra, senão ele ouviria R$ 95 e pagaria 90.
+ const totalOn=(lista:any[],dateIso?:string|null)=>{
+  let total=0,i=0
+  while(i<lista.length){
+   let j=lista.length,combo:any=null
+   for(;j>i+1;j--){const nome=lista.slice(i,j).map((s:any)=>s?.name).join(' + ');combo=services.find((x:any)=>x.name===nome);if(combo)break}
+   if(combo){total+=svcPriceOn(combo,dateIso);i=j}else{total+=svcPriceOn(lista[i],dateIso);i++}
+  }
+  return total
+ }
  // Regra do Juliano (03/09/2026, no prompt): nunca anunciar reajuste por conta própria nem
  // comparar valor velho com novo. Por isso o valor da data sai NEUTRO, sem nota "(a partir de…)".
  const {data:productsData}=await supabase.from('products').select('name,price,upsell_tags').eq('active',true)
