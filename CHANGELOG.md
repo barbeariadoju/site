@@ -1,3 +1,18 @@
+## 29.318.0 — Fila de envio programado (recuperação dos clientes fiéis)
+
+**Pedido do Juliano (29/10):** "pode deixar pra enviar de forma automática", "envia umas 5 por dia", "eu não vou lembrar de clicar". Vem da análise de outubro: 27 clientes fiéis (2+ visitas) estavam entre 31 e 60 dias sem voltar e sem horário marcado. Desses, 19 entraram na lista; os outros 8 ficaram fora por motivo (já contatados há pouco, "agora não", SAIR, nunca contatar, pedido em aberto).
+- **Tabela `outreach_queue` (migração 203):** uma linha por mensagem pronta, com o dia a partir do qual pode sair. GRANT explícito para o `service_role`, conforme a regra de 30/10.
+- **Robô `outreach-queue-dispatch`, cron `bdj-outreach-queue` a cada 20 min, terça a sábado.**
+  - Manda UMA mensagem por rodada, no máximo 5 por dia (todas as campanhas somadas) e pelo menos 60 min entre uma e outra, das 9h às 17h.
+  - **Pula de vez** quem já marcou horário, pediu SAIR, foi arquivado ou está no "nunca contatar".
+  - **Adia** quando houve mensagem com o cliente nas últimas 48 h, quando o Juliano está na conversa ou quando há pergunta numerada da JuIA esperando resposta. Depois de 7 dias adiado, sai como `sem_janela`.
+  - Reserva a linha antes de enviar, para não mandar a mesma mensagem duas vezes.
+  - Grava o envio no `customer_outreach_log` como `reactivation`, para o robô de reativação não mandar outra por cima nos 14 dias seguintes.
+- **Carregados 19 clientes** (campanha `recuperacao-fieis-out26`): 5 em 30/10, 5 em 31/10, 5 em 03/11 e 4 em 04/11. Quatro deles receberam o convite automático entre 22 e 24/10 e ficaram para o último dia.
+- **Decidido contra o óbvio:** a fila não reaproveita o robô de reativação. A reativação escolhe sozinha quem recebe e manda texto padrão; aqui a lista e o texto são escolhidos a dedo, com o serviço de cada um. O registro no mesmo log impede que os dois falem com a mesma pessoa.
+- Teste sem envio (`dry_run`): escolheu o primeiro item do dia, Julio; nada saiu. `deno check` ok.
+
+---
 ## 29.317.0 — Robôs voltam a gravar no banco (aviso de fechamento repetido) + "nunca contatar"
 
 **Achado na análise de outubro (29/10):** dois dos clientes mais fiéis receberam o MESMO aviso de fechamento 4 dias seguidos (07 a 10/10); um terceiro, 5 vezes. Nove clientes receberam o aviso mais de uma vez.
