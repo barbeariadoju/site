@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.28.0 — Varredura semanal: recupera pesquisas de satisfação sem resposta.
 //
 // O problema real (dados de 60 dias): 65 clientes responderam a pesquisa, mas 25 nunca

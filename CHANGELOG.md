@@ -1,3 +1,21 @@
+## 29.317.0 — Robôs voltam a gravar no banco (aviso de fechamento repetido) + "nunca contatar"
+
+**Achado na análise de outubro (29/10):** dois dos clientes mais fiéis receberam o MESMO aviso de fechamento 4 dias seguidos (07 a 10/10); um terceiro, 5 vezes. Nove clientes receberam o aviso mais de uma vez.
+- **Causa:** a tabela `closure_notices` estava vazia. O privilégio padrão das tabelas criadas pelo usuário `postgres` dava ao `service_role` só leitura, sem INSERT/UPDATE/DELETE. O `insert` da function falhava calado (o supabase-js devolve o erro e não lança), o robô nunca sabia quem já tinha avisado e repetia o aviso a cada rodada até o fechamento.
+- **Mesmo defeito em 23 tabelas, com efeitos silenciosos:**
+  - `social_followers_snapshot`: o contador de seguidores do Instagram parou;
+  - `customer_area_otp`: a tabela do código de acesso da área do cliente nunca teve uma linha;
+  - `whatsapp_ad_clicks`: o clique de anúncio que chega pelo WhatsApp não era gravado;
+  - UPDATE em `whatsapp_messages`, `notification_log`, `customer_outreach_log`, `ai_conversations`, `site_chat_messages` e outras.
+- **Correção (migração 202):** `grant select, insert, update, delete` em todas as tabelas de `public` para o `service_role` (padrão do Supabase: é a chave do servidor e ignora RLS), mais o privilégio padrão para as tabelas futuras. `anon` e `authenticated` não mudaram. Conferido: 0 tabelas sem escrita para o backend.
+- **"Nunca contatar" (pedido do Juliano, 29/10: dois clientes, "não mandar nenhuma mensagem pra eles de nada"):**
+  - coluna `customer_profiles.no_contact_at`, marcada nos dois cadastros junto com o SAIR do marketing;
+  - `_shared/sem-contato.ts`: uma importação na primeira linha de 24 functions embrulha o `fetch`, e todo envio `/message/send*` para número marcado não sai (devolve `key.id = 'NAO-ENVIADO-sem-contato'`, sem nova tentativa). Fora de propósito: o `whatsapp-send` (envio manual do Juliano) e o Status. Se a lista não carregar, o envio segue (falha aberta).
+- **SAIR respeitado em mais dois robôs:** o convite de retorno (`return-invite-dispatch`) não olhava `marketing_opt_out_at` nem `archived`, e agora olha (motivo `sem_marketing`). O aviso de fechamento (`closure_notice_candidates`) passou a olhar `marketing_opt_out_at`.
+- **Decidido contra o óbvio:** não pus trava em cada um dos 24 envios. Embrulhar o `fetch` cobre também o envio que alguém escrever amanhã, desde que a function importe o módulo.
+- Teste da trava em Deno (barra o número marcado, deixa passar os outros e as chamadas que não são envio). `deno check` nas functions principais. Os números nunca entram no código: o repositório é público.
+
+---
 ## 29.316.0 — Balcão enxuto: categorias em blocos e pagamento no Concluir
 
 **Pedido do Juliano (29/10, print do Balcão):** "é cansativo lançar um simples corte de cabelo e ter que rolar toda a tela… poderia resumir tudo em blocos e se eu quiser adicionar bebidas clico, visualizo, adiciono… clico em concluir, ele já pergunta logo a forma de pagamento, eu confirmo e pronto".

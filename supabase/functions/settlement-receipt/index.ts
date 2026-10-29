@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.33.0 — Recibo de quitação do repasse semanal.
 //
 // Pedido do Juliano em 16/08/2026: "caso ele venha a alegar que não o pagamos". O

@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 import { digitandoMs, pausaEntreEnvios, timeoutComDigitando } from '../_shared/humano.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'

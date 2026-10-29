@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.25.0 — Vale-presente: o Juliano confirma o Pix e o comprador recebe o código na hora.
 //
 // verify_jwt=true: quem chama é o painel admin com a sessão do Juliano. A RPC

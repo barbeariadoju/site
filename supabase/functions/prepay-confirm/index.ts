@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // O Juliano confere o extrato e confirma que o Pix caiu.
 //
 // Isto é o que faltava para o cliente sair da dúvida: até aqui ele pagava, avisava,

@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.22.0 — Webhook do PagBank: a confirmação de pagamento que fecha o ciclo sozinha.
 //
 // Quando o cliente paga (Pix ou cartão) na página do Checkout, o PagBank chama

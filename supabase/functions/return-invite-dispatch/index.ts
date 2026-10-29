@@ -1,3 +1,4 @@
+import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.16.0 — Convite de retorno pós-atendimento (ideia do Juliano, 12/08/2026).
 // v29.154.0 — Convite NO TEMPO DO CLIENTE (08/09/2026). Antes saía no dia seguinte ao corte,
 // junto com a pesquisa e o pedido de avaliação, pedindo pra reservar "o próximo horário" a quem
@@ -114,11 +115,24 @@ Deno.serve(async(req:Request)=>{
   // própria nesse meio-tempo não recebe nada (expired). Conversa com o Juliano ou outra
   // pergunta numerada pendente: fica pro cron de amanhã (remind_at continua no passado).
   let sent=0,skipped=0,failed=0,reminded=0,waiting=0
+  // v29.317.0 — quem pediu SAIR (marketing_opt_out_at) ou foi arquivado não recebe convite nem lembrete.
+  // O convite era o único robô de marketing que não olhava isso (pedido do Juliano, 29/10/2026: Helder
+  // e Eduardo não recebem mais mensagens). Casamento pelos 8 últimos dígitos, como o resto do robô.
+  const naoMandar=new Set<string>()
+  {
+    const {data:fora}=await admin.from('customer_profiles').select('phone').or('marketing_opt_out_at.not.is.null,archived.eq.true')
+    for(const c of fora||[]){const d=String(c.phone||'').replace(/\D/g,'');if(d.length>=8)naoMandar.add(d.slice(-8))}
+  }
+  const foraDaLista=(phone:string)=>naoMandar.has(phone.slice(-8))
   {
     const {data:deferredRows}=await admin.from('return_invites').select('*').eq('status','deferred').lte('remind_at',today).order('remind_at',{ascending:true}).limit(50)
     for(const r of deferredRows||[]){
       const phone=canonicalPhone(String(r.phone||''))
       if(phone.length<12||phone===TEST_PHONE)continue
+      if(foraDaLista(phone)){
+        await admin.from('return_invites').update({status:'expired',skip_reason:'sem_marketing',updated_at:nowIso}).eq('id',r.id)
+        continue
+      }
       if(futurePhones.has(phone)){
         await admin.from('return_invites').update({status:'expired',skip_reason:'marcou_antes_do_lembrete',updated_at:nowIso}).eq('id',r.id)
         continue
@@ -178,6 +192,7 @@ Deno.serve(async(req:Request)=>{
     // v29.80.0 — venda só de produto no balcão (serviço R$0) não é atendimento na cadeira:
     // convidar pra "reservar o próximo horário" não faz sentido aqui. Decide na hora.
     if(Number(b.service_price||0)<=0){await skip('venda_so_produto',null);continue}
+    if(foraDaLista(phone)){await skip('sem_marketing',null);continue}
 
     // v29.43.0 — cadência do próprio cliente (caso Luiz André, 15/08: faz barba a cada ~9 dias
     // e recebeu convite pra 4 semanas depois). Mediana dos intervalos das últimas visitas.

@@ -1,3 +1,4 @@
+import './sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 // v29.233.0 — Clube do Ju: peças comuns às functions clube, clube-ciclo e pagbank-webhook.
 // Cobrança por link do Checkout PagBank (Pix, crédito e débito à vista), o mesmo produto que já roda
 // em produção para o pagamento antecipado do agendamento. A referência "CLB-<código>-<n>" é o que o
