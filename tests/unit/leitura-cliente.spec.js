@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, avisoDeChegada, aceitaAvisoDeVaga,
+  tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, avisoDeChegada, aceitaAvisoDeVaga,
   horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino,
   tirarVocativoInicial, prometeRecado, servicoSoPerguntado,
 } from '../../supabase/functions/_shared/leitura-cliente.ts';
@@ -35,6 +35,18 @@ describe('pisoDeHorario (caso Rodrigo, 17/09)', () => {
   });
   it('sem horário, vazio', () => {
     expect(pisoDeHorario('depois eu vejo')).toBe('');
+  });
+});
+
+describe('pedeRemedio (caso Fernando, 28/10)', () => {
+  it('pedido de remédio vai para o Juliano', () => {
+    expect(pedeRemedio('consegue me mandar 2 caixas de depacote 500 er com 60 comprimidos')).toBe(true);
+    expect(pedeRemedio('ju tem dipirona 500 mg?')).toBe(true);
+    expect(pedeRemedio('preciso de um remedio pra dor de cabeca')).toBe(true);
+  });
+  it('referência de lugar e conversa comum não contam', () => {
+    expect(pedeRemedio('fica perto da farmacia?')).toBe(false);
+    expect(pedeRemedio('quero marcar um corte amanha')).toBe(false);
   });
 });
 

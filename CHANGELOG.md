@@ -1,3 +1,13 @@
+## 29.315.0 — JuIA: pedido de remédio vai para o Juliano (caso Fernando)
+
+**Revisão da JuIA de 29/10 (conversas de 28/10 11h a 29/10 09h30).**
+- **Caso Fernando (final 1246, 28/10, 13h40):** cliente conhecido escreveu "Consegue me mandar 2 caixas de depacote 500 er com 60 comprimidos" e recebeu "Não trabalhamos com medicamentos ou esse tipo de produto". Em seguida, "Fernando filho do Edeno" (ele se apresentando) virou "Certo, Fernando Filho do Edeno. Como posso ajudar você?". Ninguém respondeu depois. O Juliano é farmacêutico e tem drogaria: quem pede remédio nesse número está falando com ele.
+- **`_shared/leitura-cliente.ts`:** `pedeRemedio` (remédio, medicamento, comprimido, cápsula, genérico, farmácia, drogaria, receita médica, "500 mg"). Referência de lugar ("perto da farmácia") não conta.
+- **`ju-ia-site`:** pedido de remédio segue o caminho do pedido de gente: "Vou passar o seu pedido para o Juliano agora mesmo; ele te responde por aqui assim que puder.", com handoff (push e takeover). A pergunta sobre a formação dele ("você é farmacêutico?") continua com a resposta fixa da 29.299.0.
+- **Decidido contra o óbvio:** a JuIA não recusa e também não indica a drogaria. Recusar dispensou um conhecido; indicar seria decidir por ele como atender (e remédio de receita não se resolve por robô). Só passa o pedido.
+- Simulador: cenário 90, 237 ok. Unit `pedeRemedio`. `npm test` verde. Publicado só o `ju-ia-site`.
+
+---
 ## 29.314.0 — Site sem o aviso de encerramento dos pontos + JuIA cumprimenta quem manda "bom dia / tudo bem?" junto com o pedido (caso Kelvin)
 
 **Pedido do Juliano (28/10):** "tira a explicação do encerramento do FAQ e da área do cliente também", continuação da 29.313.0.

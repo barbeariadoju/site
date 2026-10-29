@@ -57,6 +57,20 @@ export const pedeFalarComJuliano = (q: string, julianoNaUltimaFala = false): boo
 }
 
 // ---------------------------------------------------------------------------------------------
+// PEDIDO DE REMÉDIO — caso Fernando (28/10/2026, 13h40): cliente conhecido escreveu "Consegue me
+// mandar 2 caixas de depacote 500 er com 60 comprimidos" e recebeu "Não trabalhamos com
+// medicamentos"; depois "Fernando filho do Edeno" virou "Certo, Fernando Filho do Edeno. Como
+// posso ajudar?". O Juliano é farmacêutico e tem drogaria: quem pede remédio nesse número está
+// falando com ELE, e a resposta é dele. A JuIA não recusa nem vende: passa para o Juliano.
+// Referência de lugar ("perto da farmácia") não conta.
+// ---------------------------------------------------------------------------------------------
+export const pedeRemedio = (q: string): boolean => {
+  const t = String(q || '')
+  if (/\b(perto|do lado|ao lado|em frente|frente|esquina|depois|antes|vizinh[oa])\b.{0,20}\b(farmacia|drogaria)\b/.test(t)) return false
+  return /\b(remedios?|medicamentos?|comprimidos?|capsulas?|genericos?|drogaria|farmacia|receita medica)\b|\b\d+\s*mg\b/.test(t)
+}
+
+// ---------------------------------------------------------------------------------------------
 // CHEGADA — "estou na rua de baixo", "tô chegando", "cheguei".
 // Caso Moisés (18/09/2026, 18h25): com o horário das 19h marcado, avisou que estava na rua de
 // baixo e recebeu "você já tem um agendamento para hoje às 19:00, quer que eu cancele esse já

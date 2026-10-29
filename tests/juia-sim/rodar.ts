@@ -1296,5 +1296,13 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('89 cumprimenta e responde o "tudo bem?" antes dos horários', /^(Bom dia|Boa tarde|Boa noite), Kelvin! Tudo bem por aqui, e você\?/.test(r.reply) && /15:45/.test(r.reply), r.reply)
 }
 
+// 90. Caso Fernando (28/10/2026, 13h40): "Consegue me mandar 2 caixas de depacote 500 er com 60 comprimidos" recebeu
+// "Não trabalhamos com medicamentos". Pedido de remédio é para o Juliano (farmacêutico): handoff, sem recusa.
+{
+  const r = await turno({ msg: 'Consegue me mandar 2 caixas de depacote 500 er com 60 comprimidos', history: [{ role: 'assistant', content: 'Boa tarde, Fernando! Como posso te ajudar hoje?' }],
+    ai: { intent: 'other', reply: 'Não trabalhamos com medicamentos ou esse tipo de produto.' }, contexto: ctxCliente('Fernando Teste') })
+  checar('90 pedido de remédio vira handoff para o Juliano', r.handoff && /Juliano/.test(r.reply) && !/Não trabalhamos/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
