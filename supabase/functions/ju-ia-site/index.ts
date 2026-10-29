@@ -253,6 +253,21 @@ const diaPedidoNaMensagem=(text:string):string|null=>{
  return wds.length===1?wds[0]:null
 }
 
+// v29.321.0 — TODOS os dias citados na mensagem (diaPedidoNaMensagem devolve só um). Usado quando o cliente
+// pergunta por dois dias juntos ("amanhã e sábado").
+const DIA_PALAVRA='(?:hoje|amanha|depois de amanha|domingo|segunda|terca|quarta|quinta|sexta|sabado)(?:-feira)?'
+const diasCitados=(text:string):string[]=>{
+ const q=normalize(text)
+ const out=new Set<string>()
+ if(/\bhoje\b/.test(q))out.add(today())
+ if(/\bdepois de amanha\b/.test(q))out.add(addDaysISO(today(),2))
+ if(/\bamanha\b/.test(q.replace(/\bdepois de amanha\b/g,'')))out.add(addDaysISO(today(),1))
+ for(const d of weekdayDatesMentioned(q,today()))out.add(d)
+ return [...out].sort()
+}
+// "amanhã e sábado", "sexta, sábado": os dois. "hoje ou amanhã" é alternativa (o mais próximo vence, 29.61.0).
+const pediuDiasJuntos=(text:string)=>new RegExp(`\\b${DIA_PALAVRA}\\b[^.!?]{0,20}(?:\\be\\b|,|\\btambem\\b)[^.!?]{0,20}\\b${DIA_PALAVRA}\\b`).test(normalize(text))
+
 const fetchWithTimeout=async(url:string,init:RequestInit,timeoutMs=8000)=>{
  const controller=new AbortController()
  const timeout=setTimeout(()=>controller.abort(),timeoutMs)
@@ -5756,6 +5771,25 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const pediuLink=/\b(aplicativo|app|link|site|sistema)\b/.test(normalizedQuestion)&&/\b(agend\w*|marc\w*|horario\w*|agenda)\b/.test(normalizedQuestion)
   if(pediuTabela)reply=`${reply}\n\nOs serviços e preços estão todos aqui: https://www.barbeariadoju.com.br/agendar/#servicos`
   else if(pediuLink)reply=`${reply}\n\nSe preferir ver a agenda e marcar por conta própria, é por aqui: https://www.barbeariadoju.com.br/agendar/`
+ }
+ // v29.321.0 — caso Thiago (29/10/2026, 11h00): "Pra mim ver como que tá a sua agenda amanhã e sábado?" recebeu só
+ // "Consigo te atender amanhã sim!". Pedido do Juliano: responder os dois. Quando o cliente junta dias com "e" (ou
+ // vírgula) e a resposta tratou de um dia só, os outros dias citados vêm logo abaixo, com o mesmo serviço e período.
+ if(!pediuHumano&&next.date&&!next.completed&&!['book','cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)&&!/\bReservado\b/.test(reply)&&pediuDiasJuntos(message)){
+  const outros=diasCitados(message).filter((d:string)=>d!==next.date&&d>=today()).slice(0,2)
+  const durExtra=chosen.length?chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0):45
+  const linhasExtra:string[]=[]
+  for(const d of outros){
+   const nomeDia=diaHumano(d)
+   if(nomeDia&&reply.toLowerCase().includes(String(nomeDia).toLowerCase()))continue
+   const {data:sl}=await supabase.rpc('get_available_slots',{p_date:d,p_duration_minutes:durExtra})
+   let livres=(Array.isArray(sl)?sl:[]).map((r:any)=>String(r.slot_time).slice(0,5))
+   if(next.period)livres=slotsForPeriod(livres,next.period)
+   if(!livres.length)linhasExtra.push(`${semVagaTxt(d)}${next.period&&Array.isArray(sl)&&sl.length?` ${periodoFalado(next.period)}`:''}.`)
+   else if(livres.length<=4)linhasExtra.push(`${emDiaCap(d)} tenho ${livres.join(', ')}.`)
+   else{const meio=livres[Math.floor(livres.length/2)];linhasExtra.push(`${emDiaCap(d)} tenho entre ${livres[0]} e ${livres[livres.length-1]} (por exemplo: ${livres[0]}, ${meio}, ${livres[livres.length-1]}).`)}
+  }
+  if(linhasExtra.length)reply=`${reply}\n\n${linhasExtra.join('\n')}`
  }
  // v28.31.0: funil de conversas com interesse sem agendamento fechado (pedido do
  // Juliano, 31/07/2026) — uma linha por telefone, atualizada a cada mensagem dele.

@@ -1343,5 +1343,17 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('94 corte com lavagem + barba express sai pelo preço do combo, não pela soma', /70,00/.test(r.reply) && !/75,00/.test(r.reply), r.reply)
 }
 
+// 95. Caso Thiago (29/10/2026, 11h00): "Pra mim ver como que tá a sua agenda amanhã e sábado?" recebeu só amanhã.
+// Dois dias juntos com "e": os dois são respondidos. "hoje ou amanhã" segue sendo alternativa (não entra aqui).
+{
+  const sab = (() => { let d = dia1; for (let i = 0; i < 7; i++) { if (new Date(d + 'T12:00:00-03:00').getUTCDay() === 6 && d !== dia1) return d; const x = new Date(d + 'T12:00:00-03:00'); x.setUTCDate(x.getUTCDate() + 1); d = x.toISOString().slice(0, 10) } return d })()
+  const r = await turno({ msg: 'Tem horário amanhã e sábado pra corte?', state: { services: ['Corte de cabelo'], name: 'Thiago Teste' },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Thiago Teste'), vagas: { [dia1]: ['10:50', '14:00'], [sab]: ['09:00', '11:15'] } })
+  checar('95a "amanhã e sábado": responde amanhã e sábado', /10:50/.test(r.reply) && /09:00/.test(r.reply) && /s[áa]bado/i.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'Tem horário hoje ou amanhã pra corte?', state: { services: ['Corte de cabelo'], name: 'Thiago Teste' },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Thiago Teste'), vagas: { [hoje]: ['15:00'], [dia1]: ['10:50'] } })
+  checar('95b "hoje ou amanhã" continua sendo alternativa: só hoje', /15:00/.test(r2.reply) && !/10:50/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

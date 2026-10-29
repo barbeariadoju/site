@@ -1,3 +1,13 @@
+## 29.321.0 — JuIA responde os dois dias quando o cliente pergunta "amanhã e sábado"
+
+**Pedido do Juliano (29/10):** "quando o cliente pergunta por dois dias, ela só fala do primeiro. Arrume isso". Caso Thiago (11h00): "Pra mim ver como que tá a sua agenda amanhã e sábado?" recebeu só "Consigo te atender amanhã sim!".
+- **`diasCitados`** lê todos os dias da mensagem (hoje, amanhã, depois de amanhã e dias da semana). **`pediuDiasJuntos`** separa "amanhã **e** sábado" / "sexta, sábado" de "hoje **ou** amanhã".
+- **Na resposta:** quando os dias vêm juntos e a JuIA tratou de um só, os outros (até dois) entram logo abaixo, com o mesmo serviço e o mesmo período: "No sábado (31/10) tenho 09:00, 11:15." Lista longa vira faixa com exemplos; dia sem vaga ou fechado usa a frase de sempre ("não tenho mais vaga" / "a gente não abre").
+- **Decidido contra o óbvio:** "hoje ou amanhã" continua sendo alternativa, com o dia mais próximo vencendo (29.61.0, caso Marcelo). Quem diz "ou" quer o primeiro horário que der, não duas listas.
+- Não entra em reserva, cancelamento, remarcação nem pedido de falar com o Juliano.
+- Simulador: cenários 95a e 95b, 245 ok. Vitest 378 ok. Publicado o `ju-ia-site`.
+
+---
 ## 29.320.0 — Combo Corte + Lavagem + Barba Express por R$ 90
 
 **Pedido do Juliano (29/10):** "cria combo corte + lavagem + barba express por 90,00".
