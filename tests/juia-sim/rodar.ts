@@ -1304,5 +1304,35 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('90 pedido de remédio vira handoff para o Juliano', r.handoff && /Juliano/.test(r.reply) && !/Não trabalhamos/.test(r.reply), r.reply)
 }
 
+// 91. Caso Rogério (29/10/2026, 12h53): "Olá Juliano, boa tarde. / Tudo bem? / Por gentileza, me informe a sua
+// disponibilidade de horário para hoje, e a sua tabela de preços dos serviços. / Grato." recebeu só os horários:
+// sem "tudo bem por aqui" (vocativo antes do "boa tarde") e sem a tabela pedida.
+{
+  const r = await turno({ msg: 'Olá Juliano, boa tarde.\nTudo bem?\nPor gentileza, me informe a sua disponibilidade de horário para hoje, e  a sua tabela de preços dos serviços.\nGrato.',
+    nomeWhats: 'Rogério Revelles Aguilar', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, vagas: { [hoje]: ['14:50', '15:15', '16:00'] } })
+  checar('91a "Olá Juliano, boa tarde. Tudo bem?" ganha cumprimento e "tudo bem por aqui"', /^(Bom dia|Boa tarde|Boa noite), Rogério! Tudo bem por aqui, e você\?/.test(r.reply), r.reply)
+  checar('91b pediu a tabela de preços: o link da tabela vai junto', /14:50/.test(r.reply) && /barbeariadoju\.com\.br\/agendar\/#servicos/.test(r.reply), r.reply)
+}
+
+// 92. Caso Thiago (29/10/2026, 11h00, áudio): "Oi, Ju. Bom dia, meu irmão. Tudo bem? Espero que sim, querido. Ju, tem
+// como você mandar o seu aplicativo pra mim? O que faz agendamento de horário?…" recebeu "Bom dia, Thiago! Consigo te
+// atender amanhã sim!" — sem o "tudo bem" de volta e sem o link pedido.
+{
+  const r = await turno({ msg: '🎙️ Oi, Ju. Bom dia, meu irmão. Tudo bem? Espero que sim, querido. Ju, tem como você mandar o seu aplicativo pra mim? O que faz agendamento de horário? Pra mim poder agendar um horário? Pra mim ver como que tá a sua agenda amanhã e sábado? Tem como você enviar pra mim, irmão? Por favor? Obrigado, viu? Um abraço.',
+    ai: { intent: 'availability', reply: 'Consigo te atender amanhã sim! Você prefere de manhã ou à tarde?', updates: { date: dia1 } }, contexto: ctxCliente('Thiago Teste'), vagas: { [dia1]: ['10:50', '14:00'] } })
+  checar('92a cumprimento em várias frases ganha "tudo bem por aqui"', /Tudo bem por aqui, e você\?/.test(r.reply), r.reply)
+  checar('92b pediu o aplicativo de agendamento: o link vai junto', /barbeariadoju\.com\.br\/agendar\//.test(r.reply), r.reply)
+}
+
+// 93. Caso Thiago (29/10/2026, 11h09, áudio depois da reserva): "Muito obrigado, viu irmão? Deus abençoe aí, forte
+// abraço, um bom serviço e até sábado." Carinho se devolve com carinho: agradece, retribui e se despede.
+{
+  const futuros = [{ id: 'b93', booking_date: dia2, start_time: '14:00:00', service_name: 'Corte + Lavagem', status: 'confirmed', duration_minutes: 50 }]
+  const r = await turno({ msg: '🎙️ Muito obrigado, viu irmão? Deus abençoe aí, forte abraço, um bom serviço e até sábado.',
+    history: [{ role: 'assistant', content: 'Reservado! Thiago, sábado às 14:00: Corte + Lavagem.' }],
+    ai: { intent: 'other', reply: 'De nada!' }, contexto: ctxCliente('Thiago Teste'), futuros })
+  checar('93 despedida carinhosa recebe agradecimento, retribuição e "até sábado"', /(Eu que agrade[çc]o|Obrigado)/i.test(r.reply) && /(abra[çc]o|Deus)/i.test(r.reply) && /At[ée] (amanh[ãa]|domingo|segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|\d)/.test(r.reply) && !/hor[áa]rio|prefere/i.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

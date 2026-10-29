@@ -1,3 +1,17 @@
+## 29.319.0 — JuIA devolve o carinho: "tudo bem?", pedido de tabela e de link, despedida
+
+**Pedido do Juliano (29/10, prints do Rogério e do Thiago):** "os clientes foram super carinhosos, e a JuIA foi meio seca, precisamos ensinar ela a responder o que o cliente pergunta".
+- **Caso Rogério (12h53):** "Olá Juliano, boa tarde. / Tudo bem? / … disponibilidade para hoje, e a sua tabela de preços. / Grato." recebeu só os horários.
+  - O "tudo bem?" ficou sem resposta porque o vocativo só podia vir DEPOIS do cumprimento ("Olá Juliano, boa tarde" não casava). Agora o vocativo pode vir antes de cada cumprimento.
+  - A tabela pedida ficou de fora. Agora, se o cliente pede tabela/preços ou o link/aplicativo de agendamento e a resposta não traz preço nem link, o link certo vai no fim (`/agendar/#servicos` para preço, `/agendar/` para agendar).
+- **Caso Thiago (11h00, áudio):** "Oi, Ju. Bom dia, meu irmão. Tudo bem? Espero que sim, querido. Ju, tem como você mandar o seu aplicativo…" também ficou sem o "tudo bem por aqui" e sem o link.
+  - A cabeça da saudação parava na primeira frase ("oi, ju."), e o "🎙️" da transcrição na frente impedia a leitura desde o início. Agora a cabeça junta frases e linhas enquanto forem só saudação, e o símbolo é ignorado.
+- **Despedida carinhosa** ("Muito obrigado, viu irmão? Deus abençoe aí, forte abraço… até sábado") passa a ter resposta fixa: "Eu que agradeço, Thiago! Amém, Deus abençoe você também. Um forte abraço. Até sábado!". Retribui a bênção e o abraço quando vieram, e o "até" usa o dia do horário marcado. Não entra quando há pedido ("tem como…?"), recusa, viagem ou notícia difícil.
+- **Foto respondida por cima do Juliano (Thiago, 11h09):** a JuIA mandou "Bom dia! Recebi sua foto, mas não consegui identificar…" no meio da conversa dele com o cliente. No `whatsapp-webhook`, com o Juliano na conversa (takeover ativo ou mensagem dele nos últimos 15 min), a foto é registrada e ninguém responde.
+- **Fora do escopo desta versão:** o Thiago pediu "amanhã e sábado" e a JuIA falou só de amanhã. Fica para a próxima revisão.
+- Simulador: cenários 91, 92 e 93, 242 ok. Vitest 376 ok. Publicados `ju-ia-site` e `whatsapp-webhook`.
+
+---
 ## 29.318.0 — Fila de envio programado (recuperação dos clientes fiéis)
 
 **Pedido do Juliano (29/10):** "pode deixar pra enviar de forma automática", "envia umas 5 por dia", "eu não vou lembrar de clicar". Vem da análise de outubro: 27 clientes fiéis (2+ visitas) estavam entre 31 e 60 dias sem voltar e sem horário marcado. Desses, 19 entraram na lista; os outros 8 ficaram fora por motivo (já contatados há pouco, "agora não", SAIR, nunca contatar, pedido em aberto).

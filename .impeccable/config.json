@@ -34,6 +34,15 @@
         ],
         "createdAt": "2026-10-02T19:45:34.511Z",
         "reason": "Claude: #modal-img é o slot do modal de produto; o JS preenche o src ao abrir (produtos.html), não é imagem quebrada"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "css/08-admin-telas.css"
+        ],
+        "createdAt": "2026-10-29T14:23:51.653Z",
+        "reason": "Claude, 29/10: L49 is the block chevron (border-right+border-bottom rotated 45deg on an 8px pseudo-element), not a side-tab accent"
       }
     ]
   }

@@ -796,7 +796,17 @@ Deno.serve(async (request: Request) => {
           .gte('created_at', new Date(Date.now() - 90 * 1000).toISOString())
           .order('created_at', { ascending: true }).order('id', { ascending: true }).limit(1)
         const primeiraDoLote = !fotoMinha?.id || !fotosDoLote?.length || fotosDoLote[0].id === fotoMinha.id
-        const silencioso = !primeiraDoLote || (textoRecente && textoRecente.length > 0) || (avisoRecente && avisoRecente.length > 0)
+        // v29.319.0 — caso Thiago (29/10/2026, 11h09): o Juliano estava conversando com ele pelo celular, chegou uma
+        // foto e a JuIA respondeu "Bom dia! Recebi sua foto, mas não consegui identificar…" no meio da conversa dos
+        // dois. Com o Juliano na conversa (takeover ativo ou mensagem dele nos últimos 15 min), a foto fica registrada
+        // e ninguém responde por ele.
+        const [{ data: convFoto }, { data: juliaoRecente }] = await Promise.all([
+          admin.from('whatsapp_conversations').select('human_takeover,human_takeover_at').eq('phone', phone).maybeSingle(),
+          admin.from('whatsapp_messages').select('id').eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
+            .gte('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString()).limit(1),
+        ])
+        const julianoNaConversa = isTakeoverActive(convFoto) || Boolean(juliaoRecente?.length)
+        const silencioso = julianoNaConversa || !primeiraDoLote || (textoRecente && textoRecente.length > 0) || (avisoRecente && avisoRecente.length > 0)
         if (!silencioso) {
           await sendWhatsapp(phone, `${greetingNow()}! 😊 Recebi sua foto, mas não consegui identificar nela um corte, barba ou coloração. Pode me contar com palavras o que você gostaria?`)
         } else {

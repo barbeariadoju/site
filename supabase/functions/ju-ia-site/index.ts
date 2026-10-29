@@ -5536,7 +5536,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // pro modelo, que respondia curto e sem devolver. Quando ele pergunta como estamos, a
  // abertura é fixa; se há pedido em aberto, o resto continua sendo a resposta do modelo.
  // "beleza"/"suave"/"tranquilo" sem "?" são confirmação, não pergunta — ficam de fora.
- const saudTexto=normalize(message.trim())
+ // v29.319.0 (caso Thiago): áudio transcrito chega com "🎙️ " na frente, e a saudação é lida a partir do início.
+ const saudTexto=normalize(message.trim()).replace(/^[^a-z0-9]+/,'')
  // v29.182.0 (caso Amanda, 12/09/2026, 09h59): "Oi, tudo bem? Meu despertador não tocou e por
  // isso não consegui ir. Você ainda tem horário pra hoje?" passava de 60 caracteres e o gate
  // deixava o "tudo bem?" sem resposta — a JuIA foi direto ao "não tenho horário" (seca, na
@@ -5548,8 +5549,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // horários disponíveis hoje" chegaram juntos, em linhas separadas. A cabeça parava no primeiro "\n" sem
  // pontuação e ficava vazia: saiu só a lista de horários, sem cumprimento nem "tudo bem por aqui". Em
  // mensagem de várias linhas, a cabeça são as primeiras linhas que, juntas, ainda são só saudação.
- const SAUDACAO_RE=/^((?:(?:oi+|ola|bom\s*dia|boa\s*tarde|boa\s*noite|opa|e\s*ai|eai|fala|salve)\b[\s,!.?]*)+)?(?:(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)\b[\s,!.?]*){0,3}(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\s,!.?]*$/
- const linhasSaud=saudTexto.split(/\n+/).map((l:string)=>l.trim()).filter(Boolean)
+ // v29.319.0 — casos Rogério (29/10/2026, 12h53, "Olá Juliano, boa tarde.\nTudo bem?\nPor gentileza…") e Thiago
+ // (11h00, áudio "Oi, Ju. Bom dia, meu irmão. Tudo bem? Espero que sim, querido. Ju, tem como…"). Os dois ficaram
+ // sem o "tudo bem por aqui": o vocativo só podia vir DEPOIS do cumprimento ("Olá Juliano, boa tarde" não casava) e
+ // a cabeça parava na primeira frase ("oi, ju."). Agora o vocativo pode vir antes de cada cumprimento, e a cabeça
+ // junta frases e linhas enquanto ainda forem só saudação.
+ const VOCATIVO_SAUD='(?:meu |minha )?(?:amigo|amigao|caro|querido|irmao|irmaozao|parceiro|chefe|mestre|patrao|campeao|brother|mano|ju|juliano|barbeiro|nobre|senhor|doutor|dr)'
+ const SAUDACAO_RE=new RegExp(`^((?:(?:${VOCATIVO_SAUD}\\b[\\s,!.?]*)*(?:oi+|ola|bom\\s*dia|boa\\s*tarde|boa\\s*noite|opa|e\\s*ai|eai|fala|salve)\\b[\\s,!.?]*)+)?(?:${VOCATIVO_SAUD}\\b[\\s,!.?]*){0,3}(?:(tudo (?:bem|bom|certo|joia|tranquilo|em ordem|otimo)|td (?:bem|bom)|tudo\\s*bem|como (?:vai|esta|ta|vc esta|voce esta|vc ta|voce ta|vao|estao|anda)(?: voce| vc)?|beleza|blz|suave|tranquilo|de boa|firme)(?: por (?:ai|la)| com (?:voce|vc)| contigo| ai)?)?[\\s,!.?]*$`)
+ const linhasSaud=saudTexto.split(/\n+|(?<=[?.!])\s+/).map((l:string)=>l.trim()).filter(Boolean)
  let cabecaLinhas=''
  if(saudLonga&&linhasSaud.length>1)for(const l of linhasSaud){const tent=cabecaLinhas?`${cabecaLinhas} ${l}`:l;if(SAUDACAO_RE.test(tent))cabecaLinhas=tent;else break}
  const saudCabeca=saudLonga?(cabecaLinhas||saudTexto.match(/^[^?.!\n]{0,60}[?.!]/)?.[0]||''):saudTexto
@@ -5682,6 +5689,32 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    ?`Espero que esteja tudo bem com você! Seu horário de hoje às ${String(hojeB.start_time||'').slice(0,5)} (${hojeB.service_name}) está guardado — te espero. Se precisar de algo antes, é só me dizer.`
    :'Espero que esteja tudo bem com você! Como posso te ajudar hoje?'
  }
+ // v29.319.0 — caso Thiago (29/10/2026, 11h09): depois de marcar, mandou "Muito obrigado, viu irmão? Deus abençoe aí,
+ // forte abraço, um bom serviço e até sábado." Pedido do Juliano: "os clientes foram super carinhosos e a JuIA foi
+ // meio seca". Agradecimento/despedida SEM pedido junto ganha resposta fixa que devolve o carinho: agradece,
+ // retribui a bênção e o abraço quando vieram, e se despede com o dia do horário marcado.
+ {
+  const qd=saudTexto
+  const soAgradece=/\b(obrigad[oa]|brigad[oa]|valeu|grato|grata|agradec\w*|gratidao)\b/.test(qd)
+   &&!/\b(horario|marcar|agendar|remarc\w*|cancel\w*|quanto|preco|valor|pix|chave|endereco|onde|que horas|amanha tem|hoje tem|vaga)\b/.test(qd)
+   // "viu, irmão?" é carinho; "tem como…?", "você pode…?" é pedido. Recusa, viagem e adiamento têm resposta própria.
+   &&!/\b(tem|pode|poderia|consegue|da pra|da para|voce|vc|qual|quando|como)\b[^?]{0,40}\?/.test(qd)
+   &&!/\b(nao|mas|ferias|viagem|viaj\w*|depois|proxima|outro dia|internad\w*|faleceu)\b/.test(qd)&&qd.length<=220
+  if(soAgradece&&!ausenciaAvisada&&!noticiaTriste&&!jaFezFora&&!lembreteCombinado&&!pediuHumano&&!actions.length&&!['book','cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)&&!next.pending_cancel_or_reschedule){
+   const nomeA=primeiroNome(hasCustomer?String(context?.name||''):String(body?.whatsapp_name||''),'')
+   const prox=(Array.isArray(upcomingBookings)?upcomingBookings:[]).filter((b:any)=>b&&['pending','confirmed'].includes(String(b.status||''))).sort((a:any,b:any)=>`${a.booking_date}${a.start_time}`.localeCompare(`${b.booking_date}${b.start_time}`))[0]
+   let ate=''
+   if(prox){
+    const dias=Math.round((Date.parse(`${prox.booking_date}T12:00:00-03:00`)-Date.parse(`${today()}T12:00:00-03:00`))/86400000)
+    const sem=['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date(`${prox.booking_date}T12:00:00-03:00`).getDay()]
+    ate=dias<=0?' Até daqui a pouco!':dias===1?' Até amanhã!':dias<7?` Até ${sem}!`:` Até ${formatDateBR(prox.booking_date)}!`
+   }
+   const bencao=/\bdeus\b|\babencoe\b|\babencoad[oa]\b/.test(qd)?' Amém, Deus abençoe você também.':''
+   const abraco=/\babrac\w*\b/.test(qd)?' Um forte abraço.':''
+   reply=`Eu que agradeço${nomeA?`, ${nomeA}`:''}!${bencao}${abraco}${ate||(abraco?'':' Qualquer coisa, é só me chamar por aqui.')}`.trim()
+   intent='other';handoff=false
+  }
+ }
  if(isFirstMessage||saudacaoIsolada||cumprimentouComPedido){
   const crmName=hasCustomer?String(context?.name||'').trim():''
   // v29.312.0 (final 0175, 27/10 18h04): nome do WhatsApp sem letra (emoji) caía no padrão do
@@ -5702,6 +5735,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    if(semNome!==reply)reply=(semNome.charAt(0).toUpperCase()+semNome.slice(1)).replace(/^(.{0,60}?[!?.]\s+)([a-zà-ú])/,(_m:string,a:string,b:string)=>a+b.toUpperCase())
   }
   reply=`${greetingNow()}${greetName?`, ${greetName}`:''}! ${reply}`
+ }
+ // v29.319.0 — pergunta respondida pela metade. Rogério (29/10, 12h53) pediu "a disponibilidade de horário para
+ // hoje, e a sua tabela de preços" e recebeu só os horários; Thiago (11h00) pediu "o seu aplicativo, o que faz
+ // agendamento" e recebeu só a pergunta de manhã ou tarde. Nos dois o Juliano mandou o link na mão. Quando o
+ // fluxo de agenda responde e o pedido de tabela ou de link fica de fora, o link certo vai junto, no fim.
+ if(!pediuHumano&&!/barbeariadoju\.com\.br/.test(reply)){
+  const pediuTabela=/\btabela\b|\b(lista|relacao) de (precos|valores|servicos)\b|\bos (precos|valores)( dos servicos)?\b|\bseus (precos|valores)\b/.test(normalizedQuestion)&&!/R\$\s?\d/.test(reply)
+  const pediuLink=/\b(aplicativo|app|link|site|sistema)\b/.test(normalizedQuestion)&&/\b(agend\w*|marc\w*|horario\w*|agenda)\b/.test(normalizedQuestion)
+  if(pediuTabela)reply=`${reply}\n\nOs serviços e preços estão todos aqui: https://www.barbeariadoju.com.br/agendar/#servicos`
+  else if(pediuLink)reply=`${reply}\n\nSe preferir ver a agenda e marcar por conta própria, é por aqui: https://www.barbeariadoju.com.br/agendar/`
  }
  // v28.31.0: funil de conversas com interesse sem agendamento fechado (pedido do
  // Juliano, 31/07/2026) — uma linha por telefone, atualizada a cada mensagem dele.
