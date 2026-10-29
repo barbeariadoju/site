@@ -71,13 +71,14 @@ test('Editar e Balcão: "Como foi feito" fica logo abaixo da forma de pagamento'
   await modal.locator('[data-style-notes]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/admin-screens/editar-como-foi-feito-perto-do-pagamento.png' });
 
+  // v29.316.0 — no Balcão o pagamento foi para a janela do Concluir, e o "Como foi feito" foi junto.
   await page.goto('/admin-balcao.html');
   await expect(page.locator('#balcao-payment-grid')).toBeAttached();
   const balcao = await page.evaluate(() => {
     const pag = document.querySelector('#balcao-payment-wrap'), estilo = document.querySelector('#balcao-style');
     const entre = [];
     for (let el = pag.nextElementSibling; el && !el.contains(estilo); el = el.nextElementSibling) entre.push(el.id || el.tagName);
-    return entre;
+    return { entre, naJanela: Boolean(estilo.closest('#balcao-pagar')) };
   });
-  expect(balcao).toEqual(['balcao-payment']); // só o input escondido do pagamento no meio
+  expect(balcao).toEqual({ entre: [], naJanela: true }); // logo abaixo dos botões, dentro da janela
 });

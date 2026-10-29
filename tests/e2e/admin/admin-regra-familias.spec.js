@@ -44,6 +44,8 @@ test('Balcão: combo "Corte + Barba Express" desmarca corte e barba soltos', asy
 
   const cb = (name) => page.locator(`#balcao-services input[name="balcao-service"][value="${name}"]`);
   const tap = (name) => page.locator('#balcao-services label.service-btn', { has: page.locator(`input[value="${name}"]`) }).click();
+  // v29.316.0 — categorias em blocos fechados: abre todos antes de tocar.
+  await page.locator('#balcao-services .lista-bloco').evaluateAll(ds => ds.forEach(d => { d.open = true; }));
   await tap('Corte de cabelo');
   await tap('Barba Express');
   await tap('Corte + Barba Express');

@@ -1,3 +1,16 @@
+## 29.316.0 — Balcão enxuto: categorias em blocos e pagamento no Concluir
+
+**Pedido do Juliano (29/10, print do Balcão):** "é cansativo lançar um simples corte de cabelo e ter que rolar toda a tela… poderia resumir tudo em blocos e se eu quiser adicionar bebidas clico, visualizo, adiciono… clico em concluir, ele já pergunta logo a forma de pagamento, eu confirmo e pronto".
+- **Blocos (`admin-catalogo-lista-v30.js`, `BDJ_LISTA.blocos`):** cada categoria (Cortes e combos, Barba, Acabamentos, Química, Pigmentações, Bebidas frias, Cuidados masculinos) vira um bloco fechado de uma linha. O título mostra o que já entrou ("✓ Corte de cabelo", "2× Budweiser"). Dentro do bloco a linha fica compacta, sem a descrição, como nos modais da Agenda. Os checkboxes são os mesmos: regra das famílias, contador e busca não mudaram. A busca abre sozinha o bloco onde achou.
+- **Pagamento (`admin-balcao.html`, `admin-balcao-v29.js`):** os botões saíram da página. "Registrar atendimento" virou **Concluir**, que cobra na tela o que falta (nome, telefone, item) e abre uma janela com cliente, itens, total e forma de pagamento → **Confirmar**. O rodapé mostra total e quantos itens.
+- **"Como foi feito" foi junto para a janela**, logo abaixo dos botões de pagamento. Regra dele de 25/09 (29.236.0): o campo fica colado na forma de pagamento "pra eu não esquecer". O teste `admin-editar-como-foi-feito` pegou isso na primeira rodada.
+- **"Mais opções" (observações, data e hora, caixinha, nº da visita) fica fechado sempre**; antes abria sozinho no computador. Se a data ou a hora faltarem, ele abre e aponta o campo.
+- Um corte agora: nome → Cortes e combos → Adicionar → Concluir → Pix → Confirmar.
+- **Decidido contra o óbvio:** nenhum bloco abre sozinho, nem o de cortes, que é o mais usado. Foi o que ele pediu ("resumir tudo em blocos"), e abrir um bloco custa um toque. Se pesar no dia a dia, abrir o de cortes por padrão é uma linha.
+- Só o Balcão usa os blocos; o Concluir e o Editar da Agenda continuam como estavam. `?v=29.316.0` em `08-admin-telas.css` (9 páginas), `admin-catalogo-lista-v30.js` (7) e `admin-balcao-v29.js`.
+- Testes: `admin-balcao-pagamento.spec.js` refeito (blocos fechados, janela, aviso dentro da janela, Concluir sem item); `admin-regra-familias` abre os blocos antes de tocar.
+
+---
 ## 29.315.0 — JuIA: pedido de remédio vai para o Juliano (caso Fernando)
 
 **Revisão da JuIA de 29/10 (conversas de 28/10 11h a 29/10 09h30).**

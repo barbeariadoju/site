@@ -51,6 +51,10 @@
     $('balcao-products').innerHTML = renderProductPicker();
     bindServicePicker();
     bindProductPicker();
+    // v29.316.0 — categorias em blocos fechados (pedido do Juliano, 29/10/2026). Depois dos binds:
+    // o resumo do bloco lê o estado que a regra das famílias já acertou.
+    window.BDJ_LISTA.blocos($('balcao-services'));
+    window.BDJ_LISTA.blocos($('balcao-products'));
     // v29.261.0 — busca de serviço/produto acima da lista (pedido do Juliano, 29/09/2026).
     window.BDJ_LISTA?.busca?.($('balcao-services').parentElement, $('balcao-services').previousElementSibling);
     // v29.80.1 — os preços reais chegam do banco DEPOIS da primeira renderização
@@ -59,14 +63,17 @@
     // estático — caso real 27/08: Leave-in R$44,99 na tela, preço verdadeiro R$33,00.
     document.addEventListener('bdj:products-updated', () => {
       const marcados = [...document.querySelectorAll('input[name="balcao-product"]:checked')].map(i => [i.value, productQty(i)]);
+      const abertos = window.BDJ_LISTA.blocosAbertos($('balcao-products'));
       $('balcao-products').innerHTML = renderProductPicker();
       marcados.forEach(([n, q]) => { const el = document.querySelector(`input[name="balcao-product"][value="${CSS.escape(n)}"]`); if (el) { el.checked = true; setProductQty(el, q); } });
+      window.BDJ_LISTA.blocos($('balcao-products'), { abertos });
       updateTotal();
     });
     bindCustomerSearch();
     bindPaymentPicker();
     setDefaultDateTime();
-    $('balcao-save').onclick = saveWalkin;
+    $('balcao-save').onclick = abrirPagamento;
+    bindPagamentoModal();
     await loadTodayLog();
   }
 
@@ -137,7 +144,8 @@
 
   // v29.219.0 (pedido do Juliano, 23/09): botões de pagamento no lugar da lista, igual ao
   // "Concluir" da Agenda. O valor continua no input escondido #balcao-payment, então o
-  // resto (validação, RPC, limpeza) não mudou; o rodapé fixo mostra total + forma escolhida.
+  // resto (validação, RPC, limpeza) não mudou.
+  // v29.316.0 — os botões moraram para a janela do Concluir (#balcao-pagar); o rodapé mostra total + itens.
   function setPayment(value) {
     $('balcao-payment').value = value || '';
     document.querySelectorAll('#balcao-payment-grid [data-payment-option]').forEach(b => {
@@ -145,11 +153,6 @@
       b.classList.toggle('is-selected', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    const label = $('balcao-payment-label');
-    if (label) {
-      label.textContent = value ? (value === 'fidelidade' ? 'Bônus de fidelidade' : PAYMENT_LABELS[value] || value) : 'escolha a forma de pagamento';
-      label.classList.toggle('is-set', Boolean(value));
-    }
   }
   function bindPaymentPicker() {
     const grid = $('balcao-payment-grid');
@@ -165,8 +168,38 @@
   }
 
   function updateTotal() {
-    const total = selectedServices().reduce((a, s) => a + s.price, 0) + selectedProducts().reduce((a, p) => a + p.price, 0);
-    $('balcao-total').textContent = money(total);
+    const itens = [...selectedServices(), ...selectedProducts()];
+    $('balcao-total').textContent = money(itens.reduce((a, x) => a + x.price, 0));
+    const label = $('balcao-payment-label');
+    if (label) label.textContent = itens.length ? `${itens.length} ${itens.length === 1 ? 'item' : 'itens'}` : 'nenhum item adicionado';
+  }
+
+  // v29.316.0 — Concluir → janela com o resumo e a forma de pagamento → Confirmar (pedido do Juliano,
+  // 29/10/2026: "clico em concluir, ele já pergunta a forma de pagamento, eu confirmo e pronto").
+  // O que falta antes (nome, telefone, item, data) é cobrado na tela, como antes; o pagamento, na janela.
+  function fecharPagamento() { $('balcao-pagar').hidden = true; document.body.classList.remove('modal-open'); }
+  function abrirPagamento() {
+    if (!validar({ pagamento: false })) return;
+    const linhas = [...window.BDJ_LISTA.contar([...selectedServices(), ...selectedProducts()].map(x => x.name))].map(([n, q]) => {
+      const item = catalog.find(s => s.name === n) || productCatalog.find(p => p.name === n);
+      return `<li><span>${q > 1 ? `${q}× ` : ''}${esc(n)}</span><strong>${money((item?.price || 0) * q)}</strong></li>`;
+    }).join('');
+    $('balcao-pagar-cliente').textContent = $('balcao-name').value.trim();
+    $('balcao-pagar-itens').innerHTML = linhas;
+    $('balcao-pagar-total').textContent = $('balcao-total').textContent;
+    $('balcao-message').textContent = '';
+    $('balcao-pagar-message').textContent = '';
+    $('balcao-pagar').hidden = false;
+    document.body.classList.add('modal-open');
+    (document.querySelector('#balcao-payment-grid .is-selected') || document.querySelector('#balcao-payment-grid [data-payment-option]'))?.focus();
+  }
+  function bindPagamentoModal() {
+    const modal = $('balcao-pagar');
+    if (!modal || modal.dataset.bound) return;
+    modal.dataset.bound = '1';
+    modal.querySelectorAll('[data-pagar-fechar]').forEach(b => b.addEventListener('click', fecharPagamento));
+    modal.addEventListener('keydown', e => { if (e.key === 'Escape') fecharPagamento(); });
+    $('balcao-confirm').onclick = saveWalkin;
   }
 
   // Busca por nome/telefone em customer_profiles (RLS já libera leitura pra qualquer
@@ -217,7 +250,8 @@
   function setDefaultDateTime() {
     const now = new Date();
     // v29.258.0 — "Mais opções" como no Concluir: aberto no computador, fechado no celular.
-    { const mais = document.querySelector('[data-balcao-mais]'); if (mais) mais.open = window.innerWidth > 760; }
+    // v29.316.0 — fechado sempre: a tela enxuta é o pedido (29/10).
+    { const mais = document.querySelector('[data-balcao-mais]'); if (mais) mais.open = false; }
     $('balcao-date').value = isoLocal(now);
     $('balcao-time').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
@@ -245,31 +279,40 @@
     }).join('');
   }
 
-  async function saveWalkin() {
-    const msg = $('balcao-message');
+  // Cobra o que falta. pagamento:false = só a parte da tela (antes de abrir a janela do Concluir).
+  function validar({ pagamento = true } = {}) {
+    const msg = pagamento ? $('balcao-pagar-message') : $('balcao-message');
     // v29.205.1 — o erro leva ao campo: rola até ele, foca e marca (antes o aviso aparecia em cinza
     // ao lado do botão, a milhares de pixels do campo que faltava, e nada acontecia na tela).
     const falhar = (el, texto) => { msg.textContent = texto; msg.classList.add('is-error'); msg.setAttribute('role', 'alert'); if (!el) return; el.setAttribute('aria-invalid', 'true'); const ancora = el.type === 'checkbox' ? $('balcao-services') : (el.closest('label') || el); let aviso = document.getElementById('balcao-field-error'); if (!aviso) { aviso = document.createElement('small'); aviso.id = 'balcao-field-error'; aviso.className = 'field-error'; } aviso.textContent = texto; if (el.type === 'checkbox') ancora.before(aviso); else ancora.append(aviso); el.setAttribute('aria-describedby', 'balcao-field-error'); (el.closest('label') || el.closest('.admin-surface') || el).scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => { try { el.focus({ preventScroll: true }); } catch (_) {} }, 350); const limpa = () => { el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); document.getElementById('balcao-field-error')?.remove(); }; el.addEventListener('input', limpa, { once: true }); el.addEventListener('change', limpa, { once: true }); };
+    const phoneDigits = $('balcao-phone').value.trim().replace(/\D/g, '');
+    if (!$('balcao-name').value.trim()) { falhar($('balcao-name'), 'Informe o nome do cliente.'); return false; }
+    if (phoneDigits.length < 10) { falhar($('balcao-phone'), 'Informe um telefone válido, com DDD.'); return false; }
+    // v29.80.0 (pedido do Juliano, 27/08): venda SÓ de produto agora é permitida — o
+    // registro entra como "Venda de produtos" (serviço R$0/0min, canal balcão) e o
+    // comprovante mostra apenas as linhas de produto.
+    if (!selectedServices().length && !selectedProducts().length) { falhar(document.querySelector('input[name="balcao-service"]'), 'Selecione ao menos um serviço ou produto.'); return false; }
+    // Data e hora ficam no "Mais opções" (fechado): abre antes de apontar o campo.
+    if (!$('balcao-date').value || !$('balcao-time').value) { const mais = document.querySelector('[data-balcao-mais]'); if (mais) mais.open = true; falhar(!$('balcao-date').value ? $('balcao-date') : $('balcao-time'), 'Informe a data e o horário aproximado.'); return false; }
+    if (pagamento && !$('balcao-payment').value) { falhar($('balcao-payment-wrap'), 'Selecione a forma de pagamento.'); return false; }
+    msg.classList.remove('is-error'); msg.removeAttribute('role');
+    return true;
+  }
+
+  async function saveWalkin() {
+    if (!validar()) return;
+    const msg = $('balcao-message');
+    const msgPagar = $('balcao-pagar-message');
     const name = $('balcao-name').value.trim();
     const phone = $('balcao-phone').value.trim();
-    const phoneDigits = phone.replace(/\D/g, '');
     const services = selectedServices();
     const products = selectedProducts();
     const date = $('balcao-date').value;
     const time = $('balcao-time').value;
     const payment = $('balcao-payment').value;
 
-    if (!name) { falhar($('balcao-name'), 'Informe o nome do cliente.'); return; }
-    if (phoneDigits.length < 10) { falhar($('balcao-phone'), 'Informe um telefone válido, com DDD.'); return; }
-    // v29.80.0 (pedido do Juliano, 27/08): venda SÓ de produto agora é permitida — o
-    // registro entra como "Venda de produtos" (serviço R$0/0min, canal balcão) e o
-    // comprovante mostra apenas as linhas de produto.
-    if (!services.length && !products.length) { falhar(document.querySelector('input[name="balcao-service"]'), 'Selecione ao menos um serviço ou produto.'); return; }
-    if (!date || !time) { falhar(!date ? $('balcao-date') : $('balcao-time'), 'Informe a data e o horário aproximado.'); return; }
-    if (!payment) { falhar($('balcao-payment-wrap'), 'Selecione a forma de pagamento.'); return; }
-
-    const saveBtn = $('balcao-save');
-    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; msg.classList.remove('is-error'); msg.removeAttribute('role'); msg.textContent = 'Salvando...';
+    const saveBtn = $('balcao-confirm');
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…'; msgPagar.textContent = 'Salvando...';
     try {
       const { data, error } = await sb.rpc('admin_register_walkin_visit', {
         p_customer_name: name,
@@ -286,7 +329,9 @@
         // do "Concluir" da Agenda: fora do faturamento, sai no comprovante com agradecimento.
         p_tip_amount: Math.max(0, Number(String($('balcao-tip').value).replace(',', '.'))) || 0,
       });
-      if (error) { msg.textContent = error.message; return; }
+      if (error) { msgPagar.textContent = error.message; return; }
+      fecharPagamento();
+      msgPagar.textContent = '';
       // v29.195.0 — "Como foi feito" vai pro cadastro (Preferências de estilo) quando mudou.
       {
         const styleField = $('balcao-style');
@@ -342,14 +387,16 @@
       $('balcao-name').value = ''; $('balcao-phone').value = ''; $('balcao-notes').value = ''; setPayment('');
       { const styleField = $('balcao-style'); if (styleField) { styleField.value = ''; styleField.dataset.prefill = ''; } }
       $('balcao-loyalty-delta').value = ''; $('balcao-visit-number').value = ''; $('balcao-tip').value = '';
-      document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); });
+      document.querySelectorAll('input[name="balcao-service"]:checked, input[name="balcao-product"]:checked').forEach(i => { i.checked = false; if (i.name === 'balcao-product') setProductQty(i, 1); else window.BDJ_LISTA.setQtd(i, 1); });
+      window.BDJ_LISTA.resumirBlocos(document);
+      document.querySelectorAll('.lista-bloco[open]').forEach(d => { d.open = false; });
       linkedCustomerId = null;
       renderCustomerTag(null);
       updateTotal();
       setDefaultDateTime();
       await loadTodayLog();
     } finally {
-      saveBtn.disabled = false; saveBtn.textContent = 'Registrar atendimento';
+      saveBtn.disabled = false; saveBtn.textContent = 'Confirmar';
     }
   }
 

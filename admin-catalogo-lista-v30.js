@@ -122,7 +122,10 @@
         if (ok && q && !primeiro) primeiro = el;
       });
       root.querySelectorAll('.service-section').forEach((sec) => {
-        sec.style.display = q && ![...sec.querySelectorAll('.service-card')].some((c) => c.style.display !== 'none') ? 'none' : '';
+        const achou = [...sec.querySelectorAll('.service-card')].some((c) => c.style.display !== 'none');
+        sec.style.display = q && !achou ? 'none' : '';
+        // v29.316.0 — bloco recolhido (balcão) com resultado da busca abre sozinho.
+        if (q && achou && sec.tagName === 'DETAILS') sec.open = true;
       });
       msg.hidden = !q || Boolean(primeiro);
       msg.textContent = q && !primeiro ? `Nada com "${input.value.trim()}".` : '';
@@ -152,5 +155,40 @@
     });
   }
 
-  window.BDJ_LISTA = { html, busca, qtd, setQtd, separar, contar, expandir, ligarQuantidade };
+  // v29.316.0 — blocos recolhíveis (pedido do Juliano, 29/10/2026: "é cansativo lançar um simples corte
+  // de cabelo e ter que rolar toda a tela… se eu quiser adicionar bebidas clico, visualizo, adiciono").
+  // Cada categoria que html() montou vira um <details> fechado; o título mostra o que já foi adicionado
+  // ("✓ Corte de cabelo", "2× Budweiser"). Os checkboxes e o .service-section continuam os mesmos, então
+  // regra das famílias, quantidade e busca não mudam. abertos = Set de categorias que entram abertas
+  // (re-render dos produtos devolve o estado). Chamar depois de ligar os outros 'change' do root.
+  function blocos(root, { abertos } = {}) {
+    if (!root) return;
+    root.querySelectorAll('section.service-section').forEach((sec) => {
+      const cat = (sec.querySelector('.section-head h2')?.textContent || '').replace(/\.$/, '');
+      const det = document.createElement('details');
+      det.className = 'service-section lista-bloco';
+      det.dataset.bloco = cat;
+      if (abertos && abertos.has(cat)) det.open = true;
+      det.innerHTML = `<summary><span class="lista-bloco-nome">${esc(cat)}</span><span class="lista-bloco-resumo" data-bloco-resumo></span><span class="lista-bloco-qtd">${sec.querySelectorAll('.service-card').length}</span></summary>`;
+      const grid = sec.querySelector('.service-grid');
+      if (grid) det.append(grid);
+      sec.replaceWith(det);
+    });
+    resumirBlocos(root);
+    if (root.dataset.blocosBound) return;
+    root.dataset.blocosBound = '1';
+    root.addEventListener('change', () => resumirBlocos(root));
+    root.addEventListener('click', (e) => { if (e.target.closest('[data-qty-inc],[data-qty-dec]')) setTimeout(() => resumirBlocos(root)); });
+  }
+  function resumirBlocos(root) {
+    (root || document).querySelectorAll('.lista-bloco').forEach((det) => {
+      const itens = [...det.querySelectorAll('input[type="checkbox"]:checked')].map((i) => (qtd(i) > 1 ? `${qtd(i)}× ${i.value}` : i.value));
+      const r = det.querySelector('[data-bloco-resumo]');
+      if (r) r.textContent = itens.length ? `✓ ${itens.join(', ')}` : '';
+      det.classList.toggle('tem-marcado', itens.length > 0);
+    });
+  }
+  const blocosAbertos = (root) => new Set([...(root ? root.querySelectorAll('.lista-bloco[open]') : [])].map((d) => d.dataset.bloco));
+
+  window.BDJ_LISTA = { html, busca, qtd, setQtd, separar, contar, expandir, ligarQuantidade, blocos, resumirBlocos, blocosAbertos };
 })();

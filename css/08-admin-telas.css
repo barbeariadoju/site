@@ -42,6 +42,37 @@
 :where([data-admin-page="balcao"]) .balcao-footer-total strong{color:var(--gold2);font-size:var(--t-xl);line-height:1.1;white-space:nowrap}
 :where([data-admin-page="balcao"]) .balcao-footer-total small{color:#9a9a9a;font-size:var(--t-xs)}
 :where([data-admin-page="balcao"]) .balcao-footer-total small.is-set{color:#f3f3f3;font-weight:700}
+/* v29.316.0 — categorias em blocos recolhíveis (BDJ_LISTA.blocos) e pagamento na janela do Concluir. */
+.catalogo-lista .lista-bloco{border:1px solid rgba(var(--gold2-rgb),.18);border-radius:14px;margin:0 0 8px !important;padding:0 !important;background:#141414}
+.lista-bloco>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:52px;cursor:pointer;font-weight:700;color:#f3f3f3}
+.lista-bloco>summary::-webkit-details-marker{display:none}
+.lista-bloco>summary::after{content:'';flex:none;width:8px;height:8px;margin:0 2px 4px 2px;border-right:2px solid var(--gold2);border-bottom:2px solid var(--gold2);transform:rotate(45deg);transition:transform .15s}
+.lista-bloco[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4px}
+.lista-bloco>summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px;border-radius:14px}
+.lista-bloco-nome{flex:none}
+.lista-bloco-resumo{flex:1;min-width:0;color:var(--gold2);font-weight:600;font-size:.88rem;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lista-bloco-qtd{color:#9a9a9a;font-size:.8rem;font-weight:600}
+.lista-bloco.tem-marcado{border-color:rgba(var(--gold2-rgb),.55) !important}
+.lista-bloco.tem-marcado .lista-bloco-qtd{display:none}
+.lista-bloco .service-grid{padding:0 14px 4px;border-top:1px solid rgba(var(--gold2-rgb),.12)}
+.lista-bloco .service-content p{display:none}
+.lista-bloco .service-card{padding:9px 2px !important;gap:6px 12px !important}
+.lista-bloco .service-meta strong{font-size:1.25rem}
+.lista-bloco .service-btn{padding:8px 14px !important;font-size:.85rem}
+.balcao-pagar[hidden]{display:none}
+.balcao-pagar .admin-modal-card{width:min(440px,100%)}
+.balcao-pagar h2{margin:0 0 2px;font-size:var(--t-xl)}
+.balcao-pagar-cliente{margin:0 0 12px;color:#9a9a9a}
+.balcao-pagar-itens{list-style:none;margin:0;padding:0;border-top:1px solid rgba(var(--white-rgb),.08)}
+.balcao-pagar-itens li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(var(--white-rgb),.08)}
+.balcao-pagar-itens strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.balcao-pagar-total{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 16px;font-weight:700}
+.balcao-pagar-total strong{font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:1.8rem;color:var(--gold2)}
+#balcao-pagar-message:empty{display:none}
+.balcao-pagar-estilo{display:grid;gap:6px;margin:16px 0 0;font-weight:700}
+.balcao-pagar-estilo small{font-weight:400;color:#9a9a9a}
+.balcao-pagar .admin-modal-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.balcao-pagar .admin-modal-actions .btn{width:100%;min-height:48px}
 @media(max-width:760px){:where([data-admin-page="balcao"]) .balcao-submit-row{grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px}
 :where([data-admin-page="balcao"]) .balcao-submit-row .field-help{grid-column:1/-1}}
 @media(min-width:761px){:where([data-admin-page="balcao"]) .balcao-submit-row .balcao-footer-total{order:-2}}
