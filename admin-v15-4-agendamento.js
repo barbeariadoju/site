@@ -12,6 +12,10 @@
   function initDateCalendar(){
     const input=$('booking-date'),btn=$('booking-date-btn'),cal=$('booking-date-cal')
     if(!input||!btn||!cal)return
+    // v29.324.0: o renderAuth roda duas vezes e cada vez somava mais um ouvinte de clique no calendário —
+    // a seta › andava dois meses (outubro → dezembro, o Juliano não chegava em 21/11, 30/10/2026).
+    if(cal.dataset.pronto){dateCalLabel();return}
+    cal.dataset.pronto='1'
     // Quem escreve no campo (hoje, rascunho, remarcação, retorno) atualiza o botão sem precisar avisar.
     const nativo=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')
     Object.defineProperty(input,'value',{configurable:true,get(){return nativo.get.call(this)},set(v){nativo.set.call(this,v);dateCalLabel()}})
@@ -19,7 +23,10 @@
     cal.addEventListener('click',e=>{
       const nav=e.target.closest('[data-cal-nav]');if(nav){dateCalMonth.setMonth(dateCalMonth.getMonth()+Number(nav.dataset.calNav));renderDateCal();return}
       const dia=e.target.closest('[data-cal-date]');if(dia)pickDate(dia.dataset.calDate)
+      if(e.target.closest('[data-cal-ir]'))digitarData()
     })
+    // v29.324.0 — pedido do Juliano (30/10/2026): "tentei digitar a data manualmente, seria legal habilitar".
+    cal.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-cal-digitar]')){e.preventDefault();digitarData()}})
     // v29.305.0: composedPath, não e.target.closest — a seta ‹ › redesenha o calendário no meio do
     // clique, o botão sai da página e o closest() achava que o clique foi fora: o calendário fechava
     // em vez de trocar de mês (o Juliano não conseguia chegar em 07/11, 24/10/2026).
@@ -62,6 +69,23 @@
     input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))
     closeDateCal();$('booking-date-btn').focus()
   }
+  // "21/11", "21/11/26", "21/11/2026", "21-11" ou "2111". Sem ano: o ano corrente, ou o próximo se a data já passou.
+  function parseDataDigitada(txt){
+    const s=String(txt||'').trim(),m=s.match(/^(\d{1,2})\s*[\/.\- ]\s*(\d{1,2})(?:\s*[\/.\- ]\s*(\d{2}|\d{4}))?$/)||s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})?$/)
+    if(!m)return null
+    const d=+m[1],mes=+m[2],hoje=new Date();hoje.setHours(0,0,0,0)
+    let y=m[3]?(m[3].length===2?2000+ +m[3]:+m[3]):hoje.getFullYear()
+    let dt=new Date(y,mes-1,d)
+    if(dt.getMonth()!==mes-1||dt.getDate()!==d)return null
+    if(!m[3]&&dt<hoje){y++;dt=new Date(y,mes-1,d)}
+    return isoLocal(dt)
+  }
+  function digitarData(){
+    const campo=$('booking-date-cal').querySelector('[data-cal-digitar]'),msg=$('booking-date-cal').querySelector('[data-cal-digitar-msg]')
+    const ds=parseDataDigitada(campo?.value)
+    if(!ds){if(msg)msg.textContent='Data não reconhecida. Use dia/mês, ex.: 21/11.';campo?.focus();return}
+    pickDate(ds)
+  }
   async function renderDateCal(){
     const cal=$('booking-date-cal'),y=dateCalMonth.getFullYear(),m=dateCalMonth.getMonth()
     const titulo=dateCalMonth.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase())
@@ -92,7 +116,7 @@
       ?`<ul class="booking-date-blocks">${linhas.map(l=>`<li class="${l.all_day?'is-blocked':'is-partial'}"><strong>${l.ini===l.fim?fmtBR(l.ini):`${l.ini.slice(8,10)} a ${fmtBR(l.fim)}`}</strong> ${l.horas} · ${esc(l.reason)}</li>`).join('')}</ul>`
       :'<p class="field-help">Nenhum bloqueio neste mês.</p>'
     const legenda=`<div class="calendar-legend booking-date-legend"><span>${ico('day-flag-locked','cadeado')} Bloqueado</span><span>${ico('day-flag-partial','espera')} Parte do dia</span><span>${ico('day-flag-closed','fechado')} Não atende</span></div>`
-    cal.innerHTML=`${head}<div class="calendar-grid">${html}</div>${legenda}${lista}<div class="booking-date-cal-foot"><button type="button" class="btn" data-cal-date="${hoje}">Hoje</button></div>`
+    cal.innerHTML=`${head}<div class="calendar-grid">${html}</div>${legenda}${lista}<div class="booking-date-cal-foot"><input type="text" inputmode="numeric" autocomplete="off" placeholder="Digite: 21/11" aria-label="Digitar a data (dia/mês)" data-cal-digitar><button type="button" class="btn" data-cal-ir>Ir</button><button type="button" class="btn" data-cal-date="${hoje}">Hoje</button></div><p class="field-help" data-cal-digitar-msg aria-live="polite"></p>`
   }
   function initBookingForm(){initDateCalendar();$('booking-services').innerHTML=renderServicePicker();bindBookingServicePicker();bindCustomerSearch();bindSlotsPanel();$('booking-phone').oninput=fillKnownCustomer;$('booking-save').onclick=saveBooking;$('booking-date').value=isoLocal(new Date());$('booking-time').value='';const mode=new URLSearchParams(location.search).get('modo');if(mode==='remarcar')loadRescheduleForm();else{loadPrefillForm();bindDraftAutosave()}refreshSlots()}
   // v29.170.0 — HORÁRIOS QUE CABEM (pedido do Juliano, 11/09/2026, 08h43). Na noite anterior ele

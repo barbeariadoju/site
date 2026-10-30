@@ -48,3 +48,35 @@ test('Novo agendamento: calendário mostra os bloqueios e o motivo', async ({ pa
   await page.locator('#booking-services .service-card label.service-btn').first().click();
   await expect(page.locator('#booking-slots-hint')).toContainText('bloqueado na agenda (Viagem do Juliano)');
 });
+
+// v29.324.0 — pedido do Juliano (30/10/2026): a seta › pulava de outubro para dezembro (o calendário era
+// ligado duas vezes e cada clique andava dois meses) e não dava para digitar a data.
+test('Novo agendamento: seta anda um mês por vez e a data pode ser digitada', async ({ page }) => {
+  await mockAdmin(page, { rpcs: { get_available_slots_excluding: () => [] } });
+  await page.goto('/admin-agendamento.html');
+  await expect(page.locator('#admin-app')).toBeVisible();
+  await page.locator('#booking-date-btn').click();
+  const cal = page.locator('#booking-date-cal');
+  const hoje = new Date();
+  const titulo = (d) => d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase());
+  await expect(cal.locator('.booking-date-cal-head strong')).toHaveText(titulo(new Date(hoje.getFullYear(), hoje.getMonth(), 1)));
+  await cal.locator('[data-cal-nav="1"]').click();
+  await expect(cal.locator('.booking-date-cal-head strong')).toHaveText(titulo(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1)));
+  await cal.locator('[data-cal-nav="1"]').click();
+  await expect(cal.locator('.booking-date-cal-head strong')).toHaveText(titulo(new Date(hoje.getFullYear(), hoje.getMonth() + 2, 1)));
+
+  // digitar "dd/mm" de uma data daqui a ~3 semanas e apertar Enter
+  const alvo = new Date(hoje); alvo.setDate(alvo.getDate() + 22);
+  const dd = String(alvo.getDate()).padStart(2, '0'), mm = String(alvo.getMonth() + 1).padStart(2, '0');
+  await cal.locator('[data-cal-digitar]').fill(`${dd}/${mm}`);
+  await cal.locator('[data-cal-digitar]').press('Enter');
+  await expect(cal).toBeHidden();
+  expect(await page.locator('#booking-date').inputValue()).toBe(iso(alvo));
+
+  // data inválida avisa e não muda nada
+  await page.locator('#booking-date-btn').click();
+  await cal.locator('[data-cal-digitar]').fill('31/02');
+  await cal.locator('[data-cal-ir]').click();
+  await expect(cal.locator('[data-cal-digitar-msg]')).toContainText('não reconhecida');
+  expect(await page.locator('#booking-date').inputValue()).toBe(iso(alvo));
+});

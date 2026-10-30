@@ -1014,7 +1014,10 @@ body:has(.admin-modal:not([hidden])) :is(.admin-mobile-nav,.admin-install-tip){d
 .booking-date-blocks li{padding-left:10px;border-left:3px solid var(--gold2)}
 .booking-date-blocks li.is-blocked{border-left-color:var(--danger)}
 .booking-date-blocks strong{color:var(--text)}
-.booking-date-cal-foot{display:flex;justify-content:flex-end;margin-top:10px}
+.booking-date-cal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+.booking-date-cal-foot input{flex:1;min-width:0;min-height:40px;border:1px solid rgba(var(--white-rgb),.13);border-radius:var(--r-xs);background:var(--surface-4);color:var(--white);padding:0 10px;font:inherit;font-size:16px}
+.booking-date-cal-foot input:focus-visible{border-color:var(--gold);box-shadow:var(--ring);outline:none}
+[data-cal-digitar-msg]:empty{display:none}
 
 /* v29.287.0 — Previsão e meta na tela Hoje (pedido do Juliano, 09/10/2026): no celular a previsão ficava
    no texto pequeno do card, que a faixa compacta esconde. Bloco próprio, logo abaixo dos números. */

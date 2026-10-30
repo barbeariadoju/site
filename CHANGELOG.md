@@ -1,3 +1,20 @@
+## 29.324.0 — Calendário do Novo agendamento anda um mês por vez e aceita data digitada
+
+Pedido do Juliano (30/10/2026, print): foi marcar um horário para 21/11 e a seta › pulava de outubro direto
+para dezembro; tentou digitar a data e não havia onde.
+
+- **Causa do pulo:** o `renderAuth` roda duas vezes (já anotado na 29.198.0) e o `initDateCalendar` somava
+  um segundo ouvinte de clique no calendário — cada clique na seta andava dois meses. É provavelmente o mesmo
+  defeito da 24/10 ("não conseguia chegar em 07/11"); a 29.305.0 consertou o fechamento, não a contagem.
+  Agora o calendário é ligado uma vez só (`data-pronto`).
+- **Data digitada:** campo no rodapé do calendário, ao lado de "Hoje". Aceita `21/11`, `21/11/26`,
+  `21/11/2026`, `21-11` e `2111`; Enter ou "Ir" escolhe. Sem ano, vale o ano corrente, ou o próximo se a
+  data já passou. Data inexistente (31/02) avisa e não muda nada.
+- Teste e2e novo em `admin-calendario-bloqueios.spec.js`: sem a correção ele falha com "Dezembro de 2026"
+  onde devia ser novembro.
+- Cache: `?v=29.324.0`, incluindo o `06-admin-reforma.css` (estava em 29.287.0) e o
+  `admin-v15-4-agendamento.js` (29.305.0) nas páginas do painel; `ADMIN_VERSION` 29.324.0.
+
 ## 29.323.0 — Combo Raspar a cabeça + Barba Express por R$ 70
 
 **Pedido do Juliano (30/10):** "criar um combo raspar a cabeça com barba express a 70,00 (5 de desconto)".
