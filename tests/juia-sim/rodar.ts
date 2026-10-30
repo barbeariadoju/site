@@ -1384,5 +1384,18 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('98 raspar + barba express sai pelo preço do combo, não pela soma', /60,00/.test(r.reply) && !/65,00/.test(r.reply), r.reply)
 }
 
+// 99. Caso Calvin (30/10/2026, 15h01): "Podemos agendar para terça-feira as 16h?" → "É corte de cabelo para terça-feira,
+// às 16h?" → "Isso / Muito obrigadooo" virou "Entendi. Se quiser marcar um horário…". Ele tinha horário hoje às 16h.
+{
+  const hist = [{ role: 'user', content: 'Podemos agendar para terça-feira as 16h?' }, { role: 'assistant', content: 'Podemos sim verificar. É corte de cabelo para terça-feira, às 16h?' }]
+  const futuros = [{ id: 'b99', booking_date: hoje, start_time: '16:00:00', service_name: 'Corte de cabelo', status: 'confirmed', duration_minutes: 45 }]
+  const r = await turno({ msg: 'Isso\nMuito obrigadooo', state: { name: 'Calvin Teste', date: dia2, time: '16:00', services: [], upsell_offer_done: true }, history: hist,
+    ai: { intent: 'other', reply: 'De nada!', updates: {} }, contexto: ctxCliente('Calvin Teste'), futuros, vagas: { [dia2]: ['16:00'] } })
+  checar('99a "Isso" à pergunta do serviço, com horário hoje: pergunta mudar/manter/cancelar', /já tem um agendamento/.test(r.reply) && !reservou(r) && !/Se quiser marcar/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'Isso', state: { name: 'Calvin Teste', date: dia2, time: '16:00', services: [], upsell_offer_done: true }, history: hist,
+    ai: { intent: 'other', reply: 'De nada!', updates: {} }, contexto: ctxCliente('Calvin Teste'), vagas: { [dia2]: ['16:00'] } })
+  checar('99b "Isso" à pergunta do serviço, sem outro horário: reserva corte', reservou(r2) && !/Se quiser marcar/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

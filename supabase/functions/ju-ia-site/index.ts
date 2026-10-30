@@ -1453,6 +1453,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)
  let reply=String(ai.reply||'Como posso ajudar?'),actions:any[]=[],intent=String(ai.intent||'other'),handoff=Boolean(ai.handoff)
  if(diaDoClienteTrocado&&intent==='book')intent='availability'
+ let confirmouPerguntaDoServico=false
+ // v29.325.0 — caso Calvin (30/10/2026, 15h01): "Podemos agendar para terça-feira as 16h?" → a JuIA
+ // perguntou "É corte de cabelo para terça-feira, às 16h?" (pergunta livre do modelo, sem marca no estado
+ // e com services vazio) → "Isso / Muito obrigadooo" → "Entendi. Se quiser marcar um horário…". O "sim" do
+ // cliente à pergunta que NOMEIA o serviço é o cliente escolhendo esse serviço. E como ele já tinha horário
+ // hoje às 16h, o caminho é o da disponibilidade, que pergunta mudar / manter os dois / cancelar.
+ {
+  const ultimaJuIA=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
+  const nq=normalize(message)
+  const confirmou=/^\s*(isso|sim|exato|exatamente|certo|correto|isso mesmo|pode ser|pode sim|positivo|ok|beleza|fechado)\b/.test(nq)&&!/\b(nao|outro|outra|mas)\b/.test(nq)
+  if(confirmou&&!chosen.length&&/\?\s*$/.test(ultimaJuIA.trim())){
+   const pergunta=ultimaJuIA.split(/(?<=[.!])\s+/).pop()||ultimaJuIA
+   const nomeados=[...findServicesLoose(pergunta),...servicosPorPalavra(normalize(pergunta),true)].filter((s:any,i:number,a:any[])=>s&&a.findIndex((x:any)=>x.name===s.name)===i)
+   if(nomeados.length){
+    chosen=nomeados;next.services=nomeados.map((s:any)=>s.name)
+    confirmouPerguntaDoServico=true
+    next.servicos_escolhidos=[...new Set([...(Array.isArray(next.servicos_escolhidos)?next.servicos_escolhidos:[]),...next.services])]
+    if(next.date&&next.time&&!['cancel','reschedule'].includes(intent))intent=upcomingBookings.some((b:any)=>b&&b.booking_date!==next.date)?'availability':'book'
+    console.log('[ju-ia-site] sim à pergunta que nomeia o serviço',JSON.stringify({servicos:next.services,intent}))
+   }
+  }
+ }
  // v29.300.0 — caso Alexandre (22/10/2026, 12h47): com a lista de hoje na mesa, "Pode ser na próxima semana
  // 18:15" virou "Hoje às 18:15 já está ocupado" e, depois de "Pode ser na próxima semana", "Hoje às 18:15. É
  // corte ou…". O dia de hoje ficou no estado e "próxima semana" sem dia da semana não era lido como dia.
@@ -3787,11 +3809,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // pergunta repetida ficou aberta e travou o "Sim" dele à vaga que abriu 20 min depois. Mensagem só de
  // emoji é aceno, igual a "obrigado".
  const soEmojiAceno=!String(message).replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}\s!.,]/gu,'').length&&/\p{Extended_Pictographic}/u.test(String(message))
- const soGentileza=soEmojiAceno||normalizedQuestion.length<=80
+ // v29.325.0: "Isso / Muito obrigadooo" à pergunta do serviço (caso Calvin) é resposta, não despedida.
+ const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||normalizedQuestion.length<=80
   &&!/\?|\d{1,2}\s*(:|h)\b|\bhoje\b|\bamanha\b|\bsegunda|\bterca|\bquarta|\bquinta|\bsexta|\bsabado|\bmanha\b|\btarde\b|\bnoite\b|\bcort|\bbarb|\bsobrancelha|\bmarc|\bagend|\bhorari|\bvaga|\breserv|\bquero\b|\bpode ser\b|\bsim\b|\bnao\b/.test(normalizedQuestion)
-  &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion)
+  &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion))
  if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'&&!bareBarbaAsk&&!soGentileza){
-  if(next.date&&next.time&&simpleYes)intent='book'
+  // v29.325.0: com horário em OUTRO dia, o sim à pergunta do serviço passa antes pela pergunta mudar/manter/cancelar.
+  if(next.date&&next.time&&simpleYes&&!(confirmouPerguntaDoServico&&upcomingBookings.some((b:any)=>b&&b.booking_date!==next.date)))intent='book'
   else if(!(next.date&&next.time&&(simpleYes||simpleNo)))intent='availability'
  }else if(soGentileza&&intent==='availability'){
   intent='other'

@@ -1,3 +1,25 @@
+## 29.325.0 — "Isso" à pergunta do serviço é o cliente escolhendo (caso Calvin)
+
+Caso Calvin (30/10/2026, 15h01), print do Juliano: "Podemos agendar para terça-feira as 16h?" → a JuIA
+perguntou "É corte de cabelo para terça-feira, às 16h?" → "Isso / Muito obrigadooo" → "Entendi. Se quiser
+marcar um horário ou tirar alguma dúvida…". O Juliano remarcou na mão. Ele tinha horário hoje às 16h.
+
+- **Causa:** a pergunta veio do modelo, em texto livre, sem gravar nada no estado (`services` vazio, sem
+  `last_question`). O "Isso" chegou sem pergunta aberta, "isso" não é palavra de agenda e "obrigadooo" é
+  gentileza. As duas guardas de "não é pedido" (v29.190.0 e v29.138.0) jogaram a reserva fora.
+- **Correção (`ju-ia-site`):** quando o cliente responde sim ("isso", "sim", "exato", "pode ser"…) a uma
+  pergunta da JuIA que termina em "?" e nomeia um serviço, esse serviço passa a ser escolha dele. A guarda
+  de gentileza não corre nesse turno. Com data e hora na mesa e outro horário dele em OUTRO dia, segue pela
+  disponibilidade, que pergunta mudar / manter os dois / cancelar. Isso evita marcar um segundo horário sem
+  ele querer. Sem outro horário, reserva.
+- Simulador: cenários 99a (com horário hoje → pergunta mudar/manter/cancelar) e 99b (sem → reserva).
+  Os 4 que dependem do calendário (69a, 73b, 94, 95a) continuam falhando como antes.
+- ju-ia-site v338, `verify_jwt` true conferido.
+
+Avulso, a pedido do Juliano no mesmo dia: o prêmio de fidelidade do Luiz André ("ele não vai usar") foi
+marcado como `expired` com data de hoje, e não apagado, para o histórico ficar. `rewards_available` ficou 0.
+Os 2 pontos continuam na conta.
+
 ## 29.324.0 — Calendário do Novo agendamento anda um mês por vez e aceita data digitada
 
 Pedido do Juliano (30/10/2026, print): foi marcar um horário para 21/11 e a seta › pulava de outubro direto
