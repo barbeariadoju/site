@@ -8,6 +8,10 @@
 - **Cache:** tudo que estava em `?v=29.320.0` passou para `29.323.0` (33 referências conferidas, nenhuma sobrou). `ADMIN_VERSION` 29.323.0.
 - **Teste:** `admin-busca-lista.spec.js` procurava o card "Raspar a cabeça" e passou a achar dois (o raspado e o combo). Ajustado para conferir os dois escondidos na busca por "ozônio". Simulador: cenário 98, 245 ok (as mesmas 4 falhas de calendário da 29.322.0). Vitest 380 ok, e2e 94 ok.
 - Publicados `ju-ia-site`, `create-public-booking`, `create-rebooking`, `clube` e `senha-digital` (importam as regras).
+- **Google e WhatsApp (mesmo dia, com o ok do Juliano):**
+  - **Google:** serviço livre "Raspar a cabeça + Barba Express", R$ 70, pelo Windsor `update_service_items`. A ação troca a lista inteira; os 32 itens anteriores foram reenviados iguais, total 33.
+  - **WhatsApp:** item "Combo Raspar a Cabeça + Barba Express", R$ 70, criado pelo WhatsApp Web com a mesma foto real do combo de ontem (`juliano-corte.jpg`), link do /agendar/ e país de origem Brasil. Ficou "em análise" pelo WhatsApp.
+  - **Falta (Juliano, pelo celular):** pôr este item e o de ontem na coleção "Combos". O Web não edita coleção.
 
 ---
 ## 29.322.0 — "vou 12:00 buscar meus filhos" é a hora de sair, e "Blz" confirma a remarcação
