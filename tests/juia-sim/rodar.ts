@@ -48,7 +48,7 @@ const [dia1, dia2] = diasAbertos
 const catalogo = [
   ['Corte + Lavagem', 50, 50, 'corte'], ['Corte de cabelo', 40, 45, 'corte'], ['Raspar a cabeça', 40, 40, 'corte'],
   ['Corte de cabelo infantil', 40, 40, 'corte'], ['Corte + Barba na navalha com toalha quente', 80, 70, 'combo'],
-  ['Corte + Barba Express', 65, 60, 'combo'], ['Corte + Lavagem + Barba Express', 70, 80, 'combo'], ['Barboterapia com vaporizador de ozônio', 50, 50, 'barba'],
+  ['Corte + Barba Express', 65, 60, 'combo'], ['Corte + Lavagem + Barba Express', 70, 80, 'combo'], ['Raspar a cabeça + Barba Express', 60, 70, 'combo'], ['Barboterapia com vaporizador de ozônio', 50, 50, 'barba'],
   ['Barba na navalha com toalha quente', 40, 40, 'barba'], ['Barba Express', 25, 30, 'barba'],
   ['Pezinho (acabamento)', 15, 15, 'adicional'], ['Sobrancelha Masculina', 15, 15, 'adicional'],
   ['Depilação nasal (cera quente)', 25, 30, 'adicional'], ['Depilação orelhas', 25, 30, 'adicional'],
@@ -1374,6 +1374,14 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     history: [{ role: 'assistant', content: 'Às 11:00 está livre. Mudo seu agendamento (Corte de cabelo) para esse horário? Responda sim ou não.' }],
     ai: { intent: 'reschedule', reply: 'Vou ver.' }, contexto: ctxCliente('Fernando Teste'), futuros, vagas: { [dia1]: ['11:00'] } })
   checar('97 "Blz" na confirmação da remarcação = sim', r.chamadas.some((x: any) => x.alvo === 'phone_reschedule_booking') && !/Só confirmando/.test(r.reply), r.reply)
+}
+
+// 98. Combo Raspar a cabeça + Barba Express (R$ 70, Juliano, 30/10/2026). Pedido pelas partes, o valor dito é o do
+// combo, igual ao banco. No catálogo do simulador (preços antigos) o combo vale 60 e as partes somam 65.
+{
+  const r = await turno({ msg: 'quero raspar a cabeça e fazer a barba express às 10', state: { name: 'Paulo Teste', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Reservado!', updates: { services: ['Raspar a cabeça', 'Barba Express'], date: dia2, time: '10:00' } }, contexto: ctxCliente('Paulo Teste'), vagas: { [dia2]: ['10:00'] } })
+  checar('98 raspar + barba express sai pelo preço do combo, não pela soma', /60,00/.test(r.reply) && !/65,00/.test(r.reply), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

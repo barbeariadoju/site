@@ -6,6 +6,7 @@ window.BDJ_SERVICES = [
   {category:'Cortes e combos',name:'Corte + Barba na navalha com toalha quente',description:'Corte de cabelo aliado ao ritual de barba com toalha quente, navalha e acabamento caprichado.',price:80,priceFrom:95,duration:85},
   {category:'Cortes e combos',name:'Corte + Barba Express',description:'Corte masculino + alinhamento de barba só na máquina (sem navalha e sem toalha quente), ideal para manutenção do visual no dia a dia.',price:65,priceFrom:80,duration:75},
   {category:'Cortes e combos',name:'Corte + Lavagem + Barba Express',description:'Corte masculino com lavagem profissional + alinhamento de barba só na máquina (sem navalha e sem toalha quente).',price:90,duration:80},
+  {category:'Cortes e combos',name:'Raspar a cabeça + Barba Express',description:'Raspagem completa da cabeça + alinhamento de barba só na máquina (sem navalha e sem toalha quente).',price:70,duration:70},
   {category:'Barba',name:'Barboterapia com vaporizador de ozônio',description:'Ritual de cuidado com vaporizador de ozônio, toalha quente, espuma e acabamento com navalha.',price:50,priceFrom:60,duration:50},
   {category:'Barba',name:'Barba na navalha com toalha quente',description:'Ritual de barba completo com toalha quente, espuma, acabamento na navalha e produtos profissionais.',price:40,priceFrom:50,duration:40},
   {category:'Barba',name:'Barba Express',description:'Alinhamento rápido da barba, só na máquina — sem navalha e sem toalha quente.',price:25,priceFrom:35,duration:30},

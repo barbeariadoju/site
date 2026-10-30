@@ -6,9 +6,9 @@
 // Usada por ju-ia-site (normaliza o que a JuIA entendeu e avisa o cliente) e por
 // create-public-booking (rede de segurança do formulário do site).
 
-const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express']
+const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express', 'Raspar a cabeça + Barba Express']
 const CORTE_INFANTIL = ['Corte de cabelo infantil']
-const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express']
+const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express', 'Raspar a cabeça + Barba Express']
 const INCLUSOS: Record<string, string[]> = { 'Pezinho (acabamento)': ['corte', 'infantil'] }
 
 const norm = (s = '') => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
@@ -123,7 +123,7 @@ export function splitServiceNames(serviceName: string, known: string[]): string[
 // Barboterapia). Combo citado agora substitui as partes soltas. Pai e filho (corte adulto x
 // infantil) não se tocam. `prevNames` = lista atual; `mentionedNow` = só o que apareceu
 // nesta mensagem. Sem troca, devolve a lista como veio.
-const COMBO_PARTS: Record<string, string[]> = { 'Corte + Lavagem + Barba Express': ['Corte + Lavagem', 'Barba Express'], 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] }
+const COMBO_PARTS: Record<string, string[]> = { 'Raspar a cabeça + Barba Express': ['Raspar a cabeça', 'Barba Express'], 'Corte + Lavagem + Barba Express': ['Corte + Lavagem', 'Barba Express'], 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] }
 /** Partes avulsas de um combo do catálogo ("Corte + Barba Express" → ['Corte de cabelo', 'Barba Express']); null se não for combo. */
 export function partesDoCombo(name: string): string[] | null {
   const key = Object.keys(COMBO_PARTS).find((k) => same(k, name))

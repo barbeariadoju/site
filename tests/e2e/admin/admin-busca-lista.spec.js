@@ -48,7 +48,10 @@ test('Balcão: busca acha serviço sem acento ("barboterapia")', async ({ page }
   await expect(busca).toBeVisible();
   await busca.fill('OZONIO');
   await expect(page.locator('#balcao-services .service-card', { hasText: 'ozônio' })).toBeVisible();
-  await expect(page.locator('#balcao-services .service-card', { hasText: 'Raspar a cabeça' })).toBeHidden();
+  // v29.323.0: "Raspar a cabeça" e o combo "Raspar a cabeça + Barba Express" — os dois somem.
+  const raspar = page.locator('#balcao-services .service-card', { hasText: 'Raspar a cabeça' });
+  await expect(raspar.first()).toBeHidden();
+  await expect(raspar.last()).toBeHidden();
   await busca.press('Enter');
   await expect(page.locator('#balcao-services input[value="Barboterapia com vaporizador de ozônio"]')).toBeChecked();
 });

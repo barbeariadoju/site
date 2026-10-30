@@ -1,3 +1,15 @@
+## 29.323.0 — Combo Raspar a cabeça + Barba Express por R$ 70
+
+**Pedido do Juliano (30/10):** "criar um combo raspar a cabeça com barba express a 70,00 (5 de desconto)".
+- **O que é:** Raspar a cabeça (R$ 40) + Barba Express (R$ 35) somam R$ 75 avulso; o combo sai por **R$ 70**, em **70 min** (40 + 30). A descrição diz "barba só na máquina (sem navalha e sem toalha quente)", a regra de toda oferta de Barba Express; o acabamento na navalha nas bordas e na nuca é do raspado.
+- **Banco (migração 205):** serviço novo em `services` (Cortes e combos, `combo`, ordem 6). O `service_price_on` já casa o nome mais longo: conferido combo 70, partes 40 e 35, combo + Sobrancelha 90. A JuIA usa a mesma conta desde a 29.320.0 (`totalOn`), então não precisou de código novo.
+- **Regras de família** (`service-rules.js` e `_shared/service-rules.ts`): conta como corte e barba, e `COMBO_PARTS` sabe que ele é Raspar a cabeça + Barba Express.
+- **Site:** catálogo, cartão no /agendar/, tabelas de `/servicos.html` e `/precos/`, FAQ "Quais são todos os preços?" (texto e JSON-LD) e lista do blog "quanto custa". Sem página própria de serviço.
+- **Cache:** tudo que estava em `?v=29.320.0` passou para `29.323.0` (33 referências conferidas, nenhuma sobrou). `ADMIN_VERSION` 29.323.0.
+- **Teste:** `admin-busca-lista.spec.js` procurava o card "Raspar a cabeça" e passou a achar dois (o raspado e o combo). Ajustado para conferir os dois escondidos na busca por "ozônio". Simulador: cenário 98, 245 ok (as mesmas 4 falhas de calendário da 29.322.0). Vitest 380 ok, e2e 94 ok.
+- Publicados `ju-ia-site`, `create-public-booking`, `create-rebooking`, `clube` e `senha-digital` (importam as regras).
+
+---
 ## 29.322.0 — "vou 12:00 buscar meus filhos" é a hora de sair, e "Blz" confirma a remarcação
 
 **Revisão diária (plano do dia 30/10), caso Fernando:**

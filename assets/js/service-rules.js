@@ -14,9 +14,9 @@
 // supabase/functions/_shared/service-rules.ts (Deno não importa daqui) — mudou aqui,
 // mude lá também.
 
-const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express'];
+const CORTE_ADULTO = ['Corte de cabelo', 'Corte + Lavagem', 'Raspar a cabeça', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express', 'Raspar a cabeça + Barba Express'];
 const CORTE_INFANTIL = ['Corte de cabelo infantil'];
-const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express'];
+const BARBA = ['Barboterapia com vaporizador de ozônio', 'Barba na navalha com toalha quente', 'Barba Express', 'Corte + Barba na navalha com toalha quente', 'Corte + Barba Express', 'Corte + Lavagem + Barba Express', 'Raspar a cabeça + Barba Express'];
 // Itens que já vêm INCLUSOS em qualquer serviço da(s) família(s) deles: nunca se somam a
 // um corte, e saem sozinhos da lista quando um corte entra.
 const INCLUSOS = { 'Pezinho (acabamento)': ['corte', 'infantil'] };
@@ -158,7 +158,7 @@ export function splitServiceNames(serviceName, known){
 // Barboterapia). Combo citado agora substitui as partes soltas. Pai e filho (corte adulto x
 // infantil) não se tocam. `prevNames` = lista atual; `mentionedNow` = só o que apareceu
 // nesta mensagem. Sem troca, devolve a lista como veio.
-const COMBO_PARTS = { 'Corte + Lavagem + Barba Express': ['Corte + Lavagem', 'Barba Express'], 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] };
+const COMBO_PARTS = { 'Raspar a cabeça + Barba Express': ['Raspar a cabeça', 'Barba Express'], 'Corte + Lavagem + Barba Express': ['Corte + Lavagem', 'Barba Express'], 'Corte + Barba Express': ['Corte de cabelo', 'Barba Express'], 'Corte + Barba na navalha com toalha quente': ['Corte de cabelo', 'Barba na navalha com toalha quente'] };
 // v29.281.0 — partes de um combo (null se não for combo de 2 serviços). Usado no Concluir do
 // painel: prêmio da fidelidade num combo desmembra e bonifica só uma parte (Juliano, 08/10/2026).
 export function partesDoCombo(name){
