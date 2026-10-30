@@ -11,7 +11,7 @@
 - **Google e WhatsApp (mesmo dia, com o ok do Juliano):**
   - **Google:** serviço livre "Raspar a cabeça + Barba Express", R$ 70, pelo Windsor `update_service_items`. A ação troca a lista inteira; os 32 itens anteriores foram reenviados iguais, total 33.
   - **WhatsApp:** item "Combo Raspar a Cabeça + Barba Express", R$ 70, criado pelo WhatsApp Web com a mesma foto real do combo de ontem (`juliano-corte.jpg`), link do /agendar/ e país de origem Brasil. Ficou "em análise" pelo WhatsApp.
-  - **Falta (Juliano, pelo celular):** pôr este item e o de ontem na coleção "Combos". O Web não edita coleção.
+  - **Coleção "Combos" (mesmo dia, pedido do Juliano, pelo WhatsApp Web):** o Web edita coleção sim, mas não pelo menu dela. O caminho é Catálogo → ⋮ → Coleções → botão direito em "Combos" → Editar → marcar os itens → ✓. Corrigindo o que escrevi na 29.320.0. A tela de edição não mostra o que já está na coleção: tudo aparece desmarcado. "Corte + Lavagem + Barba Express" entrou e foi conferido depois de recarregar. "Raspar a cabeça + Barba Express" apareceu na coleção depois do 1º salvamento e sumiu depois do 2º, mesmo marcado de novo. Ele ainda está "em análise" (relógio no ícone), e o item de ontem só ficou firme depois de aprovado. **Conferir no próximo plano do dia** se ele aparece; se não, marcar de novo.
 
 ---
 ## 29.322.0 — "vou 12:00 buscar meus filhos" é a hora de sair, e "Blz" confirma a remarcação
