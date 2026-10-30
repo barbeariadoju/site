@@ -1,3 +1,11 @@
+## 29.322.0 — "vou 12:00 buscar meus filhos" é a hora de sair, e "Blz" confirma a remarcação
+
+**Revisão diária (plano do dia 30/10), caso Fernando:**
+- **07h34:** "me fala se posso e q horas ir cortar cabelo na parte da manhã pq vou 12:00 buscar meus filhos" recebeu "Reservado! Hoje às 12:00", justamente a hora em que ele tinha que sair. Ele mesmo corrigiu para 11:00. Agora a hora colada em "vou/saio … buscar/pegar/levar/viajar/trabalhar", ou seguida de "tenho que (tenho q) / preciso sair/estar/ir", vira **teto** (`tetoDeHorario`): a lista mostra só o que termina antes dela e nada é reservado sem ele escolher.
+- **07h36:** "Blz" à pergunta "Mudo seu agendamento…? Responda sim ou não." recebeu "Só confirmando…" de novo. Na confirmação da remarcação, concordância curta (blz, beleza, ok, pode, fechado, combinado, certo, show, joia…) vale como sim. **Decidido contra o óbvio:** não mexi no `simpleYes` global, que é usado em dezenas de fluxos; a regra vale só nessa confirmação, onde a pergunta foi explícita.
+- Simulador: cenários 96a, 96b e 97. 244 ok; as 4 falhas (69a, 73b, 94, 95a) aparecem iguais sem esta mudança. Elas dependem do calendário (hoje é sexta e "amanhã" cai no sábado), não são regressão. `npm test` verde (378 unit + 94 e2e). Publicado o `ju-ia-site`.
+
+---
 ## 29.321.0 — JuIA responde os dois dias quando o cliente pergunta "amanhã e sábado"
 
 **Pedido do Juliano (29/10):** "quando o cliente pergunta por dois dias, ela só fala do primeiro. Arrume isso". Caso Thiago (11h00): "Pra mim ver como que tá a sua agenda amanhã e sábado?" recebeu só "Consigo te atender amanhã sim!".
@@ -18,7 +26,10 @@
 - **Site:** catálogo (`services-catalog-v7.js`, preço 90, sem `priceFrom`), cartão no /agendar/, tabelas de `/servicos.html` e `/precos/`, resposta "Quais são todos os preços?" do FAQ (texto e JSON-LD) e lista do blog "quanto custa". Sem página própria de serviço por enquanto: a linha da tabela fica sem link.
 - **Cache:** `?v=29.320.0` em `services-catalog-v7.js` (11 páginas), `service-rules.js` (4) e nos .js que importam esses dois (`admin-service-rules-v30.js`, `agenda-v15.js`, `reagendar-v26-5.js`, `service-cart-v22-5.js`). `ADMIN_VERSION` 29.320.0.
 - Publicados `ju-ia-site`, `create-public-booking`, `create-rebooking`, `clube` e `senha-digital` (importam as regras). Simulador: cenário 94 (o catálogo do simulador ganhou o combo, com preço diferente da soma), 243 ok. `npm test` verde (378 unit + 94 e2e).
-- **Ainda não feito:** o catálogo do WhatsApp Business e os serviços do perfil do Google. A regra é o catálogo espelhar o site; fica para a confirmação do Juliano, porque é publicação externa.
+- **Google e WhatsApp (mesmo dia, com o ok do Juliano):**
+  - **Google:** serviço livre "Corte + Lavagem + Barba Express", R$ 90, pelo Windsor `update_service_items`. A ação troca a lista inteira; os 31 itens anteriores foram reenviados iguais, total 32.
+  - **WhatsApp:** item "Combo Corte + Lavagem + Barba Express", R$ 90, criado pelo WhatsApp Web, com foto real (`juliano-corte.jpg`), link do /agendar/ e país de origem Brasil, que é campo obrigatório no Web. Ficou "em análise" pelo WhatsApp.
+  - **Falta:** pôr o item na coleção "Combos". O Web não edita coleção (o menu só tem "Encaminhar"), então é no app do celular. Os outros dois combos usam uma arte "COMBO", e este, a foto.
 
 ---
 ## 29.319.0 — JuIA devolve o carinho: "tudo bem?", pedido de tabela e de link, despedida

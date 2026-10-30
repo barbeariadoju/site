@@ -1355,5 +1355,26 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('95b "hoje ou amanhã" continua sendo alternativa: só hoje', /15:00/.test(r2.reply) && !/10:50/.test(r2.reply), r2.reply)
 }
 
+// 96. Caso Fernando (30/10/2026, 07h34): "me fala se posso e q horas ir cortar cabelo na parte da manhã pq vou 12:00
+// buscar meus filhos" virou "Reservado! Hoje às 12:00". Às 12:00 ele tem que SAIR: é teto, a lista termina antes.
+{
+  const r = await turno({ msg: 'Ju bom dia, me fala se posso e q horas ir cortar cabelo na parte da manhã pq vou 12:00 buscar meus filhos, se não der marco outro dia',
+    state: { services: ['Corte de cabelo'], name: 'Fernando Teste', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Reservado!', updates: { services: ['Corte de cabelo'], date: dia1, time: '12:00' } }, contexto: ctxCliente('Fernando Teste'), vagas: { [dia1]: ['09:00', '10:00', '11:00', '12:00', '14:00'] } })
+  checar('96a "vou 12:00 buscar": não reserva às 12:00, oferece o que termina antes', !reservou(r) && /10:00|11:00/.test(r.reply) && !/12:00\b(?! )|14:00/.test(r.reply.replace(/antes das 12:00|antes do meio-dia/g, '')), r.reply)
+  const r2 = await turno({ msg: 'Pode ser 11:00 pq 12:00 já tenho q estar na estrada', state: { services: ['Corte de cabelo'], name: 'Fernando Teste', upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Reservado!', updates: { services: ['Corte de cabelo'], date: dia1, time: '11:00' } }, contexto: ctxCliente('Fernando Teste'), vagas: { [dia1]: ['10:00', '11:00', '12:00'] } })
+  checar('96b "11:00 pq 12:00 tenho q estar na estrada": 12:00 não vira pedido', !/12:00/.test(r2.reply), r2.reply)
+}
+
+// 97. Caso Fernando (30/10/2026, 07h36): "Blz" à confirmação da remarcação recebeu "Só confirmando…" de novo.
+{
+  const futuros = [{ id: 'b97', booking_date: dia1, start_time: '12:00:00', service_name: 'Corte de cabelo', status: 'confirmed', duration_minutes: 45 }]
+  const r = await turno({ msg: 'Blz', state: { pending_reschedule_booking_id: 'b97', pending_reschedule_new_date: dia1, pending_reschedule_new_time: '11:00' },
+    history: [{ role: 'assistant', content: 'Às 11:00 está livre. Mudo seu agendamento (Corte de cabelo) para esse horário? Responda sim ou não.' }],
+    ai: { intent: 'reschedule', reply: 'Vou ver.' }, contexto: ctxCliente('Fernando Teste'), futuros, vagas: { [dia1]: ['11:00'] } })
+  checar('97 "Blz" na confirmação da remarcação = sim', r.chamadas.some((x: any) => x.alvo === 'phone_reschedule_booking') && !/Só confirmando/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

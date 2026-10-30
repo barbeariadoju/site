@@ -2706,7 +2706,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    handoff=true
   }else if(next.pending_reschedule_new_date&&next.pending_reschedule_new_time){
    const target=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
-   if(simpleYes&&!simpleNo){
+   // v29.322.0 — caso Fernando (30/10/2026, 07h36): "Blz" à pergunta "Mudo seu agendamento…? Responda sim ou não."
+   // recebeu "Só confirmando…" de novo. Concordância curta também é sim.
+   const okCurto=/^(blz|beleza|ok|okay|pode|fechado|fechou|combinado|certo|bora|show|perfeito|isso ai|joia|top)[\s!.,]*$/.test(normalizedQuestion.trim())
+   if((simpleYes||okCurto)&&!simpleNo){
     const {data:rescheduledRows,error:rescheduleError}=await supabase.rpc('phone_reschedule_booking',{p_phone:verifiedPhone,p_booking_id:next.pending_reschedule_booking_id,p_new_booking_date:next.pending_reschedule_new_date,p_new_start_time:next.pending_reschedule_new_time,p_extend_close_minutes:60})
     const rescheduled=Array.isArray(rescheduledRows)?rescheduledRows[0]:rescheduledRows
     if(rescheduleError||!rescheduled){
@@ -3826,7 +3829,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.180.0 — caso Renato (11/09/2026, 13h29): "Humm a partir das 14 não consigo, mas agradeço" foi
  // lido como pedido das 14h e a JuIA se embolou. É o contrário: um TETO ("tenho que terminar antes
  // das 14"). O horário citado vira maxTime, sai do pedido, e a lista só mostra o que TERMINA até lá.
- const tetoDeHorario=Boolean(requestedTimeRaw)&&/\b(a partir d[ae]s?|depois d[ae]s?|apos (as|da|de)?)\s*\d{1,2}(:\d{2})?\s*h?(oras)?\s*(eu )?(ja )?(nao|n) (consigo|posso|da|rola|tenho como|vou poder|vou conseguir)|\b(so|somente|apenas) (ate|antes d[ae]s?) (as )?\d|\b(ate|antes d[ae]s?) (as )?\d{1,2}(:\d{2})?\s*h?(oras)?\s*(no maximo|eu consigo|consigo|da|posso|tenho que (sair|ir|voltar|estar))/.test(normalizedQuestion)
+ // v29.322.0 — caso Fernando (30/10/2026, 07h34): "me fala se posso e q horas ir cortar cabelo na parte da manhã pq
+ // vou 12:00 buscar meus filhos" recebeu "Reservado! Hoje às 12:00" — a hora em que ele tinha que SAIR. Hora colada
+ // em "vou/saio ... buscar/pegar/viajar" ou seguida de "tenho que sair/estar" é o teto, não o pedido.
+ const tetoDeHorario=Boolean(requestedTimeRaw)&&/\b(a partir d[ae]s?|depois d[ae]s?|apos (as|da|de)?)\s*\d{1,2}(:\d{2})?\s*h?(oras)?\s*(eu )?(ja )?(nao|n) (consigo|posso|da|rola|tenho como|vou poder|vou conseguir)|\b(so|somente|apenas) (ate|antes d[ae]s?) (as )?\d|\b(ate|antes d[ae]s?) (as )?\d{1,2}(:\d{2})?\s*h?(oras)?\s*(no maximo|eu consigo|consigo|da|posso|tenho que (sair|ir|voltar|estar))|\b(vou|saio|tenho que sair|tenho q sair|preciso sair)\s+(as\s+)?\d{1,2}(:\d{2})?\s*h?(oras|rs?)?\s+(buscar|pegar|levar|sair|embora|viajar|pra estrada|na estrada|trabalhar)\b|\b\d{1,2}(:\d{2})?\s*h?(oras|rs?)?\s+(eu\s+)?(ja\s+)?(tenho que|tenho q|preciso|devo)\s+(sair|ir|estar|buscar|pegar|levar|viajar)\b/.test(normalizedQuestion)
  const maxTime=tetoDeHorario?requestedTimeRaw:''
  // v29.212.0 — caso Rossano (18/09/2026, 08h39): "hoje ou amanhã cedo, antes das 11:00 h" era lido
  // como pedido DAS 11h ("11:00 já está ocupado, o mais próximo é 11:50"). "Antes das X" / "até as X"
