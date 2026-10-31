@@ -1,3 +1,16 @@
+## 29.331.0 — Sem o limite de 12 atendimentos por dia
+
+Pedido do Juliano (31/10/2026): "a regra dos 12 pode excluir também, vamos deixar lotar". Mesmo dia em que saiu a
+regra das 4 seguidas (29.330.0).
+
+- O limite (v29.278.0) estava num ponto só, a `dia_lotado`. Quem a consulta: os horários do site, da JuIA e do
+  painel (`get_available_slots_excluding`), a trava na hora de gravar (`trg_bookings_limite_diario`), o radar de
+  encaixe e a senha digital. A função passa a responder sempre "não lotado" (migração 209), e todos liberam juntos.
+  `limite_atendimentos_dia()` (12) continua existindo, para religar sem reescrever nada se ele pedir.
+- O que segue limitando a agenda: o horário de funcionamento, os bloqueios e um cliente por vez.
+- Conferido depois de aplicar: `dia_lotado` = false; terça 03/11 com 35 horários de corte, sexta 06/11 com 28.
+- **NO AR:** migração 209.
+
 ## 29.330.0 — Sem a regra das 4 seguidas, hora real de término e buracos de encaixe no painel
 
 Pedidos do Juliano (31/10/2026). (1) "A regra dos 4 atendimentos pode excluir, deixa lotar, eu tô mais rápido,
