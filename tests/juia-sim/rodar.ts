@@ -67,6 +67,8 @@ type Cenario = {
   clubeCobre?: boolean // o banco cobriu o horário recém-criado (trg_zz_club_before_insert)
   clubeMotivo?: string // club_quote: motivo de não cobrir
   clubeVendas?: boolean // club_settings.vendas_abertas
+  faltas?: any[] // phone_missed_bookings: no_show dos últimos 2 dias (v29.329.0)
+  bloqueado?: boolean // is_customer_blocked_v2
   buracos?: any[] // encaixes_possiveis: buracos da agenda onde um encaixe apertado caberia (v29.326.0)
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
   cancelado?: string // service_name devolvido pelo whatsapp_cancel_booking (padrão: Corte de cabelo)
@@ -107,6 +109,8 @@ const turno = async (c: Cenario) => {
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
     encaixes_possiveis: () => c.buracos || [],
+    phone_missed_bookings: () => c.faltas || [],
+    is_customer_blocked_v2: () => Boolean(c.bloqueado),
   }
   const req = new Request('https://simulador.local/functions/v1/ju-ia-site', {
     method: 'POST',
@@ -497,16 +501,20 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 // 32. Horário que acabou de começar é do cliente (24/09, 09h16): marcado às 09:15, "estou em trânsito,
 //     chego em instantes" um minuto depois virou "09:15 acabou de ser reservado por outro cliente".
 {
-  const emCurso = [{ id: 'b915', booking_date: hoje, start_time: '09:15:00', duration_minutes: 45, service_name: 'Corte de cabelo', status: 'confirmed' }]
-  const hist = [{ role: 'assistant', content: `Seu horário foi confirmado: ${hoje} às 09:15 - Corte de cabelo` }]
+  // v29.329.0: o horário é "1 minuto atrás" (era 09:15 fixo): depois de 15 min de atraso a resposta passa a ser outra (cenário 106c).
+  const agora32 = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':').map(Number)
+  const m32 = Math.max(0, agora32[0] * 60 + agora32[1] - 1)
+  const h32 = `${String(Math.floor(m32 / 60)).padStart(2, '0')}:${String(m32 % 60).padStart(2, '0')}`
+  const emCurso = [{ id: 'b915', booking_date: hoje, start_time: `${h32}:00`, duration_minutes: 45, service_name: 'Corte de cabelo', status: 'confirmed' }]
+  const hist = [{ role: 'assistant', content: `Seu horário foi confirmado: ${hoje} às ${h32} - Corte de cabelo` }]
   const r1 = await turno({ msg: 'Bom dia Ju..estou em trânsito...chego em instantes', history: hist,
-    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '09:15', services: ['Corte de cabelo'] } },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: h32, services: ['Corte de cabelo'] } },
     contexto: ctxCliente('Americo Teste'), emAndamento: emCurso, vagas: { [hoje]: ['11:10', '11:15', '11:30'] } })
-  checar('32a trânsito: "te espero" com o horário dele', /te espero/i.test(r1.reply) && /09:15/.test(r1.reply), r1.reply)
+  checar('32a trânsito: "te espero" com o horário dele', /te espero/i.test(r1.reply) && r1.reply.includes(h32), r1.reply)
   checar('32a trânsito: nunca "outro cliente"', !/outro cliente|ocupado/i.test(r1.reply), r1.reply)
   // Mesmo se a frase não for reconhecida, o horário pedido sendo o dele nunca vira "ocupado".
   const r2 = await turno({ msg: 'vou atrasar uns minutinhos', history: hist,
-    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: '09:15', services: ['Corte de cabelo'] } },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje, time: h32, services: ['Corte de cabelo'] } },
     contexto: ctxCliente('Americo Teste'), emAndamento: emCurso, vagas: { [hoje]: ['11:10', '11:15', '11:30'] } })
   checar('32b atraso: horário próprio não vira "reservado por outro"', !/outro cliente|ocupado/i.test(r2.reply) && !reservou(r2), r2.reply)
 }
@@ -1479,6 +1487,28 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     ai: { intent: 'book', reply: 'Certo.', updates: { time: '10:50' } }, contexto: ctxCliente('Carlos Teste'),
     vagas: { [dia1]: ['10:50', '11:00'] } })
   checar('105 a oferta nomeou corte + sobrancelha e ele escolheu o horário: reserva os dois', reservou(r) && r.chamadas.some((x: any) => x.alvo === 'create_public_booking_v15' && /Sobrancelha/.test(x.args?.p_service_name)), r.reply)
+}
+
+// 106. v29.329.0 — caso Venilson (31/10, 10h39): o horário das 09:00 era falta e ele ouviu "seu horário está garantido.
+// Pode vir com tranquilidade". Agora: a política de falta, uma vez, e nunca promessa de horário que não existe.
+{
+  const falta = [{ id: 'f1', booking_date: hoje, start_time: '09:00:00', service_name: 'Corte de cabelo' }]
+  const r1 = await turno({ msg: 'Não conseguir pegar o ônibus\nTô vendo aqui se tem ônibus\nPara ir', state: {},
+    ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade e me avise quando estiver a caminho.', updates: {} },
+    contexto: ctxCliente('Venilson Teste'), faltas: falta, bloqueado: true })
+  checar('106a falta: explica (hora marcada, um cliente por vez, 24 h) e o Pix antecipado, sem prometer horário', /registrado como falta/.test(r1.reply) && /24 horas/.test(r1.reply) && /um cliente por vez/.test(r1.reply) && /pagamento antecipado/.test(r1.reply) && !/garantido|Pode vir/.test(r1.reply) && r1.state?.falta_avisada === 'f1', r1.reply)
+  checar('106a falta: push pro Juliano', r1.saidas.some((s: any) => s.url.includes('send-push') && /faltou/i.test(JSON.stringify(s.body))), r1.saidas.map((s: any) => s.url))
+  const r2 = await turno({ msg: 'Aqui é difícil ter ônibus', state: { falta_avisada: 'f1' },
+    ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade.', updates: {} },
+    contexto: ctxCliente('Venilson Teste'), faltas: falta, bloqueado: true })
+  checar('106b depois do aviso: não repete a política e não promete horário', !/registrado como falta/.test(r2.reply) && !/garantido|Pode vir/.test(r2.reply), r2.reply)
+  const agora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':').map(Number)
+  const ini = Math.max(0, agora[0] * 60 + agora[1] - 60)
+  const hIni = `${String(Math.floor(ini / 60)).padStart(2, '0')}:${String(ini % 60).padStart(2, '0')}:00`
+  const r3 = await turno({ msg: 'Perdi o ônibus, to indo', state: {},
+    ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido.', updates: {} },
+    contexto: ctxCliente('Venilson Teste'), emAndamento: [{ id: 'b1', booking_date: hoje, start_time: hIni, service_name: 'Corte de cabelo', status: 'confirmed' }] })
+  checar('106c ainda não marcado como falta, 1 h depois do horário: passou da tolerância e vai pro Juliano', /passou da tolerância/.test(r3.reply) && !/garantido/.test(r3.reply), r3.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

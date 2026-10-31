@@ -1,3 +1,31 @@
+## 29.329.0 — Cliente que faltou: política de falta com educação, nunca "horário garantido" (caso Venilson)
+
+Print do Juliano (31/10/2026). O horário do Venilson era às 09:00. O Juliano mandou mensagem e ligou, sem resposta, e
+marcou falta às 09:13. Às 10:39 o Venilson escreveu "Não consegui pegar o ônibus / Tô vendo aqui se tem ônibus /
+Para ir", e a JuIA respondeu **"Sem problema, seu horário está garantido. Pode vir com tranquilidade"**. Na mensagem
+seguinte ainda disse "quando quiser dar um trato no visual, é só me chamar". Ele já estava bloqueado para agendar
+só com Pix antecipado (v29.327.0).
+
+- **Causa:** as duas respostas saíram do modelo. A JuIA não enxergava o horário das 09:00: o
+  `phone_upcoming_bookings` só traz o que ainda vai começar, e o `phone_current_bookings` só pending/confirmed. A
+  regra do prompt para atraso ("até 10 min, horário garantido") foi aplicada a um horário que já era falta.
+- **Banco:** `phone_missed_bookings(telefone)` (migração 207) traz as faltas dos últimos 2 dias.
+- **Resposta à falta (fixa, uma vez por falta, `falta_avisada`):** "Venilson, o seu horário de hoje era às 09:00 e,
+  como ficou sem atendimento, ficou registrado como falta. Entendo que imprevistos acontecem. Mas aqui eu trabalho
+  só com hora marcada e atendo um cliente por vez: cada horário reservado é um horário que eu deixo de oferecer a
+  outra pessoa, e quando o cliente não vem, a cadeira fica parada e a gente sente bastante." Seguem a remarcação ou
+  o cancelamento sem custo com 24 h de antecedência e a tolerância de 10 min. Para quem está bloqueado, também o Pix
+  antecipado (crédito se remarcar com 24 h; sem aviso, o valor não é devolvido). O Juliano recebe o push "Cliente que
+  faltou escreveu". Sem emoji.
+- **Horário que já passou da tolerância e ainda não foi marcado como falta:** quem avisa "tô indo / perdi o ônibus /
+  me atrasei" mais de 15 min depois do início ouve "Seu horário de hoje era às X e já passou da tolerância de 10
+  minutos. Vou falar com o Juliano para ver se ainda dá para te atender hoje", e vai para o Juliano (handoff).
+- **Trava final:** a JuIA não diz "seu horário está garantido/guardado/mantido" nem "pode vir com tranquilidade" a
+  quem não tem horário nenhum na agenda (só depois de reservar no mesmo turno).
+- Simulador: cenários 106a/b/c. Os 32a/b usavam horário fixo (09:15) e passam a usar "1 minuto atrás", porque depois
+  dos 15 min a resposta certa agora é outra. 265 ok; 94 e 95a são de calendário. `npm test`: 380 unit + 95 e2e.
+- **NO AR:** migração 207; `ju-ia-site` conferido byte a byte com o repo.
+
 ## 29.328.0 — Varredura da semana 24-31/10: 6 correções (Manoel, Carlos ×2, Aletéia, Ana, "satisfeito")
 
 Varredura dos 7 dias, pedida pelo Juliano em 31/10: 52 conversas com mensagem de cliente. As correções dos dias 24,

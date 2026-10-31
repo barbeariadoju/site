@@ -973,6 +973,7 @@ Deno.serve(async req=>{
  let context:any={}
  let upcomingBookings:any[]=[]
  let bookingsEmAndamento:any[]=[]
+ let faltasRecentes:any[]=[] // v29.329.0 (caso Venilson): no_show dos últimos 2 dias deste telefone
  let clubeAssinatura:{status:string;plano:string}|null=null
  // verified_phone vem do canal WhatsApp (whatsapp-webhook), onde o número de quem
  // está escrevendo é o próprio remetente da mensagem — não precisa (e não deve)
@@ -1008,6 +1009,10 @@ Deno.serve(async req=>{
    const {data:emCurso}=await supabase.rpc('phone_current_bookings',{p_phone:knownPhone})
    bookingsEmAndamento=Array.isArray(emCurso)?emCurso:[]
   }catch(e){console.error('[ju-ia-site] phone_current_bookings',e)}
+  try{
+   const {data:faltas}=await supabase.rpc('phone_missed_bookings',{p_phone:knownPhone})
+   faltasRecentes=Array.isArray(faltas)?faltas:[]
+  }catch(e){console.error('[ju-ia-site] phone_missed_bookings',e)}
   // v29.209.0 — presente de aniversário e indicação (customer_benefits). Entra no contexto do
   // cliente, então vale a mesma regra de privacidade dos pontos/prêmios (phoneTrustNote). Quem
   // aplica é o Juliano no Concluir: a JuIA só informa, nunca muda o valor do agendamento.
@@ -1606,7 +1611,47 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // resposta fixa, e a conversa velha do dia sai da memória. Atraso segue a regra do prompt (sem número
  // de tolerância; atraso grande vai pro Juliano) — por isso "atras"/"demor" ficam de fora daqui.
  let chegadaTratada=false
- if(!pediuHumano&&verifiedPhone&&avisoDeChegada(normalize(message))&&!/atras|demor/.test(normalize(message))&&!extractRequestedTime(message)){
+ // v29.329.0 — caso Venilson (31/10/2026). Horário das 09:00, mensagem e ligação do Juliano sem resposta, marcado como
+ // falta às 09:13. Às 10:39: "Não consegui pegar o ônibus / Tô vendo aqui se tem ônibus para ir" — e a JuIA respondeu
+ // "Sem problema, seu horário está garantido. Pode vir com tranquilidade". Ela não via o horário (já tinha passado e
+ // estava como falta). Na mensagem seguinte ainda disse "quando quiser dar um trato no visual, é só me chamar".
+ // Pedido do Juliano: com educação, explicar que aqui é só com hora marcada, que a gente sente quando o cliente não
+ // vem, e a regra de remarcar/cancelar com 24 h. Na primeira mensagem depois da falta, resposta fixa, uma vez só
+ // (falta_avisada); se ele está bloqueado (só com Pix antecipado), a regra do Pix vai junto. O Juliano recebe push.
+ // Texto em _shared? Não: só a JuIA fala isso, e o comprovante/regulamento não citam falta.
+ const faltaPendente=verifiedPhone&&!pediuHumano?faltasRecentes.find((f:any)=>f&&f.id&&f.id!==state?.falta_avisada):null
+ if(faltaPendente&&!upcomingBookings.length){
+  chegadaTratada=true
+  let bloqueadoF=false
+  try{const {data:bl}=await supabase.rpc('is_customer_blocked_v2',{p_phone:verifiedPhone,p_email:null});bloqueadoF=bl===true}catch(e){console.error('[ju-ia-site] is_customer_blocked_v2',e)}
+  const ontemF=somarDiasIso(today(),-1)
+  const quandoF=faltaPendente.booking_date===today()?'de hoje':faltaPendente.booking_date===ontemF?'de ontem':`do dia ${formatDateBR(faltaPendente.booking_date)}`
+  const nomeF=firstName(context?.name)
+  reply=`${nomeF?`${nomeF}, o`:'O'} seu horário ${quandoF} era às ${String(faltaPendente.start_time).slice(0,5)} e, como ficou sem atendimento, ficou registrado como falta.\n\nEntendo que imprevistos acontecem. Mas aqui eu trabalho só com hora marcada e atendo um cliente por vez: cada horário reservado é um horário que eu deixo de oferecer a outra pessoa, e quando o cliente não vem, a cadeira fica parada e a gente sente bastante. Por isso funciona assim:\n- Remarcação ou cancelamento sem custo com até 24 horas de antecedência.\n- Tolerância de 10 minutos de atraso.${bloqueadoF?'\n- Depois de uma falta, o próximo horário é confirmado com pagamento antecipado pelo Pix. Remarcando com 24 horas de aviso, o valor vira crédito para a nova data; sem aviso e sem comparecimento, o valor não é devolvido.':''}\n\nQuando quiser marcar de novo, é só me chamar por aqui.`
+  next.falta_avisada=faltaPendente.id
+  intent='other';handoff=false;actions=[]
+  next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+  for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+  const psF=Deno.env.get('PUSH_WEBHOOK_SECRET'),urlF=Deno.env.get('SUPABASE_URL')
+  if(psF&&urlF)await fetch(`${urlF}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psF},body:JSON.stringify({custom:{title:'Cliente que faltou escreveu',body:`${String(context?.name||body?.whatsapp_name||verifiedPhone)} (falta ${formatDateBR(faltaPendente.booking_date)} às ${String(faltaPendente.start_time).slice(0,5)}): "${String(message).slice(0,120)}". A JuIA explicou a política de falta${bloqueadoF?' e o Pix antecipado':''}.`,url:'/admin-atendimento.html?app=1',tag:`falta-${faltaPendente.id}`}})}).catch(()=>{})
+ }
+ // v29.329.0 — mesmo caso, outro caminho: o Juliano ainda não marcou a falta e o horário de hoje começou há mais de
+ // 15 min (passou da tolerância). "Tô indo / me atrasei / não peguei o ônibus" não pode ouvir "horário garantido":
+ // a JuIA diz que o horário já passou da tolerância e passa ao Juliano, que decide se ainda atende.
+ if(!chegadaTratada&&!pediuHumano&&verifiedPhone){
+  const agoraMin=(()=>{const [h,m]=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()).split(':').map(Number);return h*60+m})()
+  const atrasado=bookingsEmAndamento.find((b:any)=>{const [h,m]=String(b.start_time||'').split(':').map(Number);return b.booking_date===today()&&agoraMin-(h*60+m)>15})
+  const falaDeIr=/\b(atras|demor|indo|chegando|caminho|onibus|uber|transito|sai(ndo)?|pegar|perdi|chego|vou (ai|ir)|pra ir|para ir|ja to|to saindo|esqueci|dormi|acordei)/.test(normalize(message))
+  if(atrasado&&falaDeIr){
+   chegadaTratada=true
+   const horaA=String(atrasado.start_time).slice(0,5)
+   reply=`Seu horário de hoje era às ${horaA} e já passou da tolerância de 10 minutos. Vou falar com o Juliano para ver se ainda dá para te atender hoje e te respondo por aqui.`
+   intent='handoff';handoff=true;actions=[]
+   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+  }
+ }
+ if(!chegadaTratada&&!pediuHumano&&verifiedPhone&&avisoDeChegada(normalize(message))&&!/atras|demor/.test(normalize(message))&&!extractRequestedTime(message)){
   const deHoje=bookingsEmAndamento[0]||upcomingBookings.find((b:any)=>b&&b.booking_date===today())
   if(deHoje){
    chegadaTratada=true
@@ -6052,6 +6097,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // simulador pegou: sem o corte suposto do histórico, cliente antigo passou a cair nesse texto).
  if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/Sim[,!]/.test(reply)&&/está livre/.test(reply)){
   reply=reply.replace(/^(.*?)Sim[,!]\s*(?:✅\s*)?(.+?) às (\d\d:\d\d) está livre/s,(_m,antes,dia,hora)=>`${antes}Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
+ }
+ // v29.329.0 (caso Venilson): "seu horário está garantido. Pode vir com tranquilidade" saiu do MODELO para quem não
+ // tinha horário nenhum (o das 09:00 já era falta). Promessa de horário só com horário de verdade na agenda.
+ if(verifiedPhone&&!chegadaTratada&&!next.completed&&!upcomingBookings.length&&!bookingsEmAndamento.length&&['other','handoff'].includes(intent)&&/\b(seu|o) hor[aá]rio (est[aá] |continua |segue |fica )?(garantido|guardado|mantido)|pode vir com tranquilidade|pode vir tranquilo/i.test(reply)){
+  reply=faltasRecentes.length?'Entendo. Quando quiser marcar um novo horário, é só me chamar por aqui.':'No momento você não tem horário marcado comigo. Quer que eu veja um horário pra você?'
+  handoff=false
  }
  // v29.328.0 (caso Aletéia): "Tem mais cedo" (sem "?") e a lista volta só com o horário já oferecido — repetir
  // "estes são os horários disponíveis: 17:25" soa como se ela não tivesse perguntado nada.
