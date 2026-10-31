@@ -1423,14 +1423,62 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('100c insistência: não inscreve duas vezes', !r3.saidas.some((s: any) => s.url.includes('join-waitlist')) && /lista de espera/.test(r3.reply), r3.reply)
 }
 
-
-
 // 101. v29.327.0 — caso Venilson (31/10): cliente bloqueado por falta recebe a política com a justificativa.
 {
   const r = await turno({ msg: 'Quero marcar corte de cabelo às 10:00', state: { name: 'Venilson Teste', phone: '5511900000001', services: ['Corte de cabelo'], date: dia1, upsell_offer_done: true },
     ai: { intent: 'book', reply: 'Certo.', updates: { time: '10:00' } }, contexto: ctxCliente('Venilson Teste'),
     vagas: { [dia1]: ['10:00'] }, reservaErro: 'cliente_bloqueado' })
   checar('101 bloqueado: justifica (um cliente por vez, prejuízo), Pix antecipado e perda do valor', /um cliente por vez/.test(r.reply) && /prejuízo/.test(r.reply) && /pagamento antecipado/.test(r.reply) && /não é devolvido/.test(r.reply) && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(r.reply), r.reply)
+}
+
+// 102. Revisão da semana 24-31/10 — caso Manoel (30/10, 10h43): "barba e pé do cabelo" virou Corte + Barba Express
+// (R$ 80) e "Eu não irei cortar" virou despedida. "Pé do cabelo" é o pezinho; "não vou cortar" tira o corte.
+{
+  const r1 = await turno({ msg: 'Teria vaga para barba e pé do cabelo agora ?', state: {},
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { services: ['Corte de cabelo', 'Barba Express'], date: dia1 } }, contexto: ctxCliente('Manoel Teste'),
+    vagas: { [dia1]: ['11:00', '11:15'] } })
+  checar('102a "barba e pé do cabelo" é Barba Express + Pezinho, sem corte', /Pezinho/.test(r1.reply) && !/Corte/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'Eu não irei cortar', state: { services: ['Corte + Barba Express'], date: dia1, time: '11:00' },
+    history: [{ role: 'user', content: 'Teria vaga para barba e pé do cabelo agora ?' }, { role: 'assistant', content: 'Vamos marcar! Corte + Barba Express sai *R$ 80,00* (aproximadamente 75 min). Me diz seu nome que eu já deixo reservado pra você.' }],
+    ai: { intent: 'other', reply: 'Sem problema, obrigado por avisar.', updates: {} }, contexto: ctxCliente('Manoel Teste'),
+    vagas: { [dia1]: ['11:00', '11:15'] } })
+  checar('102b "Eu não irei cortar" tira o corte e segue com o resto, sem despedida', !/obrigado por avisar/i.test(r2.reply) && !/Corte \+ Barba Express/.test(r2.reply) && /Barba Express/.test(r2.reply), r2.reply)
+}
+
+// 103. Revisão da semana — caso Carlos (30/10, áudio): "vou ver… pra semana que vem… quarta-feira, quarta, seis horas
+// consegue" ouviu "Fica combinado assim". Dia da semana + hora por extenso é pedido.
+{
+  const r = await turno({ msg: 'mas é tô sentindo falta de cortar com você, vamos ver, eu vejo pra gente tentar marcar pra semana que vem, deixa eu ver, quarta-feira mais ou menos, pode ser quarta-feira, quarta, seis horas consegue, semana que vem',
+    state: { services: ['Corte de cabelo'], upsell_offer_done: true },
+    history: [{ role: 'assistant', content: 'Oi, Carlos, como você está? Se quiser deixar o próximo corte marcado, me fala o dia e eu já separo para você.' }],
+    ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Carlos Teste'),
+    vagas: { [somar(proxima(3), 7)]: ['18:00'], [proxima(3)]: ['18:00'] } })
+  checar('103 "quarta, seis horas consegue" é pedido: não responde "fica combinado"', !/Fica combinado/.test(r.reply) && /18:00/.test(r.reply), r.reply)
+}
+
+// 104. Revisão da semana — caso Aletéia (30/10, 15h23): "Tem mais cedo" (17:25 oferecido hoje) não é "manhã", e
+// "Esse horário fica tarde. Sem problemas." não é pedido de tarde.
+{
+  const hist = [{ role: 'user', content: 'Agendar horário' }, { role: 'assistant', content: 'Hoje tenho 17:25. Posso reservar?' }]
+  const r1 = await turno({ msg: 'Tem mais cedo', state: { services: ['Corte de cabelo'], date: hoje }, history: hist,
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Aleteia Teste'),
+    vagas: { [hoje]: ['17:25'], [dia1]: ['08:30', '09:30', '14:00'] } })
+  checar('104a "Tem mais cedo" não vira pedido de manhã', !/período da manhã|de manhã/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'É para meu pai. Ele mora no sítio. Esse horário fica tarde. Sem problemas.', state: { services: ['Corte de cabelo'], date: dia1, other_person: true },
+    history: [...hist, { role: 'user', content: 'Tem mais cedo' }, { role: 'assistant', content: 'Hoje não tenho mais cedo. Na terça (03/11) tenho 08:30, 09:30 ou 10:45.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Aleteia Teste'),
+    vagas: { [dia1]: ['08:30', '09:30', '14:00', '16:45'] } })
+  checar('104b "fica tarde. Sem problemas" não lista horários da tarde', !/período da tarde|14:00|16:45/.test(r2.reply), r2.reply)
+}
+
+// 105. Revisão da semana — caso Carlos (30/10, 14h03): a JuIA ofereceu "Corte de cabelo + Sobrancelha Masculina
+// (aproximadamente 60 min)", ele escolheu o horário e a reserva saiu só com o corte. O que a oferta nomeou fica.
+{
+  const r = await turno({ msg: 'As 10:50 está ótimo', state: { name: 'Carlos Teste', phone: '5511900000001', services: ['Corte de cabelo', 'Sobrancelha Masculina'], date: dia1, upsell_offer_done: true, usual_assumed: true },
+    history: [{ role: 'user', content: 'vou cortar no dia que cai meu pagamento' }, { role: 'assistant', content: 'Consigo te atender sim! Ainda tenho alguns horários para Corte de cabelo + Sobrancelha Masculina (aproximadamente 60 min). Você prefere de manhã ou à tarde?' }, { role: 'user', content: 'Da manhã' }, { role: 'assistant', content: 'No período da manhã: 10:50, 11:00. Qual você prefere?' }],
+    ai: { intent: 'book', reply: 'Certo.', updates: { time: '10:50' } }, contexto: ctxCliente('Carlos Teste'),
+    vagas: { [dia1]: ['10:50', '11:00'] } })
+  checar('105 a oferta nomeou corte + sobrancelha e ele escolheu o horário: reserva os dois', reservou(r) && r.chamadas.some((x: any) => x.alvo === 'create_public_booking_v15' && /Sobrancelha/.test(x.args?.p_service_name)), r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

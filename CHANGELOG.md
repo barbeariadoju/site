@@ -1,3 +1,41 @@
+## 29.328.0 — Varredura da semana 24-31/10: 6 correções (Manoel, Carlos ×2, Aletéia, Ana, "satisfeito")
+
+Varredura dos 7 dias, pedida pelo Juliano em 31/10: 52 conversas com mensagem de cliente. As correções dos dias 24,
+27, 28, 29 e 30 (v29.304-325) não entram de novo. Ficaram 6 erros que ninguém tinha visto:
+
+- **Manoel (30/10, 10h43) — cobrança errada.** "Teria vaga para barba e pé do cabelo" virou Corte + Barba Express
+  (75 min, R$ 80), porque o "cabelo" de "pé do cabelo" contava como pedido de corte. "Eu não irei cortar" ouviu
+  "obrigado por avisar" (despedida). Depois, no "Só irei fazer barba e pé do cabelo", a JuIA reservou o mesmo combo.
+  O atendimento foi concluído por R$ 80, quando Barba Express + Pezinho dá R$ 55. Agora o `normalize` lê "pé do
+  cabelo / pé da nuca / pezim" como pezinho. Pezinho sem corte na frase, ou "não vou cortar" no meio de um pedido em
+  andamento, tira o corte (o combo "Corte + X" vira o X) e o pedido segue. Cenários 102a/b.
+- **Carlos Rodrigues (30/10, áudio).** "eu vejo pra gente tentar marcar pra semana que vem… quarta-feira, quarta, seis
+  horas consegue" ouviu "Fica combinado assim". O "semana que vem" e o "vou ver" ligaram o detector de desistência,
+  e a hora por extenso não era lida. Agora "seis horas" e "seis e meia" viram horário (de 2 a 12; "uma hora" fica de
+  fora, porque é prazo). Dia da semana escolhido não é desistência e, se o modelo não agir, a JuIA consulta a agenda
+  sozinha. Cenário 103.
+- **Aletéia (30/10, 15h23).** Com 17:25 oferecido, "Tem mais cedo" virou "no período da manhã não tenho", e "Esse
+  horário fica tarde. Sem problemas." virou pedido de TARDE (lista de terça à tarde). "Mais cedo/mais tarde" e "fica
+  tarde/tarde demais" saíram do `detectPeriod`. "Horário fica tarde… sem problemas" passa a ser desistência educada.
+  Quando a lista volta só com o horário já oferecido, a resposta é "mais cedo não tenho: o primeiro horário livre é
+  17:25". Cenários 104a/b.
+- **Carlos do risquinho (30/10, 14h01).** A JuIA ofereceu "Corte de cabelo + Sobrancelha Masculina + Freestyle
+  (risquinho) (aproximadamente 75 min)", ele escolheu manhã e 10:50, e a reserva saiu só com o corte (45 min,
+  R$ 50). Serviço que a própria oferta nomeou, aceito pela escolha do horário e sem "só"/"sem", agora conta como
+  escolha dele (`aceitosNaOferta`, na separação do serviço suposto e na trava única). Cenário 105. **A reserva dele
+  de sexta 06/11 10:50 continua só com o corte**: o Juliano decide se ajusta.
+- **Ana (30/10, 16h27, `whatsapp-webhook`).** No convite de retorno ela respondeu "1 — Corte" e depois "Amanhã" em
+  vez de 1/2/3. O convite saiu do caminho sem passar o serviço, e a JuIA perguntou "É corte ou corte + barba?" de
+  novo depois do horário. Quando o convite cede a vez à JuIA, o serviço já escolhido fica no estado.
+- **"Ficamos muito felizes que você saiu satisfeito"** ia também para mulheres (Tatiane, Ana). Agora é "que você
+  gostou do atendimento".
+- Já corrigido antes e conferido: cliente sem nome virando "cliente" (v29.312.0); Renan, "beleza, obrigado"
+  respondido com "você já está reservado" (24/10), coberto pela despedida da v29.319.0.
+- **Catálogo do WhatsApp:** o Raspar + Barba Express voltou à coleção Combos, mas o Corte + Lavagem + Barba Express
+  saiu ao salvar, mesmo com os dois marcados. O Web troca o item em vez de somar. Fica para o app do celular.
+- Simulador 261 ok (94 e 95a são de calendário, como antes). `npm test`: 380 unit + 95 e2e. **NO AR:** `ju-ia-site`
+  (verify_jwt true) e `whatsapp-webhook` (verify_jwt false), conferidos byte a byte com o repo.
+
 ## 29.327.0 — Pagamento antecipado para quem faltou, com a justificativa (caso Venilson)
 
 Venilson não veio ao Corte de 31/10 às 9h00: o Juliano mandou mensagem às 9h08 e ligou às 9h13, sem resposta. Ele

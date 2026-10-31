@@ -30,7 +30,7 @@ const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
 // "hoje", o dia pedido ficou vazio, a agenda foi pro próximo dia aberto sem explicar que segunda não
 // abre, e a resposta saiu "Consigo te atender amanhã sim!" a quem perguntou de HOJE. Abreviações de
 // WhatsApp viram a palavra inteira já na normalização, pra toda leitura do arquivo enxergar igual.
-const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque') // v29.281.0: vocabulário do Juliano (08/10/2026)
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque').replace(/\bpe d[oa] (cabelo|nuca)\b|\bpezim\b/g,'pezinho') // v29.328.0: "pé do cabelo" = pezinho (caso Manoel); v29.281.0: vocabulário do Juliano (08/10/2026)
 
 // v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
 //
@@ -406,8 +406,13 @@ const greetingNow=()=>{
 const semHorarioDeCompromisso=(text='')=>String(text).replace(/\b(exame|ultrassom|ultra\s?som|ultrason|consulta|medic[oa]|médic[oa]|dentista|reuni[aã]o|trabalho|aula|compromisso|prova|voo|[oô]nibus|entrevista|audi[eê]ncia)\b[^.!?\n]{0,25}?(?:[aà]s\s*)?\d{1,2}(?:[:hH.,;]\d{2}|\s*h(?:s|rs?|oras?)?\b)/gi,' ')
 // v29.293.0 — caso Felipe (13/10/2026, 17h53): "De tarde, de 5:30 em diante" recebeu três vezes "às 05:30
 // ainda estamos fechados". Abrimos 08:30: hora de 1 a 7 sem "manhã/madrugada" na frase é da tarde.
+// v29.328.0 — caso Carlos (30/10/2026, áudio): "quarta, seis horas consegue" — a transcrição escreve a hora por
+// extenso e nada casava. "seis horas", "seis e meia" viram 6:00/6:30 (e a regra de 1-7 = tarde vale igual).
+// "uma hora" fica de fora: "daqui uma hora" é prazo, não horário.
+const HORA_EXTENSO:Record<string,number>={duas:2,tres:3,quatro:4,cinco:5,seis:6,sete:7,oito:8,nove:9,dez:10,onze:11,doze:12}
+const horaPorExtenso=(text='')=>String(text).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\b(duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)(?: (horas?|hrs?)| e meia)\b/g,(m:string,w:string)=>`${HORA_EXTENSO[w]}:${/meia/.test(m)?'30':'00'}`)
 const extractRequestedTime=(text='')=>{
- const t=extractRequestedTimeCru(text)
+ const t=extractRequestedTimeCru(horaPorExtenso(text))
  const h=Number(t.slice(0,2))
  if(!t||h<1||h>7)return t
  if(/\b(manha|madrugada|cedo)\b/.test(String(text).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()))return t
@@ -450,7 +455,11 @@ const detectPeriod=(text:string)=>{
  // "Oi, boa tarde" com data/serviço ainda na memória da conversa (ex.: agendamento
  // anterior já concluído) disparava checagem de disponibilidade sozinho (caso real:
  // áudio "Oi! Boa tarde!" virou "Não encontrei horário nessa data...").
+ // v29.328.0 — caso Aletéia (30/10/2026, 15h24): com 17:25 oferecido hoje, "Tem mais cedo" virou "no período da
+ // manhã não tenho" e "Esse horário fica tarde" virou pedido de TARDE (lista de terça à tarde). "Mais cedo/mais
+ // tarde" é relativo ao horário oferecido, e "fica tarde / tarde demais" é queixa do horário — nenhum é período.
  const withoutGreeting=text.replace(/\bboa tarde\b/g,'').replace(/\bboa noite\b/g,'')
+  .replace(/\bmais (cedo|tarde)\b/g,'').replace(/\b(fica|ficaria|ficou|muito|meio|ja e|e muito) (muito |meio )?(tarde|cedo)( demais)?\b/g,'').replace(/\b(tarde|cedo) demais\b/g,'')
  // Palavras soltas usam \b (limite de palavra) em vez de includes() puro: "manha" também
  // aparece DENTRO de "amanha" (sem acento), então "tem horario amanha?" estava sendo lido
  // como pedido de manhã. \b garante que só casa a palavra inteira, não um pedaço de outra.
@@ -1264,8 +1273,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.276.0 — caso Samuel (07/10/2026, 06h23): o corte era suposição, mas a tintura ele tinha PEDIDO
  // ("pintar o cabelo preto"). A pergunta numerada do serviço zerava a lista inteira e a tintura sumiu da
  // conversa. Separa o que o cliente disse (fica) do que foi suposto (sai e vira a pergunta).
+ // v29.328.0 — caso Carlos (30/10/2026, 14h01): a JuIA ofereceu "horários para Corte de cabelo + Sobrancelha Masculina
+ // + Freestyle (risquinho) (aproximadamente 75 min)", ele escolheu "manhã" e "10:50", e a reserva saiu só com o corte
+ // (45 min, R$ 50): o que ele não tinha escrito saiu. Serviço que a JuIA nomeou na oferta, aceita com a escolha do
+ // horário e sem "só"/"sem", é escolha dele também. Vale aqui e na trava única da reserva.
+ const aceitosNaOferta=(d:{nomes:Set<string>,fams:Set<string>},lista:any[])=>{
+  if(/\bso (o |a )?(corte|cabelo|barba)\b|\bsem\b|\bnao quero\b/.test(normalizedQuestion))return d
+  const ofertas=(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='assistant').map((h:any)=>String(h.content||'')).filter((f:string)=>/\(aproximadamente \d+ min\)/.test(f)).join('\n')
+  for(const s of lista)if(ofertas.includes(s.name)){d.nomes.add(s.name);familiesOfService(s.name).forEach((f:string)=>d.fams.add(f))}
+  return d
+ }
  const ditosAteAqui=()=>{const d=servicosDitosPeloCliente([],next.servicos_escolhidos);for(const n of (next.ditos?.nomes||[]))d.nomes.add(n);for(const f of (next.ditos?.fams||[]))d.fams.add(f);return d}
- const separaSuposto=(lista:any[])=>{const d=ditosAteAqui();const ficam=lista.filter((s:any)=>!servicoNaoDito(s.name,d));return {ficam,temFamilia:ficam.some((s:any)=>familiesOfService(s.name).size>0)}}
+ const separaSuposto=(lista:any[])=>{const d=aceitosNaOferta(ditosAteAqui(),lista);const ficam=lista.filter((s:any)=>!servicoNaoDito(s.name,d));return {ficam,temFamilia:ficam.some((s:any)=>familiesOfService(s.name).size>0)}}
  const perguntaServicoMantendo=(ficam:any[])=>ficam.length
   ?`Anotei ${ficam.map((s:any)=>s.name).join(' + ')}. Vai fazer outro serviço junto?\n${OPCOES_SERVICO_CONVITE.map((o)=>`*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe for só ${ficam.length>1?'isso':'esse'}, é só me dizer.`
   :perguntaQualServico()
@@ -4135,13 +4154,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // cliente sinaliza que vai deixar pra depois, a resposta certa nao e insistir no dia de
  // hoje: e aceitar com simpatia e ja abrir a porta pro proximo agendamento (semana que vem,
  // outro dia). Sem hora nova na mensagem (senao e um pedido novo, nao desistencia).
- const desistenciaSignal=/\b(deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|semana que vem|proxima semana|outro dia|outra hora|depois eu (vejo|falo|marco|passo)|fica pra (proxima|outra)|mais pra frente|agora nao (da|consigo|vai dar)|nao vai dar hoje|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
+ // v29.328.0 (caso Aletéia): "Esse horário fica tarde. Sem problemas." é desistência educada do horário oferecido.
+ const desistenciaSignal=/\b(horario (fica|ficaria|ficou|e) (muito |meio )?(tarde|cedo)( demais)?\b.*\bsem problemas?|deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|semana que vem|proxima semana|outro dia|outra hora|depois eu (vejo|falo|marco|passo)|fica pra (proxima|outra)|mais pra frente|agora nao (da|consigo|vai dar)|nao vai dar hoje|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
  // v29.190.0 — "agora não consigo, tem horário amanhã pra corte?" caía aqui e a pergunta do amanhã
  // sumia ("Fica combinado assim"). Desistência com pergunta de agenda na mesma frase é pedido.
  // v29.193.0 — "quais dias você tem pra corte na próxima semana?" também caía aqui (availabilityAsk
  // só conhece "tem horário/vaga"): quem PERGUNTA por dias não está desistindo — segue pra varredura.
  const perguntaPorDias=/\b(quais? dias?|que dias?|qual dia|dias disponiveis|tem (vaga|horario|agenda)|algum (dia|horario))\b/.test(normalizedQuestion)
- if(desistenciaSignal&&!availabilityAsk&&!perguntaPorDias&&activelyBooking&&notSpecialFlow&&!requestedTime&&!requestedPeriod&&!simpleYes&&intent!=='book'){
+ // v29.328.0 — caso Carlos (30/10/2026): "vou ver… pra semana que vem… quarta-feira, quarta, seis horas consegue"
+ // ouviu "Fica combinado assim". Quem diz o dia da semana está escolhendo, não desistindo.
+ const escolheuDiaDaSemana=/\b(pode ser|consegue|da pra|marca|deixa|fica) (na |no |pra |para )?(segunda|terca|quarta|quinta|sexta|sabado)\b|\b(segunda|terca|quarta|quinta|sexta|sabado)(-feira)?,? (as |a )?\d{1,2}(:\d{2}|h)/.test(normalize(horaPorExtenso(message)))
+ // E o modelo, no meio do áudio comprido, devolveu "Certo." (intent other): com dia da semana e hora ditos, a JuIA
+ // mesma consulta a agenda. "Quarta semana que vem" dita no domingo/segunda/terça é a quarta da semana seguinte.
+ if(escolheuDiaDaSemana&&intent==='other'&&notSpecialFlow&&chosen.length&&!next.completed){
+  const wdsP=weekdayDatesMentioned(normalizedQuestion,today()),horaP=extractRequestedTime(message)
+  if(wdsP.length===1&&horaP){
+   let dataP=wdsP[0]
+   const inicioSemana=(iso:string)=>somarDiasIso(iso,-new Date(iso+'T12:00:00-03:00').getUTCDay())
+   if(/semana que vem|proxima semana/.test(normalizedQuestion)&&inicioSemana(dataP)===inicioSemana(today()))dataP=somarDiasIso(dataP,7)
+   next.date=dataP;next.time=horaP;intent='availability';handoff=false
+  }
+ }
+ if(desistenciaSignal&&!escolheuDiaDaSemana&&!availabilityAsk&&!perguntaPorDias&&activelyBooking&&notSpecialFlow&&!requestedTime&&!requestedPeriod&&!simpleYes&&intent!=='book'){
   const semanaQueVem=/semana que vem|proxima semana/.test(normalizedQuestion)
   const nome=hasCustomer&&customerFirstName!=='cliente'?`, ${customerFirstName}`:''
   reply=`Sem problema${nome}! 😊 Fica combinado assim. Se quiser já deixar seu horário garantido ${semanaQueVem?'na semana que vem':'pra outro dia'}, me diz o dia e o horário que ficam bons pra você (ex.: "terça às 14h") que eu reservo por aqui mesmo.`
@@ -4234,6 +4268,34 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }
  }
 
+ // v29.328.0 — caso Manoel (30/10/2026, 10h43): "barba e pé do cabelo" virou Corte + Barba Express (R$ 80, 75 min)
+ // — o "cabelo" de "pé do cabelo" contava como pedido de corte. "Eu não irei cortar" ouviu "obrigado por avisar"
+ // (despedida) e, no "Só irei fazer barba e pé do cabelo", reservou o mesmo combo, cobrado R$ 80 em vez de R$ 55.
+ // O normalize já troca "pé do cabelo" por "pezinho"; aqui, pezinho sem corte na frase ou "não vou cortar" no meio
+ // de um pedido em andamento tiram o corte (o combo "Corte + X" vira o X) e o pedido segue com o que sobrou.
+ {
+  const temCorteNaLista=chosen.some((c:any)=>familiesOfService(c.name).has('corte'))
+  const pezinhoSemCorte=/\bpezinho\b/.test(normalizedQuestion)&&!/\b(corte|cortar|cabelo|raspar|degrade)\b/.test(normalizedQuestion)
+  const recusouCorte=/\b(nao|sem)\s+((vou|irei|quero|preciso|vai|precisa)\s+)?(fazer\s+)?(o\s+)?(cortar|corte)\b/.test(normalizedQuestion)
+  const pedidoEmAndamento=Array.isArray(state?.services)&&state.services.length>0&&!upcomingBookings.length
+  if(temCorteNaLista&&(pezinhoSemCorte||(recusouCorte&&pedidoEmAndamento))){
+   const textosC=[...(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').map((h:any)=>normalize(String(h.content||''))),normalizedQuestion]
+   const sobra:any[]=[]
+   for(const c of chosen){
+    if(!familiesOfService(c.name).has('corte')){sobra.push(c);continue}
+    const resto=String(c.name).match(/^Corte\s*\+\s*(.+)$/i)?.[1]
+    if(resto)for(const s of findServicesLoose(resto))if(!familiesOfService(s.name).has('corte')&&!sobra.some((x:any)=>x.name===s.name))sobra.push(s)
+   }
+   const pezinho=findService('Pezinho (acabamento)')
+   if(pezinho&&textosC.some((t:string)=>/\bpezinho\b/.test(t))&&!sobra.some((x:any)=>x.name===pezinho.name))sobra.push(pezinho)
+   if(sobra.length){
+    chosen.splice(0,chosen.length,...sobra)
+    next.services=chosen.map((c:any)=>c.name)
+    next.servicos_escolhidos=next.services
+    if(recusouCorte&&!pezinhoSemCorte&&next.date&&!['book','availability'].includes(intent)){intent='availability';handoff=false}
+   }
+  }
+ }
  dropPezinhoSeTemCorte()
  dropBarbaRedundante()
  // v29.64.0 — caso Helder (22/08, 09h52): a JuIA ofereceu "13:45 — serve pra você?", ele
@@ -5216,6 +5278,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const ditos=servicosDitosPeloCliente(textosCliente,next.servicos_escolhidos)
    for(const n of (next.ditos?.nomes||[]))ditos.nomes.add(n)
    for(const f of (next.ditos?.fams||[]))ditos.fams.add(f)
+   aceitosNaOferta(ditos,chosen) // v29.328.0 (caso Carlos): o que a oferta nomeou e ele aceitou escolhendo o horário
    const ficam=chosen.filter((s:any)=>!servicoNaoDito(s.name,ditos))
    if(ficam.length<chosen.length){
     console.log('[ju-ia-site] trava do serviço: tirado o que o cliente não disse',JSON.stringify({antes:chosen.map((s:any)=>s.name),ficam:ficam.map((s:any)=>s.name)}))
@@ -5989,6 +6052,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // simulador pegou: sem o corte suposto do histórico, cliente antigo passou a cair nesse texto).
  if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/Sim[,!]/.test(reply)&&/está livre/.test(reply)){
   reply=reply.replace(/^(.*?)Sim[,!]\s*(?:✅\s*)?(.+?) às (\d\d:\d\d) está livre/s,(_m,antes,dia,hora)=>`${antes}Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
+ }
+ // v29.328.0 (caso Aletéia): "Tem mais cedo" (sem "?") e a lista volta só com o horário já oferecido — repetir
+ // "estes são os horários disponíveis: 17:25" soa como se ela não tivesse perguntado nada.
+ {
+  const soMesmo=reply.match(/estes são os horários disponíveis: (\d\d:\d\d)\. Qual você prefere\?/)
+  if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&soMesmo&&ultimaFalaJuIA.includes(soMesmo[1])){
+   reply=`${emDiaCap(String(next.date||today()))} mais cedo não tenho: o primeiro horário livre é ${soMesmo[1]}. Quer que eu reserve, ou prefere ver outro dia?`
+  }
  }
  if(pezinhoNota&&!handoff&&!/pezinho já vem incluso/i.test(reply)){
   reply+=`\n\n${pezinhoNota}`

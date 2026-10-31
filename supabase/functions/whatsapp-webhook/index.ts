@@ -1596,8 +1596,13 @@ Deno.serve(async (request: Request) => {
           const saveInviteState = async (value: any) => {
             await admin.from('whatsapp_conversations').update({ state: { ...invState, pending_invite: value }, updated_at: new Date().toISOString() }).eq('phone', phone)
           }
+          // v29.328.0 — caso Ana (30/10/2026, 16h27): respondeu "1 — Corte", depois "Amanhã" em vez de 1/2/3; o convite
+          // saiu do caminho e a JuIA, sem saber do corte, perguntou "É corte ou corte + barba?" de novo depois do horário.
+          // O serviço que ele já escolheu no convite fica no estado quando a JuIA assume.
           const dropInvite = async (inviteId: string, status: string) => {
-            await saveInviteState(null)
+            const servEscolhido = pendInvite?.stage !== 'servico' && pendInvite?.service_name ? String(pendInvite.service_name) : ''
+            if (servEscolhido) await admin.from('whatsapp_conversations').update({ state: { ...invState, pending_invite: null, services: [servEscolhido], servicos_escolhidos: [servEscolhido] }, updated_at: new Date().toISOString() }).eq('phone', phone)
+            else await saveInviteState(null)
             await admin.from('return_invites').update({ status, responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', inviteId)
           }
           if (pendInvite?.invite_id && !juiaAwaitingAnswer && (!quotedTarget || quotedTarget === 'invite')) {
@@ -2187,7 +2192,7 @@ Deno.serve(async (request: Request) => {
                   ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
                   : skipGoogleAsk
                     ? `Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\n${ofertaRetorno}`
-                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}`)
+                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}`)
                 : alreadyReviewed
                 // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
                 // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
@@ -2198,7 +2203,7 @@ Deno.serve(async (request: Request) => {
                 ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
-                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você saiu satisfeito.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
+                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
               await sendWhatsapp(phone, reply, true)
               // Marca que a etapa 2 saiu — é isso que permite interpretar um "1" seguinte
               // como "já avaliei" em vez de resposta solta.
