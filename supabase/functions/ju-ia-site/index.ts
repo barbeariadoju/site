@@ -5258,7 +5258,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // dispara push pro Juliano criar o agendamento no painel (que passa pelo guard).
       next.pending_prepay_policy={date:next.date,time:next.time,services:chosen.map((s:any)=>s.name).join(' + '),price}
       const nomeP=next.name?firstName(next.name):''
-      reply=`${nomeP?nomeP+', v':'V'}ou ser transparente com você 😊 Como os últimos horários reservados acabaram ficando sem atendimento, por aqui o agendamento agora é confirmado com pagamento antecipado pelo Pix. Funciona assim:\n✅ O Pix do valor do serviço garante o horário.\n⏰ Tolerância de atraso: 10 minutos.\n🔁 Precisou remarcar? Avisando até a véspera (24 horas antes), o valor vira crédito pra nova data, sem perder nada.\n⚠️ Se não vier e não avisar, o valor não é devolvido — ele cobre o horário que ficou reservado só pra você.\n\nTopa? Digite *1* pra combinar o pagamento, ou *2* se preferir deixar pra outra hora.`
+      // v29.327.0 (caso Venilson, 31/10/2026): o Juliano pediu a justificativa com todas as letras — um
+      // barbeiro, um cliente por vez: o horário reservado é um horário negado a outra pessoa, e a falta fica
+      // de prejuízo. Sem emoji (regra de 01/09). O crédito com 24 h de aviso é o que mantém a retenção justa.
+      reply=`${nomeP?nomeP+', v':'V'}ou ser transparente com você. Aqui eu atendo um cliente por vez, então cada horário reservado é um horário que eu deixo de oferecer a outra pessoa. Quando o cliente não vem, a cadeira fica parada e o prejuízo fica com a barbearia. Como já aconteceu de um horário seu ficar sem atendimento, o seu agendamento passa a ser confirmado com pagamento antecipado pelo Pix:\n- O Pix do valor do serviço garante o horário.\n- Tolerância de atraso: 10 minutos.\n- Precisou remarcar? Avisando com 24 horas de antecedência, o valor vira crédito para a nova data, sem perder nada.\n- Sem aviso e sem comparecimento, o valor não é devolvido, porque cobre o horário que ficou reservado só para você.\n\nPodemos seguir assim? Digite *1* para combinar o pagamento, ou *2* se preferir deixar para outra hora.`
       actions=[{label:'1 — Topo',message:'1'},{label:'2 — Agora não',message:'2'}]
       intent='other'
       handoff=false

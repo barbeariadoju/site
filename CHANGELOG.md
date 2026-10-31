@@ -1,3 +1,24 @@
+## 29.327.0 — Pagamento antecipado para quem faltou, com a justificativa (caso Venilson)
+
+Venilson não veio ao Corte de 31/10 às 9h00: o Juliano mandou mensagem às 9h08 e ligou às 9h13, sem resposta. Ele
+pediu: "esse cliente só marca pagando antecipado". Se o cliente tentar agendar, a mensagem deve explicar por quê:
+o horário dele é um horário que outra pessoa não pode marcar, e a falta dá prejuízo. Se marcar, paga antes, e se
+faltar perde o valor. Com educação e dentro do que a lei aceita.
+
+- **Banco:** Venilson entrou em `blocked_customers` com o motivo e a data. Com isso o `bookings_block_guard`
+  barra o agendamento pelo site, pela JuIA e pela porta. A JuIA apresenta a política e o "1" manda o pedido ao
+  Juliano. Nenhum código novo de bloqueio: é o trilho da v29.53.0.
+- **Texto da política (`ju-ia-site`):** passa a dar a justificativa logo de início. "Aqui eu atendo um cliente
+  por vez, então cada horário reservado é um horário que eu deixo de oferecer a outra pessoa. Quando o cliente
+  não vem, a cadeira fica parada e o prejuízo fica com a barbearia." Em seguida vêm as regras: o Pix garante o
+  horário, a tolerância é de 10 min e quem remarca com 24 h de aviso recebe o valor como crédito. Sem aviso, o
+  valor não é devolvido. Os emojis da versão anterior saíram (regra de 01/09). O motivo genérico "os últimos
+  horários" virou "já aconteceu de um horário seu ficar sem atendimento", que também vale para uma falta só.
+- **Não mudou:** o crédito com aviso de 24 h fica. É ele que mantém a retenção proporcional: o cliente avisado
+  com antecedência não perde nada, e o valor só fica retido na falta sem aviso.
+- Simulador: cenário 101 (bloqueado recebe a justificativa, sem emoji). 255 ok; 94 e 95a são de calendário,
+  como antes. ju-ia-site no ar conferido byte a byte com o repo, `verify_jwt` true.
+
 ## 29.326.0 — Dia cheio: empatia, lista de espera de verdade e radar de encaixe (casos Rodrigo, Ronaldo e Marcelo)
 
 Prints do Juliano (31/10/2026). Rodrigo, sexta 20h12: "Amanhã c conseguiria me salvar?" → "Amanhã não tenho

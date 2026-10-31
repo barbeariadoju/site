@@ -1425,6 +1425,13 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
 
 
 
-console.log(`
-${ok} ok, ${falhou} falharam`)
+// 101. v29.327.0 — caso Venilson (31/10): cliente bloqueado por falta recebe a política com a justificativa.
+{
+  const r = await turno({ msg: 'Quero marcar corte de cabelo às 10:00', state: { name: 'Venilson Teste', phone: '5511900000001', services: ['Corte de cabelo'], date: dia1, upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Certo.', updates: { time: '10:00' } }, contexto: ctxCliente('Venilson Teste'),
+    vagas: { [dia1]: ['10:00'] }, reservaErro: 'cliente_bloqueado' })
+  checar('101 bloqueado: justifica (um cliente por vez, prejuízo), Pix antecipado e perda do valor', /um cliente por vez/.test(r.reply) && /prejuízo/.test(r.reply) && /pagamento antecipado/.test(r.reply) && /não é devolvido/.test(r.reply) && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(r.reply), r.reply)
+}
+
+console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
