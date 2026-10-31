@@ -1543,6 +1543,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // trocar next.date pelo dia alternativo oferecido. É o que vai pro lead (date_interest): o
  // gatilho de "vaga reaberta" tem que olhar o dia que ele queria, não o que a JuIA sugeriu.
  let dataPedidaOriginal:string|null=null
+ // v29.326.0 (casos Rodrigo e Ronaldo): o cliente ficou na lista de espera (ou o Juliano vai ver o encaixe)
+ // — o lead sai do funil, sem o toque das 8h dizendo "hoje tenho alguns horários" por cima.
+ let esperaInscrita=false
  // v29.138.0 (caso João, 05/09/2026, 11h59): "Juliano consegue falar comigo?" recebeu
  // "Consigo te atender na terça sim!" e "N quero a inteligência artificial / N ta dando
  // certo" ficou sem resposta. Pedido explícito de gente é determinístico: uma frase curta,
@@ -4571,6 +4574,62 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // Dia fechado o dia inteiro: não é agenda cheia, é porta fechada — e não existe vaga pra
     // abrir num dia em que ninguém trabalha, então também não se oferece lista de espera.
     const fechadoNoDia=diaFechadoInfo(next.date)
+    // v29.326.0 — casos Rodrigo (30/10, 20h12: "Amanhã c conseguiria me salvar?"), Marcelo e Ronaldo (31/10).
+    // Três coisas, a pedido do Juliano:
+    // 1) Empatia em vez do "não tenho mais vaga" de cara.
+    // 2) A lista de espera era só uma frase ("te aviso assim que abrir vaga") que exigia o cliente
+    //    responder "quero entrar na lista" — ninguém respondia: zero inscrições de 14 a 31/10, com 8
+    //    recusas no período. Agora, pelo WhatsApp, a recusa JÁ inscreve (promessa vira registro), e o
+    //    Juliano recebe o push "Vaga aberta — tem gente esperando" quando alguém desmarca.
+    // 3) Radar de encaixe (encaixes_possiveis, migração 206): para hoje e os 2 próximos dias de atendimento, se existe buraco
+    //    onde o atendimento cabe apertado (até 15 min menor que a duração, nunca menos de 30 min), a JuIA
+    //    diz que vai ver e o Juliano recebe o push com os buracos. Quem encaixa é ele — o cliente não
+    //    recebe horário nenhum (a regra de 14/10 de não encostar no próximo cliente segue valendo).
+    const nomeE=customerFirstName||firstName(String(body?.whatsapp_name||''))
+    const nomeCompletoE=String(contextFullName||body?.whatsapp_name||'').trim()
+    const podeInscrever=!hojeEncerrado&&!fechadoNoDia.fechado&&String(verifiedPhone||'').replace(/\D/g,'').length>=10&&!!nomeCompletoE
+    const jaInscrito=next.espera_inscrita===waitlistOffer.date
+    // Janela do encaixe: hoje e os dois próximos dias de atendimento (do sábado, terça e quarta).
+    const limiteEncaixe=(()=>{let d=today(),n=0;while(n<2){d=new Date(Date.parse(d+'T12:00:00-03:00')+86400000).toISOString().slice(0,10);const w=new Date(d+'T12:00:00-03:00').getUTCDay();if(w!==0&&w!==1)n++}return d})()
+    const minEncaixe=Math.max(30,duration-15)
+    const {data:buracos}=(!jaDisseQueNaoTem&&podeInscrever&&next.date<=limiteEncaixe&&next.encaixe_pedido!==next.date)
+     ?await supabase.rpc('encaixes_possiveis',{p_date:next.date,p_min_minutes:minEncaixe})
+     :{data:null}
+    let inscrito=jaInscrito
+    if(podeInscrever&&!jaInscrito){
+     try{
+      const wlResp=await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/join-waitlist`,{
+       method:'POST',
+       headers:{'Content-Type':'application/json',Authorization:`Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`},
+       body:JSON.stringify({customer_name:nomeCompletoE,customer_phone:String(verifiedPhone).replace(/\D/g,''),preferred_date:waitlistOffer.date,preferred_period:['manha','tarde'].includes(String(waitlistOffer.period))?waitlistOffer.period:'qualquer',service_name:waitlistOffer.service_name,service_price:waitlistOffer.service_price,duration_minutes:waitlistOffer.duration_minutes,source:'whatsapp'}),
+      })
+      const wlData=await wlResp.json().catch(()=>({}))
+      inscrito=wlResp.ok&&Boolean(wlData?.ok)
+     }catch(error){console.error('[ju-ia-site] espera automatica',error)}
+     if(inscrito)next.espera_inscrita=waitlistOffer.date
+    }
+    const garantir=`Se preferir garantir, ${emDia(nextAvail.date)} ${tenhoSlots(nextAvail.slots)}.`
+    if(Array.isArray(buracos)&&buracos.length){
+     reply=`Poxa${nomeE?`, ${nomeE}`:''}, ${emDia(next.date)} a agenda já está cheia, mas vou ver aqui se consigo te encaixar e te dou retorno. ${garantir}`
+     next.encaixe_pedido=next.date
+     esperaInscrita=true
+     respostaConferidaNaAgenda=true // texto do código, com a agenda consultada: a trava do "consigo te encaixar" é pro modelo
+     const listaB=buracos.slice(0,3).map((b:any)=>`${String(b.inicio).slice(0,5)}–${String(b.fim).slice(0,5)} (${b.minutos} min)`).join(', ')
+     const psE=Deno.env.get('PUSH_WEBHOOK_SECRET'),urlE=Deno.env.get('SUPABASE_URL')
+     if(psE&&urlE)await fetch(`${urlE}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psE},body:JSON.stringify({custom:{title:`Pedido de encaixe ${emDia(next.date)}`,body:`${nomeE||verifiedPhone} quer ${serviceNames} (${duration} min) ${formatDateBR(next.date)}. Buracos: ${listaB}. A JuIA disse que você vai ver e dar retorno. Responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`encaixe-${verifiedPhone}-${next.date}`}})}).catch(()=>{})
+     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
+     next.pending_waitlist=null
+     actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
+    }else if(inscrito){
+     reply=jaDisseQueNaoTem
+      ?`Conferi de novo e ${emDia(waitlistOffer.date)} não sobrou nada para ${serviceNames}. Seu nome já está na lista de espera: se alguém desmarcar, te aviso na hora. ${garantir}`
+      :`Poxa${nomeE?`, ${nomeE}`:''}, ${emDia(waitlistOffer.date)} a agenda já está cheia${chosen.length>1?` para ${new Set(chosen.map((s:any)=>s.name)).size===1?`os ${chosen.length===2?'dois':chosen.length} atendimentos`:serviceNames}`:''}. Deixei seu nome na lista de espera: se alguém desmarcar, te aviso na hora. ${garantir}`
+     esperaInscrita=true
+     respostaConferidaNaAgenda=true
+     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
+     next.pending_waitlist=null
+     actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
+    }else{
     // v29.138.0 (pedido do Juliano, 05/09/2026): menos texto, foco em fechar. Diz que não
     // tem, dá o próximo dia com 3 horários e UMA pergunta. A lista de espera vira uma linha.
     reply=jaDisseQueNaoTem
@@ -4587,6 +4646,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     next.pending_waitlist=(hojeEncerrado||fechadoNoDia.fechado)?null:waitlistOffer
     dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
     actions=[...slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t})),...((hojeEncerrado||fechadoNoDia.fechado)?[]:[{label:'Entrar na lista de espera',message:'Quero entrar na lista de espera'}])]
+    }
    }else{
     reply=`Não encontrei horário disponível nas próximas semanas para esse atendimento. Posso te colocar na lista de espera pra ${formatDateBR(waitlistOffer.date)} e aviso assim que abrir uma vaga, ou prefere falar direto com a equipe?`
     // direct: aqui a pergunta É sobre a lista (não há dia alternativo) — um "sim" solto
@@ -5864,7 +5924,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // v28.34.0: vira agendamento de verdade — preserva a linha (resolution='booked') em
    // vez de apagar, pra o painel admin-leads.html conseguir calcular taxa de recuperação.
    await supabase.from('conversation_leads').update({resolved_at:new Date().toISOString(),resolution:'booked',updated_at:new Date().toISOString()}).eq('phone',verifiedPhone).then(()=>{})
-  }else if(isSpecialFlow||adiouLead){
+  }else if(isSpecialFlow||adiouLead||esperaInscrita){
    await supabase.from('conversation_leads').delete().eq('phone',verifiedPhone).then(()=>{})
   }else{
    // v29.102.0: mesma detecção de saudação isolada usada na resposta calorosa acima —

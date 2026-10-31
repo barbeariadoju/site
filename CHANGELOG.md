@@ -1,3 +1,39 @@
+## 29.326.0 — Dia cheio: empatia, lista de espera de verdade e radar de encaixe (casos Rodrigo, Ronaldo e Marcelo)
+
+Prints do Juliano (31/10/2026). Rodrigo, sexta 20h12: "Amanhã c conseguiria me salvar?" → "Amanhã não tenho
+mais vaga…" e, às 8h00 de sábado, o follow-up "hoje tenho alguns horários". Ronaldo (dois cortes): a mesma
+dupla contradição. Marcelo, 08h50: "conseguiria encaixar 1 corte?" → "Hoje não tenho mais vaga"; o Juliano
+apagou o incêndio à mão às 08h55, encaixou às 14:45 e prometeu avisar se alguém furasse. Pedido dele: "faltou
+empatia; em vez do não de cara, dizer que ia ver comigo e dar retorno" + "um sistema que avalie os buracos
+viáveis de encaixe apertado na agenda". E depois: "a JuIA não tá mais oferecendo lista de espera".
+
+- **A lista de espera era só uma frase.** "Se preferir, te aviso assim que abrir vaga" exigia o cliente
+  responder "quero entrar na lista". Ninguém respondia: **zero inscrições de 14 a 31/10, com 8 recusas no
+  período** (contado no banco). Agora, pelo WhatsApp e com nome conhecido, a recusa **já inscreve** (mesma
+  `join-waitlist`, que não duplica). Daí em diante roda o que já existia: alguém desmarca → push "Vaga aberta —
+  tem gente esperando" → oferta ao cliente → "sim" confirma. Texto: "Poxa, Ronaldo, hoje a agenda já está cheia.
+  Deixei seu nome na lista de espera: se alguém desmarcar, te aviso na hora. Se preferir garantir, na terça
+  (03/11) tenho…". Na insistência não inscreve de novo (`espera_inscrita`). Site sem telefone segue como antes.
+- **Radar de encaixe** — `encaixes_possiveis(data, minutos)` (migração 206): lista os buracos da agenda, maiores
+  primeiro, respeitando dia fechado, bloqueio e o limite de 12/dia. Não respeita o descanso nem a folga da
+  grade: é o que o encaixe apertado dribla, por isso **quem decide é o Juliano**. No sábado 31/10 mostrou
+  13:15–14:00 (45 min, barrado pela regra do descanso) e 09:45–10:15.
+- **JuIA com o radar:** para hoje e os 2 próximos dias de atendimento, se existe buraco onde o pedido cabe
+  apertado (até 15 min menor que a duração, nunca menos de 30), a resposta vira "Poxa, Rodrigo, amanhã a agenda
+  já está cheia, mas vou ver aqui se consigo te encaixar e te dou retorno. Se preferir garantir, …", e o
+  Juliano recebe o push "Pedido de encaixe" com os 3 maiores buracos. Ele também fica na lista de espera.
+  Contra a recomendação óbvia, **a JuIA não oferece o buraco ao cliente**: a decisão de 14/10 (não encostar
+  no horário do próximo cliente) continua valendo; o encaixe é humano.
+- Inscrito ou em análise de encaixe, o lead sai do funil — fim do "hoje tenho alguns horários" das 8h por cima.
+- **`whatsapp-lead-followup`:** o toque do dia seguinte conferia vaga de **30 min** para quem pediu corte (45)
+  ou dois cortes (90) — por isso dizia "hoje tenho horários" no dia que a JuIA tinha negado. Agora usa a soma
+  das durações do que ele pediu.
+- Simulador: 21 e 19a com a redação nova; cenários 100a (buraco → encaixe + push + lista), 100b (sem buraco →
+  só lista) e 100c (insistência não inscreve duas vezes). 254 ok; 94 e 95a seguem falhando por calendário
+  (sábado), como antes. `npm test`: 380 unit + 95 e2e.
+- **NO AR:** migração 206 via `apply_migration`; `ju-ia-site` v339 (`verify_jwt` true) e
+  `whatsapp-lead-followup` v59 (`verify_jwt` false), conferidos byte a byte com o repo depois do deploy.
+
 ## 29.325.0 — "Isso" à pergunta do serviço é o cliente escolhendo (caso Calvin)
 
 Caso Calvin (30/10/2026, 15h01), print do Juliano: "Podemos agendar para terça-feira as 16h?" → a JuIA

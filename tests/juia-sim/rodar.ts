@@ -67,6 +67,7 @@ type Cenario = {
   clubeCobre?: boolean // o banco cobriu o horário recém-criado (trg_zz_club_before_insert)
   clubeMotivo?: string // club_quote: motivo de não cobrir
   clubeVendas?: boolean // club_settings.vendas_abertas
+  buracos?: any[] // encaixes_possiveis: buracos da agenda onde um encaixe apertado caberia (v29.326.0)
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
   cancelado?: string // service_name devolvido pelo whatsapp_cancel_booking (padrão: Corte de cabelo)
   reservaErro?: string // create_public_booking_v15 recusa com esta mensagem (ex.: 'Horário indisponível')
@@ -105,6 +106,7 @@ const turno = async (c: Cenario) => {
     phone_change_booking_service: (a: any) => ({ data: [{ id: a.p_booking_id }], error: null }),
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
+    encaixes_possiveis: () => c.buracos || [],
   }
   const req = new Request('https://simulador.local/functions/v1/ju-ia-site', {
     method: 'POST',
@@ -322,7 +324,7 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   // Depois do fechamento a resposta correta é "Hoje já encerramos", que não cita serviço nenhum —
   // o que este cenário testa é que a BARBA saiu, e isso vale nas duas redações. Sem esta ressalva
   // o simulador falhava toda vez que fosse rodado à noite.
-  checar('19a resposta fala do corte, não do combo', !/Barba Express/.test(r1.reply) && (/já encerramos/.test(r1.reply) || /Corte de cabelo/.test(r1.reply)), r1.reply)
+  checar('19a resposta fala do corte, não do combo', !/Barba Express/.test(r1.reply) && (/já encerramos/.test(r1.reply) || /Corte de cabelo/.test(r1.reply) || /agenda já está cheia/.test(r1.reply)), r1.reply)
   const r2 = await turno({ msg: 'Otavio', state: { services: ['Corte de cabelo'], date: dia1, pending_waitlist: { date: hoje, period: null, service_name: 'Corte de cabelo', service_price: 40, duration_minutes: 45 } },
     history: [{ role: 'assistant', content: 'Para te colocar na lista de espera, preciso de seu nome.' }],
     ai: { intent: 'other', reply: 'Certo.', updates: { name: 'Otavio' } }, contexto: { completed_visits: 0 }, vagas: { [dia1]: ['09:00'] } })
@@ -347,9 +349,10 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   const r = await turno({ msg: 'Tem horário pra corte nesse dia?', state: { services: ['Corte de cabelo'] },
     ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Anderson Teste'),
     vagas: { [dia1]: [], [dia2]: ['09:00', '14:00', '17:30'] } })
-  checar('21 lotado: diz "não tenho mais vaga"', /não tenho mais vaga/.test(r.reply), r.reply)
+  // v29.326.0: com WhatsApp e nome, a recusa já inscreve na lista de espera e fala com empatia.
+  checar('21 lotado: diz "a agenda já está cheia"', /agenda já está cheia/.test(r.reply), r.reply)
   checar('21 lotado: não diz "não tenho horário"', !/não tenho horário/.test(r.reply), r.reply)
-  checar('21 lotado: oferece o próximo dia e a lista de espera', /09:00|14:00|17:30/.test(r.reply) && Boolean(r.state?.pending_waitlist), r.reply)
+  checar('21 lotado: oferece o próximo dia e já inscreve na lista de espera', /09:00|14:00|17:30/.test(r.reply) && r.saidas.some((s: any) => s.url.includes('join-waitlist')) && /Deixei seu nome na lista/.test(r.reply), r.reply)
 }
 
 // 22. Dia FECHADO o dia inteiro (viagem/folga no admin): "não estamos abertos" + próximo dia,
@@ -1397,5 +1400,31 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('99b "Isso" à pergunta do serviço, sem outro horário: reserva corte', reservou(r2) && !/Se quiser marcar/.test(r2.reply), r2.reply)
 }
 
-console.log(`\n${ok} ok, ${falhou} falharam`)
+// 100. v29.326.0 — casos Rodrigo (30/10, "Amanhã c conseguiria me salvar") e Ronaldo (31/10, dois cortes).
+{
+  // a) dia cheio, com buraco apertado: empatia, "vou ver se consigo te encaixar", push com os buracos, lista de espera
+  const r1 = await turno({ msg: 'Nesse dia c conseguiria me salvar', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Rodrigo Teste'),
+    vagas: { [dia1]: [], [dia2]: ['08:30', '11:15', '14:15'] }, buracos: [{ inicio: '13:15:00', fim: '14:00:00', minutos: 45 }] })
+  const pushE = r1.saidas.find((s: any) => s.url.includes('send-push') && /encaixe/i.test(JSON.stringify(s.body)))
+  checar('100a dia cheio com buraco: "vou ver se consigo te encaixar", sem "não tenho mais vaga"', /vou ver aqui se consigo te encaixar/.test(r1.reply) && !/não tenho mais vaga/.test(r1.reply) && /Rodrigo/.test(r1.reply), r1.reply)
+  checar('100a push com o buraco 13:15–14:00 pro Juliano', Boolean(pushE) && /13:15/.test(JSON.stringify(pushE?.body)), r1.saidas.map((s: any) => s.url))
+  checar('100a também entra na lista de espera', r1.saidas.some((s: any) => s.url.includes('join-waitlist')), r1.reply)
+  // b) dia cheio sem buraco (dois cortes, 90 min): lista de espera automática, sem prometer encaixe
+  const r2 = await turno({ msg: 'Vai ser dois cortes', state: { services: ['Corte de cabelo', 'Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Ronaldo Teste'),
+    vagas: { [dia1]: [], [dia2]: ['08:30', '10:45'] } })
+  checar('100b sem buraco: inscreve na lista e não promete encaixe', r2.saidas.some((s: any) => s.url.includes('join-waitlist')) && /Deixei seu nome na lista de espera/.test(r2.reply) && !/encaixar/.test(r2.reply), r2.reply)
+  // c) insistiu depois de inscrito: não inscreve de novo e lembra que já está na lista
+  const r3 = await turno({ msg: 'Sério? pra duas pessoas', state: { services: ['Corte de cabelo', 'Corte de cabelo'], espera_inscrita: dia1 },
+    history: [{ role: 'assistant', content: 'Poxa, Ronaldo, amanhã a agenda já está cheia. Deixei seu nome na lista de espera: se alguém desmarcar, te aviso na hora.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctxCliente('Ronaldo Teste'),
+    vagas: { [dia1]: [], [dia2]: ['08:30', '10:45'] } })
+  checar('100c insistência: não inscreve duas vezes', !r3.saidas.some((s: any) => s.url.includes('join-waitlist')) && /lista de espera/.test(r3.reply), r3.reply)
+}
+
+
+
+console.log(`
+${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

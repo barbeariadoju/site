@@ -398,7 +398,13 @@ Deno.serve(async (request: Request) => {
         if (diaDaConversa === hojeSP) {
           text = `${oi} Seu horário ainda não ficou reservado. Se quiser, me diz qual horário que eu reservo.`
         } else {
-          const { data: slotsHoje } = await admin.rpc('get_available_slots', { p_date: hojeSP, p_duration_minutes: 30 })
+          // v29.326.0 — casos Rodrigo e Ronaldo (31/10/2026, 08h00): a JuIA tinha dito na véspera que hoje
+          // estava cheio e este toque saiu "hoje tenho alguns horários" — conferia vaga de 30 min, e o
+          // pedido era corte (45) e dois cortes (90). Confere com a duração do que ele pediu.
+          const nomesPedidos = String(lead.service_interest || '').split(/\s*\+\s*/).filter(Boolean)
+          const { data: svcsPedidos } = nomesPedidos.length ? await admin.from('services').select('name, duration_minutes').in('name', nomesPedidos) : { data: [] }
+          const durPedida = nomesPedidos.reduce((t, n) => t + (Number((svcsPedidos || []).find((s: any) => s.name === n)?.duration_minutes) || 0), 0) || 45
+          const { data: slotsHoje } = await admin.rpc('get_available_slots', { p_date: hojeSP, p_duration_minutes: durPedida })
           const temHoje = Array.isArray(slotsHoje) && slotsHoje.length > 0
           const soBarba = /barba/i.test(lead.service_interest || '') && !/corte|cabelo/i.test(lead.service_interest || '')
           const feito = soBarba ? 'feito a barba' : 'cortado o cabelo'
