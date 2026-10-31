@@ -1,3 +1,37 @@
+## 29.330.0 — Sem a regra das 4 seguidas, hora real de término e buracos de encaixe no painel
+
+Pedidos do Juliano (31/10/2026). (1) "A regra dos 4 atendimentos pode excluir, deixa lotar, eu tô mais rápido,
+consigo descansar uns minutinhos entre um atendimento e outro, quero lotar esta agenda." (2) "Do Lucas Red Bull dá
+pra saber que horas estava previsto o término e que horas eu terminei?" (3) "Dependendo do corte eu faço em 30 min;
+se tiver 30 min entre um atendimento e outro dá pra encaixar. Queria algum mecanismo que mostrasse isso pra eu tentar
+encaixar, ou que sugerisse quando eu perguntasse."
+
+- **Por que a 13:15 de sábado apareceu (pergunta dele):** a regra do descanso (v29.185.0) só contava os
+  agendamentos pending/confirmed. Ao concluir o Anderson (10:28) e o Lucas (11:40), os dois saíram da conta, a
+  sequência 10:15 → 14:50 caiu de 5 para 3 e a 13:15 foi liberada. A regra "esquecia" o que já tinha sido feito.
+- **Regra das 4 seguidas desligada** (migração 208): a `descanso_ok` passa a responder sempre "pode". Ela estava
+  ligada em 8 funções (agenda, site, JuIA, painel, remarcações, senha digital), então desligar a regra num ponto só
+  libera as 8 juntas. A assinatura fica, para nada quebrar. **O limite de 12 atendimentos por dia continua.**
+- **Hora real de término:** `bookings.completed_at`, gravado pelo gatilho `trg_bookings_marca_conclusao` no
+  Concluir (o mesmo momento do comprovante). Antes só existia a previsão. Os concluídos de 31/10 foram preenchidos
+  com a hora do Concluir. Marcelo: previsto 10:05, terminou 09:55. Anderson: previsto 11:00, terminou 10:28. Lucas:
+  previsto 12:30, terminou 11:40, ou seja, 50 min de cadeira livre que ninguém via. No cartão da Agenda aparece, em
+  verde, "terminou 11:40 · 50 min antes".
+- **Buracos na Agenda do painel:** os espaços livres de 30 min ou mais (`admin_encaixes`, só admin) entram na lista
+  do dia, na ordem dos horários, como os bloqueios. São verdes, com "Livre · 45 min / cabe um corte" (30: corte
+  rápido ou barba; 45: corte; 90: combo) e o botão **Encaixar**, que abre o Novo agendamento com o dia e a hora
+  preenchidos. Atendimento concluído sai da conta: quem termina antes abre o buraco na hora.
+- **Assistente do painel (`ju-ia-admin`):** passa a receber os buracos de hoje e dos próximos 3 dias de atendimento,
+  a lista de espera de cada dia e a hora real de término de hoje. Perguntado "onde cabe um encaixe?", responde com
+  dia, horário, minutos, o que cabe e quem da lista de espera chamar.
+- Fica como estava: a JuIA do WhatsApp **não oferece o buraco apertado ao cliente** (só avisa o Juliano pelo push
+  "Pedido de encaixe", v29.326.0). Com a regra do descanso desligada, horários antes barrados por ela agora aparecem
+  normalmente para o cliente.
+- e2e novo: `admin-agenda-buracos-encaixe.spec.js` (buraco na ordem certa e o Encaixar preenche a hora). `npm test`:
+  380 unit + 96 e2e. Cache: `admin-v15-4-agenda.js`, `admin-v15-4-core.js` e `06-admin-reforma.css` em 29.330.0;
+  `ADMIN_VERSION`/`admin-version.json` 29.330.0.
+- **NO AR:** migração 208; `ju-ia-admin` conferido byte a byte com o repo.
+
 ## 29.329.0 — Cliente que faltou: política de falta com educação, nunca "horário garantido" (caso Venilson)
 
 Print do Juliano (31/10/2026). O horário do Venilson era às 09:00. O Juliano mandou mensagem e ligou, sem resposta, e

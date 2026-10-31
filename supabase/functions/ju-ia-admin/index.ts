@@ -88,6 +88,19 @@ Deno.serve(async (req) => {
   const completedTodayRevenue=completedTodayRows.reduce((a:number,x:any)=>a+Number(x.service_price||0)+Number(x.products_price||0),0)
   const completedTodayServiceCount=completedTodayRows.reduce((a:number,x:any)=>a+String(x.service_name||'').split('+').map((s:string)=>s.trim()).filter(Boolean).length,0)
   const completedTodayClients=new Set(completedTodayRows.map((x:any)=>phone(x.customer_phone))).size
+  // v29.330.0 (pedido do Juliano, 31/10/2026): "um mecanismo que mostrasse [os buracos de 30 min] pra eu tentar
+  // encaixar, ou que sugerisse quando eu perguntasse". Buracos de 30+ min de hoje e dos próximos 3 dias de
+  // atendimento (encaixes_possiveis, migração 206), quem está na lista de espera de cada dia e a hora real de
+  // término dos concluídos de hoje (completed_at, migração 208).
+  const diasEncaixe:string[]=[]
+  for(let i=0;diasEncaixe.length<4&&i<10;i++){const d=addDays(today,i);const wd=new Date(d+'T12:00:00Z').getUTCDay();if(wd!==0&&wd!==1)diasEncaixe.push(d)}
+  const [encaixesPorDia,{data:espera},{data:conclusoes}]=await Promise.all([
+    Promise.all(diasEncaixe.map(async(d)=>{const {data}=await admin.rpc('encaixes_possiveis',{p_date:d,p_min_minutes:30});return {date:d,gaps:(data||[]).map((g:any)=>({from:String(g.inicio).slice(0,5),to:String(g.fim).slice(0,5),minutes:g.minutos}))}})),
+    admin.from('waitlist').select('customer_name,preferred_date,preferred_period,service_name,status').in('preferred_date',diasEncaixe).eq('status','esperando'),
+    admin.from('bookings').select('customer_name,start_time,end_time,completed_at').eq('booking_date',today).eq('status','completed'),
+  ])
+  const encaixes=encaixesPorDia.map((d)=>({...d,waitlist:(espera||[]).filter((w:any)=>w.preferred_date===d.date).map((w:any)=>({name:w.customer_name,service:w.service_name,period:w.preferred_period}))}))
+  const terminosHoje=(conclusoes||[]).filter((x:any)=>x.completed_at).map((x:any)=>({name:x.customer_name,planned_end:String(x.end_time).slice(0,5),finished_at:new Date(x.completed_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'})}))
   const snapshot={
     date:today,
     today:{
@@ -97,12 +110,13 @@ Deno.serve(async (req) => {
     },
     last_30_days:{completed:completed30.length,revenue:revenue30,average_ticket:completed30.length?revenue30/completed30.length:0,no_shows:noShows.filter((x:any)=>x.booking_date>=addDays(today,-30)).length},
     customers:{total:profiles.length,inactive_over_30_days:inactive,birthdays_next_30_days:birthdays,repeat_no_shows:repeatNoShows},
+    encaixes,finished_today:terminosHoje,
     upcoming:active.filter((x:any)=>x.booking_date>=today).slice(0,35).map((x:any)=>({date:x.booking_date,time:String(x.start_time).slice(0,5),name:x.customer_name,services:x.service_name,status:x.status,value:Number(x.service_price||0)+Number(x.products_price||0)}))
   }
 
   let answer=''
   if (openaiKey) {
-    const instructions=`Você é JuIA, assistente interna de gestão da Barbearia do Ju, em Bragança Paulista. Responda em português do Brasil, de forma objetiva, clara e prática. Use somente os dados fornecidos. Não invente números. Quando houver nomes de clientes, seja discreta. Sugira no máximo 3 ações prioritárias. Valores em reais. Juliano trabalha sozinho e a meta diária atual é R$ 380. Não diga que enviou mensagens ou executou ações; apenas proponha ações.`
+    const instructions=`Você é JuIA, assistente interna de gestão da Barbearia do Ju, em Bragança Paulista. Responda em português do Brasil, de forma objetiva, clara e prática. Use somente os dados fornecidos. Não invente números. Quando houver nomes de clientes, seja discreta. Sugira no máximo 3 ações prioritárias. Valores em reais. Juliano trabalha sozinho e a meta diária atual é R$ 380. Não diga que enviou mensagens ou executou ações; apenas proponha ações. Encaixe: quando ele perguntar de encaixe, buraco, janela ou "onde cabe alguém", use "encaixes" (buracos livres de 30 min ou mais, hoje e nos próximos dias de atendimento): diga dia, das X às Y, quantos minutos e o que cabe (30 min: corte rápido ou barba; 45: corte; 90: combo), e quem da lista de espera daquele dia ele pode chamar. "finished_today" compara a previsão com a hora em que ele concluiu cada atendimento.`
     const response=await fetch('https://api.openai.com/v1/responses',{
       method:'POST',
       headers:{'Authorization':`Bearer ${openaiKey}`,'Content-Type':'application/json'},

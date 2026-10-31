@@ -25,14 +25,30 @@
     const faixa=x.all_day?'Dia inteiro':`${String(x.start_time||'').slice(0,5)}–${String(x.end_time||'').slice(0,5)}`;
     return `<div class="agenda-block-inline${x.all_day?' is-all-day':''}"><span class="agenda-block-inline-time">${faixa}</span><span class="agenda-block-inline-text"><strong>Bloqueado</strong><small>${esc(x.reason||'Bloqueio administrativo')}</small></span><button type="button" data-delete-block="${x.id}">Liberar</button></div>`;
   }
+  // v29.330.0 (pedido do Juliano, 31/10/2026): "dependendo do corte eu faço em 30 min; se tiver 30 min entre um
+  // atendimento e outro dá pra encaixar — queria algum mecanismo que mostrasse isso". Os buracos de 30 min ou mais
+  // (admin_encaixes, migração 208) entram na lista do dia, na ordem dos horários, como os bloqueios. Atendimento
+  // concluído sai da conta: quem termina antes abre o buraco na hora (o Lucas, previsto até 12:30, foi concluído
+  // às 11:40). "Encaixar" abre o Novo agendamento com o dia e a hora preenchidos.
+  async function loadEncaixes(){
+    if(selectedDate<isoLocal(new Date()))return [];
+    try{const {data,error}=await sb.rpc('admin_encaixes',{p_date:selectedDate,p_min_minutes:30});if(error)throw error;return Array.isArray(data)?data:[]}
+    catch(e){console.error('[agenda] admin_encaixes',e);return []}
+  }
+  function gapDayRow(g){
+    const ini=String(g.inicio||'').slice(0,5),fim=String(g.fim||'').slice(0,5),min=Number(g.minutos)||0;
+    const cabe=min>=90?'cabe um combo':min>=45?'cabe um corte':'corte rápido ou barba';
+    return `<div class="agenda-gap-inline"><span class="agenda-gap-inline-time">${ini}–${fim}</span><span class="agenda-block-inline-text"><strong>Livre · ${min} min</strong><small>${cabe}</small></span><button type="button" data-encaixar="${ini}">Encaixar</button></div>`;
+  }
   async function loadAgendaDay(){
     setText('agenda-date-title',formatDate(selectedDate));
     const rows=allBookings.filter(x=>x.booking_date===selectedDate).sort((a,b)=>a.start_time.localeCompare(b.start_time)),list=$('agenda-day-list');
-    const blocks=await loadBlocks();
-    const itens=[...rows.map(x=>({t:String(x.start_time||''),html:bookingCard(x)})),...blocks.map(x=>({t:x.all_day?'':String(x.start_time||''),html:blockDayRow(x)}))].sort((a,b)=>a.t.localeCompare(b.t));
+    const [blocks,gaps]=await Promise.all([loadBlocks(),loadEncaixes()]);
+    const itens=[...rows.map(x=>({t:String(x.start_time||''),html:bookingCard(x)})),...blocks.map(x=>({t:x.all_day?'':String(x.start_time||''),html:blockDayRow(x)})),...(blocks.some(x=>x.all_day)?[]:gaps.map(g=>({t:String(g.inicio||''),html:gapDayRow(g)})))].sort((a,b)=>a.t.localeCompare(b.t));
     list.innerHTML=itens.length?itens.map(i=>i.html).join(''):'<div class="admin-empty">Nenhum agendamento nesta data.</div>';
     bindBookingActions(list);
     list.querySelectorAll('[data-delete-block]').forEach(b=>b.onclick=()=>deleteBlock(b.dataset.deleteBlock));
+    list.querySelectorAll('[data-encaixar]').forEach(b=>b.onclick=()=>{try{sessionStorage.setItem('bdj-prefill-booking',JSON.stringify({date:selectedDate,time:b.dataset.encaixar,notes:'Encaixe'}))}catch(e){}location.href='admin-agendamento.html'});
   }
   // Card colapsado por padrão (só resumo: hora/nome/status/total) — pedido do Juliano
   // depois que os campos de preço/pagamento (v28.22-28.23) deixaram o card alto demais,
@@ -64,7 +80,15 @@
     // v29.274.9 — o selo do resumo diz a forma de verdade. Pago no crédito pelo Checkout aparecia "Pix ✓" e confundiu o Juliano (Marcelo, 08/10): crédito cai no PagBank em outro prazo.
     const miniForma=x.prepay_key==='checkout'?(paidOnline?({pix:'Pix',credito:'Crédito',debito:'Débito'}[paidOnline.method]||'Pago'):'Pago'):'Pix';
     const prepayMini=x.prepay_declared_at?`<span class="admin-prepay-dot" title="${x.prepay_confirmed_at?(onlineVia?`Pago online · ${onlineVia}`:'Pix confirmado'):'Pix antecipado declarado'}">${x.prepay_confirmed_at?`${miniForma} ✓`:'Pix'}</span>`:'';
-    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}${x.end_time?`<small class="admin-booking-fim" title="Previsão de término">até ${String(x.end_time).slice(0,5)}</small>`:''}</span><span class="admin-booking-summary-main"><strong><span class="admin-nome">${esc(x.customer_name)}</span>${prepayMini}${x.club_subscription_id?' <span class="admin-clube-mini" title="Visita coberta pelo Clube do Ju">Clube</span>':''}${x.channel==='porta'?` <span class="admin-clube-mini" title="Chegou sem agendamento e pegou a senha digital pelo QR da parede (v29.241.0)">Porta${x.senha_numero?` · senha ${x.senha_numero}`:''}</span>`:''}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${benefitChipsHtml(x)}${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">Número sem WhatsApp: confira antes, pode ser trote</small>':''}${x.alerta_trote?`<small class="admin-sem-whats" title="Rastro anti-trote (v29.307.0): este agendamento veio da mesma internet de uma falta, de um cliente bloqueado ou de uma tentativa barrada. IP de celular é compartilhado: é aviso, não prova.">${esc(x.alerta_trote)}</small>`:''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+    return `<article class="admin-booking-card ${statusClass(x.status)}" data-booking-card="${x.id}"><button type="button" class="admin-booking-summary" data-toggle-card aria-expanded="false"><span class="admin-booking-time-mini">${x.start_time.slice(0,5)}${x.end_time?`<small class="admin-booking-fim" title="Previsão de término">até ${String(x.end_time).slice(0,5)}</small>`:''}${terminoRealHtml(x)}</span><span class="admin-booking-summary-main"><strong><span class="admin-nome">${esc(x.customer_name)}</span>${prepayMini}${x.club_subscription_id?' <span class="admin-clube-mini" title="Visita coberta pelo Clube do Ju">Clube</span>':''}${x.channel==='porta'?` <span class="admin-clube-mini" title="Chegou sem agendamento e pegou a senha digital pelo QR da parede (v29.241.0)">Porta${x.senha_numero?` · senha ${x.senha_numero}`:''}</span>`:''}</strong>${visitBadgeHtml(x)}${loyaltyBadgeHtml(x)}<small>${esc(x.service_name)}</small>${typeof styleReminderHtml==='function'?styleReminderHtml(x):''}</span><span class="admin-status ${statusClass(x.status)}">${statusLabel(x.status)}</span><span class="admin-booking-summary-total">${total}</span><span class="admin-booking-chevron">⌄</span></button><div class="admin-booking-detail"><div class="admin-booking-detail-inner"><small class="admin-services-full">${esc(x.service_name)}</small><small>${formatPhone(x.customer_phone)} • até ${x.end_time?.slice(0,5)||''} • ${x.duration_minutes} min</small>${benefitChipsHtml(x)}${x.whatsapp_unreachable_at?'<small class="admin-sem-whats" title="A confirmação do agendamento não entrou: o WhatsApp respondeu que este número não existe (v29.208.0, anti-trote). Pode ser trote ou cliente sem WhatsApp: ligue antes.">Número sem WhatsApp: confira antes, pode ser trote</small>':''}${x.alerta_trote?`<small class="admin-sem-whats" title="Rastro anti-trote (v29.307.0): este agendamento veio da mesma internet de uma falta, de um cliente bloqueado ou de uma tentativa barrada. IP de celular é compartilhado: é aviso, não prova.">${esc(x.alerta_trote)}</small>`:''}${prepay}${priceSummaryHtml(x)}${email}${productsHtml(x)}${x.notes?`<em>${esc(x.notes)}</em>`:''}<div class="admin-booking-actions">${actionsHtml}</div></div></div></article>`
+  }
+  // v29.330.0 — hora real de término (completed_at = hora do Concluir) ao lado da previsão: "terminou 11:40 · 50 min antes".
+  function terminoRealHtml(x){
+    if(x.status!=='completed'||!x.completed_at||!x.end_time)return '';
+    const fim=new Date(x.completed_at),hhmm=fim.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+    const [h,m]=String(x.end_time).split(':').map(Number),[rh,rm]=hhmm.split(':').map(Number),dif=(h*60+m)-(rh*60+rm);
+    const rot=dif>=5?` · ${dif} min antes`:dif<=-5?` · ${-dif} min depois`:'';
+    return `<small class="admin-booking-fim is-real" title="Hora em que você concluiu">terminou ${hhmm}${rot}</small>`;
   }
   function bookingCard(x){return bookingCardHtml(x,bookingActionsHtml(x))}
   // v29.175.0: as ações viraram função própria — a tela Hoje coloca a pergunta "já cortou aqui antes?" (do antigo Modo Atendimento) na frente das mesmas ações.
