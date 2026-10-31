@@ -1,3 +1,42 @@
+## 29.332.0 — Durações mais curtas: corte 40, Barba Express 25, Corte + Lavagem 45
+
+Pedido do Juliano (31/10/2026): "sobrancelha pode deixar 15 minutos, barba express 25 e corte 40 [...] pode ajustar
+os tempos de acordo com a minha sugestão, deixe corte com lavagem para 45 mins". Mais cedo ele tinha dito para manter
+e reduzir só "quando a gente estiver muito eficiente". Mudou de ideia no mesmo dia, depois que saíram a regra das 4
+seguidas e o limite de 12.
+
+- **Banco** (migração 210), só a tabela de serviços. As reservas já marcadas ficam com a duração que tinham.
+
+  | Serviço | Era | Agora |
+  |---|---|---|
+  | Corte de cabelo | 45 | 40 |
+  | Corte + Lavagem | 50 | 45 |
+  | Barba Express | 30 | 25 |
+  | Sobrancelha | 15 | 15 |
+  | Corte + Barba Express | 75 | 65 |
+  | Corte + Lavagem + Barba Express | 80 | 70 |
+  | Raspar a cabeça + Barba Express | 70 | 65 |
+  | Corte + Barba na navalha com toalha quente | 85 | 80 |
+
+  Os combos seguem a soma das partes. Ele não citou os combos; foi decisão minha, para nenhum combo ficar mais
+  comprido que os serviços separados.
+- **Site:** catálogo do /agendar/ (`services-catalog-v7.js`), tabelas de /servicos.html e /precos/, páginas de
+  serviço (corte, social, degradê, lavagem, Barba Express, combos), o artigo de quanto custa o corte, o guia da
+  barba, a home e as perguntas frequentes (texto e schema). A troca foi por script, amarrando cada duração ao serviço
+  que vem antes dela. Os casos ambíguos ficaram para a mão: o card do combo da navalha no /agendar/ e o "Corte
+  masculino (visão geral)" do /servicos.html. /precos/setembro/ não mudou, porque é o arquivo histórico.
+- **Teste novo** em `tabelas-de-preco.spec.js`: as durações das tabelas de /servicos.html e /precos/ são conferidas
+  contra o catálogo. Foi esse teste que pegou a linha da visão geral.
+- **Bug achado no caminho:** o "Encaixar" da Agenda (29.330.0) às vezes abria o Novo agendamento com a hora em
+  branco. A tela inicia duas vezes (renderAuth duplo, 29.198.0): a 1ª passada consumia o pré-preenchimento e a 2ª
+  zerava a hora. O pré-preenchido agora vira rascunho na hora, e a 2ª passada o recupera. Isso vale também para o
+  "Novo retorno". O e2e do encaixe, que falhava 5 de 5 na repetição, passou 8 de 8.
+- **Fica para o Juliano:** as descrições do catálogo do WhatsApp citam duração ("Cerca de 1h20" no Corte + Lavagem
+  + Barba Express). São editadas à mão no app.
+- `npm test`: 422 unit + 96 e2e. Cache: `services-catalog-v7.js` (11 páginas), `admin-v15-4-agendamento.js` e
+  `admin-v15-4-core.js` em 29.332.0; `ADMIN_VERSION` 29.332.0.
+- **NO AR:** migração 210.
+
 ## 29.331.0 — Sem o limite de 12 atendimentos por dia
 
 Pedido do Juliano (31/10/2026): "a regra dos 12 pode excluir também, vamos deixar lotar". Mesmo dia em que saiu a

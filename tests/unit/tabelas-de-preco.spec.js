@@ -24,6 +24,22 @@ const linhas = (arquivo) => [...fs.readFileSync(new URL(`../../${arquivo}`, impo
   }));
 const numero = (txt) => Number(String(txt).replace(/[^\d,]/g, '').replace(',', '.'));
 
+// v29.332.0 — durações novas (corte 40, Barba Express 25, Corte + Lavagem 45, combos pela soma): a duração escrita
+// na tabela também tem que bater com o catálogo.
+const duracaoCatalogo = Object.fromEntries([...fs.readFileSync(new URL('../../services-catalog-v7.js', import.meta.url), 'utf8')
+  .matchAll(/name:'([^']+)'[^}]*?duration:(\d+)/g)].map((m) => [m[1], Number(m[2])]));
+const minutos = (t) => { const h = t.match(/(\d+)h(\d*)/); return h ? Number(h[1]) * 60 + Number(h[2] || 0) : Number(t.replace(/\D/g, '')); };
+const duracoes = (arquivo) => [...fs.readFileSync(new URL(`../../${arquivo}`, import.meta.url), 'utf8')
+  .matchAll(/<div class="(?:price-)?item">([\s\S]*?)<\/div>/g)]
+  .map((m) => ({ nome: m[1].replace(/<small class="dur">[\s\S]*?<\/small>/, '').match(/<span class="nome">([\s\S]*?)<\/span>/)[1].replace(/<[^>]+>/g, '').trim(), dur: (m[1].match(/aproximadamente ([\dh]+(?: min)?)/) || [])[1] }))
+  .filter((i) => i.dur);
+describe.each(['servicos.html', 'precos/index.html'])('durações de %s', (arquivo) => {
+  it.each(duracoes(arquivo).map((i) => [i.nome, i]))('%s bate com o catálogo', (_, i) => {
+    const nome = doCatalogo(i.nome);
+    expect(minutos(i.dur)).toBe(duracaoCatalogo[nome]);
+  });
+});
+
 describe.each(['servicos.html', 'precos/index.html'])('tabela de preços de %s', (arquivo) => {
   const itens = linhas(arquivo);
   it('tem a tabela', () => expect(itens.length).toBeGreaterThan(15));
