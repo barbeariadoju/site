@@ -310,3 +310,14 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
     'Digite *2* para Insatisfeito',
   ].join('\n')
 }
+
+/**
+ * v29.337.0 (caso Bruno, 03/11/2026) — atendimento alterado depois do Concluir (serviço, valor ou
+ * pagamento): sai o cupom de novo, com o estado final, e sem a pesquisa 1/2 (ela já foi feita).
+ */
+export const montarMensagemComprovanteCorrigido = (d: DadosComprovante) =>
+  [
+    `${primeiroNome(d.clienteNome)}, segue o comprovante corrigido do seu atendimento. Por favor, desconsidere o anterior.`,
+    '',
+    montarCupom(d),
+  ].join('\n')

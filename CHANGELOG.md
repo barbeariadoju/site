@@ -1,3 +1,22 @@
+## 29.337.0 — Comprovante corrigido sai sozinho quando o atendimento muda depois do Concluir
+
+Caso Bruno (03/11/2026, 18h23). O Juliano concluiu como "Corte de cabelo" e trocou para "Corte + Barba Express"
+23 s depois. O banco ficou certo (R$ 80, Pix), mas o cliente já tinha recebido o cupom de R$ 50. O cupom corrigido
+foi mandado à mão, e o Juliano pediu que isso passasse a ser automático.
+
+- Migração 212: gatilho `trg_bookings_comprovante_corrigido` (BEFORE UPDATE em `bookings`). Ele dispara quando
+  um atendimento JÁ concluído, de hoje ou de ontem, muda em algum campo que aparece no cupom (serviço, valores,
+  pagamento, desconto, caixinha, cortesia, crédito, observação) e o cupom original já saiu. Carimba
+  `receipt_changed_at` e chama o `satisfaction-dispatch` com `{reenvio:true}`.
+- `satisfaction-dispatch`: espera 20 s e só envia se o carimbo não mudou. Três ajustes seguidos viram UM
+  comprovante, com o valor final. Usa a mesma janela de horário do Concluir e não refaz a pesquisa 1/2.
+  Texto: "segue o comprovante corrigido do seu atendimento. Por favor, desconsidere o anterior." + o cupom
+  (`montarMensagemComprovanteCorrigido` em `_shared/comprovante.ts`, com teste).
+- Os dados do cupom passaram para uma função só (`montarDados`), usada pelo envio normal e pelo reenvio.
+
+**Decidido contra o óbvio:** sem `updated_at` automático na tabela, comparar a data de alteração não serve de
+trava contra envio repetido. Por isso existe o carimbo próprio. Mudar horário ou anotação interna não reenvia nada.
+
 ## 29.336.0 — Caso Vanessa: "vou ver e retorno", "vou esperar" e "o cabelo está curto" são adiamento
 
 Print do Juliano (03/11/2026, 16h07-16h34). O lembrete do corte do Bernardo (04/11, 16:00) foi para a Vanessa. Ela

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montarCupom, montarMensagemComprovante, numeroComprovante, ehVendaSoDeProduto, primeiroNome } from '../../supabase/functions/_shared/comprovante.ts';
+import { montarCupom, montarMensagemComprovante, montarMensagemComprovanteCorrigido, numeroComprovante, ehVendaSoDeProduto, primeiroNome } from '../../supabase/functions/_shared/comprovante.ts';
 
 // v29.121.0 — o cupom não fiscal é o documento que o cliente guarda como prova do que pagou
 // (caso Wellington, 02/09/2026, que questionou os valores depois do atendimento). Erro de
@@ -308,6 +308,20 @@ describe('crédito pago a mais e observação para o cliente', () => {
   });
   it('nenhum emoji na mensagem', () => {
     const m = montarMensagemComprovante({ ...base, credito: 50, observacao: 'corte do Davi pago' });
+    expect(/\p{Extended_Pictographic}/u.test(m)).toBe(false);
+  });
+});
+
+// v29.337.0 (caso Bruno, 03/11) — atendimento alterado depois do Concluir: cupom de novo, sem pesquisa.
+describe('comprovante corrigido', () => {
+  const m = norm(montarMensagemComprovanteCorrigido({ ...base, clienteNome: 'Bruno', servicoNome: 'Corte + Barba Express', servicoValor: 80, pagamentoServico: 'pix' }));
+  it('avisa que é correção e traz o valor final', () => {
+    expect(m.startsWith('Bruno, segue o comprovante corrigido')).toBe(true);
+    expect(m).toContain('Corte + Barba Express — R$ 80,00');
+    expect(m).toContain('*Total: R$ 80,00*');
+  });
+  it('não refaz a pesquisa 1/2 e não tem emoji', () => {
+    expect(m).not.toContain('Digite *1*');
     expect(/\p{Extended_Pictographic}/u.test(m)).toBe(false);
   });
 });

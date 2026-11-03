@@ -1,7 +1,7 @@
 import '../_shared/sem-contato.ts' // v29.317.0: nunca contatar (no_contact_at)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { semEmoji } from '../_shared/sem-emoji.ts'
-import { montarMensagemComprovante, ehVendaSoDeProduto } from '../_shared/comprovante.ts'
+import { montarMensagemComprovante, montarMensagemComprovanteCorrigido, ehVendaSoDeProduto } from '../_shared/comprovante.ts'
 
 const headers={
   'Access-Control-Allow-Origin':'*',
@@ -23,6 +23,51 @@ const canonicalPhone=(value='')=>{
   if((digits.length===12||digits.length===13)&&digits.startsWith('55'))return digits
   if(digits.length===10||digits.length===11)return `55${digits}`
   return ''
+}
+
+// v29.337.0 — os dados do cupom saem de um lugar só: o envio normal e o reenvio corrigido
+// (atendimento alterado depois do Concluir, caso Bruno 03/11) montam o mesmo comprovante.
+// deno-lint-ignore no-explicit-any
+const montarDados=(bookingId:string,booking:any,hojeSP:string)=>{
+  const produtosBrutos=Array.isArray(booking?.selected_products)?booking.selected_products:[]
+  return {
+    bookingId,
+    clienteNome:String(booking?.customer_name||'Cliente'),
+    data:String(booking?.booking_date||''),
+    // v29.90.0 (caso Walter, 29/08) — comprovante segurado pelo horário de silêncio saía
+    // "hoje às 19:30" na manhã SEGUINTE. O dia certo vem do booking_date contra hoje em SP.
+    hoje:hojeSP,
+    hora:String(booking?.start_time||'').slice(0,5),
+    servicoNome:String(booking?.service_name||'Atendimento'),
+    // v29.162.0 — desconto manual (migration 147): service_price já está líquido, então o
+    // cupom recebe o preço CHEIO (líquido + desconto) e a linha "Desconto" fecha a conta.
+    servicoValor:Number(booking?.service_price||0)+Number(booking?.discount_amount||0),
+    produtos:produtosBrutos.map((p:Record<string,unknown>)=>({nome:String(p?.name||'Produto'),valor:Number(p?.price||0)})),
+    descontoFidelidade:Number(booking?.loyalty_discount||0),
+    desconto:Number(booking?.discount_amount||0),
+    // v29.209.0 — presente de aniversário / indicação saem com o nome no cupom.
+    descontoMotivo:String(booking?.discount_reason||''),
+    // v29.138.0 — qual serviço foi o prêmio (combo com só um serviço de graça).
+    fidelidadeServico:String(booking?.loyalty_free_service||''),
+    caixinha:Number(booking?.tip_amount||0),
+    cortesia:booking?.courtesy===true,
+    cortesiaMotivo:String(booking?.courtesy_reason||''),
+    pagamentoServico:String(booking?.payment_method||''),
+    pagamentoProdutos:String(booking?.products_payment_method||''),
+    // v29.56.0 (caso Aletéia, 21/08): quem pagou antecipado por Pix e teve o pagamento
+    // confirmado pelo Juliano recebia um comprovante sem NENHUMA linha de pagamento quando
+    // a forma não tinha sido preenchida na conclusão — e lê isso como "não registraram meu
+    // Pix". O pagamento antecipado confirmado vale como forma de pagamento por si só.
+    pagamentoAntecipado:Boolean(booking?.prepay_confirmed_at),
+    // v29.199.1 — sinal por Pix (prepay_amount) confirmado: abatimento no cupom, restante com a forma do dia.
+    sinalPago:(booking?.prepay_confirmed_at&&Number(booking?.prepay_amount||0)>0)?Number(booking?.prepay_amount):0,
+    // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
+    // mensagem separada (send-walkin-welcome, 9 min antes desta) é uma linha do comprovante.
+    balcao:String(booking?.channel||'')==='balcao',
+    // v29.335.0 — crédito deixado pago e observação para o cliente, escritos no Concluir (caso Marcelo, 03/11).
+    credito:Number(booking?.credit_amount||0),
+    observacao:String(booking?.client_note||''),
+  }
 }
 
 Deno.serve(async(req:Request)=>{
@@ -79,6 +124,41 @@ Deno.serve(async(req:Request)=>{
   const quietHour=Number(emSP(new Date(),{hour:'2-digit',hourCycle:'h23'}))
   const hojeSP=emSP(new Date(),{year:'numeric',month:'2-digit',day:'2-digit'})
   const emSilencio=quietHour>=20||quietHour<8
+  // v29.337.0 (caso Bruno, 03/11/2026) — o Juliano concluiu como "Corte de cabelo" e trocou para
+  // "Corte + Barba Express" 23 s depois: o banco ficou certo (R$ 80), mas o cliente já tinha o cupom
+  // de R$ 50 na mão. Agora o gatilho trg_bookings_comprovante_corrigido (migração 212) chama esta
+  // function com {reenvio:true} quando serviço, valor ou pagamento de um atendimento JÁ concluído
+  // mudam depois do cupom ter saído. Espera 20 s e só envia se nada mudou nesse meio tempo: três
+  // ajustes seguidos viram UM comprovante corrigido, com o estado final. Mesma janela do Concluir
+  // (8h à meia-noite, só atendimento de hoje depois das 20h), sem a pesquisa 1/2 de novo.
+  if(payload?.reenvio===true&&bookingIdImediato){
+    if(quietHour<8) return json({ok:true,quiet_hours:true})
+    await new Promise(r=>setTimeout(r,20000))
+    const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
+    const {data:booking}=await admin.from('bookings')
+      .select('status,receipt_changed_at,customer_name,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note')
+      .eq('id',bookingIdImediato).maybeSingle()
+    if(!booking||booking.status!=='completed') return json({ok:true,skipped:'não concluído'})
+    if(String(payload?.updated_at||'')&&new Date(String(payload.updated_at)).getTime()!==new Date(String(booking.receipt_changed_at)).getTime())
+      return json({ok:true,skipped:'alterado de novo, o próximo reenvio leva o valor final'})
+    if(emSilencio&&String(booking.booking_date||'')!==hojeSP) return json({ok:true,quiet_hours:true})
+    const {data:enviado}=await admin.from('experience_requests').select('id').eq('booking_id',bookingIdImediato).not('sent_at','is',null).limit(1)
+    if(!enviado?.length) return json({ok:true,skipped:'cupom ainda não saiu; o envio normal já leva o valor certo'})
+    const phone=canonicalPhone(String(booking.customer_phone||''))
+    const evolutionApiUrl=Deno.env.get('EVOLUTION_API_URL')?.trim()||''
+    const evolutionApiKey=Deno.env.get('EVOLUTION_API_KEY')?.trim()||''
+    const evolutionInstance=Deno.env.get('EVOLUTION_INSTANCE_NAME')?.trim()||''
+    if(phone.length<12||!evolutionApiUrl||!evolutionApiKey||!evolutionInstance) return json({ok:true,skipped:'sem WhatsApp'})
+    const texto=semEmoji(montarMensagemComprovanteCorrigido(montarDados(bookingIdImediato,booking,hojeSP)))
+    const resp=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
+      method:'POST',headers:{'Content-Type':'application/json',apikey:evolutionApiKey},
+      body:JSON.stringify({number:phone,text:texto}),
+    })
+    if(!resp.ok) return json({error:`Evolution ${resp.status}`},502)
+    const sendData=await resp.json().catch(()=>({}))
+    await admin.from('whatsapp_messages').insert({phone,direction:'out',body:texto,sent_by:'bot',evolution_message_id:String(sendData?.key?.id||'')||null})
+    return json({ok:true,reenviado:true})
+  }
   // Das 8h à meia-noite: o expediente pode furar as 20h, madrugada nunca.
   if(emSilencio&&!(imediato&&quietHour>=8)) return json({ok:true,quiet_hours:true})
 
@@ -155,45 +235,7 @@ Deno.serve(async(req:Request)=>{
       // fiscal) e mudou de casa: está em _shared/comprovante.ts, com teste unitário. O que
       // motivou foi o Wellington questionar os valores depois do atendimento (02/09/2026) — a
       // conta aberta na mão do cliente é a resposta, e ela precisa ser conferível linha a linha.
-      const produtosBrutos=Array.isArray(booking?.selected_products)?booking.selected_products:[]
-      const dados={
-        bookingId:String(row.booking_id||''),
-        clienteNome:String(booking?.customer_name||'Cliente'),
-        data:String(booking?.booking_date||''),
-        // v29.90.0 (caso Walter, 29/08) — comprovante segurado pelo horário de silêncio saía
-        // "hoje às 19:30" na manhã SEGUINTE. O dia certo vem do booking_date contra hoje em SP.
-        hoje:hojeSP,
-        hora:String(booking?.start_time||'').slice(0,5),
-        servicoNome:String(booking?.service_name||'Atendimento'),
-        // v29.162.0 — desconto manual (migration 147): service_price já está líquido, então o
-        // cupom recebe o preço CHEIO (líquido + desconto) e a linha "Desconto" fecha a conta.
-        servicoValor:Number(booking?.service_price||0)+Number(booking?.discount_amount||0),
-        produtos:produtosBrutos.map((p:Record<string,unknown>)=>({nome:String(p?.name||'Produto'),valor:Number(p?.price||0)})),
-        descontoFidelidade:Number(booking?.loyalty_discount||0),
-        desconto:Number(booking?.discount_amount||0),
-        // v29.209.0 — presente de aniversário / indicação saem com o nome no cupom.
-        descontoMotivo:String(booking?.discount_reason||''),
-        // v29.138.0 — qual serviço foi o prêmio (combo com só um serviço de graça).
-        fidelidadeServico:String(booking?.loyalty_free_service||''),
-        caixinha:Number(booking?.tip_amount||0),
-        cortesia:booking?.courtesy===true,
-        cortesiaMotivo:String(booking?.courtesy_reason||''),
-        pagamentoServico:String(booking?.payment_method||''),
-        pagamentoProdutos:String(booking?.products_payment_method||''),
-        // v29.56.0 (caso Aletéia, 21/08): quem pagou antecipado por Pix e teve o pagamento
-        // confirmado pelo Juliano recebia um comprovante sem NENHUMA linha de pagamento quando
-        // a forma não tinha sido preenchida na conclusão — e lê isso como "não registraram meu
-        // Pix". O pagamento antecipado confirmado vale como forma de pagamento por si só.
-        pagamentoAntecipado:Boolean(booking?.prepay_confirmed_at),
-        // v29.199.1 — sinal por Pix (prepay_amount) confirmado: abatimento no cupom, restante com a forma do dia.
-        sinalPago:(booking?.prepay_confirmed_at&&Number(booking?.prepay_amount||0)>0)?Number(booking?.prepay_amount):0,
-        // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
-        // mensagem separada (send-walkin-welcome, 9 min antes desta) é uma linha do comprovante.
-        balcao:String(booking?.channel||'')==='balcao',
-        // v29.335.0 — crédito deixado pago e observação para o cliente, escritos no Concluir (caso Marcelo, 03/11).
-        credito:Number(booking?.credit_amount||0),
-        observacao:String(booking?.client_note||''),
-      }
+      const dados=montarDados(String(row.booking_id||''),booking,hojeSP)
       // v29.81.0 (caso Eduardo, 27/08) — venda SÓ de produto ganha mensagem própria e NÃO faz a
       // pesquisa 1/2. O registro em experience_requests é fechado logo após o envio pra um "1"
       // solto nunca ser lido como resposta de pesquisa.
