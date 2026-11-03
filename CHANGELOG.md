@@ -1,3 +1,27 @@
+## 29.336.0 — Caso Vanessa: "vou ver e retorno", "vou esperar" e "o cabelo está curto" são adiamento
+
+Print do Juliano (03/11/2026, 16h07-16h34). O lembrete do corte do Bernardo (04/11, 16:00) foi para a Vanessa. Ela
+avisou que o cabelo ainda estava curto, e a JuIA errou em sequência:
+
+- "O cabelo está curto ainda" recebeu o menu 1/2/3 de novo.
+- "Vou ver e retorno" recebeu a lista de horários de amanhã.
+- "O cabelo do Bernardo tá curto" recebeu "16:00 não está disponível". O horário das 16:00 era o dela.
+- Depois de cancelar ("vou esperar um pouco mais o cabelo crescer"), recebeu oferta de quinta-feira.
+- "Vou agendar outro dia" recebeu "No momento você não tem horário marcado comigo. Quer que eu veja um horário?".
+
+**Causa:** o `postponeSignal` (adiar sem data, regra do Juliano de 11/08: libera o horário e fica à disposição) não
+conhecia nenhuma dessas frases.
+
+**Correções:**
+- `esperaParaMarcar` agora reconhece "vou ver e retorno", "vou esperar", "esperar o cabelo crescer", "cabelo (do X)
+  tá curto" e "agendar outro dia". No meio de uma remarcação, a JuIA libera o horário e fica à disposição.
+- No lembrete, cabelo curto ou esperar crescer conta como remarcar (`confirmacao-presenca.ts`, com teste).
+- Quem cancela porque vai esperar não recebe oferta de dia novo. Recebe só: "Quando quiser marcar de novo, é só me
+  chamar por aqui."
+- Adiamento sem reserva não ouve mais "você não tem horário marcado".
+
+**Simulador:** cenário 109.
+
 ## 29.335.0 — Concluir: "Valor pago a mais" e "Observação para o cliente", os dois no comprovante
 
 Pedido do Juliano (03/11/2026, atendimento do Marcelo, 13h20): a mãe pagou o corte do Marcelo e deixou R$ 50 a mais

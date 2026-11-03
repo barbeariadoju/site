@@ -510,7 +510,12 @@ const periodoFalado=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à ta
 // v29.12.0 — "adiar sem marcar data": o cliente avisa que não vem e que fala depois, sem
 // dar dia novo ("eu retorno o contato amanhã", "te aviso", "depois eu marco"). Não é
 // remarcação (não há data) nem é uma pergunta — é motivo pra liberar o horário.
+const esperaParaMarcar=(text:string)=>/\bvou ver e (te )?(retorno|volto|chamo)\b|\b(te )?retorno (depois|mais tarde|amanha|outro dia)\b|\bvou esperar\b|\besperar (um pouco )?(mais )?(o cabelo |a barba )?crescer\b|\b(cabelo|barba)\b.{0,25}\b(esta|ta)\b.{0,10}\bcurt[oa]\b|\b(ainda )?(esta|ta) curt[oa]( ainda)?\b|\b(vou|eu) (agendar|marcar) (em )?outro dia\b|\b(agendo|marco) (em )?outro dia\b/.test(text)
 const postponeSignal=(text:string)=>/retorno o contato|te retorno|retorno depois|volto a falar|entro em contato depois|te aviso|aviso depois|aviso voce|depois eu (falo|vejo|marco|confirmo|aviso|te chamo)|amanha eu (falo|vejo|marco|aviso|te chamo)|vou ver e (te falo|te aviso|falo|aviso)|qualquer coisa eu (chamo|aviso|falo)|deixa (pra|para) (depois|outro dia)|outro dia eu (marco|vejo|falo)|(nao|n) vou (conseguir|poder) (ir|hoje)|fica (pra|para) (a proxima|outro dia)/.test(text)
+ // v29.336.0 — caso Vanessa (03/11/2026, 16h07-16h33): "Vou ver e retorno", "Vou esperar um pouco mais o cabelo crescer",
+ // "O cabelo do Bernardo tá curto" e "Vou agendar outro dia" não eram adiamento: ela recebeu horários de amanhã, "16:00 não
+ // está disponível" (o horário era o DELA), oferta de quinta logo depois de cancelar e "você não tem horário marcado".
+ ||esperaParaMarcar(text)
 const noPeriodPreference=(text:string)=>/\bindiferente\b|tanto faz|\bqq\b|\bqqr\b|\bqlqr\b|\bqualquer\b|nao tenho preferencia|sem preferencia|\bvoce escolhe\b|\bvc escolhe\b|voce que sabe|vc que sabe|o que tiver|o que estiver|qualquer um|pode ser qualquer|(^|\s)(qual|quais) (voce|vc) (tem|puder)/.test(text)
 
 // Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
@@ -2535,7 +2540,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     const rebookNames=rebookServices.map((s:any)=>s.name)
     const rebookDuration=rebookServices.reduce((a:number,s:any)=>a+Number(s.duration||0),0)||Number(cancelled.duration_minutes)||40
     let rebookOffer:{date:string,slots:string[]}|null=null
-    if(rebookNames.length&&!cancelSolidario){
+    // v29.336.0 — caso Vanessa: quem cancelou porque vai esperar (o cabelo crescer, ver a agenda) não recebe oferta de dia novo.
+    const cancelEspera=[...(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').slice(-4).map((h:any)=>normalize(String(h.content||''))),normalizedQuestion].some((t:string)=>postponeSignal(t))
+    if(rebookNames.length&&!cancelSolidario&&!cancelEspera){
      try{
       // findNextAvailableDate começa no dia SEGUINTE ao informado: partir de "ontem" inclui hoje.
       const ontem=new Date(today()+'T12:00:00-03:00');ontem.setDate(ontem.getDate()-1)
@@ -2550,6 +2557,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      next.dismissed=true
      actions=[]
      fechouSolidario=true
+    }else if(cancelEspera){
+     reply=`Pronto, cancelei o horário de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Quando quiser marcar de novo, é só me chamar por aqui.`
+     next.date=null;next.time=null;next.period=null;next.pending_rebook=undefined
+     next.dismissed=true
+     actions=[]
     }else if(rebookOffer){
      reply=`Pronto! Cancelei seu agendamento de ${formatDateBR(cancelled.booking_date)} às ${String(cancelled.start_time).slice(0,5)}. Quer já deixar outro horário marcado para ${rebookNames.join(' + ')}? ${emDiaCap(rebookOffer.date)} ${tenhoSlots(rebookOffer.slots)}. Se preferir outro dia, é só me dizer qual.`
      next.services=rebookNames
@@ -6157,7 +6169,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.329.0 (caso Venilson): "seu horário está garantido. Pode vir com tranquilidade" saiu do MODELO para quem não
  // tinha horário nenhum (o das 09:00 já era falta). Promessa de horário só com horário de verdade na agenda.
  if(verifiedPhone&&!chegadaTratada&&!next.completed&&!upcomingBookings.length&&!bookingsEmAndamento.length&&['other','handoff'].includes(intent)&&/\b(seu|o) hor[aá]rio (est[aá] |continua |segue |fica )?(garantido|guardado|mantido)|pode vir com tranquilidade|pode vir tranquilo/i.test(reply)){
-  reply=faltasRecentes.length?'Entendo. Quando quiser marcar um novo horário, é só me chamar por aqui.':'No momento você não tem horário marcado comigo. Quer que eu veja um horário pra você?'
+  reply=(faltasRecentes.length||postponeSignal(normalizedQuestion))?'Entendo. Quando quiser marcar um novo horário, é só me chamar por aqui.':'No momento você não tem horário marcado comigo. Quer que eu veja um horário pra você?'
   handoff=false
  }
  // v29.328.0 (caso Aletéia): "Tem mais cedo" (sem "?") e a lista volta só com o horário já oferecido — repetir

@@ -1548,5 +1548,19 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('108d bigode: cortesia sem citar opção de barba que não está na mensagem', /cortesia da casa/.test(r4.reply) && !/seguem as opções/.test(r4.reply), r4.reply)
 }
 
+// 109. v29.336.0 — caso Vanessa (03/11, 16h29-16h33): escolheu remarcar o corte do filho de amanhã 16:00 e escreveu
+// "Vou ver e retorno" → recebeu horários de amanhã; "O cabelo do Bernardo tá curto" → "16:00 não está disponível";
+// depois de cancelar ("vou esperar o cabelo crescer"), oferta de quinta; "Vou agendar outro dia" → "você não tem horário".
+{
+  const futV = [{ id: 'bv', booking_date: dia1, start_time: '16:00:00', service_name: 'Corte de cabelo', status: 'confirmed' }]
+  for (const msg of ['Vou ver e retorno', 'O cabelo do  Bernardo tá curto', 'Vou esperar um pouco mais o cabelo crescer']) {
+    const r = await turno({ msg, state: { pending_reschedule_booking_id: 'bv' },
+      ai: { intent: 'reschedule', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Vanessa Teste'), futuros: futV, vagas: { [dia1]: ['08:30', '12:00', '14:30', '17:15'] } })
+    checar(`109a "${msg}" no meio da remarcação: libera o horário e não lista vaga`, /liberei|avisar o Juliano/.test(r.reply) && !/08:30|17:15|não está disponível/.test(r.reply), r.reply)
+  }
+  const r2 = await turno({ msg: 'Vou agendar outro dia', state: {}, ai: { intent: 'other', reply: 'Seu horário está garantido.', updates: {} }, contexto: ctxCliente('Vanessa Teste') })
+  checar('109b "Vou agendar outro dia" sem reserva: encerra, sem "você não tem horário marcado"', !/não tem horário marcado|Quer que eu veja/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

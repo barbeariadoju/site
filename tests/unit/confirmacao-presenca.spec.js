@@ -121,3 +121,16 @@ describe('lerRespostaConfirmacao — despedida curta', () => {
     expect(lerRespostaConfirmacao('ate que horas voces ficam', 'hoje')).toBeNull();
   });
 });
+
+// v29.336.0 — caso Vanessa (03/11/2026): "O cabelo está curto ainda" ao lembrete levou o 1/2/3 de novo.
+describe('cabelo curto ao lembrete = remarcar', () => {
+  it('cabelo curto / esperar crescer', () => {
+    expect(lerRespostaConfirmacao('o cabelo esta curto ainda', 'amanha')).toBe('reschedule');
+    expect(lerRespostaConfirmacao('o cabelo do bernardo ta curto', 'amanha')).toBe('reschedule');
+    expect(lerRespostaConfirmacao('vou esperar o cabelo crescer', 'amanha')).toBe('reschedule');
+  });
+  it('não muda o resto', () => {
+    expect(lerRespostaConfirmacao('1', 'amanha')).toBe('confirm');
+    expect(lerRespostaConfirmacao('quero o cabelo bem curto', 'amanha')).not.toBe('reschedule');
+  });
+});

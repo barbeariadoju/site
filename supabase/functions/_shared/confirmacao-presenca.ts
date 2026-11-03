@@ -104,6 +104,9 @@ export const lerRespostaConfirmacao = (normalizedReply: string, dia?: 'hoje' | '
   if (n === '1') return 'confirm'
   if (n === '2') return 'reschedule'
   if (n === '3') return 'decline'
+  // v29.336.0 — caso Vanessa (03/11/2026): "O cabelo está curto ainda" respondendo ao lembrete levou o 1/2/3 de novo.
+  // Cabelo curto / esperar crescer é não vir no horário marcado: segue como remarcar (e o "vou ver" seguinte libera).
+  if (/\b(cabelo|barba)\b.{0,25}\b(esta|ta)\b.{0,10}\bcurt[oa]\b|\b(ainda )?(esta|ta) curt[oa]\b|esperar (um pouco )?(mais )?(o cabelo |a barba )?crescer/.test(t)) return 'reschedule'
   if (/remarc|reagend|\bmudar\b|\btrocar\b|\btransferir\b|\badiantar\b|\bpassar (pra|para)\b|outro\s+horari|outro\s+dia/.test(t)) return 'reschedule'
   const cancelaExplicito = CANCELA.test(t)
   if (!cancelaExplicito && presencaPositiva(t)) {
