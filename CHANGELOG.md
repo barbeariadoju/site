@@ -1,3 +1,46 @@
+## 29.335.0 — Concluir: "Valor pago a mais" e "Observação para o cliente", os dois no comprovante
+
+Pedido do Juliano (03/11/2026, atendimento do Marcelo, 13h20): a mãe pagou o corte do Marcelo e deixou R$ 50 a mais
+para o corte do outro filho, o Davi. O comprovante precisava sair com R$ 100 e dizer que ficou um corte do Davi pago.
+Não havia onde escrever isso: os motivos de desconto e de cortesia são anotação interna e nunca vão ao cliente.
+
+- **Dois campos novos no Concluir, logo depois da forma de pagamento:**
+  - "Valor pago a mais (crédito para um próximo atendimento)". Soma no "Total a cobrar".
+  - "Observação para o cliente (sai no comprovante)".
+- **Banco:** migração 211 cria as colunas `bookings.credit_amount` e `bookings.client_note`.
+- **Comprovante:** o cupom ganha a linha "Crédito pago antecipado — R$ 50,00" e o total soma o crédito. A observação
+  vai no fim ("Observação: …"), sem emoji. O teste está em `comprovante.spec.js`.
+- **Faturamento:** o crédito **não** entra no `service_price` de hoje, de propósito. Assim o serviço de hoje continua
+  sendo o que foi feito hoje. Quando o Davi vier, o corte dele é concluído como já pago.
+- `admin-booking-status` grava os dois campos e `satisfaction-dispatch` os lê para montar o cupom.
+  `ADMIN_VERSION` e `?v=` foram para 29.335.0.
+
+## 29.334.0 — Caso Raul: a sobrancelha entra antes da chave Pix e "qual serviço no lugar?" não gruda mais
+
+Print do Juliano (03/11/2026, 14h06-14h19). O Raul tinha reserva para 04/11 às 09:15, só com o corte. Na mesma
+conversa a JuIA errou em sequência:
+
+- **"Dessa vez só cabelo e sombrancelha pode mandar chave pix"** recebeu a chave com R$ 50, e a sobrancelha ficou de
+  fora.
+  - Causa: "sombrancelha" (com M) não era reconhecida como sobrancelha.
+  - Correção: o `normalize` agora troca "sombrancelha" por "sobrancelha".
+  - Agora, quando o cliente pede inclusão e chave na mesma frase, a JuIA confirma a inclusão primeiro. Depois do
+    "sim", ela manda a chave já com o valor novo (`pix_apos_troca`). Se ele disser "não", vai a chave do valor atual.
+- **"Não seria 70 R$"** virou "Qual serviço você quer no lugar?".
+  - Correção: contestar o valor sem citar serviço não é troca de serviço. O Juliano é chamado (handoff) com a frase
+    "Vou conferir esse valor com o Juliano e já te confirmo".
+- **A pergunta "Qual serviço você quer no lugar de Corte de cabelo?" grudou.** "Ok obrigado 🙏", "só o corte de
+  cabelo mesmo" e "Fica corte de cabelo combinado então obrigado" ouviram a mesma pergunta de novo, além de dois "me
+  embolei".
+  - Correção: agradecer, concordar ou repetir o serviço que já está na reserva encerra a troca com "Combinado, Raul:
+    fica Corte de cabelo, amanhã às 09:15. Até lá!".
+- **Bigode:** o texto da cortesia terminava com "Se preferir fazer a barba inteira, aí seguem as opções de barba",
+  mas nenhuma opção vinha depois. Essa frase saiu.
+  - Com reserva feita, o texto agora diz o que segue marcado ("Seu horário de amanhã às 09:15 segue com Corte de
+    cabelo"), no lugar do "Fica Corte de cabelo." solto.
+- **Simulador:** cenário 108, com 8 checagens. O dublê da `phone_change_booking_service` agora devolve a reserva
+  completa, como o banco faz.
+
 ## 29.333.0 — Caso Thiago: "vou atrasar, não precisa a lavagem" não vira mais "já inclui"
 
 Plano do dia de 03/11/2026. Sábado, 31/10, 13h59: o Thiago tinha Corte + Lavagem às 14:00 e mandou um áudio

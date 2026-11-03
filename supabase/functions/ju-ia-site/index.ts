@@ -30,7 +30,7 @@ const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
 // "hoje", o dia pedido ficou vazio, a agenda foi pro próximo dia aberto sem explicar que segunda não
 // abre, e a resposta saiu "Consigo te atender amanhã sim!" a quem perguntou de HOJE. Abreviações de
 // WhatsApp viram a palavra inteira já na normalização, pra toda leitura do arquivo enxergar igual.
-const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque').replace(/\bpe d[oa] (cabelo|nuca)\b|\bpezim\b/g,'pezinho') // v29.328.0: "pé do cabelo" = pezinho (caso Manoel); v29.281.0: vocabulário do Juliano (08/10/2026)
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque').replace(/\bpe d[oa] (cabelo|nuca)\b|\bpezim\b/g,'pezinho').replace(/\bsom?bran?celha/g,'sobrancelha') // v29.334.0: "sombrancelha" = sobrancelha (caso Raul); v29.328.0: "pé do cabelo" = pezinho (caso Manoel); v29.281.0: vocabulário do Juliano (08/10/2026)
 
 // v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
 //
@@ -3261,6 +3261,21 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  // v29.333.0 (caso Thiago): recado do dia já respondido (chegada, atraso, serviço dispensado) não reabre a troca.
  if(intent==='change_service'&&chegadaTratada)intent='other'
+ // v29.334.0 — caso Raul (03/11/2026, 14h08): recebeu a chave com R$ 50, escreveu "Não seria 70 R$" e ouviu "Qual
+ // serviço você quer no lugar?". Contestar o valor sem citar serviço não é troca: o Juliano confere e responde.
+ const valorContestado=verifiedPhone&&upcomingBookings.length>=1&&!next.pending_change_service_new_name
+  &&/\bnao (seria|e|era|deveria ser|fica|ficaria|daria|deu)\b[^?]*\d{2,3}/.test(normalizedQuestion)
+  &&!servicosPorPalavra(normalizedQuestion,true).length&&!findServicesLoose(message).length
+ if(valorContestado){
+  intent='other'
+  next.pending_change_service_booking_id=null
+  reply=`Vou conferir esse valor com o Juliano e já te confirmo por aqui${customerFirstName?`, ${customerFirstName}`:''}.`
+  actions=[]
+  handoff=true
+ }
+ // v29.334.0 — caso Raul: "só cabelo e sobrancelha, pode mandar chave pix" pede a inclusão E a chave. A chave sai
+ // depois do "sim", já com o valor novo (pixAposTroca), nunca antes com o valor velho.
+ let pixAposTroca:any=null
  if(intent==='change_service'){
   const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
   if(!verifiedPhone){
@@ -3290,11 +3305,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       next.pending_change_service_booking_id=null
       next.pending_change_service_new_name=null;next.pending_change_service_composed=null
       next.services=[]
+      if(next.pix_apos_troca){pixAposTroca={...(target||{}),...changed};next.pix_apos_troca=false}
      }
     }
    }else if(simpleNo){
     reply='Tudo bem, não troquei nada. Seu agendamento continua como estava.'
     next.pending_change_service_new_name=null;next.pending_change_service_composed=null
+    if(next.pix_apos_troca){pixAposTroca=target||null;next.pix_apos_troca=false}
     handoff=false
    }else{
     reply=`Só confirmando: você quer trocar o serviço do seu agendamento de ${formatDateBR(target?.booking_date)} às ${String(target?.start_time||'').slice(0,5)}, de "${target?.service_name}" para "${desired?.name||next.pending_change_service_new_name}"${desired?` (${money(desired.price)}, aproximadamente ${desired.duration} min)`:''}? Responda sim ou não.`
@@ -3433,11 +3450,25 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser trocar o serviço de outro, me avise.'
     next.pending_change_service_booking_id=null
     handoff=false
+   }else if((()=>{
+    // v29.334.0 — caso Raul (03/11/2026, 14h12-14h18): com a pergunta "qual serviço no lugar?" em aberto, "Ok obrigado",
+    // "só o corte de cabelo mesmo" e "Fica corte de cabelo combinado então obrigado" ouviram a mesma pergunta de novo
+    // (e "me embolei"). Agradecer, concordar ou repetir o serviço que já está na reserva ENCERRA a troca.
+    const citadosAgora=[...findServicesLoose(message),...servicosPorPalavra(normalizedQuestion,true)]
+    const mesmoServico=(desiredFresh&&normalize(desiredFresh.name)===normalize(target.service_name))
+     ||(citadosAgora.length>0&&citadosAgora.every((x:any)=>normalize(String(target.service_name||'')).includes(normalize(x.name))))
+    const encerra=/^\s*(ok|okay|blz|beleza|certo|ta bom|ta|tudo bem|combinado|obrigad\w*|valeu|show|perfeito|fechado|isso|pode ser|deixa assim|deixa como esta|como assim)\b/.test(normalizedQuestion)
+     ||/\b(combinado|obrigad\w*|valeu|mesmo|deixa (assim|como esta)|so isso|fica (so )?(o |a )?(corte|como esta|assim))\b/.test(normalizedQuestion)
+    return mesmoServico||(!desiredFresh&&encerra)
+   })()){
+    next.pending_change_service_booking_id=null
+    next.pending_change_service_new_name=null;next.pending_change_service_composed=null
+    const quandoT=target.booking_date===today()?'hoje':formatDateBR(target.booking_date)
+    reply=`Combinado${customerFirstName?`, ${customerFirstName}`:''}: fica ${target.service_name}, ${quandoT} às ${String(target.start_time).slice(0,5)}. Até lá!`
+    actions=[]
+    handoff=false
    }else if(!desiredFresh){
     reply=`Qual serviço você quer no lugar de "${target.service_name}"?`
-    handoff=false
-   }else if(normalize(desiredFresh.name)===normalize(target.service_name)){
-    reply=`Seu agendamento já é para ${target.service_name}. Se quiser outro serviço, me diga qual.`
     handoff=false
    }else{
     next.pending_change_service_new_name=desiredFresh.name
@@ -6176,13 +6207,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const pixKeyAsk=(/\b(chave|pix)\b/.test(normalizedQuestion)||/\b(pagar|pagamento|deixar pago|ja pago)\b.*\b(adiantad|antecipad|agora|antes|ja)|\b(adiantad|antecipad)\w*\b.*\bpag/.test(normalizedQuestion)||(Boolean(state?.pix_offered)&&simpleYes&&!pendenciaAberta&&/pedir a chave/i.test(ultimaFalaJuIA)))
   &&!/\b(ja paguei|paguei|comprovante|enviei|mandei|fiz o pix|transferi)\b/.test(normalizedQuestion)
   &&!/\b(celular|telefone|outra chave|segunda chave|cpf|cnpj)\b/.test(normalizedQuestion)
- if(pixKeyAsk&&verifiedPhone&&upcomingBookings.length&&!handoff){
-  const b:any=upcomingBookings[0]
+ const inclusaoPerguntadaAgora=intent==='change_service'&&Boolean(next.pending_change_service_new_name)
+ if(pixKeyAsk&&inclusaoPerguntadaAgora&&!handoff){
+  next.pix_apos_troca=true
+  reply=`${reply}\n\nAssim que você confirmar, te mando a chave Pix já com o valor certo.`
+ }else if((pixKeyAsk||pixAposTroca)&&verifiedPhone&&upcomingBookings.length&&!handoff){
+  const b:any=pixAposTroca||upcomingBookings[0]
+  const antesDaChave=pixAposTroca?`${reply}\n\n`:''
   const total=Number(b.service_price||0)+Number(b.products_price||0)
   const quando=b.booking_date===today()?'hoje':formatDateBR(b.booking_date)
   // v29.199.0 — com sinal pendente (química, 1ª visita), a chave sai com o valor do SINAL, não o total.
   const sinalAtivo=(state?.sinal_pendente&&Number(state.sinal_pendente.amount)>0&&(!state.sinal_pendente.booking_id||String(state.sinal_pendente.booking_id)===String(b.id)))?Number(state.sinal_pendente.amount):0
-  reply=`Chave Pix (e-mail): contato@barbeariadoju.com.br
+  reply=`${antesDaChave}Chave Pix (e-mail): contato@barbeariadoju.com.br
 💰 Valor: ${sinalAtivo?`${money(sinalAtivo)} de sinal (o restante, ${money(Math.max(0,total-sinalAtivo))}, você acerta no dia)`:money(total)} — ${b.service_name}, ${quando} às ${String(b.start_time).slice(0,5)}.
 No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Quando fizer, me avisa que o Juliano confere 😉`
   actions=[]
@@ -6325,9 +6361,9 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  // reserva ainda espera o serviço, refaz a pergunta. Reserva feita neste turno fica como está, com o aviso.
  // O texto é sempre o da regra: no ar, o modelo escreveu a própria versão ("…não é necessário agendar um
  // serviço específico pra isso") — e o bigode é cortesia JUNTO com o atendimento, não visita avulsa.
- if(!handoff&&soBigode(normalize(String(message||'')))&&!String(reply||'').includes(TEXTO_BIGODE_CORTESIA.split('. ')[0])){
+ if(!handoff&&soBigode(normalize(String(message||'')))&&!String(reply||'').includes('cortesia da casa')){
   if(/Reservado/i.test(String(reply||''))||intent==='cancel'||intent==='reschedule'){
-   reply=`${reply}\n\n${TEXTO_BIGODE_CORTESIA.split('. ')[0]}.`
+   reply=`${reply}\n\n${TEXTO_BIGODE_CORTESIA}`
   }else{
    const esperaServico=Boolean(next.time&&!next.completed&&!(Array.isArray(next.services)&&next.services.length))
    if(esperaServico){
@@ -6336,7 +6372,10 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
     actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
    }else{
     const temLista=Array.isArray(next.services)&&next.services.length
-    reply=`${TEXTO_BIGODE_CORTESIA}${temLista?` Fica ${next.services.join(' + ')}.`:''}`
+    // v29.334.0 (caso Raul): com a reserva feita, diz o que segue marcado, em vez do "Fica X." solto.
+    const reservaB:any=state?.completed&&upcomingBookings.length===1?upcomingBookings[0]:null
+    reply=reservaB?`${TEXTO_BIGODE_CORTESIA} Seu horário de ${reservaB.booking_date===today()?'hoje':formatDateBR(reservaB.booking_date)} às ${String(reservaB.start_time).slice(0,5)} segue com ${reservaB.service_name}.`
+     :`${TEXTO_BIGODE_CORTESIA}${temLista?` Fica ${next.services.join(' + ')}.`:''}`
     actions=[]
    }
    intent='other'

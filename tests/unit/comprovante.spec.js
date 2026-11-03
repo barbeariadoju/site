@@ -286,3 +286,28 @@ describe('montarCupom com sinal', () => {
     expect(c).toContain('pago antecipado');
   });
 });
+
+// v29.335.0 — caso Marcelo (03/11/2026): a mãe pagou o corte dele e deixou R$ 50 a mais pelo corte do outro filho,
+// Davi. O cupom sai com R$ 100 pagos, a linha do crédito e a observação escrita no Concluir.
+describe('crédito pago a mais e observação para o cliente', () => {
+  it('soma o crédito no total e mostra a observação no fim', () => {
+    const c = norm(montarCupom({ ...base, servicoValor: 50, pagamentoServico: 'debito', credito: 50, observacao: 'fica 1 corte de cabelo do Davi já pago' }));
+    expect(c).toContain('Corte de cabelo — R$ 50,00');
+    expect(c).toContain('Crédito pago antecipado — R$ 50,00');
+    expect(c).toContain('*Total: R$ 100,00*');
+    expect(c).toContain('Pago no débito');
+    expect(c.trim().endsWith('Observação: fica 1 corte de cabelo do Davi já pago')).toBe(true);
+  });
+  it('sem crédito nem observação, nada muda', () => {
+    expect(montarCupom({ ...base, credito: 0, observacao: '  ' })).toBe(montarCupom(base));
+  });
+  it('com desconto, o subtotal inclui o crédito', () => {
+    const c = norm(montarCupom({ ...base, servicoValor: 50, desconto: 10, credito: 50 }));
+    expect(c).toContain('Subtotal: R$ 100,00');
+    expect(c).toContain('*Total: R$ 90,00*');
+  });
+  it('nenhum emoji na mensagem', () => {
+    const m = montarMensagemComprovante({ ...base, credito: 50, observacao: 'corte do Davi pago' });
+    expect(/\p{Extended_Pictographic}/u.test(m)).toBe(false);
+  });
+});

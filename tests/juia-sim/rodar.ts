@@ -105,7 +105,7 @@ const turno = async (c: Cenario) => {
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
     create_public_booking_v15: () => (c.reservaErro ? { data: null, error: { message: c.reservaErro } } : { data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: c.cancelado || 'Corte de cabelo' }], error: null }),
-    phone_change_booking_service: (a: any) => ({ data: [{ id: a.p_booking_id }], error: null }),
+    phone_change_booking_service: (a: any) => { const b: any = (c.futuros || []).find((x: any) => x.id === a.p_booking_id) || {}; return { data: [{ ...b, id: a.p_booking_id, service_name: a.p_service_name, service_price: a.p_service_price }], error: null } },
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
     encaixes_possiveis: () => c.buracos || [],
@@ -1522,6 +1522,30 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     futuros: [{ id: 'bt', booking_date: hoje, start_time: hT, service_name: 'Corte + Lavagem', status: 'confirmed' }] })
   checar('107 atraso + tirar a lavagem: acolhe o atraso, avisa o Juliano, nunca "já inclui"', /pode vir com calma/.test(r.reply) && /sem a lavagem/.test(r.reply) && !/já inclui|tudo certo/i.test(r.reply), r.reply)
   checar('107 push pro Juliano com o recado', r.saidas.some((s: any) => s.url.includes('send-push') && /lavagem/.test(JSON.stringify(s.body))), r.saidas.map((s: any) => s.url))
+}
+
+// 108. v29.334.0 — caso Raul (03/11, 14h06): reserva de amanhã só com o corte. "Dessa vez só cabelo e sombrancelha pode
+// mandar chave pix" recebeu a chave com R$ 50 e a sobrancelha ficou de fora; "Não seria 70 R$" virou "qual serviço no
+// lugar?" e a pergunta grudou: "Ok obrigado 🙏" e "Fica corte de cabelo combinado então obrigado" ouviram de novo
+// "Qual serviço você quer no lugar de Corte de cabelo?". E o bigode citava "as opções de barba" sem opção nenhuma.
+{
+  const fut = [{ id: 'br', booking_date: dia1, start_time: '09:15:00', service_name: 'Corte de cabelo', service_price: 50, status: 'confirmed' }]
+  const stR = { completed: true, name: 'Raul Teste', services: ['Corte de cabelo'], date: dia1, time: '09:15', pix_offered: true }
+  const r1 = await turno({ msg: 'Dessa vez só cabelo e sombrancelha pode mandar chave pix', state: stR,
+    ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Raul Teste'), futuros: fut })
+  checar('108a "só cabelo e sobrancelha + chave pix": confirma incluir a sobrancelha antes da chave', /Confirmando: incluir Sobrancelha/.test(r1.reply) && !/contato@/.test(r1.reply) && !/Valor: R\$ 50/.test(r1.reply) && r1.state?.pending_change_service_booking_id === 'br', r1.reply)
+  const r1b = await turno({ msg: 'Sim', state: r1.state, ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Raul Teste'), futuros: fut })
+  checar('108a "sim": inclui e já manda a chave com o valor novo', /Troquei|incluí/i.test(r1b.reply) && /contato@barbeariadoju/.test(r1b.reply) && /Valor: R\$ [\d,]+ — Corte de cabelo \+ Sobrancelha/.test(r1b.reply), r1b.reply)
+  const r2 = await turno({ msg: 'Não seria 70 R$', state: { ...stR, pix_offered: false },
+    history: [{ role: 'assistant', content: 'Chave Pix (e-mail): contato@barbeariadoju.com.br\nValor: R$ 50,00 — Corte de cabelo, amanhã às 09:15.' }],
+    ai: { intent: 'change_service', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Raul Teste'), futuros: fut })
+  checar('108b "Não seria 70 R$" não vira troca de serviço', !/no lugar/.test(r2.reply) && !r2.state?.pending_change_service_booking_id, r2.reply)
+  for (const msg of ['Ok obrigado 🙏', 'Fica corte de cabelo combinado então obrigado', 'só o corte de cabelo mesmo é um degradê básico', 'Ok']) {
+    const r = await turno({ msg, state: { ...stR, pending_change_service_booking_id: 'br' }, ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Raul Teste'), futuros: fut })
+    checar(`108c "${msg}" com a troca em aberto: encerra e confirma o corte`, !/no lugar|Se quiser outro serviço|me embolei/.test(r.reply) && /Corte de cabelo/.test(r.reply) && !r.state?.pending_change_service_booking_id, r.reply)
+  }
+  const r4 = await turno({ msg: 'É só isso mesmo o bigode é por conta da casa?', state: stR, ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Raul Teste'), futuros: fut })
+  checar('108d bigode: cortesia sem citar opção de barba que não está na mensagem', /cortesia da casa/.test(r4.reply) && !/seguem as opções/.test(r4.reply), r4.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

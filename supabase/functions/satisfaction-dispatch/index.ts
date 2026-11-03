@@ -89,7 +89,7 @@ Deno.serve(async(req:Request)=>{
 
   let query=admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
   // v29.121.0 — no modo imediato processa SÓ o atendimento recém-concluído. Sem isso, uma
@@ -190,6 +190,9 @@ Deno.serve(async(req:Request)=>{
         // v29.45.0 — walk-in (balcão): o convite "da próxima vez agende por aqui" que era uma
         // mensagem separada (send-walkin-welcome, 9 min antes desta) é uma linha do comprovante.
         balcao:String(booking?.channel||'')==='balcao',
+        // v29.335.0 — crédito deixado pago e observação para o cliente, escritos no Concluir (caso Marcelo, 03/11).
+        credito:Number(booking?.credit_amount||0),
+        observacao:String(booking?.client_note||''),
       }
       // v29.81.0 (caso Eduardo, 27/08) — venda SÓ de produto ganha mensagem própria e NÃO faz a
       // pesquisa 1/2. O registro em experience_requests é fechado logo após o envio pra um "1"

@@ -246,7 +246,7 @@ export const soBigode = (q: string): boolean => {
   const t = String(q || '')
   return /\bbigode/.test(t) && !/\b(barba|barboterapia|navalha|cavanhaque|pigment\w*|pint\w*|tint\w*)\b/.test(t)
 }
-export const TEXTO_BIGODE_CORTESIA = 'O bigode o Juliano alinha como cortesia da casa, junto com o seu atendimento, sem custo. Se preferir fazer a barba inteira, aí seguem as opções de barba.'
+export const TEXTO_BIGODE_CORTESIA = 'O bigode o Juliano alinha como cortesia da casa, junto com o seu atendimento, sem custo.' // v29.334.0: sem "aí seguem as opções de barba" — não vinha opção nenhuma (caso Raul)
 
 // O serviço apareceu só na pergunta ("você faz pintura?") e não no pedido? Então não entra.
 export const servicoSoPerguntado = (nomeServico: string, trechosPergunta: string[], restoDaMensagem: string): boolean => {

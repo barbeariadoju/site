@@ -65,6 +65,13 @@ export type DadosComprovante = {
   sinalPago?: number
   /** channel === 'balcao' */
   balcao: boolean
+  /**
+   * v29.335.0 — valor recebido A MAIS como crédito de um atendimento futuro (caso Marcelo, 03/11/2026: a mãe
+   * deixou pago o corte do outro filho, Davi). Soma no total pago do documento, numa linha própria.
+   */
+  credito?: number
+  /** v29.335.0 — observação PARA O CLIENTE, escrita no Concluir. Sai no fim do cupom. */
+  observacao?: string
 }
 
 /**
@@ -189,7 +196,10 @@ export const montarCupom = (d: DadosComprovante) => {
   // recebia um comprovante com cara de cobrança.
   // v29.162.0 — desconto manual: só o que couber no serviço depois do prêmio, nunca negativo.
   const descontoManual = d.cortesia ? 0 : Math.min(Math.max(0, Number(d.desconto || 0)), Math.max(0, servicoValor - desconto))
-  const total = d.cortesia ? 0 : Math.max(0, bruto - desconto - descontoManual)
+  // v29.335.0 — crédito deixado pago: entra como item e soma no total (o cliente pagou), mesmo na cortesia.
+  const credito = Math.max(0, Math.round(Number(d.credito || 0) * 100) / 100)
+  if (credito > 0) itens.push(`Crédito pago antecipado — ${money(credito)}`)
+  const total = (d.cortesia ? 0 : Math.max(0, bruto - desconto - descontoManual)) + credito
   // v29.199.1 — caso Murillo (17/09/2026): sinal de R$ 50 pago antes, por Pix; o resto no dia.
   // O total do documento continua o total; o sinal aparece como abatimento e o restante com a
   // forma dele. Sem isso o cupom dizia "Pago no Pix (pago antecipado)" pro serviço inteiro.
@@ -207,6 +217,7 @@ export const montarCupom = (d: DadosComprovante) => {
   // presente de aniversário e indicação saem com o nome, porque são benefícios do cliente.
   if (descontoManual > 0) totais.push(`${rotuloDesconto(d.descontoMotivo)}: -${money(descontoManual)}`)
   if (d.cortesia) totais.push(`Cortesia (por conta da casa): -${money(bruto)}`)
+  if (credito > 0 && totais[0]?.startsWith('Subtotal')) totais[0] = `Subtotal: ${money(bruto + credito)}`
   totais.push(`*Total: ${money(total)}*`)
 
   // Com o serviço no prêmio, "fidelidade" não é forma de pagamento do que sobrou: o que
@@ -222,7 +233,7 @@ export const montarCupom = (d: DadosComprovante) => {
     // O motivo da cortesia NÃO sai no comprovante de propósito: o campo é anotação interna do
     // Juliano ("João, funcionário", "reclamou do corte passado") e o cliente não é o público
     // dela. O que ele precisa saber é que não há nada a pagar.
-    totais.push('Nada a pagar — cortesia da casa')
+    totais.push(credito > 0 ? `Serviço por conta da casa; crédito de ${money(credito)} pago${metodoLabel(d.pagamentoServico) ? ` ${metodoLabel(d.pagamentoServico)}` : ''}` : 'Nada a pagar — cortesia da casa')
   } else if (total <= 0 && desconto > 0) {
     totais.push('Nada a pagar — prêmio do cartão fidelidade')
   } else if (total <= 0 && descontoManual > 0) {
@@ -239,6 +250,7 @@ export const montarCupom = (d: DadosComprovante) => {
   // o cliente entregou aquele dinheiro e a conta dele em casa tem que fechar.
   if (caixinha > 0) totais.push(`Caixinha, recebida à parte: ${money(caixinha)}`)
 
+  const observacao = String(d.observacao || '').replace(/\s+/g, ' ').trim().slice(0, 300)
   const dia = rotuloDia(d.data, d.hoje)
   const quando = [dia, d.hora ? `às ${d.hora}` : ''].filter(Boolean).join(' ')
 
@@ -249,6 +261,7 @@ export const montarCupom = (d: DadosComprovante) => {
     ...itens,
     '',
     ...totais,
+    ...(observacao ? ['', `Observação: ${observacao}`] : []),
   ].join('\n')
 }
 

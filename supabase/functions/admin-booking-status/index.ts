@@ -125,6 +125,13 @@ Deno.serve(async (request: Request) => {
     const hasCourtesyChange = typeof body?.courtesy === 'boolean'
     const courtesy = hasCourtesyChange ? Boolean(body.courtesy) : false
     const courtesyReason = String(body?.courtesy_reason || '').trim().slice(0, 120)
+    // v29.335.0 — crédito deixado pago (vai pra atendimento futuro, fora do faturamento de hoje) e observação que
+    // sai no comprovante do cliente (caso Marcelo, 03/11/2026: R$ 50 a mais pelo corte do irmão, Davi).
+    const creditRaw = Number(body?.credit_amount)
+    const hasCredit = body?.credit_amount !== undefined && Number.isFinite(creditRaw) && creditRaw >= 0 && creditRaw <= 2000
+    const creditAmount = hasCredit ? Math.round(creditRaw * 100) / 100 : 0
+    const hasClientNote = typeof body?.client_note === 'string'
+    const clientNote = hasClientNote ? body.client_note.replace(/\s+/g, ' ').trim().slice(0, 300) : ''
     // v29.138.0 — prêmio da fidelidade no Concluir (caso Joao, 05/09/2026). A tela manda
     // {name, price} do serviço que foi o prêmio. Convenção (migration 137): service_price
     // fica bruto, loyalty_discount = preço do serviço premiado, loyalty_free_service = qual.
@@ -265,6 +272,8 @@ Deno.serve(async (request: Request) => {
       if (reviewedError) console.error('[admin-booking-status] mark_google_reviewed', reviewedError)
     }
     if (hasTipAmount) updatePayload.tip_amount = tipAmount
+    if (hasCredit) updatePayload.credit_amount = creditAmount
+    if (hasClientNote) updatePayload.client_note = clientNote || null
     if (hasCourtesyChange) {
       updatePayload.courtesy = courtesy
       updatePayload.courtesy_reason = courtesy ? (courtesyReason || null) : null
