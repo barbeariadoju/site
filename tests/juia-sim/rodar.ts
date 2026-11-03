@@ -1511,5 +1511,18 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('106c ainda não marcado como falta, 1 h depois do horário: passou da tolerância e vai pro Juliano', /passou da tolerância/.test(r3.reply) && !/garantido/.test(r3.reply), r3.reply)
 }
 
+// 107. v29.333.0 — caso Thiago (31/10, 13h59): Corte + Lavagem hoje, áudio "vou atrasar uns 10 minutos, não precisa nem
+// fazer a lavagem, só faço o corte mesmo, pra não atrapalhar você também" → ouviu "já inclui Corte + Lavagem".
+{
+  const agoraT = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':').map(Number)
+  const iniT = Math.min(23 * 60 + 50, agoraT[0] * 60 + agoraT[1] + 5)
+  const hT = `${String(Math.floor(iniT / 60)).padStart(2, '0')}:${String(iniT % 60).padStart(2, '0')}:00`
+  const r = await turno({ msg: '🎙️ Oi, irmão. Eu tô chegando já, tá? Tá um trânsito lascado, tá bom? Se atrasar no máximo, eu vou atrasar uns 10 minutos, mas aí não precisa nem fazer a lavagem no meu cabelo, tá bom? Aí eu só faço o corte mesmo, pra não atrapalhar você também, tá bom, irmão?', state: {},
+    ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Thiago Teste'),
+    futuros: [{ id: 'bt', booking_date: hoje, start_time: hT, service_name: 'Corte + Lavagem', status: 'confirmed' }] })
+  checar('107 atraso + tirar a lavagem: acolhe o atraso, avisa o Juliano, nunca "já inclui"', /pode vir com calma/.test(r.reply) && /sem a lavagem/.test(r.reply) && !/já inclui|tudo certo/i.test(r.reply), r.reply)
+  checar('107 push pro Juliano com o recado', r.saidas.some((s: any) => s.url.includes('send-push') && /lavagem/.test(JSON.stringify(s.body))), r.saidas.map((s: any) => s.url))
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

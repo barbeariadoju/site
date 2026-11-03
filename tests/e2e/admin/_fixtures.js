@@ -121,7 +121,9 @@ function montarFixtures(overrides) {
     // Totais: 10h30 abertas em 2 dias (média 5h15), ocupação 90/630 = 14%, R$ 125 / 10,5h = R$ 11,90/h.
     expediente: [
       { dia: dayOfMonth(3), aberto_em: tsOfMonth(3, 9), aberto_por: 'painel', fechado_em: tsOfMonth(3, 18), fechado_por: 'painel', motivo: null, observacao: null, bloqueio_id: null, lembrete_abrir_em: null, created_at: tsOfMonth(3, 9), updated_at: tsOfMonth(3, 18) },
-      { dia: dayOfMonth(5), aberto_em: tsOfMonth(5, 14), aberto_por: 'automatico', fechado_em: tsOfMonth(5, 15, 30), fechado_por: 'painel', motivo: 'mais_cedo', observacao: null, bloqueio_id: 'mock-blk-fechamento', lembrete_abrir_em: tsOfMonth(5, 8, 15), created_at: tsOfMonth(5, 8, 15), updated_at: tsOfMonth(5, 15, 30) },
+      // v29.333.0: do dia 1 ao 4 do mês o dayOfMonth(5) cai no mesmo dia do 3 e a tela Hoje recebia 2 linhas
+      // (PGRST116, smoke do admin falhando em 03/11). A segunda linha só entra quando o dia 5 já existe.
+      ...(today.getDate() >= 5 ? [{ dia: dayOfMonth(5), aberto_em: tsOfMonth(5, 14), aberto_por: 'automatico', fechado_em: tsOfMonth(5, 15, 30), fechado_por: 'painel', motivo: 'mais_cedo', observacao: null, bloqueio_id: 'mock-blk-fechamento', lembrete_abrir_em: tsOfMonth(5, 8, 15), created_at: tsOfMonth(5, 8, 15), updated_at: tsOfMonth(5, 15, 30) }] : []),
     ],
 
     loyalty_accounts: [

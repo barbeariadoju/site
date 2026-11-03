@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA, servicoDispensado, avisaAtraso } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -1661,6 +1661,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
   }
  }
+ // v29.333.0 — caso Thiago (31/10/2026, 13h59): horário de Corte + Lavagem às 14:00, áudio "vou atrasar uns 10
+ // minutos, não precisa nem fazer a lavagem, só faço o corte mesmo, pra não atrapalhar você também". Ouviu "já inclui
+ // Corte + Lavagem. Está tudo certo!": o "também" virou pedido de incluir e o atraso sumiu. Para o horário de HOJE,
+ // tirar um serviço é combinado na cadeira: resposta fixa, a reserva fica como está e o Juliano recebe o recado.
+ // Atraso grande (passou da tolerância) já foi tratado acima e nunca chega aqui.
+ if(!chegadaTratada&&!pediuHumano&&verifiedPhone){
+  const qD=normalize(message)
+  const tiraD=servicoDispensado(qD)
+  const deHojeD=bookingsEmAndamento[0]||upcomingBookings.find((b:any)=>b&&b.booking_date===today())
+  if(tiraD&&deHojeD&&normalize(String(deHojeD.service_name||'')).includes(tiraD.slice(0,6))&&!/\b(cancel|remarc|outro dia)/.test(qD)){
+   chegadaTratada=true
+   const nomeD=primeiroNome(context?.name,'')
+   const atrasoD=avisaAtraso(qD)
+   const oQue=/^barb/.test(tiraD)?'a barba':/^sobrancelha/.test(tiraD)?'a sobrancelha':/^pezinho/.test(tiraD)?'o pezinho':`a ${tiraD}`
+   reply=`${atrasoD?`Sem problema${nomeD?`, ${nomeD}`:''}, pode vir com calma.`:`Combinado${nomeD?`, ${nomeD}`:''}.`} Vou avisar o Juliano que hoje você prefere sem ${oQue}; ele ajusta aí na hora.`
+   intent='other';handoff=false;actions=[]
+   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   const psD=Deno.env.get('PUSH_WEBHOOK_SECRET'),urlD=Deno.env.get('SUPABASE_URL')
+   if(psD&&urlD)await fetch(`${urlD}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psD},body:JSON.stringify({custom:{title:atrasoD?'Cliente vai atrasar e tirou um serviço':'Cliente tirou um serviço de hoje',body:`${String(context?.name||body?.whatsapp_name||verifiedPhone)} (${String(deHojeD.start_time).slice(0,5)}, ${deHojeD.service_name}): sem ${oQue}. "${String(message).slice(0,120)}"`,url:'/admin-agenda.html?app=1',tag:`dispensa-${deHojeD.id}`}})}).catch(()=>{})
+  }
+ }
  // v29.293.0 — caso Juliano (cliente, 14/10/2026, 08h26): horário das 09:00, escreveu "Se puder antes me avisa /
  // Tenho cliente as 10" e recebeu "Vamos remarcar seu agendamento… Para qual dia e horário?". Ele quer ADIANTAR
  // se der, sem perder o horário. Resposta fixa, o horário fica como está e o Juliano recebe o pedido.
@@ -2707,7 +2729,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // Troca só o serviço do agendamento (service_name/price/duration), preservando
  // dia e horário. Checado antes do reagendamento porque changeServiceAsk e
  // rescheduleAsk já são mutuamente exclusivos (ver comentário acima).
- if(intent!=='cancel'&&intent!=='update_products'&&(next.pending_change_service_booking_id||changeServiceAsk))intent='change_service'
+ if(!chegadaTratada&&intent!=='cancel'&&intent!=='update_products'&&(next.pending_change_service_booking_id||changeServiceAsk))intent='change_service'
 
  // Reagenda de fato (muda booking_date/start_time do mesmo registro) em vez de
  // cancelar e criar de novo — preserva histórico e notas. rescheduleAsk já foi
@@ -3213,7 +3235,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // áudio. Com reserva feita nesta conversa, serviço citado (não perguntado) que não está nela é pedido de
  // INCLUIR: vai pra confirmação "incluir X no seu horário?", que grava no "sim".
  let incluirPorCitacao=false
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&state?.completed&&upcomingBookings.length>=1
+ if(!chegadaTratada&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&state?.completed&&upcomingBookings.length>=1
   &&!trechosPergunta.length&&!askedPrice&&!/\?\s*$/.test(String(message||'').trim())&&!/\b(sem|nao quero|tira|tirar|cancela|cancelar)\b/.test(normalizedQuestion)){
   const reservados=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
   const novos=servicosPorPalavra(normalizedQuestion,true).filter((x:any)=>!reservados.some((n:string)=>n.includes(normalize(x.name))))
@@ -3224,7 +3246,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    intent='change_service'
   }
  }
- if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&upcomingBookings.length>=1
+ if(!chegadaTratada&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&verifiedPhone&&upcomingBookings.length>=1
   &&/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|aproveitar e|junto com)\b/.test(normalizedQuestion)
   &&/\b(ja marquei|que marquei|ja agendei|que agendei|meu horario|meu agendamento|no meu|alem d[oa])\b/.test(normalizedQuestion)){
   {
@@ -3237,6 +3259,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }
   if(chosen.length)intent='change_service'
  }
+ // v29.333.0 (caso Thiago): recado do dia já respondido (chegada, atraso, serviço dispensado) não reabre a troca.
+ if(intent==='change_service'&&chegadaTratada)intent='other'
  if(intent==='change_service'){
   const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
   if(!verifiedPhone){
@@ -3290,7 +3314,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // como TROCA ("qual servico no lugar?"). Com sinal de acrescimo (tambem/alem/incluir/
    // adicionar) e um servico reconhecido, o alvo vira o servico atual + o novo (nome
    // composto, preco e duracao somados) e a confirmacao diz "incluir", nao "trocar".
-   const addSignal=/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)||incluirPorCitacao
+   // v29.333.0 (caso Thiago): "não precisa a lavagem ... pra não atrapalhar você também" não é acréscimo.
+   const addSignal=!servicoDispensado(normalizedQuestion)&&(/\b(tambem|além|alem d[oa]|incluir|adicionar|acrescentar|junto|mais um|e tamb[eé]m|aproveitar e)\b/.test(normalizedQuestion)||incluirPorCitacao)
    const bookedNames=upcomingBookings.map((b:any)=>normalize(String(b.service_name||'')))
    const jaReservado=(x:any)=>bookedNames.some((n:string)=>n.includes(normalize(x.name)))
    // v29.193.1 (caso Lucas, "tem sobrancelha tambem"): o serviço a incluir é o que a MENSAGEM cita
@@ -3306,9 +3331,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     if(addSignal&&!desiredNewReal){
      const atuais=servicosDaReserva(String(b.service_name||''))
      if(citadoJaReservado&&/pezinho/i.test(citadoJaReservado.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
-      reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} 😉 Não precisa adicionar — está tudo certo!`
+      reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}. Não precisa adicionar — está tudo certo!`
      }else if(citadoJaReservado){
-      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${citadoJaReservado.name} 😊 Está tudo certo!`
+      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${citadoJaReservado.name}. Está tudo certo!`
      }else{
       reply=`Claro! Qual serviço você quer incluir no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (${b.service_name})?`
      }
@@ -3319,13 +3344,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     if(addSignal&&desiredNew){
      const atuais=servicosDaReserva(String(b.service_name||''))
      if(/pezinho/i.test(desiredNew.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
-      reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} 😉 Não precisa adicionar — está tudo certo!`
+      reply=`O pezinho já vem incluso no seu corte de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}. Não precisa adicionar — está tudo certo!`
       next.pending_change_service_booking_id=null
       handoff=false
       return
      }
      if(atuais.some((a:any)=>a.name===desiredNew.name)){
-      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${desiredNew.name} 😊 Está tudo certo!`
+      reply=`Seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} já inclui ${desiredNew.name}. Está tudo certo!`
       next.pending_change_service_booking_id=null
       handoff=false
       return

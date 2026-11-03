@@ -326,3 +326,19 @@ describe('machucado e doença do dia a dia (caso Anderson, 24/10)', () => {
     expect(respostaSolidaria('minha mae faleceu', '', true)).toMatch(/^Sinto muito\. Meus sentimentos.*Já liberei seu horário.*Quando for o momento/);
   });
 });
+
+import { servicoDispensado, avisaAtraso } from '../../supabase/functions/_shared/leitura-cliente.ts';
+describe('v29.333.0 — caso Thiago: atraso + tirar a lavagem', () => {
+  const thiago = 'oi, irmao. eu to chegando ja, ta? ta um transito lascado, ta bom? se atrasar no maximo, eu vou atrasar uns 10 minutos, mas ai nao precisa nem fazer a lavagem no meu cabelo, ta bom? ai eu so faco o corte mesmo, pra nao atrapalhar voce tambem, ta bom, irmao?';
+  it('lê o serviço dispensado e o atraso', () => {
+    expect(servicoDispensado(thiago)).toBe('lavagem');
+    expect(avisaAtraso(thiago)).toBe(true);
+    expect(servicoDispensado('pode tirar a barba')).toBe('barba');
+    expect(servicoDispensado('sem a lavagem por favor')).toBe('lavagem');
+  });
+  it('pedido de incluir não é dispensa', () => {
+    expect(servicoDispensado('quero incluir a lavagem tambem')).toBe('');
+    expect(servicoDispensado('tem sobrancelha tambem?')).toBe('');
+    expect(avisaAtraso('to chegando')).toBe(false);
+  });
+});

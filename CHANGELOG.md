@@ -1,3 +1,26 @@
+## 29.333.0 — Caso Thiago: "vou atrasar, não precisa a lavagem" não vira mais "já inclui"
+
+Plano do dia de 03/11/2026. Sábado, 31/10, 13h59: o Thiago tinha Corte + Lavagem às 14:00 e mandou um áudio
+dizendo que ia atrasar uns 10 minutos e que podia tirar a lavagem ("só faço o corte mesmo, pra não atrapalhar você
+também"). A JuIA respondeu "Seu agendamento já inclui Corte + Lavagem. Está tudo certo!". Ela entendeu o contrário
+do pedido e não disse nada sobre o atraso. O Juliano assumiu a conversa e fez a lavagem mesmo assim.
+
+- **Causa:** o "também" do fim da frase ligou o sinal de acréscimo do fluxo de troca de serviço (`addSignal`). Como a
+  lavagem já estava na reserva, o caminho caiu no "já inclui".
+- **Correção:** `servicoDispensado` e `avisaAtraso` em `_shared/leitura-cliente.ts` (com teste em
+  `leitura-cliente.spec.js`). Para o horário de HOJE, "não precisa (nem) fazer a lavagem", "sem a barba" e "pode tirar
+  a sobrancelha" têm resposta fixa: "Sem problema, Thiago, pode vir com calma. Vou avisar o Juliano que hoje você
+  prefere sem a lavagem; ele ajusta aí na hora." O Juliano recebe um push. A reserva **não** é mexida sozinha: decidi
+  contra trocar o serviço automaticamente porque, na cadeira, o Juliano fez a lavagem mesmo assim. Quem decide é ele.
+- O recado do dia que já foi respondido (chegada, atraso, serviço dispensado) não reabre mais o fluxo de troca de
+  serviço, e frase com serviço dispensado nunca conta como acréscimo.
+- Os templates "já inclui ... 😊 Está tudo certo!" e "pezinho ... 😉 Não precisa" perdiam o ponto quando o
+  `sem-emoji` tirava o emoji ("Corte + Lavagem Está tudo certo!"). Agora levam ponto final.
+- **Simulador:** cenário 107 com o áudio do Thiago.
+- **Teste e2e do painel:** do dia 1 ao 4 de cada mês, o `dayOfMonth(5)` da fixture caía no mesmo dia do
+  `dayOfMonth(3)` e a tela Hoje recebia 2 linhas de expediente (PGRST116). Falhou hoje, 03/11. Era só a fixture; em
+  produção não há dia duplicado (conferido no banco).
+
 ## 29.332.0 — Durações mais curtas: corte 40, Barba Express 25, Corte + Lavagem 45
 
 Pedido do Juliano (31/10/2026): "sobrancelha pode deixar 15 minutos, barba express 25 e corte 40 [...] pode ajustar

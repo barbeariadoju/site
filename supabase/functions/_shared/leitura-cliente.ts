@@ -373,3 +373,20 @@ export const respostaSolidaria = (q: string, primeiroNome = '', cancelado = fals
   partes.push(luto || outraPessoa ? 'Quando for o momento, é só me chamar por aqui.' : 'Quando estiver melhor, é só me chamar por aqui que eu vejo um horário para você.')
   return partes.join(' ')
 }
+
+// ---------------------------------------------------------------------------------------------
+// v29.333.0 — caso Thiago (31/10/2026, 13h59): Corte + Lavagem às 14:00, áudio "vou atrasar uns 10 minutos,
+// mas aí não precisa nem fazer a lavagem no meu cabelo, aí eu só faço o corte mesmo, pra não atrapalhar você
+// também". O "também" do fim virou pedido de INCLUIR, a lavagem já estava na reserva e a resposta foi "Seu
+// agendamento já inclui Corte + Lavagem. Está tudo certo!" — o contrário do pedido, e o atraso nem foi ouvido.
+// servicoDispensado devolve o trecho que nomeia o que o cliente quer tirar ("não precisa (nem) fazer a lavagem",
+// "sem a lavagem", "tira a barba", "pode tirar a sobrancelha"), ou '' se ele não está tirando nada.
+// avisaAtraso: a pessoa conta que vai atrasar ou está presa no trânsito (sem dizer que vai faltar).
+// Recebe texto já normalizado (minúsculo, sem acento).
+// ---------------------------------------------------------------------------------------------
+export const servicoDispensado = (q: string): string => {
+  const t = String(q || '')
+  const m = t.match(/\b(?:nao precisa(?: mais)?(?: nem)?(?: de)?(?: fazer)?|nao (?:vou|quero) (?:mais )?(?:fazer|querer)|nem precisa(?: fazer)?|sem|(?:pode )?tira(?:r)?)\s+(?:[oa]s?\s+)?(?:\w+\s+)?(lavagem|barba\w*|sobrancelha|pezinho|hidrata\w*|pigmenta\w*|selagem|luzes|platinad\w*|depila\w*)/)
+  return m ? m[1] : ''
+}
+export const avisaAtraso = (q: string): boolean => /\b(atras(ar|ando|ei|o|adinho)|vou demorar|demorar um pouco|transito|engarrafad|preso no|chego (uns|em|daqui)|uns \d+ min)/.test(String(q || ''))
