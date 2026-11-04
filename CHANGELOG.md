@@ -1,3 +1,17 @@
+## 29.345.0 — No Balcão, o telefone também acha o cliente
+
+O Juliano, em 04/11/2026, no Balcão: digitou o número do Lucas e "não aparece cliente com o número dele, mesmo eu
+já tendo atendido ele diversas vezes". O cadastro existia. Só o campo **Nome** buscava; o **Telefone** não procurava
+nada.
+
+- Digitar 4 ou mais números no Telefone abre a mesma lista de clientes, embaixo do nome. Escolher um preenche os
+  dois campos e liga o atendimento ao cadastro. Vale número formatado e com DDD, e acha também quem está gravado com
+  o 55 na frente.
+- Teste novo: `admin-balcao-busca-telefone.spec.js`.
+- Os cadastros do Lucas foram unificados a pedido do Juliano. Um cadastro antigo com apelido e telefone de enchimento
+  foi mesclado no cadastro certo, e o telefone de enchimento **não** ficou como segundo número dele. Por ser número
+  inventado, qualquer pessoa que o digitasse cairia no cadastro do Lucas.
+
 ## 29.344.0 — Concluir um atendimento abre o dia
 
 O Juliano, em 04/11/2026, com 3 atendimentos concluídos e o painel dizendo "Barbearia ainda não aberta hoje":

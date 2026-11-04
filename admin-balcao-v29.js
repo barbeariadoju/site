@@ -218,6 +218,15 @@
       searchTimer = setTimeout(() => searchCustomers(term), 250);
     });
     input.addEventListener('focus', () => { if (box.innerHTML && input.value.trim().length >= 2) box.hidden = false; });
+    // v29.345.0: o telefone também busca (04/11, caso Lucas: digitou o número no campo Telefone e nada apareceu).
+    // A lista abre embaixo do nome; escolher preenche os dois campos.
+    $('balcao-phone').addEventListener('input', (e) => {
+      if (linkedCustomerId) return;
+      clearTimeout(searchTimer);
+      const digits = e.target.value.replace(/\D/g, '');
+      if (digits.length < 4) { box.hidden = true; box.innerHTML = ''; return; }
+      searchTimer = setTimeout(() => searchCustomers(digits), 250);
+    });
     document.addEventListener('click', (e) => { if (!e.target.closest('.balcao-customer-search')) box.hidden = true; });
   }
   async function searchCustomers(term) {
