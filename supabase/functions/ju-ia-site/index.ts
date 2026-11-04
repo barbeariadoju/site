@@ -1271,6 +1271,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.222.0 (caso Marcello): o modelo também não repõe um dia que já passou.
  if(ai.updates&&typeof ai.updates.date==='string'&&ai.updates.date.slice(0,10)<today())delete ai.updates.date
  const next={...state,...Object.fromEntries(Object.entries(ai.updates||{}).filter(([k,v])=>k!=='sales_stage'&&v!==null&&v!==''&&!(Array.isArray(v)&&v.length===0)))}
+ // v29.342.0 — resposta a "primeiro/último horário" (pontaRespondida): "15:15" sozinho vai para o dia em que esse horário
+ // foi dito, mesmo que o modelo tenha posto outro dia. Com dia dito pelo cliente, vale o dia dele.
+ if(state?.horarios_por_dia&&typeof state.horarios_por_dia==='object'){
+  const tM=extractRequestedTime(message)
+  const nM=normalize(message)
+  const diaDito=/\b(hoje|amanha)\b/.test(nM)||weekdayDatesMentioned(nM,today()).length>0
+  if(tM&&!diaDito&&state.horarios_por_dia[tM]){next.date=state.horarios_por_dia[tM];next.horarios_por_dia=null}
+  else if(tM||diaDito)next.horarios_por_dia=null
+ }
  // v29.274.0: o que o cliente escolheu numa lista nossa conta como dito por ele (ver servicosDitosPeloCliente).
  if(!Array.isArray(next.servicos_escolhidos))next.servicos_escolhidos=[]
  if(servicoEscolhidoNaLista&&!next.servicos_escolhidos.includes(servicoEscolhidoNaLista))next.servicos_escolhidos.push(servicoEscolhidoNaLista)
@@ -1747,13 +1756,66 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
   }
  }
+ // v29.342.0 — caso 04/11/2026, 12h51: "Para amanhã, qual o primeiro horário? E hoje, qual o último?" recebeu de novo a
+ // lista de hoje, o anti-papagaio do webhook trocou por "me embolei" e, no "Ok", a mesma lista saiu outra vez. Pergunta
+ // de primeiro/último horário (de um ou mais dias, na mesma mensagem) tem resposta direta, tirada da agenda, para o
+ // serviço da conversa (sem serviço: corte). Os horários ditos ficam em horarios_por_dia: "15:15" sozinho na resposta
+ // seguinte vai para o dia certo.
+ let pontaRespondida=false
+ {
+  const qp=normalize(message)
+  const pedePonta=/\b(primeiro|1o|ultimo|mais cedo|mais tarde)\b[^?.!]{0,25}\bhorario|\bhorario\b[^?.!]{0,15}\b(mais cedo|mais tarde)\b|\bqual (o|e o|seria o) (primeiro|ultimo)\b|\b(primeiro|ultimo) (que|q) (tem|voce tem|vc tem)\b/.test(qp)
+  if(!pediuHumano&&!chegadaTratada&&!formacaoRespondida&&pedePonta&&!extractRequestedTime(message)){
+   const amanhaP=somarDiasIso(today(),1)
+   const nomesDia=WEEKDAY_NAMES.join('|')
+   let diaAnterior=''
+   const partes=qp.split(/[?.!;]+/).map((s:string)=>s.trim()).filter(Boolean).map((seg:string)=>{
+    const tipo=/\b(ultimo|mais tarde)\b/.test(seg)?'ultimo':/\b(primeiro|1o|mais cedo)\b/.test(seg)?'primeiro':''
+    let dia=/\bdepois de amanha\b/.test(seg)?somarDiasIso(today(),2):/\bamanha\b/.test(seg)?amanhaP:/\bhoje\b/.test(seg)?today():new RegExp(`\\b(${nomesDia})`).test(seg)?(weekdayDatesMentioned(seg,today())[0]||''):''
+    if(!dia)dia=diaAnterior
+    if(dia)diaAnterior=dia
+    return {tipo,dia}
+   }).filter((p:any)=>p.tipo)
+   for(const p of partes)if(!p.dia)p.dia=String(next.date||state?.date||today())
+   if(partes.length){
+    const servs=chosen.length?chosen:[findService('Corte de cabelo')].filter(Boolean)
+    const duracao=servs.reduce((a:number,s:any)=>a+Number(s.duration||0),0)||40
+    const nomes=servs.map((s:any)=>s.name).join(' + ')||'Corte de cabelo'
+    const mapa:Record<string,string>={}
+    const frases:string[]=[]
+    for(const p of partes){
+     const {data:sl}=await supabase.rpc('get_available_slots',{p_date:p.dia,p_duration_minutes:duracao})
+     let lista=(sl||[]).map((x:any)=>String(x.slot_time).slice(0,5))
+     if(p.dia===today()){const ag=agoraMinutosSP();lista=lista.filter((t:string)=>Number(t.slice(0,2))*60+Number(t.slice(3,5))>=ag+15)}
+     const dow=new Date(p.dia+'T12:00:00-03:00').getUTCDay()
+     const quando=emDia(p.dia)
+     if(!lista.length){
+      frases.push(dow===0||dow===1?`${quando} a barbearia não abre`:p.dia===today()?'hoje já não consigo mais':`${quando} não consigo`)
+      continue
+     }
+     const hora=p.tipo==='primeiro'?lista[0]:lista[lista.length-1]
+     mapa[hora]=p.dia
+     frases.push(`${quando}, o ${p.tipo==='primeiro'?'primeiro':'último'} ${frases.length?'é':'horário é'} ${hora}`)
+    }
+    const algum=Object.keys(mapa).length
+    reply=`Para ${nomes.charAt(0).toLowerCase()+nomes.slice(1)}: ${frases.join('; ')}.${algum?(algum>1?' Qual fica melhor pra você?':' Quer que eu reserve?'):' Quer que eu veja outro dia?'}`
+    pontaRespondida=true
+    intent='other';handoff=false
+    actions=Object.keys(mapa).map((t:string)=>({label:`${emDiaCap(mapa[t])} ${t}`,message:`${emDia(mapa[t])} ${t}`}))
+    next.date=algum===1?Object.values(mapa)[0]:null;next.time=null;next.period=null;next.asap=false
+    if(chosen.length)next.services=chosen.map((s:any)=>s.name)
+    next.horarios_por_dia=algum?mapa:null
+    for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   }
+  }
+ }
  // v29.234.0 — caso Juca (25/09/2026, 07h54): "a gente marcou o horário de hoje?" levou só a lista de vagas
  // de hoje, sem resposta à pergunta. Com reserva no dia perguntado: a resposta é a reserva (e a conversa de
  // agenda não abre). Sem reserva: a resposta de agenda segue, com a frase que responde a pergunta na frente.
  let reservaConsultada=false
  let prefixoSemReserva=''
  {
-  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada&&!formacaoRespondida?perguntaSeTemReserva(normalize(message)):null
+  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada&&!formacaoRespondida&&!pontaRespondida?perguntaSeTemReserva(normalize(message)):null
   if(diaPerg){
    const amanhaR=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
    const alvo=diaPerg==='hoje'?today():diaPerg==='amanha'?amanhaR:''
@@ -3592,7 +3654,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // já estão preenchidos) sobrescrevia intent='join_waitlist' para 'book' e CRIAVA um
  // agendamento de verdade no dia/horário alternativo oferecido, em vez de colocar o
  // cliente na lista de espera do dia original — o oposto do que ele pediu.
- const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion&&!faltaAcolhida // v29.341.0: resposta fixa da falta não leva fluxo de agenda por cima
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion&&!faltaAcolhida&&!pontaRespondida // v29.341.0: resposta fixa da falta não leva fluxo de agenda por cima
 
  // v29.16.0 — FIM DA ESTEIRA DE VENDAS (12/08/2026, caso real do print do Juliano): o
  // fluxo antigo fazia até 3 perguntas de venda em série (upgrade da lavagem → complementos
@@ -6007,7 +6069,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  const avisouFalta=/\bdespertador\b|perdi a hora|nao consegui (ir|chegar|vir)|nao deu (pra|para) (ir|vir)|nao pude (ir|vir)|acabei nao (indo|vindo)|tive um imprevisto|\bimprevisto\b|me atrasei|dormi demais|\besqueci\b|passei mal|fiquei doente/.test(normalizedQuestion)
  const pediuDesculpa=/desculp\w*|\bperdao\b|foi mal|mil perdoes/.test(normalizedQuestion)
- if(faltaAcolhida){} // resposta sobre a falta já é fixa (v29.341.0): nem "Imagina" nem saudação por cima
+ if(faltaAcolhida||pontaRespondida){} // resposta sobre a falta já é fixa (v29.341.0): nem "Imagina" nem saudação por cima
  else if((avisouFalta||pediuDesculpa)&&!fechouSolidario&&!noticiaTriste&&!/imagina|acontece|sem problema/i.test(reply)){
   const abertura=avisouFalta?'Imagina, acontece. Obrigado por avisar.':'Imagina, sem problema.'
   reply=`${perguntouComoEstou?'Tudo bem por aqui! ':''}${abertura} ${reply.replace(/^(?:tudo (?:bem|[óo]timo|certo|joia)[^.!?]*[.!?]\s*)?(?:(?:sem problema|imagina|n[ãa]o tem problema|fique tranquil[oa])[^.!?]*[.!?]\s*)?/i,'')}`.trim()
@@ -6115,7 +6177,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada||formacaoRespondida
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada||formacaoRespondida||pontaRespondida
   // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
   // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
   // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com

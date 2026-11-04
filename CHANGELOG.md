@@ -1,3 +1,26 @@
+## 29.342.0 — "Qual o primeiro horário amanhã? E o último hoje?" tem resposta direta
+
+Caso de 04/11/2026, 12h51 (final 4356). O cliente pediu só corte e recebeu os horários de hoje. Perguntou "Para amanhã,
+qual o primeiro horário? E hoje, qual o último?" e a JuIA repetiu a mesma lista. O anti-papagaio do webhook trocou por
+"Desculpe, me embolei aqui". No "Ok", a mesma lista saiu de novo. O Juliano pediu: ensinar e responder.
+
+- `ju-ia-site` (`pontaRespondida`): a pergunta de primeiro/último horário, de um ou mais dias na mesma mensagem
+  (hoje, amanhã, depois de amanhã, dia da semana), tem resposta tirada da agenda, para o serviço da conversa (sem
+  serviço: corte). Exemplo: "Para corte de cabelo: amanhã, o primeiro horário é 08:30; hoje, o último é 15:15. Qual fica
+  melhor pra você?". Dia sem vaga: "não consigo" (ou "a barbearia não abre") e "Quer que eu veja outro dia?".
+- Os horários ditos ficam em `horarios_por_dia`: se o cliente responde só "15:15", vai para o dia em que esse horário
+  foi dito, mesmo que o modelo tenha posto outro dia.
+- A resposta fica fora dos fluxos de agenda e de saudação (mesmo esquema da `faltaAcolhida`).
+- Simulador: cenário 111 (a, b, c). 295 ok.
+
+Respondido na hora pelo `whatsapp-send`: "Hoje, para corte, o último horário é 15:15. Amanhã, o primeiro é 08:30". Em
+seguida, "Preciso de horário após às 17h": a JuIA ficou calada, por causa dos 3 min de silêncio depois de mensagem do
+Juliano. Respondido também: hoje não cabe depois das 17h (as brechas são de 35 min e o corte tem 40), amanhã 17:00 ou
+17:15. A conversa voltou para a JuIA, com o dia de amanhã no estado.
+
+**Decidido contra o óbvio:** não mexi no anti-papagaio do webhook. Ele fez o trabalho dele (não deixou a mesma lista
+sair duas vezes seguidas). O defeito era a JuIA não ter resposta para a pergunta.
+
 ## 29.341.0 — 2ª falta bloqueia sozinha (só com Pix), 1ª falta com resposta gentil, e fim do dia até 19:20
 
 Três pedidos do Juliano em 04/11/2026.

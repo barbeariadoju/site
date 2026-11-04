@@ -1609,5 +1609,21 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('110c "Vou fazer exames": deseja bom exame e não oferece horário', /exame/.test(rB.reply) && !/\d{2}:\d{2}/.test(rB.reply) && !/Não encontrei/.test(rB.reply), rB.reply)
 }
 
+// 111. v29.342.0 — caso 04/11, 12h51: "Para amanhã, qual o primeiro horário? E hoje, qual o último?" ouviu de novo a lista
+// de hoje (e o "me embolei" do anti-papagaio). Resposta direta, um dia por pergunta, e "23:30" sozinho vai pro dia certo.
+{
+  const vagas = { [hoje]: ['23:00', '23:30'], [amanha]: ['08:30', '09:00', '17:15'] }
+  const st = { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: hoje, name: 'Cliente Ponta', phone: '5511900000001' }
+  const r1 = await turno({ msg: 'Para amanhã, qual o primeiro horário? E hoje, qual o último?', state: st,
+    ai: { intent: 'availability', reply: 'Para Corte de cabelo consigo te atender hoje: 23:00, 23:30.', updates: { date: hoje } }, contexto: ctxCliente('Cliente Ponta'), vagas })
+  checar('111a responde o primeiro de amanhã e o último de hoje', /amanhã, o primeiro horário é 08:30; hoje, o último é 23:30./.test(r1.reply) && !/23:00/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: '23:30', state: r1.state, history: [{ role: 'assistant', content: r1.reply }],
+    ai: { intent: 'book', reply: 'Certo.', updates: { time: '23:30', date: amanha } }, contexto: ctxCliente('Cliente Ponta'), vagas })
+  checar('111b "23:30" sozinho fica no dia em que foi dito (hoje)', r2.state?.date === hoje || r2.chamadas.some((x: any) => x.alvo === 'create_public_booking_v15' && x.args?.p_booking_date === hoje), { reply: r2.reply, date: r2.state?.date })
+  const r3 = await turno({ msg: 'Qual o último horário de sábado?', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Cliente Ponta'), vagas: {} })
+  checar('111c dia sem vaga: diz que não consegue e oferece outro dia, sem lista', /não consigo|não abre/.test(r3.reply) && /outro dia/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
