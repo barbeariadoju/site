@@ -1,3 +1,30 @@
+## 29.338.0 — Caso Yuri: quem acabou de ser atendido não recebe "ainda tem interesse?"
+
+Print do Juliano (04/11/2026, 08h00). O Yuri cortou às 17h de 03/11. Na pesquisa, respondeu à sugestão do próximo
+horário com "Outro dia" e "Depois reservo, obrigado.". Às 8h do dia seguinte levou "Só passando pra saber se ainda
+tem interesse em Corte de cabelo". Para quem estava na cadeira na véspera, isso parece robô desgovernado.
+
+Dois defeitos somados:
+- `ju-ia-site`: "depois reservo/agendo/chamo/retorno" e "reservo/agendo/marco depois/mais tarde" não estavam
+  na lista de adiamento. A última mensagem dele regravou o lead (`price_or_service`) e o cron cobrou.
+- `whatsapp-lead-followup`: o `isResolved` só olhava booking criado DEPOIS da conversa. O lead nasceu da conversa
+  da pesquisa, depois do atendimento. Agora, quem foi atendido há menos de 15 dias (`MIN_DAYS_SINCE_VISIT`) ou já
+  tem horário marcado não é lead a cobrar. O "oi" solto (greeting) segue a regra própria. Quem cuida dessa
+  pessoa é o convite de retorno do dia 12.
+
+Caso seu José (03/11, 13h57 e 19h04): sem nada reservado, "Favor cancelar" e "Vou fazer exames" receberam
+duas vezes "Não encontrei nenhum agendamento futuro nesse número. Se já foi cancelado ou é outro número, me avise".
+Agora a resposta é "não há horário reservado neste número, então não precisa cancelar nada". Se a mensagem fala
+de exame, consulta ou hospital, deseja que corra tudo bem. A conversa fecha sem oferta.
+
+Caso Bruno (03/11, 15h23, "Anotado: Corte de cabelo no lugar de Corte + Barba Express"): não reproduz na versão
+atual. A correção da 29.334.0 entrou no ar minutos antes da conversa. Ficou como cenário de regressão.
+
+Lead do Yuri apagado à mão no banco. Simulador: cenários 110a/b/c (287 ok); `npm test` verde.
+
+**Decidido contra o óbvio:** não desliguei o follow-up de lead nem aumentei o prazo dele. Ele recupera agendamento
+de quem sumiu de verdade. O erro era cobrar quem não sumiu.
+
 ## 29.337.0 — Comprovante corrigido sai sozinho quando o atendimento muda depois do Concluir
 
 Caso Bruno (03/11/2026, 18h23). O Juliano concluiu como "Corte de cabelo" e trocou para "Corte + Barba Express"

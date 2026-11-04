@@ -117,6 +117,20 @@ Deno.serve(async (request: Request) => {
   const isResolved = async (phone: string, lastMessageAt: string, kind = ''): Promise<boolean> => {
     const { data: hasBooking } = await admin.rpc('lead_booking_exists', { p_phone: phone, p_since: lastMessageAt })
     if (hasBooking === true) return true
+    // v29.338.0 — caso Yuri (03/11/2026): cortou às 17h, na pesquisa disse "Depois reservo, obrigado." e às 8h
+    // do dia seguinte levou "só passando pra saber se ainda tem interesse em Corte de cabelo". O lead nasceu da
+    // conversa da pesquisa, DEPOIS do atendimento, então o booking não contava como "criado depois". Quem foi
+    // atendido há menos de MIN_DAYS_SINCE_VISIT dias, ou já tem horário marcado, não é lead a cobrar: o convite
+    // de retorno cuida dele no tempo certo. O "oi" solto (greeting) segue a regra própria lá embaixo.
+    if (kind !== 'greeting') {
+      const { data: upcoming } = await admin.rpc('phone_upcoming_bookings', { p_phone: phone })
+      if (Array.isArray(upcoming) && upcoming.length) return true
+      const { data: ctx } = await admin.rpc('get_customer_commercial_context', { p_phone: phone })
+      if (ctx?.last_visit) {
+        const dias = Math.floor((Date.now() - new Date(String(ctx.last_visit) + 'T12:00:00-03:00').getTime()) / 86400000)
+        if (dias < MIN_DAYS_SINCE_VISIT) return true
+      }
+    }
     const { data: conv } = await admin
       .from('whatsapp_conversations')
       .select('human_takeover, human_takeover_at')

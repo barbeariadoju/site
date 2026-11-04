@@ -2622,7 +2622,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     handoff=false
    }
   }else if(!upcomingBookings.length){
-   reply='Não encontrei nenhum agendamento futuro nesse número. Se já foi cancelado ou é outro número, me avise.'
+   // v29.338.0 — caso seu José (03/11/2026, 13h57 e 19h04): sem nada reservado, "Favor cancelar" (= deixa pra lá a
+   // oferta de horário) e "Vou fazer exames" ouviram duas vezes "Não encontrei nenhum agendamento futuro nesse número.
+   // Se já foi cancelado ou é outro número, me avise" — resposta de sistema para um senhor que só avisava que ia a
+   // Campinas fazer exame. Diz que não há nada a cancelar, deseja bom exame se for o caso, e fecha sem oferta.
+   const nomeJ=primeiroNome(next.name||'','')
+   const exame=/\bexa\w*|\bconsulta\b|\bmedic[oa]\b|\bhospital\b|\bcirurgia\b/.test(normalizedQuestion)
+   reply=`${exame?`Entendi${nomeJ?`, ${nomeJ}`:''}. Que corra tudo bem no exame. `:'Tudo bem. '}Não há horário reservado neste número, então não precisa cancelar nada. Quando quiser marcar, é só me chamar por aqui.`
+   next.dismissed=true
    handoff=false
   }else if(upcomingBookings.length===1){
    const b=upcomingBookings[0]
@@ -6086,7 +6093,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // serviço, nasce um lead novo naturalmente. Regra do Juliano: "quero que impeça que isto ocorra".
   const adiouLead=next.dismissed===true
    ||/\b(semana que vem|proxima semana|outro dia|outra hora|mais pra frente|fica pra (proxima|outra)|deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|agora nao (da|consigo|vai dar)|nao vai dar (hoje|essa semana)|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
-   ||/\bainda nao (consigo|sei|defin\w*|da pra|tenho certeza)\b|\bnao sei ainda\b|\bsem previsao\b|\bquando (eu )?(conseguir|souber|puder|definir|decidir)\b|\b(te|lhe) aviso\b|\bdepois (eu )?(te )?(falo|aviso|vejo|marco|confirmo|passo)\b|\bvou (ver|olhar|pensar) e (te )?(falo|aviso|confirmo)\b/.test(normalizedQuestion)
+   ||/\bainda nao (consigo|sei|defin\w*|da pra|tenho certeza)\b|\bnao sei ainda\b|\bsem previsao\b|\bquando (eu )?(conseguir|souber|puder|definir|decidir)\b|\b(te|lhe) aviso\b|\bdepois (eu )?(te )?(falo|aviso|vejo|marco|confirmo|passo|reservo|agendo|chamo|retorno)\b|\b(reservo|agendo|marco) (mais tarde|depois|outra hora)\b|\bvou (ver|olhar|pensar) e (te )?(falo|aviso|confirmo)\b/.test(normalizedQuestion)
    // v29.197.0 (caso Maurício, 16→17/09/2026): "Daqui um mês marcamos... Estou saindo de férias" às
    // 20h51 não caiu em nenhuma frase acima (nenhuma fala em "semana que vem" nem "ainda não sei") —
    // o lead ficou ativo e o cron cobrou de novo às 8h do dia seguinte ("seu horário ainda NÃO ficou
@@ -6095,6 +6102,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // e férias são adiamento tão válido quanto "semana que vem" — some do funil do mesmo jeito.
    // Reticências ("marcamos... Estou saindo de férias...") são comuns nesse tipo de frase e não
    // podem cortar a janela de busca — só "!" e "?" fecham frase aqui, ponto não.
+   // v29.338.0 — caso Yuri (03/11/2026, 18h25): acabou de cortar, recusou a sugestão do próximo horário com
+   // "Depois reservo, obrigado." e às 8h do dia seguinte levou "só passando pra saber se ainda tem interesse em
+   // Corte de cabelo". "reservo/agendo depois" não estava na lista acima (só falo/aviso/vejo/marco...).
    ||(()=>{const semReticencias=normalizedQuestion.replace(/\.{2,}/g,' ')
      return /\b(feria(s)?|viagem|viajando|viajar)\b[^!?]{0,60}\b(volto|voltar|marcamos|marco|mes|semana)\b/.test(semReticencias)
        ||/\b(volto|voltar|marcamos|marco)\b[^!?]{0,60}\b(feria(s)?|viagem)\b/.test(semReticencias)

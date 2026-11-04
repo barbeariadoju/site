@@ -1562,5 +1562,30 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('109b "Vou agendar outro dia" sem reserva: encerra, sem "você não tem horário marcado"', !/não tem horário marcado|Quer que eu veja/.test(r2.reply), r2.reply)
 }
 
+// 110. v29.338.0 — caso Yuri (03/11, 18h25): cortou às 17h, recusou a sugestão do próximo horário com "Depois reservo,
+// obrigado." e às 8h do dia seguinte levou "só passando pra saber se ainda tem interesse em Corte de cabelo".
+// E caso Bruno (03/11, 15h23): reservado só com o corte, "Corte de cabelo e corte de barba pode ser" recebeu
+// "Anotado: Corte de cabelo no lugar de Corte + Barba Express. Fica Corte + Barba Express." (troca que não houve).
+{
+  for (const msg of ['Depois reservo, obrigado.', 'Agendo depois', 'Reservo mais tarde, valeu']) {
+    const r = await turno({ msg, state: { services: ['Corte de cabelo'] },
+      ai: { intent: 'availability', reply: 'Sem problema. Quando quiser reservar, é só me chamar.', updates: {} }, contexto: ctxCliente('Yuri Teste') })
+    checar(`110a "${msg}": lead apagado (sem cobrança no dia seguinte)`, r.chamadas.some((x: any) => x.alvo === 'conversation_leads' && x.op === 'delete') && !r.chamadas.some((x: any) => x.alvo === 'conversation_leads' && x.op !== 'delete'), r.chamadas.filter((x: any) => x.alvo === 'conversation_leads'))
+  }
+  const futB = [{ id: 'bb', booking_date: hoje, start_time: '23:00:00', service_name: 'Corte de cabelo', service_price: 50, status: 'confirmed' }]
+  const r2 = await turno({ msg: 'Corte de cabelo e corte de barba pode ser', state: { completed: true, name: 'Bruno Teste', services: ['Corte de cabelo'], date: hoje, time: '23:00' },
+    ai: { intent: 'change_service', reply: 'Certo.', updates: { services: ['Corte + Barba Express'] } }, contexto: ctxCliente('Bruno Teste'), futuros: futB })
+  checar('110b incluir a barba no corte reservado: sem "Anotado: X no lugar de Y" de troca que não houve', !/Anotado: Corte de cabelo no lugar de Corte \+/.test(r2.reply), r2.reply)
+}
+
+// 110c. v29.338.0 — caso seu José (03/11, 13h57 e 19h04): sem reserva, "Favor cancelar" e "Vou fazer exames" ouviam
+// "Não encontrei nenhum agendamento futuro nesse número. Se já foi cancelado ou é outro número, me avise".
+{
+  const rA = await turno({ msg: 'Favor cancelar', state: {}, ai: { intent: 'cancel', reply: 'Certo.', updates: {} }, contexto: ctxCliente('José Teste') })
+  checar('110c "Favor cancelar" sem reserva: nada a cancelar, sem frase de sistema', /não precisa cancelar nada/.test(rA.reply) && !/Não encontrei|outro número/.test(rA.reply), rA.reply)
+  const rB = await turno({ msg: 'Vou fazer exames', state: {}, ai: { intent: 'cancel', reply: 'Certo.', updates: {} }, contexto: ctxCliente('José Teste') })
+  checar('110c "Vou fazer exames": deseja bom exame e não oferece horário', /exame/.test(rB.reply) && !/\d{2}:\d{2}/.test(rB.reply) && !/Não encontrei/.test(rB.reply), rB.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
