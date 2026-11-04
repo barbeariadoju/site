@@ -1,3 +1,19 @@
+## 29.339.0 — Se o Juliano falou com o cliente hoje, a JuIA fica calada até o fim do dia
+
+Pedido do Juliano (04/11/2026), depois do caso seu José: ele respondeu pelo celular às 15h04 ("venha amanhã cedo") e,
+às 19h04, a JuIA voltou a responder o cliente com "Não encontrei nenhum agendamento futuro nesse número". O silêncio
+depois de mensagem do Juliano vencia em 3 h (`HUMAN_TAKEOVER_WINDOW_MS`).
+
+- `whatsapp-webhook`: com a bandeira `human_takeover` ainda ligada e mensagem do Juliano (`sent_by='human'`) desde a
+  meia-noite de hoje, a conversa continua com ele, mesmo passadas as 3 h. O push "Cliente te escreveu" continua
+  avisando (no máximo 1 a cada 10 min por cliente).
+
+**Decidido contra o óbvio:** não troquei as 3 h por "o dia todo" direto na bandeira. O comprovante, o aniversário, a
+reativação e os outros envios automáticos desligam a bandeira ao sair. É isso que deixa o "1" da pesquisa chegar à
+JuIA. Se o silêncio fosse do dia todo sem essa condição, o cliente que conversou com o Juliano de manhã e recebeu o
+cupom à tarde ficaria sem resposta na pesquisa. Também continua valendo o caso Plinio: um handoff da própria JuIA,
+sem o Juliano ter escrito, não entra nessa regra.
+
 ## 29.338.0 — Caso Yuri: quem acabou de ser atendido não recebe "ainda tem interesse?"
 
 Print do Juliano (04/11/2026, 08h00). O Yuri cortou às 17h de 03/11. Na pesquisa, respondeu à sugestão do próximo

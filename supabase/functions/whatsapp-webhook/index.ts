@@ -1126,12 +1126,23 @@ Deno.serve(async (request: Request) => {
           return json({ ok: true, opt_out: true })
         }
 
-        const stillActive = isTakeoverActive(conversation)
+        // v29.339.0 — caso seu José (03/11/2026): o Juliano respondeu pelo celular às 15h04 e, às 19h04, a JuIA
+        // voltou a responder ("Não encontrei nenhum agendamento...") porque o silêncio vencia em 3 h. Pedido do
+        // Juliano (04/11): se ele falou com o cliente HOJE, a JuIA fica calada até o fim do dia (o push continua
+        // avisando ele). Só vale com a bandeira ainda ligada: o comprovante, o aniversário e as outras mensagens
+        // automáticas desligam a bandeira ao sair, e aí a resposta do cliente (o "1" da pesquisa) é da JuIA.
+        let stillActive = isTakeoverActive(conversation)
+        if (!stillActive && conversation?.human_takeover) {
+          const { data: humanoHoje } = await admin.from('whatsapp_messages').select('id').eq('phone', phone)
+            .eq('direction', 'out').eq('sent_by', 'human').gte('created_at', startOfTodaySP()).limit(1)
+          stillActive = Boolean(humanoHoje?.length)
+          if (stillActive) console.log('[whatsapp-webhook] Juliano falou hoje: JuIA segue calada', phone)
+        }
         await admin.from('whatsapp_conversations').upsert({
           phone,
           state: conversation?.state || {},
           human_takeover: stillActive,
-          human_takeover_at: stillActive ? conversation?.human_takeover_at : null,
+          human_takeover_at: stillActive ? (conversation?.human_takeover_at || new Date().toISOString()) : null,
           last_message_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }, { onConflict: 'phone' })
