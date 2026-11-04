@@ -994,6 +994,9 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const base = { contexto: ctxCliente('Frei Teste'), vagasPorDuracao: (min: number) => (min <= 45 ? ['16:45'] : []), ai: { intent: 'book', reply: 'Vou ver.', updates: {} } }
   const r2 = await turno({ ...base, reservaErro: 'Horário indisponível', msg: 'Consigo corte de cabelo e sobrancelha', state: st })
   checar('70b oferece o corte às 16:45 e a sobrancelha na hora', /16:45 o tempo dá para Corte de cabelo/.test(r2.reply) && /Sobrancelha Masculina o Ju vê na hora/.test(r2.reply) && r2.state?.pending_fit_choice?.naHora === true, r2.reply)
+  // v29.341.0 — caso Carlos (04/11): 'Horário fora do atendimento.' saía cru pro cliente
+  const r2b = await turno({ ...base, reservaErro: 'Horário fora do atendimento.', msg: 'Consigo corte de cabelo e sobrancelha', state: st })
+  checar('70b2 fora do atendimento: não manda o erro cru, explica e oferece o que cabe', !/fora do atendimento/i.test(r2b.reply) && /16:45/.test(r2b.reply), r2b.reply)
   const r3 = await turno({ ...base, msg: '1', state: r2.state })
   const criou = r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('70c "1" reserva só o corte às 16:45 com a sobrancelha anotada', criou?.args?.p_service_name === 'Corte de cabelo' && criou?.args?.p_start_time === '16:45' && /Sobrancelha Masculina/.test(criou?.args?.p_notes || ''), { reply: r3.reply, args: criou?.args })
@@ -1498,7 +1501,7 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r1 = await turno({ msg: 'Não conseguir pegar o ônibus\nTô vendo aqui se tem ônibus\nPara ir', state: {},
     ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade e me avise quando estiver a caminho.', updates: {} },
     contexto: ctxCliente('Venilson Teste'), faltas: falta, totalFaltas: 2, bloqueado: true })
-  checar('106a falta: explica (hora marcada, um cliente por vez, 24 h) e o Pix antecipado, sem prometer horário', /registrado como falta/.test(r1.reply) && /24 horas/.test(r1.reply) && /um cliente por vez/.test(r1.reply) && /pagamento antecipado/.test(r1.reply) && !/garantido|Pode vir/.test(r1.reply) && r1.state?.falta_avisada === 'f1', r1.reply)
+  checar('106a falta: explica (hora marcada, um cliente por vez, 24 h) e o Pix antecipado, sem prometer horário', /registrado como falta/.test(r1.reply) && /24 horas/.test(r1.reply) && /um cliente por vez/.test(r1.reply) && /segunda falta, a partir de agora/.test(r1.reply) && /pagamento antecipado/.test(r1.reply) && !/garantido|Pode vir/.test(r1.reply) && r1.state?.falta_avisada === 'f1', r1.reply)
   checar('106a falta: push pro Juliano', r1.saidas.some((s: any) => s.url.includes('send-push') && /faltou/i.test(JSON.stringify(s.body))), r1.saidas.map((s: any) => s.url))
   const r2 = await turno({ msg: 'Aqui é difícil ter ônibus', state: { falta_avisada: 'f1' },
     ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade.', updates: {} },
@@ -1512,7 +1515,15 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r1c = await turno({ msg: 'Não consegui ir ontem, perdi o ônibus', state: {},
     ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade.', updates: {} },
     contexto: ctxCliente('Lucas Teste'), faltas: falta, totalFaltas: 1 })
-  checar('106f 1ª falta: ainda não promete horário que já passou', !/registrado como falta/.test(r1c.reply) && !/garantido|Pode vir/.test(r1c.reply), r1c.reply)
+  checar('106f 1ª falta: justificativa ouve resposta empática, sem regra e sem promessa', /imprevistos acontecem/.test(r1c.reply) && !/registrado como falta|24 horas|garantido|Pode vir/.test(r1c.reply), r1c.reply)
+  const r1d = await turno({ msg: 'Desculpa Ju, passei mal ontem e não consegui avisar', state: {},
+    ai: { intent: 'other', reply: 'Tudo bem!', updates: {} },
+    contexto: ctxCliente('Lucas Teste'), faltas: falta, totalFaltas: 1 })
+  checar('106g 1ª falta por saúde: sinto muito, sem cobrança e sem "Imagina" grudado', /Sinto muito/.test(r1d.reply) && !/Imagina|registrado como falta|24 horas/.test(r1d.reply), r1d.reply)
+  const r1e = await turno({ msg: 'Desculpa, tive um imprevisto no trabalho', state: {},
+    ai: { intent: 'other', reply: 'Tudo bem!', updates: {} },
+    contexto: ctxCliente('Venilson Teste'), faltas: falta, totalFaltas: 1, bloqueado: true })
+  checar('106h bloqueio manual com 1 falta (Venilson): ouve a política com o Pix', /registrado como falta/.test(r1e.reply) && /Depois de uma falta/.test(r1e.reply) && /pagamento antecipado/.test(r1e.reply), r1e.reply)
   const agora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':').map(Number)
   const ini = Math.max(0, agora[0] * 60 + agora[1] - 60)
   const hIni = `${String(Math.floor(ini / 60)).padStart(2, '0')}:${String(ini % 60).padStart(2, '0')}:00`

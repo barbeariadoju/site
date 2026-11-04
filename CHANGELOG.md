@@ -1,3 +1,42 @@
+## 29.341.0 — 2ª falta bloqueia sozinha (só com Pix), 1ª falta com resposta gentil, e fim do dia até 19:20
+
+Três pedidos do Juliano em 04/11/2026.
+
+**1. Falta.** A regra combinada:
+- 1ª falta: quando o cliente se justifica ("desculpa", "tive um imprevisto", "perdi o ônibus"), a JuIA responde com
+  educação e sem regra: "Sem problema, imprevistos acontecem. Obrigado por me avisar...". Se for saúde leve (passei
+  mal, febre), a resposta é "Sinto muito, espero que já esteja tudo bem...". Internação e luto continuam com o texto
+  da notícia difícil (v29.303.0). Pedido de horário segue o fluxo normal.
+- 2ª falta: o banco põe o telefone sozinho em  (gatilho ,
+  migração 214). A JuIA manda a mensagem da política com "Como esta já é a segunda falta, a partir de agora o
+  agendamento é confirmado com pagamento antecipado pelo Pix" e as regras (24 h vira crédito, sem aviso não devolve).
+  Dali em diante, ao tentar agendar, ela apresenta os termos do Pix (fluxo  da v29.327.0).
+- Se o Juliano desfizer a falta (marcou por engano) e o total voltar a menos de 2, o bloqueio automático sai sozinho.
+  Bloqueio manual nunca é mexido pelo gatilho.
+- Bloqueio manual com 1 falta (Venilson, decisão de 31/10) continua ouvindo a política com o Pix.
+
+Erro meu, achado no simulador: a mensagem da política era sobrescrita quando o cliente abria com "Desculpa" ou "Oi"
+(o "Imagina, acontece", a saudação e o "qual dia fica melhor?" do expediente vinham por cima). Já era assim na
+v29.329.0. Agora a resposta da falta é fixa ( fora do  e da cadeia de saudação).
+Também: o  das regras da v29.340.0 foi gravado como caractere invisível por um script Python; conferido que
+não sobrou nenhum.
+
+Venilson: no sistema ele tem 1 falta registrada (31/10); o 19/09 está como concluído. Ele já estava bloqueado à mão.
+
+**2. Fim do dia até 19:20 (caso Carlos).** A JuIA ofereceu amanhã 18:00, ele escolheu corte + barba (termina 19:05) e
+recebeu "Horário fora do atendimento." cru. O Juliano agendou na mão e pediu: pode passar das 19h desde que o serviço
+termine até 19:20.  (fonte única) passa a ter  19:20 de terça a sexta (migração 215).
+Sábado continua 15:00. Corte até 18:40, corte + barba até 18:15. O prompt da JuIA diz o mesmo, sem anunciar os 19:20
+para o cliente (o horário de funcionamento continua até 19:00).
+
+**3. Erro cru.** "Horário fora do atendimento." agora tem o mesmo tratamento do "não cabe": explica e traz o mais
+próximo que cabe (simulador 70b2).
+
+Simulador: 106a/106b (2ª falta), 106e-106h, 70b2. 292 ok.
+
+**Decidido contra o óbvio:** os 19:20 valem para o site também, não só para a JuIA. A v29.167.0 já tinha tirado a
+exceção "só no WhatsApp" a pedido dele: régua única, sem um canal oferecer o que o outro recusa.
+
 ## 29.340.0 — Texto da política de falta só a partir da 2ª falta
 
 Pedido do Juliano (04/11/2026), depois do caso Lucas: ele faltou ao horário das 15:20 de 03/11 (a primeira falta dele)

@@ -1169,7 +1169,7 @@ Você é a JuIA, atendente e consultora comercial da Barbearia do Ju, no WhatsAp
 - Se você listou 2 ou mais opções e o cliente só pergunta o valor, isso não é escolha: responda o preço de cada uma e mantenha a pergunta aberta.`,
 `# AGENDA E HORÁRIOS
 - Abreviações comuns do cliente: "nn"/"n" = não, "pk"/"pq" = porque, "vc" = você, "hj" = hoje, "amnh" = amanhã, "tb"/"tbm" = também, "dps" = depois, "blz" = beleza. "Amanhã nn dá" é recusa do dia, nunca pedido.
-- Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00; domingo e segunda fechado. O último atendimento TERMINA no fechamento (19:00 de terça a sexta, 15:00 no sábado): o último horário depende da duração do serviço. Nunca ofereça esticar depois do fechamento; exceção é só com o Juliano. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
+- Funcionamento: terça a sexta 08:30–19:00; sábado 08:30–15:00; domingo e segunda fechado. O último atendimento pode TERMINAR até 19:20 de terça a sexta (15:00 no sábado): o último horário depende da duração do serviço, e quem decide é a agenda (os horários que o sistema te passa já respeitam isso). Para o cliente, o horário de funcionamento continua sendo até 19:00; não anuncie os 19:20. Além disso, nunca ofereça esticar; exceção é só com o Juliano. A barbearia abre às 08:30, que é o primeiro horário de atendimento (nunca ofereça antes disso). Para HOJE, olhe a hora atual: período que já passou não se oferece (à tarde, nada de "manhã").
 - O dia que o cliente ESCREVEU é o dia do pedido. Nunca troque por outro dia sem dizer. Dia em que não abrimos (domingo, segunda ou dia da lista de fechamento): a PRIMEIRA coisa da resposta é dizer que naquele dia não abrimos, e só depois ofereça o dia seguinte, como pergunta. Se ele disser só o número do dia, confira que dia da semana cai.
 - Horário fora do funcionamento: diga na hora, com clareza, e ofereça o possível mais próximo.
 - "Antes das X", "até as X" = limite de horário, não o horário escolhido. "Depois das X", "a partir das X", "após as X" = piso. Nos dois casos deixe updates.time em null e use intent "availability"; o sistema filtra.
@@ -1615,7 +1615,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // de agenda reabriu por cima. Quem avisa que está chegando pro horário de HOJE não está pedindo nada:
  // resposta fixa, e a conversa velha do dia sai da memória. Atraso segue a regra do prompt (sem número
  // de tolerância; atraso grande vai pro Juliano) — por isso "atras"/"demor" ficam de fora daqui.
- let chegadaTratada=false
+ let chegadaTratada=false,faltaAcolhida=false
  // v29.329.0 — caso Venilson (31/10/2026). Horário das 09:00, mensagem e ligação do Juliano sem resposta, marcado como
  // falta às 09:13. Às 10:39: "Não consegui pegar o ônibus / Tô vendo aqui se tem ônibus para ir" — e a JuIA respondeu
  // "Sem problema, seu horário está garantido. Pode vir com tranquilidade". Ela não via o horário (já tinha passado e
@@ -1628,24 +1628,40 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.340.0 — pedido do Juliano (04/11/2026, caso Lucas): o texto da política só sai a partir da 2ª falta do telefone
  // (phone_no_show_count conta o histórico todo). Na 1ª, a JuIA responde normalmente; o push pro Juliano sai igual e
  // a trava do "horário garantido" (mais abaixo) continua valendo, porque faltasRecentes segue preenchido.
- let totalFaltas=0
+ // v29.341.0 — na 2ª falta o banco bloqueia sozinho (trg_bookings_auto_block_on_no_show): dali em diante só com Pix
+ // antecipado. Bloqueio manual com 1 falta (decisão do Juliano, caso Venilson) também ouve a política.
+ let totalFaltas=0,bloqueadoF=false
  if(faltaPendente&&!upcomingBookings.length){
   try{const {data:nf}=await supabase.rpc('phone_no_show_count',{p_phone:verifiedPhone});totalFaltas=Number(nf)||0}catch(e){console.error('[ju-ia-site] phone_no_show_count',e)}
+  try{const {data:bl}=await supabase.rpc('is_customer_blocked_v2',{p_phone:verifiedPhone,p_email:null});bloqueadoF=bl===true}catch(e){console.error('[ju-ia-site] is_customer_blocked_v2',e)}
  }
- if(faltaPendente&&!upcomingBookings.length&&totalFaltas<2){
+ if(faltaPendente&&!upcomingBookings.length&&totalFaltas<2&&!bloqueadoF){
   next.falta_avisada=faltaPendente.id
+  // Pedido do Juliano (04/11): na 1ª falta, quem se justifica ouve resposta educada e empática, sem regra e sem
+  // cobrança. Pedido de horário segue o fluxo normal. Internação/luto fica com o texto da notícia difícil (v29.303.0).
+  const qJ=normalize(message)
+  const justifica=/\bdesculp|\bperdao\b|\bfoi mal\b|\bimprevist|\bemergencia|\b(nao|n) (consegui|deu|pude|tive como|fui|vim|cheguei)\b|\besqueci|\bperdi\b|\bdormi\b|\bacordei\b|\bpassei mal\b|\bdoente\b|\bfebre\b|\bonibus\b|\btransito\b|\btrabalho\b|\bservico\b|\baconteceu\b|\bfalt(ei|ou)\b|\bsurgiu\b|\bcomplicou\b|\benrolei\b/.test(qJ)
+  if(justifica&&!extractRequestedTime(message)&&!noticiaDificil(message)){
+   chegadaTratada=true;faltaAcolhida=true
+   const nomeJ=firstName(context?.name)
+   const saude=/\bpassei mal\b|\bdoente\b|\bfebre\b|\bgripe\b|\bdor de\b|\bmedico\b/.test(qJ)
+   reply=saude
+    ?`Sinto muito${nomeJ?`, ${nomeJ}`:''}, espero que já esteja tudo bem. Não se preocupe com o horário. Quando estiver melhor, é só me chamar por aqui que eu vejo um novo horário com você.`
+    :`Sem problema${nomeJ?`, ${nomeJ}`:''}, imprevistos acontecem. Obrigado por me avisar. Quando quiser marcar de novo, é só me chamar por aqui que eu vejo um horário com você.`
+   intent='other';handoff=false;actions=[]
+   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+  }
   const psF1=Deno.env.get('PUSH_WEBHOOK_SECRET'),urlF1=Deno.env.get('SUPABASE_URL')
-  if(psF1&&urlF1)await fetch(`${urlF1}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psF1},body:JSON.stringify({custom:{title:'Cliente que faltou escreveu',body:`${String(context?.name||body?.whatsapp_name||verifiedPhone)} (1ª falta, ${formatDateBR(faltaPendente.booking_date)} às ${String(faltaPendente.start_time).slice(0,5)}): "${String(message).slice(0,120)}". Por ser a primeira, a JuIA não falou da política de falta.`,url:'/admin-atendimento.html?app=1',tag:`falta-${faltaPendente.id}`}})}).catch(()=>{})
+  if(psF1&&urlF1)await fetch(`${urlF1}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psF1},body:JSON.stringify({custom:{title:'Cliente que faltou escreveu',body:`${String(context?.name||body?.whatsapp_name||verifiedPhone)} (1ª falta, ${formatDateBR(faltaPendente.booking_date)} às ${String(faltaPendente.start_time).slice(0,5)}): "${String(message).slice(0,120)}". Por ser a primeira, a JuIA respondeu com gentileza, sem falar da política de falta.`,url:'/admin-atendimento.html?app=1',tag:`falta-${faltaPendente.id}`}})}).catch(()=>{})
  }
  else if(faltaPendente&&!upcomingBookings.length){
   chegadaTratada=true
-  let bloqueadoF=false
-  try{const {data:bl}=await supabase.rpc('is_customer_blocked_v2',{p_phone:verifiedPhone,p_email:null});bloqueadoF=bl===true}catch(e){console.error('[ju-ia-site] is_customer_blocked_v2',e)}
   const ontemF=somarDiasIso(today(),-1)
   const quandoF=faltaPendente.booking_date===today()?'de hoje':faltaPendente.booking_date===ontemF?'de ontem':`do dia ${formatDateBR(faltaPendente.booking_date)}`
   const nomeF=firstName(context?.name)
-  reply=`${nomeF?`${nomeF}, o`:'O'} seu horário ${quandoF} era às ${String(faltaPendente.start_time).slice(0,5)} e, como ficou sem atendimento, ficou registrado como falta.\n\nEntendo que imprevistos acontecem. Mas aqui eu trabalho só com hora marcada e atendo um cliente por vez: cada horário reservado é um horário que eu deixo de oferecer a outra pessoa, e quando o cliente não vem, a cadeira fica parada e a gente sente bastante. Por isso funciona assim:\n- Remarcação ou cancelamento sem custo com até 24 horas de antecedência.\n- Tolerância de 10 minutos de atraso.${bloqueadoF?'\n- Depois de uma falta, o próximo horário é confirmado com pagamento antecipado pelo Pix. Remarcando com 24 horas de aviso, o valor vira crédito para a nova data; sem aviso e sem comparecimento, o valor não é devolvido.':''}\n\nQuando quiser marcar de novo, é só me chamar por aqui.`
-  next.falta_avisada=faltaPendente.id
+  reply=`${nomeF?`${nomeF}, o`:'O'} seu horário ${quandoF} era às ${String(faltaPendente.start_time).slice(0,5)} e, como ficou sem atendimento, ficou registrado como falta.\n\nEntendo que imprevistos acontecem. Mas aqui eu trabalho só com hora marcada e atendo um cliente por vez: cada horário reservado é um horário que eu deixo de oferecer a outra pessoa, e quando o cliente não vem, a cadeira fica parada e a gente sente bastante. Por isso funciona assim:\n- Remarcação ou cancelamento sem custo com até 24 horas de antecedência.\n- Tolerância de 10 minutos de atraso.${bloqueadoF?`\n- ${totalFaltas>=2?'Como esta já é a segunda falta, a partir de agora o agendamento':'Depois de uma falta, o próximo horário'} é confirmado com pagamento antecipado pelo Pix. Remarcando com 24 horas de aviso, o valor vira crédito para a nova data; sem aviso e sem comparecimento, o valor não é devolvido.`:''}\n\nQuando quiser marcar de novo, é só me chamar por aqui.`
+  next.falta_avisada=faltaPendente.id;faltaAcolhida=true
   intent='other';handoff=false;actions=[]
   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
@@ -3576,7 +3592,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // já estão preenchidos) sobrescrevia intent='join_waitlist' para 'book' e CRIAVA um
  // agendamento de verdade no dia/horário alternativo oferecido, em vez de colocar o
  // cliente na lista de espera do dia original — o oposto do que ele pediu.
- const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion&&!faltaAcolhida // v29.341.0: resposta fixa da falta não leva fluxo de agenda por cima
 
  // v29.16.0 — FIM DA ESTEIRA DE VENDAS (12/08/2026, caso real do print do Juliano): o
  // fluxo antigo fazia até 3 perguntas de venda em série (upgrade da lavagem → complementos
@@ -5461,7 +5477,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       intent='other'
       handoff=false
      }
-     else if(error.message.includes('indisponível')){
+     // v29.341.0 — caso Carlos (04/11, 11h50): "Horário fora do atendimento." ia cru pro cliente (18:00 + corte e barba
+     // passava do fim do dia). Mesmo tratamento do "não cabe": diz o motivo e traz o mais próximo que cabe.
+     else if(error.message.includes('indisponível')||error.message.includes('fora do atendimento')){
       // v29.43.5 (caso Helo, 15/08): ela escolheu 10:45 pra corte (30 min), depois incluiu
       // sobrancelha + barba (60 min) e o 10:45 nao cabia mais — a resposta "acabou de ficar
       // indisponivel" era falsa (ninguem pegou) e ainda exigiu mais uma rodada pra ela ver o
@@ -5989,7 +6007,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  const avisouFalta=/\bdespertador\b|perdi a hora|nao consegui (ir|chegar|vir)|nao deu (pra|para) (ir|vir)|nao pude (ir|vir)|acabei nao (indo|vindo)|tive um imprevisto|\bimprevisto\b|me atrasei|dormi demais|\besqueci\b|passei mal|fiquei doente/.test(normalizedQuestion)
  const pediuDesculpa=/desculp\w*|\bperdao\b|foi mal|mil perdoes/.test(normalizedQuestion)
- if((avisouFalta||pediuDesculpa)&&!fechouSolidario&&!/imagina|acontece|sem problema/i.test(reply)){
+ if(faltaAcolhida){} // resposta sobre a falta já é fixa (v29.341.0): nem "Imagina" nem saudação por cima
+ else if((avisouFalta||pediuDesculpa)&&!fechouSolidario&&!noticiaTriste&&!/imagina|acontece|sem problema/i.test(reply)){
   const abertura=avisouFalta?'Imagina, acontece. Obrigado por avisar.':'Imagina, sem problema.'
   reply=`${perguntouComoEstou?'Tudo bem por aqui! ':''}${abertura} ${reply.replace(/^(?:tudo (?:bem|[óo]timo|certo|joia)[^.!?]*[.!?]\s*)?(?:(?:sem problema|imagina|n[ãa]o tem problema|fique tranquil[oa])[^.!?]*[.!?]\s*)?/i,'')}`.trim()
  }else if(respondeuComoEsta&&semPedidoEmAberto)reply='Que bom! Me diz o que você precisa que eu já vejo pra você.'
