@@ -1,3 +1,22 @@
+## 29.344.0 — Concluir um atendimento abre o dia
+
+O Juliano, em 04/11/2026, com 3 atendimentos concluídos e o painel dizendo "Barbearia ainda não aberta hoje":
+"se eu concluí serviço é porque abri a barbearia".
+
+- **Por que a câmera não abriu:** o contador está ligado, mas desde a noite de 29/10 não recebe nenhum quadro.
+  Hoje foram mais de 600 reconexões. Naquela noite a internet caiu (o log mostra o Supabase sem resolver às 21:49), e
+  o endereço da câmera na rede passou a responder sem vídeo. Provavelmente o roteador reiniciou e deu outro endereço
+  à câmera. De 30/10 a 03/11 o dia só foi preenchido pelo fechamento automático, à noite.
+- **Gatilho `trg_bookings_abre_expediente`** (migração 216): ao concluir um atendimento do dia, se o dia não foi
+  aberto, ele abre no horário de início desse atendimento. Se outro concluído começou antes, a abertura recua para
+  ele. A origem é `automatico`, que o painel e o relatório já explicam como "preenchida pelo primeiro atendimento do
+  dia". Não mexe em dia aberto pelo botão, pela câmera ou por ajuste, nem em dia fechado. Se der erro, só avisa:
+  abrir o dia nunca impede o Concluir.
+- 04/11 corrigido: aberto às 09:15 (Raul).
+
+**Decidido contra o óbvio:** não criei uma origem nova ("atendimento") com selo próprio no painel. A `automatico`
+já significa exatamente isso, e uma origem nova pediria mudança em três telas sem ganho para o Juliano.
+
 ## 29.343.0 — A JuIA grava o que o cliente já disse e pula etapa; resposta da JuIA não morre mais pela mensagem anterior do Juliano
 
 Pedido do Juliano (04/11/2026), na mesma conversa do final 4356 (Vinícius): "ensina a JuIA a gravar estes indicadores da
