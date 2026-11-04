@@ -1625,7 +1625,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // (falta_avisada); se ele está bloqueado (só com Pix antecipado), a regra do Pix vai junto. O Juliano recebe push.
  // Texto em _shared? Não: só a JuIA fala isso, e o comprovante/regulamento não citam falta.
  const faltaPendente=verifiedPhone&&!pediuHumano?faltasRecentes.find((f:any)=>f&&f.id&&f.id!==state?.falta_avisada):null
+ // v29.340.0 — pedido do Juliano (04/11/2026, caso Lucas): o texto da política só sai a partir da 2ª falta do telefone
+ // (phone_no_show_count conta o histórico todo). Na 1ª, a JuIA responde normalmente; o push pro Juliano sai igual e
+ // a trava do "horário garantido" (mais abaixo) continua valendo, porque faltasRecentes segue preenchido.
+ let totalFaltas=0
  if(faltaPendente&&!upcomingBookings.length){
+  try{const {data:nf}=await supabase.rpc('phone_no_show_count',{p_phone:verifiedPhone});totalFaltas=Number(nf)||0}catch(e){console.error('[ju-ia-site] phone_no_show_count',e)}
+ }
+ if(faltaPendente&&!upcomingBookings.length&&totalFaltas<2){
+  next.falta_avisada=faltaPendente.id
+  const psF1=Deno.env.get('PUSH_WEBHOOK_SECRET'),urlF1=Deno.env.get('SUPABASE_URL')
+  if(psF1&&urlF1)await fetch(`${urlF1}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psF1},body:JSON.stringify({custom:{title:'Cliente que faltou escreveu',body:`${String(context?.name||body?.whatsapp_name||verifiedPhone)} (1ª falta, ${formatDateBR(faltaPendente.booking_date)} às ${String(faltaPendente.start_time).slice(0,5)}): "${String(message).slice(0,120)}". Por ser a primeira, a JuIA não falou da política de falta.`,url:'/admin-atendimento.html?app=1',tag:`falta-${faltaPendente.id}`}})}).catch(()=>{})
+ }
+ else if(faltaPendente&&!upcomingBookings.length){
   chegadaTratada=true
   let bloqueadoF=false
   try{const {data:bl}=await supabase.rpc('is_customer_blocked_v2',{p_phone:verifiedPhone,p_email:null});bloqueadoF=bl===true}catch(e){console.error('[ju-ia-site] is_customer_blocked_v2',e)}

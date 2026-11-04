@@ -1,3 +1,23 @@
+## 29.340.0 — Texto da política de falta só a partir da 2ª falta
+
+Pedido do Juliano (04/11/2026), depois do caso Lucas: ele faltou ao horário das 15:20 de 03/11 (a primeira falta dele)
+e, quando escreveu no dia seguinte, recebeu da JuIA o texto inteiro ("ficou registrado como falta... a cadeira fica
+parada e a gente sente bastante..."). Para quem faltou uma vez, o texto pesa demais.
+
+- Banco: `phone_no_show_count(p_phone)` conta todas as faltas (`no_show`) do telefone, pela mesma `phone_match_key`
+  (migração 213, só `service_role`).
+- `ju-ia-site`: com 1 falta, a JuIA responde normalmente e não fala da política. O Juliano recebe o push do mesmo
+  jeito ("1ª falta... a JuIA não falou da política"). A partir da 2ª falta, segue o texto da v29.329.0.
+- Simulador: 106a/106b passam a ser de quem tem 2 faltas; 106e (1ª falta, conversa normal + push) e 106f (1ª falta
+  não ouve "horário garantido"). 289 ok.
+
+Hoje são 9 clientes com 1 falta e 1 cliente com 2.
+
+**Decidido contra o óbvio:** na 1ª falta a JuIA não fica livre para tudo. A trava que corta "seu horário está garantido.
+Pode vir com tranquilidade" (caso Venilson) continua valendo, porque ela olha as faltas dos últimos 2 dias e não o
+total. O bloqueio com Pix antecipado também não mudou: ele é decidido pelo banco (`is_customer_blocked_v2`), não por
+esse texto.
+
 ## 29.339.0 — Se o Juliano falou com o cliente hoje, a JuIA fica calada até o fim do dia
 
 Pedido do Juliano (04/11/2026), depois do caso seu José: ele respondeu pelo celular às 15h04 ("venha amanhã cedo") e,

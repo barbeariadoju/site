@@ -68,6 +68,7 @@ type Cenario = {
   clubeMotivo?: string // club_quote: motivo de não cobrir
   clubeVendas?: boolean // club_settings.vendas_abertas
   faltas?: any[] // phone_missed_bookings: no_show dos últimos 2 dias (v29.329.0)
+  totalFaltas?: number // phone_no_show_count: todas as faltas do telefone (v29.340.0; padrão = faltas.length)
   bloqueado?: boolean // is_customer_blocked_v2
   buracos?: any[] // encaixes_possiveis: buracos da agenda onde um encaixe apertado caberia (v29.326.0)
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
@@ -110,6 +111,7 @@ const turno = async (c: Cenario) => {
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
     encaixes_possiveis: () => c.buracos || [],
     phone_missed_bookings: () => c.faltas || [],
+    phone_no_show_count: () => c.totalFaltas ?? (c.faltas || []).length,
     is_customer_blocked_v2: () => Boolean(c.bloqueado),
   }
   const req = new Request('https://simulador.local/functions/v1/ju-ia-site', {
@@ -1495,13 +1497,22 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const falta = [{ id: 'f1', booking_date: hoje, start_time: '09:00:00', service_name: 'Corte de cabelo' }]
   const r1 = await turno({ msg: 'Não conseguir pegar o ônibus\nTô vendo aqui se tem ônibus\nPara ir', state: {},
     ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade e me avise quando estiver a caminho.', updates: {} },
-    contexto: ctxCliente('Venilson Teste'), faltas: falta, bloqueado: true })
+    contexto: ctxCliente('Venilson Teste'), faltas: falta, totalFaltas: 2, bloqueado: true })
   checar('106a falta: explica (hora marcada, um cliente por vez, 24 h) e o Pix antecipado, sem prometer horário', /registrado como falta/.test(r1.reply) && /24 horas/.test(r1.reply) && /um cliente por vez/.test(r1.reply) && /pagamento antecipado/.test(r1.reply) && !/garantido|Pode vir/.test(r1.reply) && r1.state?.falta_avisada === 'f1', r1.reply)
   checar('106a falta: push pro Juliano', r1.saidas.some((s: any) => s.url.includes('send-push') && /faltou/i.test(JSON.stringify(s.body))), r1.saidas.map((s: any) => s.url))
   const r2 = await turno({ msg: 'Aqui é difícil ter ônibus', state: { falta_avisada: 'f1' },
     ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade.', updates: {} },
-    contexto: ctxCliente('Venilson Teste'), faltas: falta, bloqueado: true })
+    contexto: ctxCliente('Venilson Teste'), faltas: falta, totalFaltas: 2, bloqueado: true })
   checar('106b depois do aviso: não repete a política e não promete horário', !/registrado como falta/.test(r2.reply) && !/garantido|Pode vir/.test(r2.reply), r2.reply)
+  // v29.340.0 — pedido do Juliano (04/11, caso Lucas): na 1ª falta, nada de texto da política; o push sai igual.
+  const r1b = await turno({ msg: 'Boa tarde, queria marcar um corte', state: {},
+    ai: { intent: 'other', reply: 'Boa tarde! Qual dia fica bom pra você?', updates: {} },
+    contexto: ctxCliente('Lucas Teste'), faltas: falta, totalFaltas: 1 })
+  checar('106e 1ª falta: sem o texto da política, conversa normal, push pro Juliano', !/registrado como falta|a gente sente/.test(r1b.reply) && r1b.state?.falta_avisada === 'f1' && r1b.saidas.some((s: any) => s.url.includes('send-push') && /1ª falta/.test(JSON.stringify(s.body))), r1b.reply)
+  const r1c = await turno({ msg: 'Não consegui ir ontem, perdi o ônibus', state: {},
+    ai: { intent: 'other', reply: 'Sem problema, seu horário está garantido. Pode vir com tranquilidade.', updates: {} },
+    contexto: ctxCliente('Lucas Teste'), faltas: falta, totalFaltas: 1 })
+  checar('106f 1ª falta: ainda não promete horário que já passou', !/registrado como falta/.test(r1c.reply) && !/garantido|Pode vir/.test(r1c.reply), r1c.reply)
   const agora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()).split(':').map(Number)
   const ini = Math.max(0, agora[0] * 60 + agora[1] - 60)
   const hIni = `${String(Math.floor(ini / 60)).padStart(2, '0')}:${String(ini % 60).padStart(2, '0')}:00`
