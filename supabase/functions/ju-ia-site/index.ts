@@ -3672,7 +3672,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // next.upsell_offer_options = nomes na ordem numerada ('__none__' = "não quero nada");
  // next.upsell_offer_done = oferta já feita (ou dispensada) nesta conversa. Conversas
  // antigas em andamento com os flags legados contam como oferta já feita.
- const upsellOfferDone=Boolean(next.upsell_offer_done||next.upsell_services_done||next.upsell_products_done)
+ // v29.343.0 (pedido do Juliano, 04/11, final 4356 "Só corte"): quem já disse que quer só aquilo não ouve oferta de
+ // complemento. Fica gravado (sem_adicional) e vale para a conversa toda, antes e depois da reserva.
+ if(/\b(so|somente|apenas)\s+(o |a |um |uma )?(corte|cabelo|barba|sobrancelha|pezinho|isso|esse|essa)\b|\bso isso\b|\b(mais nada|nada mais)\b/.test(normalizedQuestion)){next.sem_adicional=true;next.upsell_offer_done=true}
+ const upsellOfferDone=Boolean(next.sem_adicional||next.upsell_offer_done||next.upsell_services_done||next.upsell_products_done)
  // Quem responde "com lavagem"/"só o corte" (ex.: à pergunta do bareCabeloAsk) continua
  // entendido, mesmo sem a pergunta antiga do upgrade existir mais.
  if(notSpecialFlow&&chosen.some((s:any)=>s.name==='Corte de cabelo')){
@@ -4097,13 +4100,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const tetoInicioAtivo=Boolean(tetoInicio&&tetoInicio.hora===requestedTimeRaw)
  const minHM=(t:string)=>Number(String(t).slice(0,2))*60+Number(String(t).slice(3,5))
  // Restrição do cliente aplicada a qualquer lista de horários (dia pedido ou próximo dia).
- const dentroDaRestricao=(dur:number)=>(slots:string[])=>slots.filter((t:string)=>(!maxTime||minHM(t)+dur<=minHM(maxTime))&&(!tetoInicioAtivo||(tetoInicio!.inclusivo?minHM(t)<=minHM(tetoInicio!.hora):minHM(t)<minHM(tetoInicio!.hora))))
- const restricaoFalada=maxTime?` que termine antes das ${horaFalada(maxTime)}`:tetoInicioAtivo?` ${tetoInicio!.inclusivo?'até as':'antes das'} ${horaFalada(tetoInicio!.hora)}`:''
+ // v29.343.0 (pedido do Juliano, 04/11): o que o cliente já disse fica gravado e vale nas próximas listas. "Preciso de horário
+ // após às 17h" grava piso_horario; enquanto ele não disser outra hora, nenhuma lista oferece antes disso. E o piso nunca é
+ // o horário pedido: com o dia já combinado, "após às 17h" reservava 17:00 direto (simulador 112b).
+ const pisoFalado=!tetoDeHorario&&!tetoInicioAtivo&&Boolean(requestedTimeRaw)&&/\b(apos|depois d[ae]s?|a partir d[ae]s?)\s*(as\s*|das\s*|de\s*)?\d/.test(normalizedQuestion)?requestedTimeRaw:''
+ if(pisoFalado)next.piso_horario=pisoFalado
+ const pisoAtivo=pisoFalado||(!requestedTimeRaw&&/^\d\d:\d\d$/.test(String(state?.piso_horario||''))?String(state.piso_horario):'')
+ const dentroDaRestricao=(dur:number)=>(slots:string[])=>slots.filter((t:string)=>(!pisoAtivo||minHM(t)>=minHM(pisoAtivo))&&(!maxTime||minHM(t)+dur<=minHM(maxTime))&&(!tetoInicioAtivo||(tetoInicio!.inclusivo?minHM(t)<=minHM(tetoInicio!.hora):minHM(t)<minHM(tetoInicio!.hora))))
+ const restricaoFalada=maxTime?` que termine antes das ${horaFalada(maxTime)}`:tetoInicioAtivo?` ${tetoInicio!.inclusivo?'até as':'antes das'} ${horaFalada(tetoInicio!.hora)}`:pisoAtivo?` depois das ${horaFalada(pisoAtivo)}`:''
  // v29.234.0 (caso Paulo, 25/09/2026, 09h08): "Amanhã não posso trabalhar 12 hrs / 06 as 06" — número dentro
  // da fala sobre o expediente DELE não é horário pedido (ver falaDoProprioExpediente).
  const expedienteDoCliente=falaDoProprioExpediente(normalizedQuestion)
  if(expedienteDoCliente&&!next.completed)next.time=null
- const requestedTime=(tetoDeHorario||tetoInicioAtivo||expedienteDoCliente)?'':(requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):''))
+ const requestedTime=(tetoDeHorario||tetoInicioAtivo||expedienteDoCliente||pisoFalado)?'':(requestedTimeRaw||(depoisSemHora?String(state.last_requested_time):''))
  // Mesma lógica do período: se o cliente já tinha dito o horário antes das perguntas de
  // corte+lavagem/complementos/produtos entrarem no meio da conversa, não precisa repetir —
  // usa o horário já guardado em next.time enquanto o agendamento ainda não foi concluído.
@@ -4645,7 +4654,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const duration=chosen.reduce((a:number,s:any)=>a+s.duration,0)
   const serviceNames=chosen.map((s:any)=>s.name).join(' + ')
   const pisoDeHorario=/\b(apos|depois d[ae]s?|a partir d[ae]s?)\b/.test(normalizedQuestion)&&Boolean(requestedTime)
-  const minTime=pisoDeHorario?requestedTime:''
+  const minTime=pisoFalado||(pisoDeHorario?requestedTime:'') // v29.343.0: o piso falado agora sai do requestedTime
   const diasCitados=weekdayDatesMentioned(normalizedQuestion,today())
   // v29.193.0 — "qualquer dia", "quando tiver", "tanto faz", "próxima semana" também são pedido
   // de dias (antes caíam em "Para qual dia você quer ver os horários?", devolvendo a pergunta a
@@ -4822,6 +4831,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    reply=`Você já está reservado ${emDia(next.date)} às ${String(ownSameDay.start_time).slice(0,5)} (${ownSameDay.service_name}). Se quiser mudar o horário ou o serviço, é só me dizer.`
    actions=[]
    handoff=false
+  }else if(!allSlots.length&&pisoAtivo&&(data||[]).length){
+   // v29.343.0 — o dia tem horário, só não depois do piso do cliente ("após as 16", caso Marcelo 08/10): não é agenda
+   // cheia. Diz que depois daquela hora não tem e traz o próximo dia que tenha, respeitando o piso.
+   const proxPiso=await findNextAvailableDate(supabase,next.date,duration,21,dentroDaRestricao(duration))
+   const amostraP:string[]=proxPiso?proxPiso.slots.slice(0,3):[]
+   reply=`${emDiaCap(next.date)} depois das ${horaFalada(pisoAtivo)} não tenho mais.${proxPiso&&amostraP.length?` ${emDiaCap(proxPiso.date)} consigo ${listaOu(amostraP)}. Qual fica melhor pra você?`:' Quer que eu veja outro dia?'}`
+   actions=amostraP.map((t:string)=>({label:t,message:`${emDia(proxPiso!.date)} ${t}`}))
+   if(proxPiso&&amostraP.length)next.date=proxPiso.date
+   next.time=null
+   respostaConferidaNaAgenda=true
+   handoff=false
   }else if(!allSlots.length){
    // v28.37.0 (item 4): antes só sugeria o próximo dia aberto — agora também oferece
    // lista de espera pro dia ORIGINAL que o cliente pediu (mesmo recurso que já existe
@@ -4833,7 +4853,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const wdLotado=new Date(next.date+'T12:00:00-03:00').getUTCDay()
    const pediuPeloNome=wdLotado!==0&&wdLotado!==1&&weekdayDatesMentioned(normalizedQuestion,today()).includes(next.date)
    const mesmoDiaLotado=pediuPeloNome&&!maxTime&&!tetoInicioAtivo?await mesmoDiaSemanaSeguinte(supabase,next.date,duration):null
-   const nextAvail=mesmoDiaLotado||await findNextAvailableDate(supabase,next.date,duration,21,(maxTime||tetoInicioAtivo)?dentroDaRestricao(duration):null)
+   const nextAvail=mesmoDiaLotado||await findNextAvailableDate(supabase,next.date,duration,21,(maxTime||tetoInicioAtivo||pisoAtivo)?dentroDaRestricao(duration):null)
    if(nextAvail){
     // v29.69.0 — caso de sábado (22/08/2026, 16h27): o cliente insistiu no mesmo dia
     // ("Precisava pra hoje…") e recebeu a NEGATIVA IDÊNTICA, palavra por palavra. Na
@@ -4950,6 +4970,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     if(!upsellOfferDone&&!next.upsell_offer_done){
      if(chosen.some((s:any)=>s.name==='Corte de cabelo')&&!chosen.some((s:any)=>['Corte + Lavagem','Corte + Barba na navalha com toalha quente','Corte + Barba Express'].includes(s.name))&&!next.haircut_wash_asked)offerOpts.push('Corte + Lavagem')
      for(const s of serviceSuggestions(chosen)){if(offerOpts.length<3&&!offerOpts.includes(s.name))offerOpts.push(s.name)}
+    }
+    // v29.343.0 (pedido do Juliano, 04/11): o menu só oferece o que CABE nesse horário (ex.: corte às 17:15 com cliente
+    // às 18:00 — barba não cabe, então nem aparece). Mesma conta da oferta depois da reserva (v29.140.0).
+    if(offerOpts.length){
+     const sCorteF=findService('Corte de cabelo')
+     const cabem:string[]=[]
+     for(const n of offerOpts){
+      const sAdd=findService(n)
+      if(!sAdd)continue
+      const extra=n==='Corte + Lavagem'&&sCorteF?Math.max(0,Number(sAdd.duration)-Number(sCorteF.duration)):Number(sAdd.duration||0)
+      if(extra<=0){cabem.push(n);continue}
+      try{
+       const {data:fitRows}=await supabase.rpc('get_available_slots',{p_date:next.date,p_duration_minutes:duration+extra})
+       if((fitRows||[]).map((x:any)=>String(x.slot_time).slice(0,5)).includes(effectiveTime))cabem.push(n)
+      }catch(fitErr){console.error('[ju-ia-site] upsell fit menu',fitErr)}
+     }
+     offerOpts.splice(0,offerOpts.length,...cabem)
     }
     // v29.139.0 (decisão do Juliano, 05/09/2026, caso João): no WhatsApp, horário escolhido é
     // horário RESERVADO. O menu de complementos antes da reserva deixava o slot solto — o João
@@ -5844,6 +5881,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${barbaPadraoNota}${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${valorSinal>0||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
+      delete next.piso_horario // v29.343.0: a restrição de horário era desta reserva
       next.other_person=false
       // v28.38.2: agendamento fechado — oferta de lista de espera pendente (se houver)
       // não faz mais sentido; sem limpar, um "sim" posterior ainda podia reativá-la.

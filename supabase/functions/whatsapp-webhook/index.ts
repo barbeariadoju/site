@@ -2496,9 +2496,16 @@ Deno.serve(async (request: Request) => {
           // a conversa é dele, a resposta da IA morre em silêncio (o eco fromMe já ligou o
           // takeover; isto aqui só fecha a janela de corrida do processamento em andamento).
           {
+            // v29.343.0 — caso 04/11 (final 4356, 13h00): o Juliano respondeu às 13:00:19, o cliente respondeu
+            // "Amanhã, às 17h15" às 13:00:49 e a JuIA ficou calada — a mensagem humana era ANTERIOR à do cliente.
+            // Só conta a mensagem humana enviada depois da última mensagem do cliente (a corrida de verdade).
+            const { data: ultimaDoCliente } = await admin.from('whatsapp_messages').select('created_at')
+              .eq('phone', phone).eq('direction', 'in').order('created_at', { ascending: false }).limit(1)
+            const desdeCliente = ultimaDoCliente?.[0]?.created_at || new Date(Date.now() - 3 * 60 * 1000).toISOString()
             const { data: humanRecente } = await admin.from('whatsapp_messages').select('id')
               .eq('phone', phone).eq('direction', 'out').eq('sent_by', 'human')
               .gte('created_at', new Date(Date.now() - 3 * 60 * 1000).toISOString())
+              .gt('created_at', desdeCliente)
               .limit(1)
             if (humanRecente && humanRecente.length) {
               console.warn('[whatsapp-webhook] resposta da IA descartada: o Juliano respondeu enquanto a IA pensava', phone)

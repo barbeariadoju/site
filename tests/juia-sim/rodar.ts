@@ -1625,5 +1625,20 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('111c dia sem vaga: diz que não consegue e oferece outro dia, sem lista', /não consigo|não abre/.test(r3.reply) && /outro dia/.test(r3.reply), r3.reply)
 }
 
+// 112. v29.343.0 — pedido do Juliano (04/11, final 4356): o que o cliente já disse fica gravado. "Só corte" = sem oferta de
+// complemento; "após às 17h" vale para as listas seguintes.
+{
+  const r1 = await turno({ msg: 'Amanhã às 17:15, só corte', state: {},
+    ai: { intent: 'book', reply: 'Certo.', updates: { date: amanha, time: '17:15', services: ['Corte de cabelo'] } },
+    contexto: ctxCliente('Vinicius Teste'), vagas: { [amanha]: ['17:15'] }, vagasPorDuracao: () => ['17:15'] })
+  checar('112a "só corte": reserva sem oferecer lavagem/barba', reservou(r1) && !/incluir|Lavagem|Barba/i.test(r1.reply) && r1.state?.sem_adicional === true, r1.reply)
+  const r2 = await turno({ msg: 'Preciso de horário após às 17h', state: { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], sem_adicional: true, date: amanha },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Vinicius Teste'), vagas: { [amanha]: ['09:00', '17:00', '17:15'] } })
+  checar('112b "após às 17h" fica gravado', r2.state?.piso_horario === '17:00', { reply: r2.reply, piso: r2.state?.piso_horario })
+  const r3 = await turno({ msg: 'E amanhã?', state: { ...r2.state, date: null },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: amanha } }, contexto: ctxCliente('Vinicius Teste'), vagas: { [amanha]: ['09:00', '17:00', '17:15'] } })
+  checar('112c na pergunta seguinte, a lista respeita o piso (sem 09:00)', /17:00/.test(r3.reply) && !/09:00/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

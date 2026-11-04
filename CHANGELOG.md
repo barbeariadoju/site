@@ -1,3 +1,27 @@
+## 29.343.0 — A JuIA grava o que o cliente já disse e pula etapa; resposta da JuIA não morre mais pela mensagem anterior do Juliano
+
+Pedido do Juliano (04/11/2026), na mesma conversa do final 4356 (Vinícius): "ensina a JuIA a gravar estes indicadores da
+conversa para pular etapa e ser mais objetiva". E: "ele pediu só corte e tem cliente às 18h, não adianta oferecer barba".
+
+- **"Só corte" fica gravado** (`sem_adicional`): "só corte", "apenas a barba", "só isso", "mais nada" desligam a oferta
+  de complemento na conversa toda, antes e depois da reserva.
+- **Piso de horário fica gravado** (`piso_horario`): "Preciso de horário após às 17h" vale para as listas seguintes,
+  até ele dizer outra hora ou a reserva sair. E o piso **nunca vira o horário pedido**: com o dia já combinado, "após
+  às 17h" reservava 17:00 direto (achado no simulador, 112b). Dia que tem horário, mas não depois do piso, ouve
+  "Amanhã depois das 16h não tenho mais. Na sexta consigo...", e não "a agenda já está cheia".
+- **O menu de complementos só mostra o que cabe** no horário (corte às 17:15 com cliente às 18:00: nada de barba). A
+  oferta depois da reserva já fazia essa conta (v29.140.0); o menu (chat do site) não fazia.
+- **`whatsapp-webhook`: a resposta da JuIA só é descartada se a mensagem do Juliano veio DEPOIS da última do cliente.**
+  Antes, qualquer mensagem humana dos últimos 3 min calava a JuIA. Hoje respondi pelo `whatsapp-send` às 13:00:19, o
+  cliente respondeu "Amanhã, às 17h15" às 13:00:49 e ficou sem resposta (e de novo com o nome, às 13:02). A trava existe
+  para a corrida de verdade (o Juliano respondendo enquanto a IA pensa), e segue valendo para ela.
+- Simulador: cenário 112 (a, b, c) e 69a ajustado. 298 ok.
+
+Vinícius Ribeiro: reservado à mão (quinta 05/11, 17:15, corte, R$ 50), confirmação enviada e conversa devolvida à JuIA.
+
+**Decidido contra o óbvio:** não gravei "tem cliente às 18h" como indicador. Isso é a agenda, e a agenda já é
+consultada na hora; gravar uma cópia seria criar uma segunda fonte que envelhece.
+
 ## 29.342.0 — "Qual o primeiro horário amanhã? E o último hoje?" tem resposta direta
 
 Caso de 04/11/2026, 12h51 (final 4356). O cliente pediu só corte e recebeu os horários de hoje. Perguntou "Para amanhã,
