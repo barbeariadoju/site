@@ -1669,5 +1669,14 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('114 "para meu filho de 4 anos": propõe o Corte de cabelo infantil', /para "Corte de cabelo infantil"/.test(r.reply) && !/Qual serviço você quer no lugar/.test(r.reply), r.reply)
 }
 
+// 115. v29.346.0 — casos Garcez e Samuel (04/11): sem nome no cadastro, a recusa saía "Poxa, cliente, hoje a agenda já
+// está cheia". O vocativo é o nome do WhatsApp ou nenhum.
+{
+  const r = await turno({ msg: 'Tem horário pra corte nesse dia?', state: { services: ['Corte de cabelo'] }, nomeWhats: 'Garcez',
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: { customer_id: null, name: '' },
+    vagas: { [dia1]: [], [dia2]: ['09:00', '14:00', '17:30'] } })
+  checar('115 agenda cheia sem cadastro: "Poxa, Garcez", nunca "Poxa, cliente"', /agenda já está cheia/.test(r.reply) && !/\bcliente\b/i.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

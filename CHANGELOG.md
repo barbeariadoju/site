@@ -26,7 +26,10 @@ proposta direta do **Corte de cabelo infantil**, com preço e confirmação de s
 
 - A reserva dela de hoje continua como "Corte de cabelo" (mesmo preço, R$ 50,00). O Juliano já está na conversa;
   não mexi.
-- Simulador: cenários 113 (Vitor) e 114 (Daniela). 303 ok.
+- Simulador: cenários 113 (Vitor), 114 (Daniela) e 115. 304 ok.
+- **"Poxa, cliente, hoje a agenda já está cheia"** (Garcez e Samuel, 04/11, revisão do dia): sem nome no cadastro, a
+  palavra "cliente" entrava como se fosse o nome. Agora o vocativo é o nome do WhatsApp ou nenhum (também no "Combinado"
+  da troca de serviço e no "vou conferir esse valor"). Cenário 115.
 - Ficou de fora, já conhecido: duas respostas seguidas quando o cliente manda duas mensagens no mesmo segundo
   (Daniela, 08h59, como o Bruno em 04/11).
 

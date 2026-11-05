@@ -1960,6 +1960,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const isPriceOrInfoQuestion=(/\bquanto\b|\bpreco\b|\bvalor(es)?\b|\binclui\b|\bdura\b|\bcusta\b|\bdoi\b/.test(normalizedQuestion)||isServiceExistenceQuestion)&&!/\bmarcar\b|\bagendar\b|\breservar\b/.test(normalizedQuestion)
  const hasCustomer=Boolean(context?.customer_id)
  const customerFirstName=firstName(context?.name)
+ // v29.346.0 — casos Garcez e Samuel (04/11/2026): "Poxa, cliente, hoje a agenda já está cheia". Sem nome no cadastro o
+ // firstName devolve a palavra "cliente", e as frases com vírgula + nome a usavam como se fosse nome. Vocativo só com nome de verdade.
+ const nomeVocativo=customerFirstName!=="cliente"?customerFirstName:""
  const contextFullName=hasCustomer?String(context?.name||'').trim():''
  const lastServiceName=String(context?.last_services||'').trim()
  const lastService=findService(lastServiceName)
@@ -3416,7 +3419,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(valorContestado){
   intent='other'
   next.pending_change_service_booking_id=null
-  reply=`Vou conferir esse valor com o Juliano e já te confirmo por aqui${customerFirstName?`, ${customerFirstName}`:''}.`
+  reply=`Vou conferir esse valor com o Juliano e já te confirmo por aqui${nomeVocativo?`, ${nomeVocativo}`:''}.`
   actions=[]
   handoff=true
  }
@@ -3618,7 +3621,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     next.pending_change_service_booking_id=null
     next.pending_change_service_new_name=null;next.pending_change_service_composed=null
     const quandoT=target.booking_date===today()?'hoje':formatDateBR(target.booking_date)
-    reply=`Combinado${customerFirstName?`, ${customerFirstName}`:''}: fica ${target.service_name}, ${quandoT} às ${String(target.start_time).slice(0,5)}. Até lá!`
+    reply=`Combinado${nomeVocativo?`, ${nomeVocativo}`:''}: fica ${target.service_name}, ${quandoT} às ${String(target.start_time).slice(0,5)}. Até lá!`
     actions=[]
     handoff=false
    }else if(!desiredFresh){
@@ -4922,7 +4925,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     //    onde o atendimento cabe apertado (até 15 min menor que a duração, nunca menos de 30 min), a JuIA
     //    diz que vai ver e o Juliano recebe o push com os buracos. Quem encaixa é ele — o cliente não
     //    recebe horário nenhum (a regra de 14/10 de não encostar no próximo cliente segue valendo).
-    const nomeE=customerFirstName||firstName(String(body?.whatsapp_name||''))
+    const nomeE=nomeVocativo||primeiroNome(String(body?.whatsapp_name||''),'')
     const nomeCompletoE=String(contextFullName||body?.whatsapp_name||'').trim()
     const podeInscrever=!hojeEncerrado&&!fechadoNoDia.fechado&&String(verifiedPhone||'').replace(/\D/g,'').length>=10&&!!nomeCompletoE
     const jaInscrito=next.espera_inscrita===waitlistOffer.date
