@@ -1618,6 +1618,44 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
   }
  }
+ // v29.346.0 — caso Vitor (05/11/2026, 09h09-09h35): perguntou de alisar o cabelo ondulado, ouviu o preço do
+ // Alisamento / Relaxamento e mandou a foto do resultado que queria ("Tipo assim"). A JuIA presumiu CORTE e
+ // ofereceu horário; "tem foto do antes e depois?", "o cabelo precisa estar grande?", "fazem desondulação
+ // capilar?" e a segunda foto ouviram "Consigo te atender hoje sim!" ou "me embolei", e o "Ok" depois do
+ // "estou vendo com o Juliano" levou a oferta de horário de novo. O Juliano assumiu às 09h52.
+ // Com alisamento/relaxamento na conversa: (1) pergunta técnica (resultado, tamanho do cabelo, foto de antes e
+ // depois, duração, segurança do produto) é do Juliano — resposta fixa + handoff, sem agenda por cima;
+ // (2) "fazem desondulação/progressiva?" tem resposta fixa com o serviço do catálogo; (3) foto de referência
+ // é do resultado da química, não pedido de corte — a resposta é a do Juliano (não dá pra garantir igual,
+ // depende de como o cabelo reage) e o serviço da conversa vira o alisamento, nunca o corte presumido.
+ let quimicaTratada=false
+ if(!pediuHumano){
+  const qq=normalize(message)
+  const RE_ALISA=/\b(alisa\w*|alisar|liso|relaxa\w*|desondul\w*|progressiva|escova (progressiva|definitiva))\b/
+  const hist=(Array.isArray(body.history)?body.history:[]).slice(-6).map((h:any)=>normalize(String(h?.content||''))).join(' \n ')
+  const servicosEstado=[...(Array.isArray(state?.services)?state.services:[])].map((s:any)=>normalize(String(s)))
+  const alisaNaConversa=RE_ALISA.test(qq)||RE_ALISA.test(hist)||servicosEstado.some((s:string)=>/alisamento/.test(s)&&!/pos.?alisamento/.test(s))
+  const svcAlisa=findService('Alisamento / Relaxamento')
+  const fotoRef=/cliente enviou (um link com )?uma foto de referencia/.test(qq)
+  const perguntaTecnica=/antes e (o )?depois|\bfoto(s)? (do|de|dos) (resultado|trabalho|antes)|\bprecisa (estar|ter|ser)\b[^?.!]{0,20}\b(grande|comprido|longo|curto|tamanho)|\b(tamanho|comprimento) (do|de|minimo)\b|\bfica (igual|assim|parecido|liso|bem liso)\b|\bgarant\w* (que|o resultado|igual)|\bquanto tempo (dura|fica|demora pra sair)|\bdura (quanto|quantos|muito)|\bestrag\w*|\bdanific\w*|\bresseca\w*|\bcai (o )?cabelo|\bqueda\b|\bformol\b|\balerg\w*|\bfaz mal\b|\bqual (e o )?produto|\bque produto|\bda certo (no|em|com)|\bfunciona (no|em|com)|\bmeu (tipo de )?cabelo (e|eh|ta|esta)\b/.test(qq)
+  const perguntaExiste=/\b(voces|vcs|voce|vc)?\s*(fazem|faz|tem|trabalham com|trabalha com)\b[^?.!]{0,25}\b(desondul\w*|progressiva|relaxamento|alisamento|escova progressiva)/.test(qq)
+  if(alisaNaConversa&&svcAlisa&&perguntaTecnica&&!fotoRef&&!/\b(cancel|remarc)/.test(qq)){
+   quimicaTratada=true;pediuHumano=true
+   reply='Boa pergunta. Isso depende do seu tipo de cabelo e de como ele reage ao produto, então quem te responde certinho é o Juliano. Já avisei ele, e ele te responde por aqui assim que sair do atendimento.'
+   intent='handoff';handoff=true;actions=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
+  }else if(svcAlisa&&perguntaExiste&&!perguntaTecnica){
+   quimicaTratada=true
+   reply=`Fazemos sim: ${svcAlisa.name}, ${money(svcAlisa.price)}, aproximadamente ${svcAlisa.duration} minutos. Reduz o volume e o frizz e deixa o cabelo mais liso e fácil de arrumar. O resultado depende de como o seu cabelo reage ao produto, e o Juliano avalia na hora. Quer que eu veja um horário pra você?`
+   intent='other';handoff=false;actions=[]
+   next.services=[svcAlisa.name];next.usual_assumed=false;chosen=[svcAlisa]
+  }else if(alisaNaConversa&&svcAlisa&&fotoRef){
+   quimicaTratada=true
+   reply=`Recebi a foto. No ${svcAlisa.name} não dá para garantir que fique igual à foto: o resultado depende de como o seu cabelo reage ao produto, mas pode ficar igual ou bem próximo, e o Juliano avalia na hora. Quer que eu veja um horário pra você? Se quiser o corte junto, é só me dizer.`
+   intent='other';handoff=false;actions=[]
+   next.services=[svcAlisa.name];next.usual_assumed=false;chosen=[svcAlisa]
+  }
+ }
  // v29.212.0 — caso Moisés (18/09/2026, 18h25): horário das 19h marcado, ele avisou "Estou na rua de
  // baixo" e recebeu "você já tem um agendamento para hoje às 19:00 — quer que eu cancele esse já que
  // vai escolher outro dia?". A oferta de terça da conversa da tarde ainda estava no estado e o fluxo
@@ -1765,7 +1803,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  {
   const qp=normalize(message)
   const pedePonta=/\b(primeiro|1o|ultimo|mais cedo|mais tarde)\b[^?.!]{0,25}\bhorario|\bhorario\b[^?.!]{0,15}\b(mais cedo|mais tarde)\b|\bqual (o|e o|seria o) (primeiro|ultimo)\b|\b(primeiro|ultimo) (que|q) (tem|voce tem|vc tem)\b/.test(qp)
-  if(!pediuHumano&&!chegadaTratada&&!formacaoRespondida&&pedePonta&&!extractRequestedTime(message)){
+  if(!pediuHumano&&!chegadaTratada&&!formacaoRespondida&&!quimicaTratada&&pedePonta&&!extractRequestedTime(message)){
    const amanhaP=somarDiasIso(today(),1)
    const nomesDia=WEEKDAY_NAMES.join('|')
    let diaAnterior=''
@@ -1815,7 +1853,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let reservaConsultada=false
  let prefixoSemReserva=''
  {
-  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada&&!formacaoRespondida&&!pontaRespondida?perguntaSeTemReserva(normalize(message)):null
+  const diaPerg=!pediuHumano&&verifiedPhone&&!chegadaTratada&&!formacaoRespondida&&!pontaRespondida&&!quimicaTratada?perguntaSeTemReserva(normalize(message)):null
   if(diaPerg){
    const amanhaR=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
    const alvo=diaPerg==='hoje'?today():diaPerg==='amanha'?amanhaR:''
@@ -2300,7 +2338,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // Corte + Lavagem sai R$ 50,00)" no "quando quiser, é só me chamar". Adiar ou comentar sobre o cabelo não é pedir.
  const cabeloDespedida=/\b(mais pra frente|mais para frente|outra hora|outro dia|depois (a gente|eu|marco|marcamos|vejo)|abraco|abs|demora (muito )?(pra|para) crescer|cresce(ndo| devagar))\b/.test(normalizedQuestion)
  const cabeloOutroAssunto=cabeloDespedida||/\b(pint|tint|colora|colorir|descolor|luzes|platin|nevou|reflexo|mecha|progressiva|alisa|hidrata|quimica|química|produto|passou|passa|usou|usa|pomada|leave|creme|oleo|óleo|shampoo|gel|cera)/i.test(message)
- const bareCabeloAsk=!cabeloOutroAssunto&&/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
+ const bareCabeloAsk=!cabeloOutroAssunto&&!quimicaTratada&&!chosen.some((s:any)=>/alisamento|relaxamento/i.test(String(s?.name||'')))&&/\bcabelo\b/i.test(message)&&!/\bcorte\b/.test(normalizedQuestion)&&!chosen.some((s:any)=>s.category==='corte'||s.category==='combo')&&!isPriceOrInfoQuestion&&intent!=='handoff'&&!bareBarbaAsk
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='handoff'){
   const loose=findServicesLoose(message)
   // v29.193.1 (caso Lucas): palavra-chave solta no meio da frase ("… barba e sobrancelha para
@@ -3511,9 +3549,16 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      handoff=false
      return
     }
-    if(swapTailService&&normalize(swapTailService.name)!==normalize(String(b.service_name||''))){
-     next.pending_change_service_new_name=swapTailService.name
-     reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${swapTailService.name}" (${money(swapTailService.price)}, aproximadamente ${swapTailService.duration} min)? Responda sim ou não.`
+    // v29.346.0 — caso Daniela (05/11/2026, 09h01): reservou "Corte de cabelo" e emendou "Será para meu filho de 4
+    // anos". Ouviu "Qual serviço você quer no lugar?" — a criança já dizia o serviço. Corte adulto + menção a
+    // filho/filha/criança (ou idade até 12 anos) = proposta direta do Corte de cabelo infantil.
+    const infantilNaFrase=/\b(filho|filha|crianca|menino|menina|garoto|garota|neto|neta|sobrinho|sobrinha|enteado|enteada|infantil|meu pequeno|minha pequena)\b/.test(normalizedQuestion)
+     ||/\b([1-9]|1[0-2])\s*(anos|aninhos|anis)\b/.test(normalizedQuestion)
+    const alvoInfantil=!swapTailService&&infantilNaFrase&&/^corte de cabelo$/i.test(String(b.service_name||'').trim())?findService('Corte de cabelo infantil'):null
+    const alvoTroca=swapTailService||alvoInfantil
+    if(alvoTroca&&normalize(alvoTroca.name)!==normalize(String(b.service_name||''))){
+     next.pending_change_service_new_name=alvoTroca.name
+     reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${alvoTroca.name}" (${money(alvoTroca.price)}, aproximadamente ${alvoTroca.duration} min)? Responda sim ou não.`
      actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
     }else{
      reply=`Vamos trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)} (atualmente ${b.service_name}). Qual serviço você quer no lugar?`
@@ -3654,7 +3699,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // já estão preenchidos) sobrescrevia intent='join_waitlist' para 'book' e CRIAVA um
  // agendamento de verdade no dia/horário alternativo oferecido, em vez de colocar o
  // cliente na lista de espera do dia original — o oposto do que ele pediu.
- const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion&&!faltaAcolhida&&!pontaRespondida // v29.341.0: resposta fixa da falta não leva fluxo de agenda por cima
+ const notSpecialFlow=intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!next.completed&&!isPriceOrInfoQuestion&&!faltaAcolhida&&!pontaRespondida&&!quimicaTratada // v29.341.0: resposta fixa da falta não leva fluxo de agenda por cima
 
  // v29.16.0 — FIM DA ESTEIRA DE VENDAS (12/08/2026, caso real do print do Juliano): o
  // fluxo antigo fazia até 3 perguntas de venda em série (upgrade da lavagem → complementos
@@ -6215,7 +6260,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // aviso de vaga); e quem encerrou com agradecimento ou recusou o dia alternativo (caso "Blz
   // obrigado!", 12/09 10h12 → "seu horário ainda NÃO ficou reservado" às 12h15) não é lead a
   // cobrar — é gente que já decidiu.
-  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada||formacaoRespondida||pontaRespondida
+  const isSpecialFlow=['cancel','reschedule','change_service','update_products','handoff','join_waitlist'].includes(intent)||soGentileza||recusouOfertaDeOutroDia||lembreteCombinado||chegadaTratada||reservaConsultada||ausenciaAvisada||formacaoRespondida||pontaRespondida||(quimicaTratada&&handoff)
   // v29.192.0 — caso Adriano (15/09/2026, 17h07): "Acho que vai ficar para a semana que vem" e "Ainda
   // não consigo definir" recebiam a resposta certa ("fica combinado") — e, duas horas depois, a
   // cobrança "só passando pra saber se ainda tem interesse". Cada mensagem dele regravava o lead com

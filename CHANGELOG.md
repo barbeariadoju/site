@@ -1,3 +1,35 @@
+## 29.346.0 — JuIA: alisamento não vira corte, pergunta técnica vai pro Juliano, filho vira corte infantil
+
+Duas conversas da manhã de 05/11/2026 que o Juliano teve que assumir na mão.
+
+**Vitor (09h09-09h35).** Perguntou se a gente alisa cabelo ondulado e ouviu o preço do Alisamento / Relaxamento.
+Mandou a foto do resultado que queria ("Tipo assim") e a JuIA anotou **Corte de cabelo** e listou horários: a
+descrição da foto tinha a palavra "cabelo", e o atalho do "só cabelo = corte" (v29.43.0) pegou. Depois, "tem foto do
+antes e depois?", "o cabelo precisa estar grande?", "fazem desondulação capilar?" e uma segunda foto ouviram "Consigo
+te atender hoje sim!" ou "me embolei". E no "Ok" depois do "já estou vendo com o Juliano", saiu a oferta de horário
+de novo.
+
+- Com alisamento/relaxamento na conversa (mensagem, últimas 6 falas ou serviço no estado):
+  - **Pergunta técnica** (resultado igual à foto, tamanho do cabelo, foto de antes e depois, duração, se estraga ou
+    faz mal, qual produto) tem resposta fixa e vai para o Juliano (handoff + push), sem oferta de horário por cima.
+    A química depende do cabelo de cada um, e quem avalia é ele.
+  - **Foto de referência** recebe a resposta que o próprio Juliano deu ao Vitor: não dá para garantir que fique
+    igual, depende de como o cabelo reage ao produto, e ele avalia na hora. O serviço da conversa vira o
+    Alisamento / Relaxamento, e o corte presumido não entra.
+- **"Fazem desondulação / progressiva / relaxamento?"** responde com o Alisamento / Relaxamento do catálogo e o preço.
+- Webhook: depois do "me embolei... estou vendo com o Juliano", **"ok", "blz", "aguardo", "obrigado"** e afins não
+  recebem resposta. O cliente está esperando o Juliano, e o push já saiu. Mensagem com conteúdo segue para a JuIA.
+
+**Daniela (09h01).** Reservou "Corte de cabelo" às 16:00 e emendou "Será para meu filho de 4 anos". Ouviu "Qual
+serviço você quer no lugar?". Agora, corte adulto + filho/filha/criança (ou idade até 12 anos) na troca de serviço =
+proposta direta do **Corte de cabelo infantil**, com preço e confirmação de sim ou não.
+
+- A reserva dela de hoje continua como "Corte de cabelo" (mesmo preço, R$ 50,00). O Juliano já está na conversa;
+  não mexi.
+- Simulador: cenários 113 (Vitor) e 114 (Daniela). 303 ok.
+- Ficou de fora, já conhecido: duas respostas seguidas quando o cliente manda duas mensagens no mesmo segundo
+  (Daniela, 08h59, como o Bruno em 04/11).
+
 ## 29.345.0 — No Balcão, o telefone também acha o cliente
 
 O Juliano, em 04/11/2026, no Balcão: digitou o número do Lucas e "não aparece cliente com o número dele, mesmo eu

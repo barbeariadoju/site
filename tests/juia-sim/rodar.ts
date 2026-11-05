@@ -1640,5 +1640,34 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('112c na pergunta seguinte, a lista respeita o piso (sem 09:00)', /17:00/.test(r3.reply) && !/09:00/.test(r3.reply), r3.reply)
 }
 
+// 113. v29.346.0 — caso Vitor (05/11, 09h09-09h35): perguntou de alisar o cabelo, mandou foto do resultado ("Tipo assim")
+// e a JuIA presumiu corte; "tem foto do antes e depois?" e "o cabelo precisa estar grande?" ouviram oferta de horário.
+{
+  const histA = [
+    { role: 'user', content: 'Gostaria de saber se vocês fazem algum tipo de alisamento no cabelo / Meu cabelo é ondulado / Gostaria de deixar mais liso' },
+    { role: 'assistant', content: 'Fazemos sim: Alisamento / Relaxamento — R$ 70,00, aproximadamente 55 minutos.' },
+  ]
+  const vagas = { [hoje]: ['09:50', '11:15', '12:45', '14:15', '16:00', '17:00', '17:30', '18:00', '18:15', '18:30', '18:40'] }
+  const r1 = await turno({ msg: 'Cliente enviou uma foto de referência. Descrição da imagem: cabelo liso com laterais curtas. Legenda que o cliente escreveu junto: "Tipo assim"',
+    state: { name: 'Vitor Teste' }, history: histA, ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Vitor Teste'), vagas })
+  checar('113a foto depois do alisamento: fala do resultado da química, sem presumir corte nem listar horário', /não dá para garantir/.test(r1.reply) && !/\d{2}:\d{2}/.test(r1.reply) && (r1.state?.services || []).some((s: string) => /Alisamento/.test(s)) && !(r1.state?.services || []).includes('Corte de cabelo'), { reply: r1.reply, services: r1.state?.services })
+  for (const msg of ['Você tem uma foto pra mim ver no antes e depois ?', 'O cabelo precisa estar grande ??']) {
+    const r = await turno({ msg, state: { name: 'Vitor Teste', services: ['Alisamento / Relaxamento'], date: hoje }, history: histA,
+      ai: { intent: 'availability', reply: 'Consigo te atender hoje sim!', updates: {} }, contexto: ctxCliente('Vitor Teste'), vagas })
+    checar(`113b "${msg}": vai pro Juliano, sem oferta de horário`, r.handoff === true && /Juliano/.test(r.reply) && !/Consigo te atender|\d{2}:\d{2}/.test(r.reply), r.reply)
+  }
+  const r3 = await turno({ msg: 'Fazem desondulacao capilar', state: { name: 'Vitor Teste' }, ai: { intent: 'price_or_service', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Vitor Teste'), vagas })
+  checar('113c "fazem desondulação?": responde com o Alisamento / Relaxamento e o preço', /Fazemos sim: Alisamento \/ Relaxamento/.test(r3.reply) && /R\$ ?70/.test(r3.reply), r3.reply)
+}
+
+// 114. v29.346.0 — caso Daniela (05/11, 09h01): reservou "Corte de cabelo" e emendou "Será para meu filho de 4 anos";
+// ouviu "Qual serviço você quer no lugar?". Criança = proposta direta do Corte de cabelo infantil.
+{
+  const futD = [{ id: 'bd', booking_date: hoje, start_time: '23:00:00', service_name: 'Corte de cabelo', service_price: 50, status: 'confirmed' }]
+  const r = await turno({ msg: 'Será para meu filho de 4 anos', state: { completed: true, name: 'Daniela Teste', services: ['Corte de cabelo'], date: hoje, time: '23:00' },
+    ai: { intent: 'change_service', reply: 'Certo.', updates: {} }, contexto: ctxCliente('Daniela Teste'), futuros: futD })
+  checar('114 "para meu filho de 4 anos": propõe o Corte de cabelo infantil', /para "Corte de cabelo infantil"/.test(r.reply) && !/Qual serviço você quer no lugar/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

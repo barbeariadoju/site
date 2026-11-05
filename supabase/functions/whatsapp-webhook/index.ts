@@ -2424,6 +2424,28 @@ Deno.serve(async (request: Request) => {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
+          // v29.346.0 — caso Vitor (05/11/2026, 09h22): a JuIA disse "me embolei... já estou vendo com o Juliano"
+          // e, no "Ok" do cliente, mandou a oferta de horário que tinha acabado de se embolar. Quem só confirmou
+          // que vai esperar o Juliano não pergunta nada: silêncio (o push do "me embolei" já saiu). Qualquer
+          // mensagem com conteúdo (um horário, uma pergunta) segue para a JuIA como antes (v29.295.0).
+          if (lastOut && /^Desculpe, me embolei aqui\./.test(String(lastOut.body || '')) && Date.now() - new Date(lastOut.created_at).getTime() < 60 * 60 * 1000) {
+            const { data: entradaAck } = await admin
+              .from('whatsapp_messages')
+              .select('body, created_at')
+              .eq('phone', phone)
+              .eq('direction', 'in')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            const ack = String(entradaAck?.body || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[!.,]+/g, ' ').trim()
+            const soConfirma = Boolean(entradaAck) && new Date(entradaAck!.created_at).getTime() > new Date(lastOut.created_at).getTime() &&
+              /^(ok+|okay|blz|beleza|certo|ta|ta bom|ta certo|tudo bem|tranquilo|show|joia|perfeito|combinado|fico no aguardo|aguardo|no aguardo|obrigad[oa]|valeu|vlw|sim|👍|🙏|👍🏻|👍🏼|👍🏽)( (obrigad[oa]|valeu|aguardo|fico no aguardo))?$/u.test(ack)
+            if (soConfirma) {
+              console.log('[whatsapp-webhook] cliente só confirmou depois do "me embolei" — silêncio até o Juliano', phone)
+              await admin.from('whatsapp_conversations').update({ state: ai.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
+              return
+            }
+          }
           // v29.27.0 — BURACO REAL (caso Vitoria, 15/08/2026, 11:07): o anti-papagaio acima
           // engoliu uma resposta a uma pergunta NOVA e o cliente ficou no vácuo — perdemos a
           // venda. Ela pediu "corte + barba express", a JuIA respondeu "não encontrei
