@@ -1,3 +1,14 @@
+## 29.348.0 — Corte de cabelo sem promessa de navalha
+
+Pedido do Juliano (06/11/2026, 12h20), com o print: um cliente perguntou "Quanto tá o corte?" e a JuIA respondeu
+que "o acabamento é realizado com calma, na navalha". Nem todo corte é finalizado na navalha — depende do estilo.
+
+- O texto vinha do `sales_pitch` do Corte de cabelo no banco (escrito na v28.70.0, migration 097). Passou a dizer
+  "na máquina ou na navalha, conforme o estilo", igual ao que `servicos.html` já dizia. Migration 217, aplicada.
+- Regra fixa no prompt da JuIA, ao lado da regra da Barba Express: nunca prometer navalha num corte.
+- Os outros textos com navalha ficaram: barbas na navalha / Barboterapia (é o serviço), Raspar a cabeça (bordas e nuca
+  do raspado) e Pezinho. Se o pezinho também não for sempre na navalha, é o próximo a ajustar.
+
 ## 29.347.0 — JuIA: "sábado agora" olha o sábado, "blz" depois da lista de espera encerra, horário pra mãe
 
 Os três casos da revisão de 05/11/2026 que ficaram sem correção naquele dia.
