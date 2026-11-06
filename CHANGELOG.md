@@ -1,3 +1,10 @@
+## 29.348.1 — Pezinho sem promessa de navalha
+
+Resposta do Juliano (06/11/2026) à pergunta deixada na 29.348.0: o pezinho também nem sempre é na navalha. O
+`sales_pitch` do Pezinho passou de "feito na navalha" para "na máquina ou na navalha, conforme o corte" (migration
+218, aplicada) e a regra do prompt da JuIA vale para ele também. A página `servico-pezinho.html` já não falava em
+navalha. Os textos gerais do gerador de conteúdo ("a navalha pede mão firme") não prometem nada ao cliente e ficaram.
+
 ## 29.348.0 — Corte de cabelo sem promessa de navalha
 
 Pedido do Juliano (06/11/2026, 12h20), com o print: um cliente perguntou "Quanto tá o corte?" e a JuIA respondeu
