@@ -106,7 +106,7 @@ const turno = async (c: Cenario) => {
     extended_close_slot_ok: () => Boolean(c.estendidoOk),
     create_public_booking_v15: () => (c.reservaErro ? { data: null, error: { message: c.reservaErro } } : { data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: c.cancelado || 'Corte de cabelo' }], error: null }),
-    phone_change_booking_service: (a: any) => { const b: any = (c.futuros || []).find((x: any) => x.id === a.p_booking_id) || {}; return { data: [{ ...b, id: a.p_booking_id, service_name: a.p_service_name, service_price: a.p_service_price }], error: null } },
+    phone_change_booking_service: (a: any) => (c as any).rpcFalha === 'phone_change_booking_service' ? { data: [], error: null } : (() => { const b: any = (c.futuros || []).find((x: any) => x.id === a.p_booking_id) || {}; return { data: [{ ...b, id: a.p_booking_id, service_name: a.p_service_name, service_price: a.p_service_price }], error: null } })(),
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
     encaixes_possiveis: () => c.buracos || [],
@@ -1702,6 +1702,45 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     history: [{ role: 'assistant', content: 'Agora mesmo, o primeiro horário livre é 23:00 para Corte de cabelo (aproximadamente 40 min); depois tenho 23:15 e 23:30. Me responde o horário que eu já deixo reservado.' }],
     ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Bia Teste'), vagas: { [hoje]: ['23:00', '23:15', '23:30'] } })
   checar('118 horário pra mãe: reconhece e repete a oferta de agora', /para a sua mae|para a sua mãe/.test(r.reply) && /23:00/.test(r.reply) && !/manhã ou à tarde/.test(r.reply), r.reply)
+}
+
+// 119. v29.349.0 — caso Alessandra (06/11, 11h32): "Se vagar o horário após às 18h hoje, por favor avise!!", com o corte do
+//      filho marcado pelo site para sábado, ouviu "quer que eu cancele esse?". Vai pra lista de espera de hoje, depois das 18h.
+{
+  const sab = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const r = await turno({ msg: 'Se vagar o horário após às 18h hoje, por favor avise!!', state: {},
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Davi Teste'),
+    futuros: [{ id: 'b119', booking_date: sab, start_time: '11:30:00', service_name: 'Corte de cabelo', service_price: 50, duration_minutes: 40, status: 'confirmed' }] })
+  const wl = r.saidas.find((s: any) => s.url.includes('join-waitlist'))
+  checar('119 "se vagar após 18h, avise": lista de espera de hoje a partir das 18:00', wl && wl.body?.preferred_date === hoje && wl.body?.preferred_time_start === '18:00' && !/cancele/.test(r.reply), wl?.body || r.reply)
+  checar('119 resposta cita depois das 18h', /depois das 18h/.test(r.reply), r.reply)
+}
+
+// 120. v29.349.0 — caso Cláudio (06/11, 09h46): "Não / Obrigado" depois de "O mais próximo é 16:55 ou 15:25" levou outra lista.
+{
+  const r = await turno({ msg: 'Não\nObrigado', state: { services: ['Corte + Barba Express'], date: hoje, time: '19:00' },
+    history: [{ role: 'assistant', content: 'Hoje às 19:00 não cabe mais para Corte + Barba Express (aproximadamente 65 min). O mais próximo que tenho é 16:55 ou 15:25. Serve pra você?' }],
+    ai: { intent: 'availability', reply: 'Tenho 11:35, 12:00.', updates: {} }, contexto: ctxCliente('Claudio Teste'), vagas: { [hoje]: ['11:35', '12:00', '16:55'] } })
+  checar('120 "Não / Obrigado" à lista de horários: encerra sem horário', /me chamar/.test(r.reply) && !/\d{2}:\d{2}/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'nenhum deles :/', state: { services: ['Corte + Barba Express'], date: hoje },
+    history: [{ role: 'assistant', content: 'Para Corte + Barba Express consigo te atender hoje, entre 11:35 e 16:55. Por exemplo: 11:35, 12:00. Qual fica melhor pra você?' }],
+    ai: { intent: 'availability', reply: 'Tenho 11:35.', updates: {} }, contexto: ctxCliente('Claudio Teste'), vagas: { [hoje]: ['11:35', '12:00'] } })
+  checar('120b "nenhum deles": encerra sem horário', !/\d{2}:\d{2}/.test(r2.reply), r2.reply)
+}
+
+// 121. v29.349.0 — caso Arthur (06/11, 12h18): "Corte e barba na nabalha" virou Corte + Barba Express.
+{
+  const r = await turno({ msg: 'Corte e barba na nabalha', state: { date: hoje, time: '10:00' },
+    ai: { intent: 'book', reply: 'Reservado!', updates: {} }, contexto: ctxCliente('Arthur Teste'), vagas: { [hoje]: ['10:00', '11:30'] } })
+  checar('121 "nabalha" = navalha: nunca Barba Express', (r.state?.services || []).some((x: string) => /navalha com toalha quente/.test(x)) && !(r.state?.services || []).some((x: string) => /Express/.test(x)), r.state?.services)
+}
+
+// 122. v29.349.0 — caso Arthur: troca que não cabe explica e chama o Juliano.
+{
+  const r = await turno({ msg: 'Sim', state: { pending_change_service_booking_id: 'b122', pending_change_service_new_name: 'Corte + Barba na navalha com toalha quente' },
+    ai: { intent: 'change_service', reply: 'Ok', updates: {} }, contexto: ctxCliente('Arthur Teste'),
+    futuros: [{ id: 'b122', booking_date: hoje, start_time: '16:55:00', service_name: 'Corte + Barba Express', status: 'confirmed' }], rpcFalha: 'phone_change_booking_service' } as any)
+  checar('122 troca que não cabe: explica, mantém e chama o Juliano', /não cabe/.test(r.reply) && /Juliano/.test(r.reply) && r.handoff === true, r.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

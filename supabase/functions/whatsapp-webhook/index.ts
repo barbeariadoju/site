@@ -2277,7 +2277,7 @@ Deno.serve(async (request: Request) => {
         if (trimmedText.length <= 60 && !juiaAwaitingAnswer && !quotedTarget) {
           const { data: pendingLead } = await admin
             .from('conversation_leads')
-            .select('phone')
+            .select('phone, updated_at')
             .eq('phone', phone)
             .eq('followup_stage', 2)
             .is('reason', null)
@@ -2286,7 +2286,11 @@ Deno.serve(async (request: Request) => {
           // conversa nova com "Ola" e recebeu "Entendido, muito obrigado pelo retorno!" — a saudação foi
           // lida como resposta livre da pesquisa. Saudação ou pedido novo não é motivo: a pesquisa velha
           // morre em silêncio e a mensagem segue pro fluxo normal da JuIA.
-          const abriuConversaNova = pendingLead && (/^(ola|oi|oie|opa|eai|e ai|bom dia|boa tarde|boa noite|fala|salve)\b/.test(normalize(trimmedText)) || /\b(tem|teria|quero|queria|gostaria|preciso|marcar|agendar|horario|vaga|encaix)\b/.test(normalize(trimmedText)))
+          // v29.349.0 — caso Marcello (06/11/2026, 10h31): "Bom diaa" ouviu "Entendido, muito obrigado pelo retorno!" —
+          // a pesquisa era de 08/10 (um mês antes) e o "diaa" com letra repetida escapou da saudação. Saudação aceita
+          // letra esticada ("oii", "bom diaaa", "boa tardee"), e pesquisa com mais de 3 dias também morre em silêncio.
+          const pesquisaVelha = pendingLead && (Date.now() - new Date(String((pendingLead as any).updated_at || 0)).getTime()) > 3 * 24 * 3600 * 1000
+          const abriuConversaNova = pendingLead && (pesquisaVelha || /^(ola+|oi+|oie+|opa+|eai+|e ai+|bo+m dia+|boa tarde+|boa noite+|fala+|salve+)\b/.test(normalize(trimmedText)) || /\b(tem|teria|quero|queria|gostaria|preciso|marcar|agendar|horario|vaga|encaix)\b/.test(normalize(trimmedText)))
           if (abriuConversaNova) {
             await admin.from('conversation_leads').delete().eq('phone', phone)
             console.log('[whatsapp-webhook] pesquisa de motivo encerrada em silêncio: cliente abriu conversa nova', phone)

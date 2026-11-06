@@ -30,7 +30,7 @@ const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
 // "hoje", o dia pedido ficou vazio, a agenda foi pro próximo dia aberto sem explicar que segunda não
 // abre, e a resposta saiu "Consigo te atender amanhã sim!" a quem perguntou de HOJE. Abreviações de
 // WhatsApp viram a palavra inteira já na normalização, pra toda leitura do arquivo enxergar igual.
-const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque').replace(/\bpe d[oa] (cabelo|nuca)\b|\bpezim\b/g,'pezinho').replace(/\bsom?bran?celha/g,'sobrancelha') // v29.334.0: "sombrancelha" = sobrancelha (caso Raul); v29.328.0: "pé do cabelo" = pezinho (caso Manoel); v29.281.0: vocabulário do Juliano (08/10/2026)
+const normalize=(s='')=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\bhj\b/g,'hoje').replace(/\bamnh?\b/g,'amanha').replace(/\b(nn|naum)\b/g,'nao').replace(/\b(pk|pq|pqe|porq)\b/g,'porque').replace(/\bpe d[oa] (cabelo|nuca)\b|\bpezim\b/g,'pezinho').replace(/\bsom?bran?celha/g,'sobrancelha').replace(/\b(nabalha|navaia|navalia|navalah|navlha|nevalha|navalhia|navaha)\b/g,'navalha') // v29.349.0: "nabalha" = navalha (caso Arthur); v29.334.0: "sombrancelha" = sobrancelha (caso Raul); v29.328.0: "pé do cabelo" = pezinho (caso Manoel); v29.281.0: vocabulário do Juliano (08/10/2026)
 
 // v29.141.0 — REGISTRO ÚNICO DA ÚLTIMA PERGUNTA (pedido do Juliano, 05/09/2026).
 //
@@ -2558,6 +2558,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // "me avisa/avise", "pode(ria) me avisar", "avisa aí", "se abrir/vagar/surgir … avis…".
  const waitlistAsk=includesAny(normalizedQuestion,['lista de espera','fila de espera','entrar na lista','quero entrar na espera'])
   ||/\b(me avis[ae]\b|me avisar\b|pode(ria)? (me )?avisar\b|avisa (ai|aqui|por aqui|sim)\b|(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar)[^.!?]{0,40}\bavis)/.test(normalizedQuestion)
+  // v29.349.0 — caso Alessandra (05-06/11/2026): "se vagar um horário após às 18h, ele consegue ir!" e "Se vagar o
+  // horário após às 18h hoje, por favor avise!!" ouviram, as duas vezes, "Antes de continuar: você já tem um agendamento
+  // confirmado… quer que eu cancele?". Pedido de aviso de vaga com frase mais longa ou sem "avise" também é lista de espera.
+  ||/\b(se|caso|quando) (abrir|vagar|surgir|aparecer|liberar|desmarcar)\b[^.?]{0,80}\b(avis\w*|consegue ir|consigo ir|da (pra|para) ir|pode ir|me chama|me fala|me manda)\b/.test(normalizedQuestion)
   // v29.212.0 (caso Moisés, 18/09/2026, 13h05): respondeu só "Avisar" à oferta e levou "me embolei".
   ||(Boolean(next.pending_waitlist)&&aceitaAvisoDeVaga(normalizedQuestion))
   // v29.234.0 (caso Paulo, 25/09/2026, 09h07): "Se abrir pra hj" + "Prefiro" à oferta pendente.
@@ -2574,11 +2578,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // — promessa do modelo, sem lista de espera nenhuma (a oferta tinha sido apagada na reserva).
  // Pedido de aviso com serviço conhecido monta a oferta na hora: o dia é o citado ("hoje",
  // "amanhã", dia da semana) ou o do último pedido.
- if(waitlistAsk&&!next.pending_waitlist&&chosen.length&&verifiedPhone){
-  const wlSemana=weekdayDatesMentioned(normalizedQuestion,today())
-  const wlAmanha=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
-  const wlDia=/\bhoje\b/.test(normalizedQuestion)?today():/\bamanha\b/.test(normalizedQuestion)?wlAmanha:(wlSemana[0]||state?.date||next.date||today())
-  next.pending_waitlist={date:wlDia,period:detectPeriod(normalizedQuestion)||null,service_name:chosen.map((s:any)=>s.name).join(' + '),service_price:chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0),duration_minutes:chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0)}
+ // v29.349.0 (caso Alessandra): sem serviço na conversa, vale o do próximo horário já marcado por esse telefone
+ // (o corte do filho, marcado pelo site); e "após às 18h" vira o piso da lista de espera.
+ const wlReserva=!chosen.length?upcomingBookings.filter((b:any)=>b&&b.service_name&&['pending','confirmed',undefined].includes(b.status)).sort((a:any,b:any)=>String(a.booking_date+a.start_time).localeCompare(String(b.booking_date+b.start_time)))[0]:null
+ const wlSemana=weekdayDatesMentioned(normalizedQuestion,today())
+ const wlAmanha=(()=>{const a=new Date(today()+'T12:00:00-03:00');a.setDate(a.getDate()+1);return a.toISOString().slice(0,10)})()
+ const wlDia=/\bhoje\b/.test(normalizedQuestion)?today():/\bamanha\b/.test(normalizedQuestion)?wlAmanha:(wlSemana[0]||state?.date||next.date||today())
+ // a reserva só empresta o serviço quando o aviso é pra OUTRO dia (o "mais cedo no mesmo dia" tem fluxo próprio, caso 75h)
+ if(waitlistAsk&&!next.pending_waitlist&&(chosen.length||(wlReserva&&wlReserva.booking_date!==wlDia))&&verifiedPhone){
+  const wlApos=normalizedQuestion.match(/\b(apos|depois d[ae]s?|a partir d[ae]s?)\s*(as\s*)?(\d{1,2})\s*(h|:\d{2}|horas?)?\b/)
+  const wlDepois=wlApos&&Number(wlApos[3])>=7&&Number(wlApos[3])<=19?`${String(wlApos[3]).padStart(2,'0')}:00`:null
+  next.pending_waitlist=chosen.length
+   ?{date:wlDia,period:detectPeriod(normalizedQuestion)||null,service_name:chosen.map((s:any)=>s.name).join(' + '),service_price:chosen.reduce((a:number,s:any)=>a+Number(s.price||0),0),duration_minutes:chosen.reduce((a:number,s:any)=>a+Number(s.duration||0),0),after:wlDepois}
+   :{date:wlDia,period:detectPeriod(normalizedQuestion)||null,service_name:wlReserva.service_name,service_price:Number(wlReserva.service_price||0),duration_minutes:Number(wlReserva.duration_minutes||40),after:wlDepois,customer_name:wlReserva.customer_name||null}
  }
  let recusouOfertaDeOutroDia=false
  if(intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&next.pending_waitlist){
@@ -3361,8 +3373,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        customer_name:wlName,
        customer_phone:wlPhone,
        preferred_date:offer.date,
-       preferred_period:['manha','tarde'].includes(offer.period)&&!tetoWl?offer.period:'qualquer',
-       ...(tetoWl?{preferred_time_start:'00:00',preferred_time_end:tetoWl}:{}),
+       preferred_period:['manha','tarde'].includes(offer.period)&&!tetoWl&&!offer.after?offer.period:'qualquer',
+       ...(tetoWl?{preferred_time_start:'00:00',preferred_time_end:tetoWl}:offer.after?{preferred_time_start:offer.after,preferred_time_end:'23:59'}:{}),
        service_name:offer.service_name,
        service_price:offer.service_price,
        duration_minutes:offer.duration_minutes,
@@ -3375,7 +3387,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply=wlOk&&tetoWl
      ?`Combinado, ${firstName(wlName)}. Seu horário ${emDia(offer.date)} às ${tetoWl} continua garantido. Se abrir um horário antes das ${tetoWl}, eu te aviso por aqui e, se você quiser, passo o seu para mais cedo.`
      :wlOk
-     ?`Prontinho, ${firstName(wlName)}! Te coloquei na lista de espera pra ${formatDateBR(offer.date)}${offer.service_name?` (${offer.service_name})`:''}. Assim que abrir uma vaga, eu te aviso por aqui.`
+     ?`Prontinho, ${firstName(wlName)}! Te coloquei na lista de espera ${offer.date===today()?'de hoje':`pra ${formatDateBR(offer.date)}`}${offer.after?` depois das ${offer.after.replace(':00','h')}`:''}${offer.service_name?` (${offer.service_name})`:''}. Assim que abrir uma vaga, eu te aviso por aqui.`
      :'Não consegui te colocar na lista de espera agora. Pode tentar de novo em instantes, ou fale com o Juliano.'
     handoff=false
     next.pending_waitlist=null
@@ -3459,8 +3471,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      const {data:changedRows,error:changeError}=await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:next.pending_change_service_booking_id,p_service_name:desired.name,p_service_price:desired.price,p_duration_minutes:desired.duration})
      const changed=Array.isArray(changedRows)?changedRows[0]:changedRows
      if(changeError||!changed){
-      reply='Não consegui trocar o serviço agora — esse serviço pode não caber mais nesse horário. Quer tentar outro serviço ou outro horário?'
-      handoff=false
+      // v29.349.0 — caso Arthur (06/11/2026, 12h23): o "pode não caber… quer tentar outro?" vago levou a "acho que a IA
+      // confundiu" e ao pedido de falar com o Ju — e o Juliano ajustou na mão. Falha na troca: diz o que houve, mantém o
+      // horário como está e chama o Juliano, que pode reorganizar a agenda.
+      const horaT=target?String(target.start_time).slice(0,5):''
+      reply=`${horaT?`Às ${horaT}`:'Nesse horário'} não cabe ${desired.name} (cerca de ${desired.duration} min) sem encostar no próximo cliente. Seu horário continua ${target?.service_name?`com ${target.service_name}`:'como está'}, e já chamei o Juliano para ver se ele consegue ajustar.`
+      handoff=true
       next.pending_change_service_new_name=null;next.pending_change_service_composed=null
      }else{
       reply=`Prontinho! Troquei o serviço do seu agendamento de ${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)} para ${changed.service_name} (${money(changed.service_price)}).`
@@ -4116,7 +4132,13 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const ultimaFalaJuia=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
  const conformouComLotado=/lista de espera|agenda já está cheia|não tenho mais vaga/.test(ultimaFalaJuia)
   &&/^(ah|ahh|a|hm+|ata|ok|okay|blz|beleza|certo|entendi|tudo bem|ta|ta bom|poxa|que pena|pena|sem problema|de boa|tranquilo|beleza entao|blz entao|ok entao|entendi entao)([ ,.!]+(entao|ok|blz|beleza|obrigad\w*|valeu|vlw|ta|tudo bem|entendi))*[ .!]*$/.test(normalizedQuestion.trim())
- const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||conformouComLotado||normalizedQuestion.length<=80
+ // v29.349.0 — caso Cláudio (06/11/2026, 09h46): ouviu "O mais próximo que tenho é 16:55 ou 15:25. Serve pra você?",
+ // respondeu "Não" + "Obrigado" e levou outra lista ("entre 11:35 e 16:55… Qual fica melhor?"). Depois, "nenhum deles :/".
+ // Recusa seca da lista de horários é fim de assunto: porta aberta e nada de horário (nunca insistir com quem recusou).
+ const ofertaDeHorariosNaUltima=/Serve pra você\?|Qual fica melhor pra você\?|Qual você prefere\?|O mais próximo que tenho/.test(ultimaFalaJuia)
+ const recusouListaDeHorarios=ofertaDeHorariosNaUltima&&/^(nao|n|nada|infelizmente nao|poxa nao)([ ,.!]+(obrigad\w*|valeu|vlw|brigad\w*|mesmo|serve|da|rola))*[ .!:/(]*$|^nenhum (deles|desses|dos dois|serve|da)\b[^?\d]*$|^(nao|n) (serve|da|rola|consigo|posso)( nao)?([ ,.!]+(obrigad\w*|valeu|vlw))*[ .!:/(]*$/.test(normalizedQuestion.trim())
+ const conformouOuRecusou=conformouComLotado||recusouListaDeHorarios
+ const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||conformouOuRecusou||normalizedQuestion.length<=80
   &&!/\?|\d{1,2}\s*(:|h)\b|\bhoje\b|\bamanha\b|\bsegunda|\bterca|\bquarta|\bquinta|\bsexta|\bsabado|\bmanha\b|\btarde\b|\bnoite\b|\bcort|\bbarb|\bsobrancelha|\bmarc|\bagend|\bhorari|\bvaga|\breserv|\bquero\b|\bpode ser\b|\bsim\b|\bnao\b/.test(normalizedQuestion)
   &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion))
  if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'&&!bareBarbaAsk&&!soGentileza){
@@ -4129,7 +4151,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.186.0 (caso 12/09 10h12): "Blz obrigado!" depois de "hoje não tenho, na terça tenho…" recebeu
  // um "Obrigado!" seco de volta. Agradecimento sem reserva fechada ganha porta aberta.
  if(soGentileza&&!next.completed&&String(reply).trim().length<=14)reply='Eu que agradeço. Quando quiser marcar, é só me chamar por aqui.'
- if(conformouComLotado&&!next.completed){
+ if(conformouOuRecusou&&!next.completed){
   reply=/lista de espera/.test(ultimaFalaJuia)?'Combinado. Se abrir uma vaga, te aviso por aqui na hora.':'Combinado. Quando quiser marcar, é só me chamar por aqui.'
   intent='other';handoff=false;actions=[];next.time=null;next.asap=false
  }

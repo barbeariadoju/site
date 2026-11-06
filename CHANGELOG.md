@@ -1,3 +1,34 @@
+## 29.349.0 — Revisão semanal da JuIA (sexta 06/11): navalha com erro de digitação, recusa de horário, aviso de vaga, pesquisa velha
+
+Varredura de sexta: 56 conversas com cliente nos 7 dias (30/10 a 06/11). As de 30/10 a 05/11 de manhã já tinham
+passado pelas revisões diárias; li uma a uma as 23 de 05/11 10h até 06/11 12h30. Cinco erros reais, quatro corrigidos.
+
+- **Arthur (06/11, 12h18).** "Corte e barba na nabalha" (navalha com b) virou **Corte + Barba Express**: a palavra
+  não foi reconhecida, e "barba sem nome = Express" (v29.290.0) fez o resto. "Não é barba com navalha" ouviu "já está
+  reservado"; a troca falhou (o combo de 80 min não cabia às 16:55, o Maiko chegava às 18:00) com um vago "pode não
+  caber… quer tentar outro?", e ele pediu o Ju. O Juliano ajustou na mão.
+  - Erros comuns de digitação (nabalha, navaia, navalia, nevalha…) viram "navalha" na leitura da mensagem.
+  - Troca de serviço que não cabe agora diz que não cabe e quanto tempo o serviço leva, mantém o horário como está e
+    chama o Juliano (handoff), que é quem pode reorganizar a agenda.
+- **Cláudio (06/11, 09h46).** Ouviu "O mais próximo que tenho é 16:55 ou 15:25. Serve pra você?", respondeu "Não" +
+  "Obrigado" e levou outra lista de horários; respondeu "nenhum deles :/" e às 12h00 o robô de leads mandou "Seu horário
+  ainda não ficou reservado". Recusa seca da lista de horários ("não", "não, obrigado", "nenhum deles", "não serve")
+  agora encerra com a porta aberta, e o `whatsapp-lead-followup` não cobra quem teve recusa como última fala.
+- **Alessandra (05-06/11).** Mãe do Davi, com o corte dele marcado pelo site para sábado. "Se vagar um horário após às
+  18h, ele consegue ir!" e "Se vagar o horário após às 18h hoje, por favor avise!!" ouviram, as duas vezes, "quer que eu
+  cancele esse agendamento?". O Juliano respondeu na mão. Pedido de aviso de vaga com frase mais longa, ou sem a palavra
+  "avise" ("ele consegue ir"), agora é lista de espera; sem serviço na conversa, vale o da reserva que já existe (só
+  quando o aviso é para outro dia — o "mais cedo no mesmo dia" tem fluxo próprio, cenário 75h); "após as 18h" vira o
+  horário mínimo da lista.
+- **Marcello (06/11, 10h31).** "Bom diaa" ouviu "Entendido, muito obrigado pelo retorno!" — a pesquisa "por que não
+  agendou?" era de **08/10**, quase um mês antes, e o "diaa" esticado escapou da regra de saudação (v29.215.0). Saudação
+  aceita letra repetida, e pesquisa com mais de 3 dias morre em silêncio. Eram **38** pesquisas velhas abertas assim,
+  cada uma pronta para engolir a próxima mensagem curta do cliente.
+- **Não corrigido:** Fábio (06/11, 08h31) cancelou, pediu "dia 14" e "às 8:30" e ouviu "me diz o serviço", embora o
+  serviço estivesse na mensagem anterior da própria JuIA; respondeu e a reserva saiu certa. Fica para a próxima rodada.
+- Simulador: cenários 119-122 (o 121 conferido: falha sem a correção). 310 ok; 73b, 94 e 95a são os de véspera de
+  sábado. `npm test` ok. Publicados `ju-ia-site`, `whatsapp-webhook` e `whatsapp-lead-followup`.
+
 ## 29.348.1 — Pezinho sem promessa de navalha
 
 Resposta do Juliano (06/11/2026) à pergunta deixada na 29.348.0: o pezinho também nem sempre é na navalha. O

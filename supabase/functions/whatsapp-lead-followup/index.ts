@@ -188,6 +188,12 @@ Deno.serve(async (request: Request) => {
     const { data: convSt } = await admin.from('whatsapp_conversations').select('state').eq('phone', phone).maybeSingle()
     const st = (convSt?.state || {}) as Record<string, unknown>
     if (convSt && !st.date && !(Array.isArray(st.services) && st.services.length)) return true
+    // v29.349.0 — caso Cláudio (06/11/2026): recusou os horários ("Não", "Obrigado", "nenhum deles :/") às 09h47 e
+    // às 12h00 levou "Seu horário ainda não ficou reservado". Se a última fala do cliente foi recusa, não há o que cobrar.
+    const { data: ultimaDele } = await admin.from('whatsapp_messages').select('body')
+      .eq('phone', phone).eq('direction', 'in').order('created_at', { ascending: false }).limit(1)
+    const txt = String(ultimaDele?.[0]?.body || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+    if (/^(nao|n|nada|infelizmente nao)([ ,.!]+(obrigad\w*|valeu|vlw|mesmo|serve|da))*[ .!:/(]*$|^nenhum\b|^(nao|n) (serve|da|rola|consigo|posso)\b|^obrigad\w*[ .!]*$|\b(fica pra proxima|deixa pra la|vou deixar|outro dia eu (marco|vejo))\b/.test(txt)) return true
     return false
   }
 
