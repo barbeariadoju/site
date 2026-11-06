@@ -1678,5 +1678,31 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('115 agenda cheia sem cadastro: "Poxa, Garcez", nunca "Poxa, cliente"', /agenda já está cheia/.test(r.reply) && !/\bcliente\b/i.test(r.reply), r.reply)
 }
 
+// 116. v29.347.0 — caso Anderson (04/11, 17h43): "Horário parte da manhã sábado agora" ouviu "hoje a agenda já está cheia".
+{
+  const sab = proxima(6)
+  const r = await turno({ msg: 'Horário parte da manhã sábado agora', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sab, period: 'manha' } }, contexto: ctxCliente('Anderson Teste'),
+    vagas: { [hoje]: [], [sab]: ['09:45', '10:15', '10:45'] } })
+  checar('116 "sábado agora": olha o sábado, não hoje', /09:45|10:15|10:45/.test(r.reply) && !/hoje a agenda|lista de espera/.test(r.reply), r.reply)
+}
+
+// 117. v29.347.0 — caso Samuel (04/11, 16h34): depois de "agenda cheia + lista de espera", "Ah, blz então" ouviu outra oferta.
+{
+  const r = await turno({ msg: 'Ah, blz então', state: { services: ['Corte de cabelo'], date: hoje, time: '17:30' },
+    history: [{ role: 'assistant', content: 'Poxa, hoje a agenda já está cheia. Deixei seu nome na lista de espera: se alguém desmarcar, te aviso na hora. Se preferir garantir, amanhã tenho 09:10, 11:30 ou 14:00.' }],
+    ai: { intent: 'availability', reply: 'Amanhã às 17:30 já está ocupado. O mais próximo que tenho é 16:30.', updates: { date: amanha } }, contexto: ctxCliente('Samuel Teste'),
+    vagas: { [amanha]: ['09:10', '16:30'] } })
+  checar('117 "Ah, blz então" depois da lista de espera: encerra, sem horário', /Se abrir uma vaga, te aviso/.test(r.reply) && !/\d{2}:\d{2}/.test(r.reply), r.reply)
+}
+
+// 118. v29.347.0 — caso Bia (05/11, 08h13): "É o cabelo da minha mãe" depois da oferta de agora derrubava a oferta.
+{
+  const r = await turno({ msg: 'É o cabelo da minha mae que é curtinho', state: { services: ['Corte de cabelo'], date: hoje },
+    history: [{ role: 'assistant', content: 'Agora mesmo, o primeiro horário livre é 23:00 para Corte de cabelo (aproximadamente 40 min); depois tenho 23:15 e 23:30. Me responde o horário que eu já deixo reservado.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Bia Teste'), vagas: { [hoje]: ['23:00', '23:15', '23:30'] } })
+  checar('118 horário pra mãe: reconhece e repete a oferta de agora', /para a sua mae|para a sua mãe/.test(r.reply) && /23:00/.test(r.reply) && !/manhã ou à tarde/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

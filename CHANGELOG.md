@@ -1,3 +1,25 @@
+## 29.347.0 — JuIA: "sábado agora" olha o sábado, "blz" depois da lista de espera encerra, horário pra mãe
+
+Os três casos da revisão de 05/11/2026 que ficaram sem correção naquele dia.
+
+- **Anderson (04/11, 17h43).** "Horário parte da manhã sábado agora" ouviu "hoje a agenda já está cheia" e foi para a
+  lista de espera de HOJE. O "agora" ali é "agora que estou falando"; com dia citado (dia da semana, amanhã, data), o
+  dia citado vence e o atalho do "agora = primeiro horário livre de hoje" não dispara.
+- **Samuel (04/11, 16h34).** Depois de "hoje a agenda já está cheia, deixei seu nome na lista de espera", respondeu
+  "Ah, blz então" e ouviu "Amanhã às 17:30 já está ocupado" — o horário de hoje foi levado para amanhã sem ele pedir.
+  Depois de lista de espera / agenda cheia, "blz", "ok", "entendi", "tudo bem", "que pena" e afins são conformação:
+  "Combinado. Se abrir uma vaga, te aviso por aqui na hora." e nenhum horário.
+- **Bia (05/11, 08h13).** Recebeu "Agora mesmo, o primeiro horário livre é 09:10…" e respondeu "É o cabelo da minha
+  mãe que é curtinho". Ouviu "manhã ou tarde?" — a oferta de agora sumiu. Dois motivos: "mãe" (e avó, tio/tia, sogra,
+  neta, nora, vizinha…) não estava na lista de parentes do `horarioParaOutraPessoa`, e a oferta de agora não era
+  repetida. Agora sai "Certo, o horário é para a sua mãe. O primeiro horário livre é…". O texto normalizado perde o
+  acento, então "mae/irmao/avo" voltam acentuados antes de ir pro cliente (a primeira versão, de ontem à noite, ia
+  mandar "a sua mae" — achei no teste de hoje antes de publicar).
+- A lista de parentes está em `_shared/leitura-cliente.ts`, usado também pelo `whatsapp-webhook`: os dois foram
+  publicados.
+- Simulador: cenários 116-118. 304 ok; 73b, 94 e 95a falham igual no main (véspera de sábado: o "amanhã" do cenário
+  cai num sábado lotado), não é regressão.
+
 ## 29.346.0 — JuIA: alisamento não vira corte, pergunta técnica vai pro Juliano, filho vira corte infantil
 
 Duas conversas da manhã de 05/11/2026 que o Juliano teve que assumir na mão.

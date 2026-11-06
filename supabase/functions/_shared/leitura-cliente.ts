@@ -161,7 +161,8 @@ export const perguntaSeTemReserva = (q: string): 'hoje' | 'amanha' | 'qualquer' 
 // telefone tinha cadastro e o nome do cadastro foi assumido sem perguntar. "Eu e meu filho" /
 // "pra mim e pro meu filho" é grupo (a reserva é de quem chama) — não conta.
 // ---------------------------------------------------------------------------------------------
-const PARENTE = '(namorad[oa]|marido|espos[oa]|companheir[oa]|noiv[oa]|filh[oa]|enteado|enteada|pai|irmao|irma|sobrinh[oa]|amig[oa]|colega|primo|prima|cunhad[oa]|genro|sogro|neto|afilhado|patrao|chefe|vizinho)'
+// v29.347.0 — caso Bia (05/11/2026): "o cabelo da minha mãe" não era reconhecido — mae, avo, tio/tia e os femininos que faltavam.
+const PARENTE = '(namorad[oa]|marido|espos[oa]|companheir[oa]|noiv[oa]|filh[oa]|enteado|enteada|pai|mae|irmao|irma|sobrinh[oa]|amig[oa]|colega|primo|prima|cunhad[oa]|genro|nora|sogr[oa]|net[oa]|avo|ti[oa]|afilhad[oa]|patrao|patroa|chefe|vizinh[oa])'
 export const horarioParaOutraPessoa = (q: string): boolean => {
   const t = String(q || '')
   if (/\b(eu e (o |a )?(meu|minha)|pra mim e|para mim e|nos dois|nos tres|eu tambem|e pra mim|e para mim|a gente)\b/.test(t)) return false

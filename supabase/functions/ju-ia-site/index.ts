@@ -1546,7 +1546,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.212.0 — caso Amanda (11/09/2026): marcou o corte do namorado e a reserva saiu no nome dela (o
  // telefone tem cadastro e o nome do cadastro foi assumido). Horário pra outra pessoa pede o nome de
  // quem vai sentar na cadeira; a resposta seguinte (só o nome) fecha a reserva.
+ // v29.347.0 — caso Bia (05/11/2026, 08h13): "Agora mesmo, o primeiro horário livre é 09:10…" e ela: "Certo / É o cabelo
+ // da minha mãe que é curtinho". Ouviu "Consigo te atender hoje sim! … manhã ou tarde?" — a oferta de agora (que é de
+ // um turno só) sumiu e a informação dela não foi reconhecida. Com a oferta de agora na última fala e sem dia/período
+ // novo, a oferta volta, com o recado de que o horário é pra outra pessoa.
+ let notaOutraPessoa=''
  if(horarioParaOutraPessoa(normalize(message))){
+  const qO=normalize(message)
+  const parenteO=qO.match(/\b(meu|minha)\s+([a-z]+)/)
+  const ultimaO=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
+  if(/primeiro horário livre é/.test(ultimaO)&&!detectPeriod(qO)&&!extractRequestedTime(message)&&!weekdayDatesMentioned(qO,today()).length&&!/\bamanha\b/.test(qO)){
+   next.asap=true;next.date=today()
+   if(intent!=='book')intent='availability'
+   // o texto normalizado perde o acento: "mae" volta a ser "mãe" antes de ir pro cliente.
+   const acentoParente:Record<string,string>={mae:'mãe',irmao:'irmão',irma:'irmã',avo:'avó',patrao:'patrão'}
+   const nomeParente=parenteO?(acentoParente[parenteO[2]]||parenteO[2]):''
+   notaOutraPessoa=parenteO?`Certo, o horário é para ${parenteO[1]==='minha'?'a sua':'o seu'} ${nomeParente}. `:'Certo, o horário é para outra pessoa. '
+  }
   next.other_person=true
   // v29.218.0 — caso Josué (22/09/2026, 21h00): o convite pós-atendimento deixou "Corte de cabelo +
   // Sobrancelha" (o dele) no estado, ele pediu "horário amanhã para meu filho" e saiu "Corte infantil
@@ -4093,7 +4109,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // emoji é aceno, igual a "obrigado".
  const soEmojiAceno=!String(message).replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}\s!.,]/gu,'').length&&/\p{Extended_Pictographic}/u.test(String(message))
  // v29.325.0: "Isso / Muito obrigadooo" à pergunta do serviço (caso Calvin) é resposta, não despedida.
- const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||normalizedQuestion.length<=80
+ // v29.347.0 — caso Samuel (04/11/2026, 16h34): "hoje a agenda já está cheia, deixei seu nome na lista de espera… amanhã
+ // tenho…" e ele: "Ah, blz então". Ouviu "Amanhã às 17:30 já está ocupado. O mais próximo é 16:30" — o horário de hoje
+ // que ele tinha pedido foi levado pra amanhã. Depois da lista de espera / agenda cheia, "blz", "ok", "entendi", "tudo
+ // bem" é conformação, não pedido: porta aberta e nada de horário.
+ const ultimaFalaJuia=String([...(Array.isArray(body.history)?body.history:[])].reverse().find((h:any)=>h&&h.role==='assistant')?.content||'')
+ const conformouComLotado=/lista de espera|agenda já está cheia|não tenho mais vaga/.test(ultimaFalaJuia)
+  &&/^(ah|ahh|a|hm+|ata|ok|okay|blz|beleza|certo|entendi|tudo bem|ta|ta bom|poxa|que pena|pena|sem problema|de boa|tranquilo|beleza entao|blz entao|ok entao|entendi entao)([ ,.!]+(entao|ok|blz|beleza|obrigad\w*|valeu|vlw|ta|tudo bem|entendi))*[ .!]*$/.test(normalizedQuestion.trim())
+ const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||conformouComLotado||normalizedQuestion.length<=80
   &&!/\?|\d{1,2}\s*(:|h)\b|\bhoje\b|\bamanha\b|\bsegunda|\bterca|\bquarta|\bquinta|\bsexta|\bsabado|\bmanha\b|\btarde\b|\bnoite\b|\bcort|\bbarb|\bsobrancelha|\bmarc|\bagend|\bhorari|\bvaga|\breserv|\bquero\b|\bpode ser\b|\bsim\b|\bnao\b/.test(normalizedQuestion)
   &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion))
  if(chosen.length&&!next.upsell_offer_options&&!offerTurn&&activelyBooking&&notSpecialFlow&&intent!=='book'&&!bareBarbaAsk&&!soGentileza){
@@ -4106,6 +4129,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.186.0 (caso 12/09 10h12): "Blz obrigado!" depois de "hoje não tenho, na terça tenho…" recebeu
  // um "Obrigado!" seco de volta. Agradecimento sem reserva fechada ganha porta aberta.
  if(soGentileza&&!next.completed&&String(reply).trim().length<=14)reply='Eu que agradeço. Quando quiser marcar, é só me chamar por aqui.'
+ if(conformouComLotado&&!next.completed){
+  reply=/lista de espera/.test(ultimaFalaJuia)?'Combinado. Se abrir uma vaga, te aviso por aqui na hora.':'Combinado. Quando quiser marcar, é só me chamar por aqui.'
+  intent='other';handoff=false;actions=[];next.time=null;next.asap=false
+ }
 
  const requestedPeriod=detectPeriod(normalizedQuestion)
  // cliente pode dizer o período antes mesmo de ter escolhido o serviço (ex.: "tem
@@ -4213,6 +4240,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  const pedeAgora=/\b(nesse|neste) momento\b|\bagora mesmo\b|\bagorinha\b|\bimediat\w*|\bde imediato\b|\b(pra|para) ja\b|o quanto antes|o mais rapido possivel|\bagora\b/.test(normalizedQuestion)
   &&!/\bagora nao\b|\bnao (posso|consigo|da|vou|quero) agora\b|\bagora n\b|\bpor agora\b|\bate agora\b|\bagora (nao|so) (da|posso)/.test(normalizedQuestion)
   &&/\bcort|\bbarb|\batend|\bvaga|\bhorari|\bencaix|\bmarcar|\bagend|\bsobrancelha|\bpezinho/.test(normalizedQuestion)
+  // v29.347.0 — caso Anderson (04/11/2026, 17h43): "Horário parte da manhã sábado agora" ouviu "hoje a agenda já está
+  // cheia" + lista de espera de HOJE. O "agora" ali é "agora que estou falando", o dia pedido é sábado. Dia citado vence.
+  &&!weekdayDatesMentioned(normalizedQuestion,today()).length&&!/\bamanha\b|\bdepois de amanha\b|\bdia \d{1,2}\b|\b\d{1,2}\/\d{1,2}\b/.test(normalizedQuestion)
  if(pedeAgora&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'&&intent!=='update_products'&&intent!=='join_waitlist'&&!bareCabeloAsk&&!bareBarbaAsk){
   next.date=today();next.asap=true;next.period=undefined
   if(intent!=='book')intent='availability'
@@ -5321,7 +5351,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const abertura=atendendoAgora?'Neste momento o Juliano está atendendo um cliente. ':''
    if(desdeAgora.length){
     const seguintes=desdeAgora.slice(1,3)
-    reply=`${abertura}${atendendoAgora?'O':'Agora mesmo, o'} primeiro horário livre é ${desdeAgora[0]} para ${serviceNames} (aproximadamente ${duration} min)${seguintes.length?`; depois tenho ${seguintes.join(' e ')}`:''}. Me responde o horário que eu já deixo reservado.`
+    reply=`${notaOutraPessoa}${abertura}${atendendoAgora||notaOutraPessoa?'O':'Agora mesmo, o'} primeiro horário livre é ${desdeAgora[0]} para ${serviceNames} (aproximadamente ${duration} min)${seguintes.length?`; depois tenho ${seguintes.join(' e ')}`:''}. Me responde o horário que eu já deixo reservado.`
     actions=desdeAgora.slice(0,3).map((t:string)=>({label:t,message:t}))
    }else{
     reply=`${abertura}Agora não consigo: hoje não tenho mais vaga para ${serviceNames}. Quer que eu veja amanhã?`
