@@ -1743,5 +1743,30 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('122 troca que não cabe: explica, mantém e chama o Juliano', /não cabe/.test(r.reply) && /Juliano/.test(r.reply) && r.handoff === true, r.reply)
 }
 
+// 123. v29.350.0 — caso Fábio (06/11, 08h31): cancelou Corte + Barba Express, aceitou a remarcação com "Dia 14" e no "As 8:30" ouviu "Me diz o serviço".
+{
+  const ctx = ctxCliente('Fabio Teste')
+  const vg = ['08:30', '09:45', '11:00', '14:00']
+  const r1 = await turno({ msg: 'Dia 14', state: { services: ['Corte + Barba Express'], date: hoje, pending_rebook: { date: hoje, services: ['Corte + Barba Express'] }, last_question: { kind: 'rebook', at: new Date().toISOString(), reply: 'Quer já deixar outro horário marcado' } },
+    history: [{ role: 'assistant', content: 'Tudo bem, obrigado por avisar! Já liberei seu horário. Quer já deixar outro horário marcado para Corte + Barba Express? Hoje tenho alguns horários. Se preferir outro dia, é só me dizer qual.' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1 } }, contexto: ctx, vagasPorDuracao: () => vg } as any)
+  const r2 = await turno({ msg: 'As 8:30', state: r1.state,
+    history: [{ role: 'user', content: 'Dia 14' }, { role: 'assistant', content: r1.reply }],
+    ai: { intent: 'book', reply: 'Reservado!', updates: { time: '08:30' } }, contexto: ctx, vagasPorDuracao: () => vg } as any)
+  checar('123 remarcação aceita: "As 8:30" reserva o serviço do horário cancelado', reservou(r2) && !/Me diz o servi/i.test(r2.reply), { r1: r1.reply, r2: r2.reply })
+}
+
+// 124. v29.350.0 — caso Carlos (05/11, 17h38): "As 18 h mesmo? / Ou vai atrasar um pouco??" ficou sem resposta.
+{
+  const r = await turno({ msg: 'As 18 h mesmo?\nOu vai atrasar um pouco??', state: {},
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: hoje } }, contexto: ctxCliente('Carlos Teste'),
+    futuros: [{ id: 'b124', booking_date: hoje, start_time: '23:00:00', duration_minutes: 75, service_name: 'Corte + Barba na navalha com toalha quente', status: 'confirmed' }], vagas: { [hoje]: [] } })
+  checar('124 "vai atrasar?": confirma o horário e diz que o Juliano avisa', /segue às 23:00/.test(r.reply) && /Juliano te avisa/.test(r.reply) && !/mudar o horário/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'Vou atrasar uns 5 min, tudo bem?', state: {},
+    ai: { intent: 'other', reply: 'Sem problema, pode vir com calma.', updates: {} }, contexto: ctxCliente('Carlos Teste'),
+    futuros: [{ id: 'b124', booking_date: hoje, start_time: '23:00:00', duration_minutes: 75, service_name: 'Corte de cabelo', status: 'confirmed' }], vagas: { [hoje]: [] } })
+  checar('124b "vou atrasar" (o cliente) não cai na pergunta de pontualidade', !/Juliano te avisa/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

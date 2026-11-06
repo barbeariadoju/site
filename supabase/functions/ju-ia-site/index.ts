@@ -1795,6 +1795,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    if(psA)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psA},body:JSON.stringify({custom:{title:`Quer vir antes das ${horaB}`,body:`${String(context?.name||next.name||'Cliente')} pediu para ser atendido antes, se der. Responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`antes-${verifiedPhone}`}})}).catch(()=>{})
   }
  }
+ // v29.350.0 — caso Carlos (05/11/2026, 17h38): horário das 18:00, perguntou "As 18 h mesmo? / Ou vai atrasar um
+ // pouco??" e ouviu "Você já está reservado hoje às 18:00… se quiser mudar o horário ou o serviço, é só me dizer" —
+ // a pergunta (a barbearia está atrasada?) ficou sem resposta. Só o Juliano sabe se está atrasado: a JuIA confirma o
+ // horário, diz que qualquer atraso ele avisa, e o Juliano recebe o push para avisar se for o caso.
+ if(!pediuHumano&&!chegadaTratada&&verifiedPhone){
+  const qP=normalize(message)
+  const perguntaPontual=/\?/.test(String(message))&&!/\b(vou|vamos|eu)\s+(me\s+)?(atras|demor)/.test(qP)&&(/\b(vai|vao|ta|esta|tao|estao|tem)\s+(um pouco\s+)?(atras|demor)\w*/.test(qP)||/\b(as\s+)?\d{1,2}\s*(h|:\d{2})\s*(\d{2})?\s*(mesmo|certinho|certo)\b/.test(qP)||/\bno horario (mesmo|certinho|certo)\b/.test(qP))
+  const deHoje=perguntaPontual?(bookingsEmAndamento[0]||upcomingBookings.find((b:any)=>b&&b.booking_date===today())):null
+  if(deHoje&&!/\b(cancel|remarc|outro dia|mudar|trocar)/.test(qP)){
+   chegadaTratada=true
+   const horaP=String(deHoje.start_time||'').slice(0,5)
+   const nomeP=primeiroNome(context?.name,'')
+   reply=`Sim${nomeP?`, ${nomeP}`:''}, seu horário segue às ${horaP}. Se houver qualquer atraso por aqui, o Juliano te avisa por esta conversa.`
+   intent='other';handoff=false;actions=[]
+   next.date=null;next.time=null;next.period=null;next.services=[];next.asap=false;chosen=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in next)delete next[f]}
+   const psP=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
+   if(psP)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psP},body:JSON.stringify({custom:{title:`Perguntou se o horário das ${horaP} está no horário`,body:`${String(context?.name||next.name||'Cliente')}: "${String(message).slice(0,120)}". Se estiver atrasado, avise no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`pontual-${verifiedPhone}`}})}).catch(()=>{})
+  }
+ }
  // v29.299.0 — caso Rafa (21/10/2026, 10h13): "Hmm preciso verificar meus horarios qualquer coisa eu retorno /
  // so uma duvida vc era farmaceutico?" recebeu a lista de horários de hoje, sem resposta à pergunta; o Juliano
  // respondeu na mão. Pergunta sobre a formação dele tem resposta fixa (na 3ª pessoa: a JuIA nunca finge ser o
@@ -2861,6 +2881,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // horário, dia, período ou "sim": segue o fluxo normal de disponibilidade/reserva, com o
    // serviço do agendamento cancelado já anotado e o dia oferecido como padrão.
    if(!next.services.length&&rbNames.length){next.services=rbNames;chosen=next.services.map((n:string)=>findService(n)).filter(Boolean)}
+   // v29.350.0 — caso Fábio (06/11/2026, 08h31): cancelou Corte + Barba Express, aceitou a remarcação com "Dia 14" e,
+   // no "As 8:30", a trava única tirou o serviço (ele não tinha escrito) e veio "Me diz o serviço". O serviço do
+   // horário que ELE tinha marcado, aceito na remarcação, é escolha dele.
+   for(const n of rbNames)if(!next.servicos_escolhidos.includes(n))next.servicos_escolhidos.push(n)
    // v29.296.0 — caso Vanessa (20/10/2026, 16h50): à oferta "quinta (05/11) às 11:30" respondeu "Precisa ser
    // após as 15:00 de terça ou quarta feira" e a reserva saiu na QUINTA 15:00. Com dois dias citados, nenhum
    // entrava e ficava o dia oferecido. Agora os dias da semana citados viram as datas da semana da oferta

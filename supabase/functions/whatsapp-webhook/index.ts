@@ -2398,6 +2398,22 @@ Deno.serve(async (request: Request) => {
             console.log('[whatsapp-webhook] JuIA em silêncio de propósito', phone)
             return
           }
+          // v29.350.0 — caso Alessandra (05/11/2026, 15h29): "Tudo bem tbm!!" e, 12 s depois, "Sou Alessandra, esposa do
+          // Marcelo!". A resposta da primeira saiu 0,1 s DEPOIS da segunda chegar (cruzou: o cliente digitou antes de ver) e
+          // as duas foram "Que bom! Me diz o que você precisa…" e "Que bom! Como posso ajudar vocês hoje?". A trava de
+          // resposta obsoleta não pega esse cruzamento (a checagem já tinha passado). Se a resposta nova é só um "como
+          // posso ajudar" e a última nossa, há menos de 60 s, já era um, a nova não sai: a pergunta já está com o cliente.
+          {
+            const generica = (t: string) => /\b(como posso (te |lhe )?ajudar|me diz o que (voce |você )?precisa|em que posso ajudar)\b/i.test(t) && !/\d{1,2}:\d{2}|R\$/.test(t)
+            if (generica(String(ai.reply))) {
+              const { data: ultimaNossa } = await admin.from('whatsapp_messages').select('body, created_at').eq('phone', phone).eq('direction', 'out').order('created_at', { ascending: false }).limit(1).maybeSingle()
+              if (ultimaNossa && Date.now() - new Date(ultimaNossa.created_at).getTime() < 60000 && generica(String(ultimaNossa.body || ''))) {
+                await admin.from('whatsapp_conversations').update({ state: ai?.state || activeState, updated_at: new Date().toISOString() }).eq('phone', phone)
+                console.log('[whatsapp-webhook] resposta genérica repetida não enviada (cruzou com a anterior)', phone)
+                return
+              }
+            }
+          }
 
           let reply = String(ai.reply)
           let handoff = Boolean(ai.handoff)

@@ -1,3 +1,26 @@
+## 29.350.0 — JuIA: os três pendentes da revisão semanal (Fábio, Carlos, resposta repetida)
+
+Pedido do Juliano: não deixar para a próxima rodada o que ficou aberto na 29.349.0.
+
+- **Fábio (06/11, 08h31).** Cancelou o Corte + Barba Express de sábado, aceitou a remarcação com "Dia 14", ouviu
+  "ainda tenho horários para Barba Express + Corte de cabelo" e, ao responder "As 8:30", recebeu "Me diz o serviço".
+  A trava única (v29.274.0) tirou o serviço porque ele não o tinha escrito, e a oferta citava os dois serviços
+  separados, não o nome do combo, então a v29.328.0 também não reconhecia. O serviço do horário que o próprio cliente
+  tinha marcado, aceito na remarcação, agora conta como escolha dele. Cenário 123 (falha sem a correção, conferido).
+- **Carlos (05/11, 17h38).** Horário das 18:00; perguntou "As 18 h mesmo? / Ou vai atrasar um pouco??" e ouviu "Você
+  já está reservado… se quiser mudar o horário ou o serviço, é só me dizer": a pergunta ficou sem resposta. Pergunta de
+  pontualidade sobre o horário de hoje ("vai atrasar?", "às 18h mesmo?", "no horário certinho?") agora tem resposta
+  fixa: o horário segue, e qualquer atraso o Juliano avisa por esta conversa. O Juliano recebe push, porque só ele sabe
+  se está atrasado. **Decidido contra o óbvio:** a JuIA não responde "não vai atrasar". Ela não sabe, e uma promessa
+  quebrada com o cliente já a caminho é pior que um "te aviso". "Vou atrasar" (o próprio cliente) fica de fora.
+  Cenários 124 e 124b.
+- **Resposta repetida (Alessandra 05/11 15h29; Daniela, Marcello).** O cliente manda a segunda mensagem enquanto a
+  JuIA ainda responde a primeira. A trava de resposta obsoleta (v28.69.1) só pega o que chega ANTES da checagem; aqui a
+  segunda chegou 0,1 a 0,8 s depois, com a resposta já indo para a Evolution. Não há como desmandar. O que dá para
+  evitar é o eco: se a resposta nova é só um "como posso ajudar" e a última nossa, há menos de 60 s, já era um, a nova
+  não sai (o estado é salvo igual). Resposta com conteúdo (preço, horário) continua saindo: no caso do Marcello a
+  segunda resposta era o preço que ele pediu, e não podia sumir.
+
 ## 29.349.0 — Revisão semanal da JuIA (sexta 06/11): navalha com erro de digitação, recusa de horário, aviso de vaga, pesquisa velha
 
 Varredura de sexta: 56 conversas com cliente nos 7 dias (30/10 a 06/11). As de 30/10 a 05/11 de manhã já tinham
