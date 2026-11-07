@@ -193,7 +193,7 @@ Deno.serve(async (request: Request) => {
     const { data: ultimaDele } = await admin.from('whatsapp_messages').select('body')
       .eq('phone', phone).eq('direction', 'in').order('created_at', { ascending: false }).limit(1)
     const txt = String(ultimaDele?.[0]?.body || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
-    if (/^(nao|n|nada|infelizmente nao)([ ,.!]+(obrigad\w*|valeu|vlw|mesmo|serve|da))*[ .!:/(]*$|^nenhum\b|^(nao|n) (serve|da|rola|consigo|posso)\b|^obrigad\w*[ .!]*$|\b(fica pra proxima|deixa pra la|vou deixar|outro dia eu (marco|vejo))\b/.test(txt)) return true
+    if (/^(nao|n|nada|infelizmente nao)([ ,.!]+(obrigad\w*|valeu|vlw|mesmo|serve|da))*[ .!:/(]*$|^nenhum\b|^(nao|n) (serve|da|rola|consigo|posso)\b|^obrigad\w*[ .!]*$|\b((fica|deixa|deixo|vou deixar) (pra|para) (a |uma )?(proxima|outra vez)|deixa pra la|vou deixar|outro dia eu (marco|vejo))\b/.test(txt)) return true // v29.351.0: "deixa pra a proxima" (caso Leia)
     return false
   }
 

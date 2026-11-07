@@ -1768,5 +1768,17 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('124b "vou atrasar" (o cliente) não cai na pergunta de pontualidade', !/Juliano te avisa/.test(r2.reply), r2.reply)
 }
 
+// 125. v29.351.0 — caso Leia (07/11, 07h50): "deixa pra a próxima então" depois de "hoje ainda tenho 14:15" levou outra lista.
+{
+  const r = await turno({ msg: 'Previsava pra hoje menso..mas tá bom obrigada deixa pra a próxima então...', state: { services: ['Corte infantil'], date: hoje },
+    history: [{ role: 'assistant', content: 'Hoje não tenho mais vaga no período da manhã. Hoje ainda tenho 14:15. No período da manhã, na terça tenho 08:30 ou 09:30. Qual fica melhor pra você?' }],
+    ai: { intent: 'availability', reply: 'Hoje, estes são os horários disponíveis: 14:15. Qual você prefere?', updates: {} }, contexto: ctxCliente('Leia Teste'), vagas: { [hoje]: ['14:15'] } })
+  checar('125 "deixa pra próxima" à lista de horários: encerra sem horário', /me chamar/.test(r.reply) && !/\d{2}:\d{2}/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'deixa pra próxima, tem amanhã às 9h?', state: { services: ['Corte de cabelo'], date: hoje },
+    history: [{ role: 'assistant', content: 'Hoje ainda tenho 14:15. Qual fica melhor pra você?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1, time: '09:00' } }, contexto: ctxCliente('Leia Teste'), vagas: { [dia1]: ['09:00'] } })
+  checar('125b "deixa pra próxima" COM pedido de outro horário segue agendando', !/Combinado\. Quando quiser marcar/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

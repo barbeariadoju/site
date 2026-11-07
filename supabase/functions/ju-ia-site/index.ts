@@ -4161,7 +4161,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // Recusa seca da lista de horários é fim de assunto: porta aberta e nada de horário (nunca insistir com quem recusou).
  const ofertaDeHorariosNaUltima=/Serve pra você\?|Qual fica melhor pra você\?|Qual você prefere\?|O mais próximo que tenho/.test(ultimaFalaJuia)
  const recusouListaDeHorarios=ofertaDeHorariosNaUltima&&/^(nao|n|nada|infelizmente nao|poxa nao)([ ,.!]+(obrigad\w*|valeu|vlw|brigad\w*|mesmo|serve|da|rola))*[ .!:/(]*$|^nenhum (deles|desses|dos dois|serve|da)\b[^?\d]*$|^(nao|n) (serve|da|rola|consigo|posso)( nao)?([ ,.!]+(obrigad\w*|valeu|vlw))*[ .!:/(]*$/.test(normalizedQuestion.trim())
- const conformouOuRecusou=conformouComLotado||recusouListaDeHorarios
+ // v29.351.0 — caso Leia (07/11/2026, 07h50): pediu manhã de hoje pro filho, ouviu "hoje ainda tenho 14:15… Qual fica
+ // melhor?" e respondeu "Precisava pra hoje mesmo..mas tá bom obrigada deixa pra a próxima então...". Levou de novo
+ // "Hoje, estes são os horários disponíveis: 14:15. Qual você prefere?". "Deixa pra próxima / fica pra outra vez" depois
+ // de uma lista de horários é recusa, mesmo vindo com "hoje" no meio da frase. Sem hora nem pergunta na mensagem.
+ const adiouPraProxima=ofertaDeHorariosNaUltima
+  &&/\b(fica|deixa|deixo|deixamos|vou deixar|deixar) (pra|para) (a |uma )?(proxima|outra (vez|hora|oportunidade|ocasiao))\b|\bdeixa pra la\b|\boutro dia eu (marco|vejo|chamo|te chamo)\b/.test(normalizedQuestion)
+  &&!/\?|\d{1,2}\s*(:|h)\s*\d{0,2}\b/.test(normalizedQuestion)
+ const conformouOuRecusou=conformouComLotado||recusouListaDeHorarios||adiouPraProxima
  const soGentileza=!confirmouPerguntaDoServico&&(soEmojiAceno||conformouOuRecusou||normalizedQuestion.length<=80
   &&!/\?|\d{1,2}\s*(:|h)\b|\bhoje\b|\bamanha\b|\bsegunda|\bterca|\bquarta|\bquinta|\bsexta|\bsabado|\bmanha\b|\btarde\b|\bnoite\b|\bcort|\bbarb|\bsobrancelha|\bmarc|\bagend|\bhorari|\bvaga|\breserv|\bquero\b|\bpode ser\b|\bsim\b|\bnao\b/.test(normalizedQuestion)
   &&/\bobrigad|\bvaleu\b|\bbrigad|\btop\b|\bshow\b|\bparabens\b|\bdeus\b|\babencoe|\bsucesso\b|\bexcelente\b|\bmaravilh|\bperfeito\b|\bbeleza\b|\bfechou\b|\bfechado\b|\bcombinado\b|\bate (mais|logo|breve|amanha|ja)\b|\babraco\b|\btmj\b|\bmelhor\b|\bnota 10\b/.test(normalizedQuestion))

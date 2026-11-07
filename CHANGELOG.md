@@ -1,3 +1,21 @@
+## 29.351.0 — JuIA: "deixa pra próxima" é recusa (caso Leia)
+
+Revisão diária de sábado 07/11 (conversas de 06/11 08h a 07/11 08h20, 16 com fala de cliente). As de 06/11 até
+12h30 já tinham passado pela 29.349/350. Um erro novo, corrigido.
+
+- **Leia (07/11, 07h48).** Pediu horário de manhã para o filho de 7 anos. Ouviu que a manhã de hoje estava cheia e que
+  tinha 14:15, e respondeu "Precisava pra hoje mesmo..mas tá bom obrigada deixa pra a próxima então...". Recebeu de
+  novo "Hoje, estes são os horários disponíveis: 14:15. Qual você prefere?". A trava da 29.349.0 (caso Cláudio) só
+  entendia recusa seca ("não", "nenhum deles"); com "hoje" no meio da frase, nem a regra de gentileza pegava.
+  "Deixa/fica pra próxima", "pra outra vez", "deixa pra lá" e "outro dia eu marco", logo depois de uma lista de
+  horários e sem hora nem pergunta na mensagem, agora encerram com a porta aberta. O `whatsapp-lead-followup` das 12h
+  reconhece a mesma frase e não cobra. Cenários 125 (encerra) e 125b ("deixa pra próxima, tem amanhã às 9h?" segue
+  agendando).
+- **Conferido e já resolvido:** "o acabamento é realizado com calma, na navalha" (06/11, 12h20) saiu 13 minutos antes
+  da 29.348.0. Não é erro novo.
+- Simulador: 94, 95a e 112a falham igual no main sem a mudança (conferido com stash). Dependem do dia da semana, não
+  são regressão.
+
 ## 29.350.0 — JuIA: os três pendentes da revisão semanal (Fábio, Carlos, resposta repetida)
 
 Pedido do Juliano: não deixar para a próxima rodada o que ficou aberto na 29.349.0.
