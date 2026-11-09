@@ -1,3 +1,8 @@
+## 29.351.1 — llms.txt sem o endereço antigo do ozônio (09/11)
+
+Aviso do Search Console de 09/11: "Excluída pela tag noindex", 2 páginas, `servico-aparacao-corporal.html` e `servico-barboterapia-ozonio.html`. As duas são redirecionamento com `noindex` de propósito (29.298.0 e 29.106.0), então **não houve correção a fazer nem validação a pedir**.
+- **`llms.txt`:** saiu o link de `servico-barboterapia-ozonio.html`, que só redireciona. O ozônio segue no ar em `servico-barboterapia.html`, que já estava na lista.
+
 ## 29.351.0 — JuIA: "deixa pra próxima" é recusa (caso Leia)
 
 Revisão diária de sábado 07/11 (conversas de 06/11 08h a 07/11 08h20, 16 com fala de cliente). As de 06/11 até
