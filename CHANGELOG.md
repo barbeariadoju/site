@@ -1,3 +1,40 @@
+## 29.352.0 — JuIA: erro do banco no cliente, "cabelo e barba" que virou só corte, "2" do convite, data ignorada, link de notícia
+
+Revisão diária de terça 10/11 (conversas de 07/11 08h20 a 10/11 10h; 13 com fala de cliente, 35 mensagens). Cinco
+erros reais, todos corrigidos.
+
+- **"Z" (10/11, 08h28) — o mais grave.** Cliente com nome de uma letra no cadastro escolheu 08:45 e recebeu, com
+  todas as letras, `new row for relation "bookings" violates check constraint "bookings_customer_name_check"`. O banco
+  exige 2 letras no nome e a JuIA repassava cru qualquer erro que não conhecia. Onze minutos depois ele perguntou
+  "Deu certo meu agendamento??" e acabou marcando pelo site. Duas correções: nome sem 2 letras não conta como nome (a
+  JuIA pergunta antes de reservar), e erro desconhecido do banco nunca mais vai para o cliente: fica no log, o Juliano é
+  chamado e o cliente ouve que a reserva ainda não foi feita. Cenários 127a/127b.
+- **João (08/11, 08h09).** Escolheu "18:00" e, dez segundos depois, escreveu "Cabelo e barba". A reserva já tinha saído
+  só com o corte. Ouviu "Qual serviço você quer no lugar?", respondeu "Corte de cabelo e barba" e a JuIA fechou com
+  "Combinado: fica Corte de cabelo" (a regra do caso Raul lia a frase como "repetiu o serviço que já está na reserva").
+  "Corte e barba" / "cabelo e barba" sobre uma reserva só de corte agora vira a confirmação do Corte + Barba Express,
+  com "barba feita só na máquina" entre parênteses. Cenários 126a-d (o 126d garante que "só o corte de cabelo mesmo"
+  continua encerrando). **A reserva dele de quarta 11/11 às 18:00 segue só com o corte:** tentei a troca e o banco
+  recusou (18:00 + 65 min passa do fim do dia). Fica para o Juliano decidir na cadeira; não mexi no horário dele.
+- **Jessica (09/11, 10h26).** Respondeu "2" (Agora não) ao convite de retorno e ouviu "Não encontrei mais esse
+  agendamento — pode já ter sido cancelado". O estado dela guardava uma remarcação pendente de 27/10, de um
+  atendimento já concluído, e pendência de remarcar/cancelar/trocar travava o convite sem prazo. Mesma régua do caso
+  Sabrino: número solto responde à última pergunta numerada; se a última mensagem nossa foi o convite, o número é dele
+  e a pendência velha sai do estado. O convite dela foi marcado como recusado à mão; não mandei nada.
+- **Marcelo (09/11, 10h05).** Respondeu ao convite "quero sim dia 16/11 as 18 horas" e ouviu as duas perguntas do
+  roteiro como se não tivesse dito nada — e 16/11 é segunda, fechado, o que ninguém avisou. Aceite que já traz dia ou
+  hora não entra no roteiro: segue para a JuIA, que lê a data. `aceiteTrazDiaOuHora` em `_shared/convite-retorno.ts`,
+  com teste. Ele acabou marcando quarta 18/11 às 18:00.
+- **Dudu (07/11, 19h00).** Mandou propaganda de site de apostas (resposta certa) e depois o link de uma notícia do g1.
+  O descritor de link leu a foto da notícia como "referência de corte" e a JuIA ofereceu horário; na segunda 8h ainda
+  saiu a cobrança "caso ainda não tenha cortado o cabelo". Link sozinho só é lido se for rede social, imagem ou o
+  próprio site; no WhatsApp, qualquer outro fica guardado e sem resposta. Lead apagado para não sair a segunda
+  cobrança. Cenário 128.
+- **Texto:** "eu reposto nos stories Nosso perfil é o…" ganhou o ponto que o emoji removido deixava faltando.
+- **Não corrigido, anotado:** Antonio recebeu o lembrete do presente de aniversário (vale até 14/11), marcou para
+  19/11 e a JuIA ofereceu a sobrancelha por R$ 20 sem dizer que o presente vence antes. Observar se repete.
+- Simulador 325/325 (terça). `npm test` inteiro passou.
+
 ## 29.351.1 — llms.txt sem o endereço antigo do ozônio (09/11)
 
 Aviso do Search Console de 09/11: "Excluída pela tag noindex", 2 páginas, `servico-aparacao-corporal.html` e `servico-barboterapia-ozonio.html`. As duas são redirecionamento com `noindex` de propósito (29.298.0 e 29.106.0), então **não houve correção a fazer nem validação a pedir**.

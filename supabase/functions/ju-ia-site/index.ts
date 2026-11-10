@@ -965,6 +965,16 @@ Deno.serve(async req=>{
    await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state},{session_id:sessionId,role:'assistant',content:reply,state,intent:'other'}]).then(()=>{})
    return respond({reply,intent:'other',state,actions:[],handoff:false})
   }
+  // v29.352.0 — caso Dudu (07/11/2026, 19h00): mandou a propaganda de um site de apostas e, em seguida, o link de uma
+  // notícia do g1. O descritor leu a notícia como se fosse pedido e a JuIA respondeu "Na terça tenho 08:30, 11:15…
+  // (Anotei Corte de cabelo)" — e na segunda ainda saiu o "caso ainda não tenha cortado o cabelo". Link só é lido
+  // quando pode ser referência de corte (rede social, imagem) ou é do próprio site. No WhatsApp, qualquer outro link
+  // sozinho fica guardado e sem resposta: o Juliano vê na conversa.
+  const linkDeReferencia=/instagram\.com|instagr\.am|tiktok\.com|pinterest\.|pin\.it|facebook\.com|fb\.watch|fb\.com|youtube\.com|youtu\.be|barbeariadoju\.com\.br|\.(jpe?g|png|webp|gif)(\?|$)/i.test(rawLink)
+  if(chamadorBackend&&!linkDeReferencia){
+   await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state}]).then(()=>{})
+   return respond({reply:'',intent:'other',state,actions:[],handoff:false})
+  }
   const linkContext=await describeLinkContent(rawLink,key||'').catch((err)=>{console.error('[ju-ia-site] describe_link',err);return null})
   if(linkContext){
    message=linkContext
@@ -1999,7 +2009,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.346.0 — casos Garcez e Samuel (04/11/2026): "Poxa, cliente, hoje a agenda já está cheia". Sem nome no cadastro o
  // firstName devolve a palavra "cliente", e as frases com vírgula + nome a usavam como se fosse nome. Vocativo só com nome de verdade.
  const nomeVocativo=customerFirstName!=="cliente"?customerFirstName:""
- const contextFullName=hasCustomer?String(context?.name||'').trim():''
+ // v29.352.0 — caso "Z" (10/11/2026, 08h28): cadastro com nome de uma letra só. O banco exige 2 letras no nome da
+ // reserva, a criação falhou e o erro do banco foi para o cliente. Nome sem 2 letras não é nome: a JuIA pergunta.
+ const nomeDeVerdade=(v:any)=>String(v||'').replace(/[^A-Za-zÀ-ÿ]/g,'').length>=2
+ const contextFullName=hasCustomer&&nomeDeVerdade(context?.name)?String(context?.name||'').trim():''
  const lastServiceName=String(context?.last_services||'').trim()
  const lastService=findService(lastServiceName)
  const lastVisitBR=formatDateBR(context?.last_visit)
@@ -3480,6 +3493,20 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let pixAposTroca:any=null
  if(intent==='change_service'){
   const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
+  // v29.352.0 — caso João (08/11/2026, 08h09): escolheu "18:00" e, dez segundos depois, escreveu "Cabelo e barba". A
+  // reserva já tinha saído só com o corte; ouviu "Qual serviço você quer no lugar?", respondeu "Corte de cabelo e barba"
+  // e a JuIA fechou com "Combinado: fica Corte de cabelo" — a barba pedida duas vezes ficou de fora. "Corte e barba" /
+  // "cabelo e barba" sobre uma reserva só de corte (ou só de Barba Express) é o combo: confirma a troca, com o resumo
+  // da Barba Express entre parênteses (regra de 01/09) e sem cair no "repetiu o serviço que já está na reserva".
+  const comboBarbaDito=(()=>{const n=servicoDaResposta(normalizedQuestion.replace(/[\s!.,?]+$/,'').trim());return n&&n.includes('+')?findService(n):null})()
+  const comboPara=(b:any)=>comboBarbaDito&&b&&/^(corte de cabelo|barba express)$/i.test(String(b.service_name||'').trim())?comboBarbaDito:null
+  const confirmaCombo=(b:any,c:any)=>{
+   next.pending_change_service_booking_id=b.id
+   next.pending_change_service_new_name=c.name;next.pending_change_service_composed=null
+   reply=`Confirmando: no seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, trocar "${b.service_name}" por "${c.name}" (barba feita só na máquina; ${money(c.price)}, aproximadamente ${c.duration} min)? Responda sim ou não.`
+   actions=[{label:'Sim, trocar',message:'Sim, pode trocar'},{label:'Não, manter',message:'Não, manter o serviço atual'}]
+   handoff=false
+  }
   if(!verifiedPhone){
    reply='Para trocar o serviço com segurança, preciso confirmar pelo seu WhatsApp cadastrado. Pode chamar a gente direto pelo número da barbearia, ou aguarde que o Juliano confirma com você.'
    handoff=true
@@ -3551,6 +3578,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const desiredNew=desiredNewReal||desiredFresh||null
    const askOrConfirm=(b:any)=>{
     next.pending_change_service_booking_id=b.id
+    if(!swapTailService&&comboPara(b)){confirmaCombo(b,comboPara(b));return} // v29.352.0 (caso João)
     if(addSignal&&!desiredNewReal){
      const atuais=servicosDaReserva(String(b.service_name||''))
      if(citadoJaReservado&&/pezinho/i.test(citadoJaReservado.name)&&atuais.some((a:any)=>/\bcorte\b/i.test(a.name))){
@@ -3615,6 +3643,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      ||/\b([1-9]|1[0-2])\s*(anos|aninhos|anis)\b/.test(normalizedQuestion)
     const alvoInfantil=!swapTailService&&infantilNaFrase&&/^corte de cabelo$/i.test(String(b.service_name||'').trim())?findService('Corte de cabelo infantil'):null
     const alvoTroca=swapTailService||alvoInfantil
+    if(!alvoTroca&&comboPara(b)){confirmaCombo(b,comboPara(b));return}
     if(alvoTroca&&normalize(alvoTroca.name)!==normalize(String(b.service_name||''))){
      next.pending_change_service_new_name=alvoTroca.name
      reply=`Confirmando: trocar o serviço do seu agendamento de ${formatDateBR(b.booking_date)} às ${String(b.start_time).slice(0,5)}, de "${b.service_name}" para "${alvoTroca.name}" (${money(alvoTroca.price)}, aproximadamente ${alvoTroca.duration} min)? Responda sim ou não.`
@@ -3663,6 +3692,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     reply='Não encontrei mais esse agendamento — pode já ter sido cancelado. Se ainda quiser trocar o serviço de outro, me avise.'
     next.pending_change_service_booking_id=null
     handoff=false
+   }else if(comboPara(target)){
+    confirmaCombo(target,comboPara(target)) // v29.352.0 (caso João)
    }else if((()=>{
     // v29.334.0 — caso Raul (03/11/2026, 14h12-14h18): com a pergunta "qual serviço no lugar?" em aberto, "Ok obrigado",
     // "só o corte de cabelo mesmo" e "Fica corte de cabelo combinado então obrigado" ouviram a mesma pergunta de novo
@@ -5671,6 +5702,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    }
   }
   if(intent==='book'){
+  if(next.name&&!nomeDeVerdade(next.name))next.name=null // v29.352.0 (caso "Z")
   const missing=[];if(!next.name)missing.push('seu nome');if(!next.phone)missing.push('seu WhatsApp');if(!chosen.length)missing.push('o serviço');if(!next.date)missing.push('a data');if(!next.time)missing.push('o horário')
   if(missing.length){
    // v29.43.2 (bateria 18/08): "Para concluir, preciso de seu nome, seu WhatsApp, o servico, a
@@ -5775,7 +5807,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        ?`Opa, ${alvo} ficou em cima da hora — preciso de 15 minutinhos pra te receber direito 😅 Consigo ${depois.join(' ou ')} pra ${nomes}. Qual prefere?`
        :`Opa, ${alvo} ficou em cima da hora e não sobrou outro horário hoje 😕 Quer que eu veja amanhã?`
       actions=depois.map((t:string)=>({label:t,message:t}))
-     }else reply=error.message
+     }else{
+      // v29.352.0 — caso "Z" (10/11/2026, 08h28): o cliente recebeu 'new row for relation "bookings" violates check
+      // constraint…'. Erro que a JuIA não conhece NUNCA vai cru para o cliente: fica no log, o Juliano é chamado e o
+      // cliente ouve que a reserva ainda não foi feita.
+      console.error('[ju-ia-site] create_public_booking_v15 erro não tratado',error.message)
+      reply=`Não consegui registrar a reserva${next.time?` das ${next.time}`:''} por aqui. Já chamei o Juliano, que confirma o horário com você em seguida.`
+      handoff=true
+     }
      intent='availability';next.time=null
     }
     else{

@@ -139,7 +139,15 @@ export const servicoDaResposta = (raw: string): string => {
   return ''
 }
 
-export const diasDaOpcao = (numero: number): number =>
+// v29.352.0 — caso Marcelo (09/11/2026, 10h05): respondeu ao convite "quero sim dia 16/11 as 18 horas" e ouviu as
+// duas perguntas de roteiro ("É corte ou corte + barba?" e "Pra quando você quer deixar reservado?") como se não
+// tivesse dito nada — e o dia 16 era segunda, fechado, o que ninguém avisou. Aceite que JÁ traz dia ou hora não
+// entra no roteiro do convite: segue para a JuIA, que lê a data, avisa o dia fechado e confere a agenda.
+// "quero sim, daqui 2 semanas" continua no roteiro (a etapa do prazo entende). Texto já normalizado.
+export const aceiteTrazDiaOuHora = (t: string): boolean =>
+  /\bdia\s+\d{1,2}\b|\b\d{1,2}\/\d{1,2}\b|\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b|\b\d{1,2}\s*(?:h|hs|hrs?|horas?)\b|\b\d{1,2}:\d{2}\b|\b(?:as|a partir das?|depois das?|antes das?)\s+\d{1,2}\b/.test(String(t || ''))
+
+export const diasDaOpcao =(numero: number): number =>
   OPCOES_PRAZO.find((o) => o.numero === numero)?.dias || 0
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })

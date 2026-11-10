@@ -1780,5 +1780,38 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('125b "deixa pra próxima" COM pedido de outro horário segue agendando', !/Combinado\. Quando quiser marcar/.test(r2.reply), r2.reply)
 }
 
+// 126. v29.352.0 — caso João (08/11, 08h09): reserva só com o corte; "Cabelo e barba" e depois "Corte de cabelo e barba"
+// terminaram em "Combinado: fica Corte de cabelo". Agora os dois viram a confirmação do combo, e o "sim" troca.
+{
+  const fut = [{ id: 'bj', booking_date: dia1, start_time: '18:00:00', service_name: 'Corte de cabelo', service_price: 50, status: 'confirmed' }]
+  const stJ = { completed: true, name: 'João Teste', services: ['Corte de cabelo'], date: dia1, time: '18:00' }
+  const r1 = await turno({ msg: 'Cabelo e barba', state: stJ, ai: { intent: 'change_service', reply: 'Certo.', updates: {} }, contexto: ctxCliente('João Teste'), futuros: fut })
+  checar('126a "Cabelo e barba" logo depois da reserva só de corte: confirma o combo', /Corte \+ Barba Express/.test(r1.reply) && /só na máquina/.test(r1.reply) && !/no lugar\?/.test(r1.reply) && r1.state?.pending_change_service_new_name === 'Corte + Barba Express', r1.reply)
+  const r2 = await turno({ msg: 'Corte de cabelo e barba', state: { ...stJ, pending_change_service_booking_id: 'bj' }, ai: { intent: 'change_service', reply: 'Certo.', updates: {} }, contexto: ctxCliente('João Teste'), futuros: fut })
+  checar('126b "Corte de cabelo e barba" com a troca em aberto: não fecha só com o corte', /Corte \+ Barba Express/.test(r2.reply) && !/fica Corte de cabelo,/.test(r2.reply) && r2.state?.pending_change_service_new_name === 'Corte + Barba Express', r2.reply)
+  const r3 = await turno({ msg: 'Sim', state: { ...stJ, pending_change_service_booking_id: 'bj', pending_change_service_new_name: 'Corte + Barba Express' }, ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('João Teste'), futuros: fut })
+  const troca = r3.chamadas.find((x: any) => x.alvo === 'phone_change_booking_service')
+  checar('126c o "sim" troca para Corte + Barba Express', !!troca && troca.args?.p_service_name === 'Corte + Barba Express', r3.reply)
+  const r4 = await turno({ msg: 'só o corte de cabelo mesmo', state: { ...stJ, pending_change_service_booking_id: 'bj' }, ai: { intent: 'other', reply: 'Certo.', updates: {} }, contexto: ctxCliente('João Teste'), futuros: fut })
+  checar('126d "só o corte de cabelo mesmo" continua encerrando a troca (Raul)', /fica Corte de cabelo/.test(r4.reply) && !r4.state?.pending_change_service_booking_id, r4.reply)
+}
+
+// 127. v29.352.0 — caso "Z" (10/11, 08h28): erro do banco que a JuIA não conhece não vai cru para o cliente.
+{
+  const st = { services: ['Corte de cabelo'], servicos_escolhidos: ['Corte de cabelo'], date: dia1, time: '09:00', name: 'José Teste' }
+  const r = await turno({ msg: '09:00', state: st, ai: { intent: 'book', reply: 'Reservando.', updates: { time: '09:00' } }, contexto: ctxCliente('José Teste'), vagas: { [dia1]: ['09:00', '09:15'] },
+    reservaErro: 'new row for relation "bookings" violates check constraint "bookings_customer_name_check"' })
+  checar('127a erro desconhecido do banco: cliente não vê o texto do erro e o Juliano é chamado', !/violates|constraint|relation/.test(r.reply) && /Juliano/.test(r.reply) && r.handoff === true, r.reply)
+  const r2 = await turno({ msg: '09:00', state: { ...st, name: 'Z' }, ai: { intent: 'book', reply: 'Reservando.', updates: { time: '09:00' } }, contexto: ctxCliente('Z'), nomeWhats: 'Z', vagas: { [dia1]: ['09:00', '09:15'] } })
+  checar('127b nome de uma letra só: não reserva com ele, pergunta o nome', !reservou(r2) && /nome/i.test(r2.reply), r2.reply)
+}
+
+// 128. v29.352.0 — caso Dudu (07/11, 19h00): link de notícia sozinho no WhatsApp não vira oferta de horário.
+{
+  const r = await turno({ msg: 'https://g1.globo.com/mg/triangulo-mineiro/noticia/2026/11/04/materia.ghtml?utm_source=whatsapp', state: { services: ['Corte de cabelo'] },
+    ai: { intent: 'availability', reply: 'Na terça tenho 08:30.', updates: {} }, contexto: {}, vagas: { [dia1]: ['08:30'] } })
+  checar('128 link de notícia sozinho: silêncio, sem horário', !String(r.reply || '').trim(), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

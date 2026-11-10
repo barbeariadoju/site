@@ -163,3 +163,22 @@ describe('recusaDoConvite (casos Antony e Adriana, 23/10)', () => {
     expect(recusaDoConvite('pode ser quinta a tarde')).toBe(false);
   });
 });
+
+import { aceiteTrazDiaOuHora } from '../../supabase/functions/_shared/convite-retorno.ts';
+describe('aceiteTrazDiaOuHora (caso Marcelo, 09/11)', () => {
+  it('Marcelo: "quero sim dia 16/11 as 18 horas" já traz dia e hora', () => {
+    expect(aceiteTrazDiaOuHora('quero sim dia 16/11 as 18 horas')).toBe(true);
+  });
+  it('dia da semana, amanhã ou hora solta também', () => {
+    expect(aceiteTrazDiaOuHora('quero sim, tem horario sabado?')).toBe(true);
+    expect(aceiteTrazDiaOuHora('sim amanha')).toBe(true);
+    expect(aceiteTrazDiaOuHora('pode ser as 10')).toBe(true);
+    expect(aceiteTrazDiaOuHora('sim 14:30')).toBe(true);
+  });
+  it('aceite simples e prazo escrito continuam no roteiro do convite', () => {
+    expect(aceiteTrazDiaOuHora('1')).toBe(false);
+    expect(aceiteTrazDiaOuHora('quero sim')).toBe(false);
+    expect(aceiteTrazDiaOuHora('quero sim, daqui 2 semanas')).toBe(false);
+    expect(aceiteTrazDiaOuHora('sim pode reservar')).toBe(false);
+  });
+});

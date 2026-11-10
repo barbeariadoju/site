@@ -4,7 +4,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 import { primeiroNome } from '../_shared/comprovante.ts'
 import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
-import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta, recusaDoConvite } from '../_shared/convite-retorno.ts'
+import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta, recusaDoConvite, aceiteTrazDiaOuHora } from '../_shared/convite-retorno.ts'
 import { noticiaDificil, respostaSolidaria } from '../_shared/leitura-cliente.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
@@ -1807,7 +1807,22 @@ Deno.serve(async (request: Request) => {
         // tempo e ambiguo. Em vez de chutar (antes ganhava o convite, por ser "mais recente"), a
         // JuIA pergunta a qual dos dois o numero se refere e guarda o numero pra proxima mensagem.
         // v29.90.0 — dígito repetido ("1111!!") também conta como número solto aqui.
-        if (returnInvite && !juiaBloqueiaConvite(returnInvite) && !quotedTarget && /^([123])\1*[\s!.,]*$/.test(normalize(text).trim())) {
+        // v29.352.0 — caso Jessica (09/11/2026, 10h26): respondeu "2" (Agora não) ao convite de retorno e ouviu "Não
+        // encontrei mais esse agendamento — pode já ter sido cancelado". O estado dela ainda guardava uma remarcação
+        // pendente de 27/10 (o atendimento já tinha sido feito), e pendência de remarcar/cancelar/trocar trava o
+        // convite sem prazo. Mesma régua do caso Sabrino: número solto responde à ÚLTIMA pergunta numerada — se a
+        // última mensagem que mandamos foi o próprio convite, o número é dele, e a pendência velha sai do estado.
+        let conviteVence = false
+        if (returnInvite && juiaBloqueiaConvite(returnInvite) && !quotedTarget && /^([12])\1*[\s!.,]*$/.test(normalize(text).trim())) {
+          const { data: ultSaidaRows } = await admin.from('whatsapp_messages').select('body').eq('phone', phone).eq('direction', 'out').order('created_at', { ascending: false }).limit(1)
+          if (/proximo horario reservado|quero sim/.test(normalize(String(ultSaidaRows?.[0]?.body || '')))) {
+            conviteVence = true
+            const { pending_cancel_booking_id: _c1, pending_cancel_options: _c2, pending_reschedule_booking_id: _r1, pending_reschedule_new_date: _r2, pending_reschedule_new_time: _r3, pending_products_summary: _p1, pending_change_service_booking_id: _s1, pending_change_service_new_name: _s2, pending_change_service_composed: _s3, last_question: _lq, ...estadoLimpo } = aiState
+            await admin.from('whatsapp_conversations').update({ state: estadoLimpo, updated_at: new Date().toISOString() }).eq('phone', phone)
+            console.log('[whatsapp-webhook] convite vence pendência velha', phone, returnInvite.id)
+          }
+        }
+        if (returnInvite && (conviteVence || !juiaBloqueiaConvite(returnInvite)) && !quotedTarget && /^([123])\1*[\s!.,]*$/.test(normalize(text).trim())) {
           const { data: pendSurveyRows } = await admin.rpc('find_pending_experience_by_phone', { p_phone: phone })
           const pendSurvey = Array.isArray(pendSurveyRows) ? pendSurveyRows[0] : pendSurveyRows
           if (pendSurvey) {
@@ -1819,7 +1834,7 @@ Deno.serve(async (request: Request) => {
             return
           }
         }
-        if (returnInvite && !juiaBloqueiaConvite(returnInvite) && (!quotedTarget || quotedTarget === 'invite')) {
+        if (returnInvite && (conviteVence || !juiaBloqueiaConvite(returnInvite)) && (!quotedTarget || quotedTarget === 'invite')) {
           const inviteReply = normalize(text)
           const inviteTrimmed = inviteReply.trim()
           // Ordem importa: "não, prefiro outro dia" tem negação E pedido de outro horário —
@@ -1874,7 +1889,9 @@ Deno.serve(async (request: Request) => {
             await sendWhatsapp(phone, `Claro${inviteFirstName ? `, ${inviteFirstName}` : ''}. Daqui a quantos dias você quer que eu te chame? Pode responder, por exemplo, "10 dias" ou "2 semanas".`)
             return
           }
-          if (inviteAccept) {
+          // v29.352.0 — caso Marcelo (09/11): "quero sim dia 16/11 as 18 horas" não entra no roteiro (serviço, prazo);
+          // segue para a JuIA com o dia e a hora que ele já disse (ver aceiteTrazDiaOuHora).
+          if (inviteAccept && !aceiteTrazDiaOuHora(inviteReply)) {
             // Segurança: se nesse meio-tempo o cliente já marcou por outro caminho, não duplica.
             const inviteTodaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
             const { data: futureRows } = await admin.from('bookings').select('id,customer_phone,booking_date,start_time').gte('booking_date', inviteTodaySP).in('status', ['pending', 'confirmed'])
@@ -2200,7 +2217,7 @@ Deno.serve(async (request: Request) => {
               } catch (e) { console.error('[whatsapp-webhook] oferta de retorno na saída', e) }
               const reply = ofertaRetorno
                 ? (alreadyReviewed
-                  ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
+                  ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories. Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
                   : skipGoogleAsk
                     ? `Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\n${ofertaRetorno}`
                     : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}`)
@@ -2211,7 +2228,7 @@ Deno.serve(async (request: Request) => {
                 // de avaliação (um CTA por mensagem; o Google vale mais pro SEO local).
                 // ATENÇÃO: existe uma conta homônima @barbeariadoju (SEM underline) — cliente
                 // real já marcou a errada. O underline no fim faz parte do nosso handle.
-                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories 😉 Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
+                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories. Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
                 : skipGoogleAsk
                   ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
                   : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
