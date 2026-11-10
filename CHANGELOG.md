@@ -33,7 +33,9 @@ quando o Juliano estava no computador para clicar.
 Revisão diária de terça 10/11 (conversas de 07/11 08h20 a 10/11 10h; 13 com fala de cliente, 35 mensagens). Cinco
 erros reais, todos corrigidos.
 
-- **"Z" (10/11, 08h28) — o mais grave.** Cliente com nome de uma letra no cadastro escolheu 08:45 e recebeu, com
+- **"Z" (10/11, 08h28) — o mais grave.** *Correção do registro (10/11, à tarde): escrevi "nome de uma letra no
+  cadastro", e estava errado. Ele não tinha cadastro; "Z" era o nome de exibição do WhatsApp dele, que a JuIA usa
+  quando o telefone é novo. A correção cobre os dois caminhos (cenário 127b usa o nome do WhatsApp).* Cliente de primeira vez escolheu 08:45 e recebeu, com
   todas as letras, `new row for relation "bookings" violates check constraint "bookings_customer_name_check"`. O banco
   exige 2 letras no nome e a JuIA repassava cru qualquer erro que não conhecia. Onze minutos depois ele perguntou
   "Deu certo meu agendamento??" e acabou marcando pelo site. Duas correções: nome sem 2 letras não conta como nome (a
