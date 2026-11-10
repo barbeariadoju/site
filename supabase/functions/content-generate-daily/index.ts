@@ -423,13 +423,27 @@ Deno.serve(async (request: Request) => {
     const serviceRoleKey = requiredSecret('SUPABASE_SERVICE_ROLE_KEY')
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
 
-    const todaySP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const hojeRealSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
     // v29.31.6 — { "only_image": true } refaz SÓ a arte dos rascunhos de hoje e preserva a
     // legenda. Nasceu de um caso concreto: a frase de domingo saiu do jeito que o Juliano
     // queria ("encheu meus olhos de lágrimas") e a arte não. Regerar o dia inteiro para
     // consertar a imagem jogaria fora um texto aprovado — e texto bom é mais raro que arte boa.
     const body = await request.json().catch(() => ({} as Record<string, unknown>))
+    // v29.353.0 — DOMINGO E SEGUNDA GERADOS NO SÁBADO (10/11/2026). O crivo que agenda os posts roda no computador
+    // da barbearia, que fica desligado nos dois dias em que ela fecha: em 08 e 09/11 o rascunho nasceu às 8h, ninguém
+    // revisou e não saiu post nenhum — justamente nos dois dias que o Juliano considera os mais importantes.
+    // { "adiante": 1 | 2 } gera hoje o conteúdo de amanhã ou de depois de amanhã, e só quando o dia-alvo é domingo
+    // ou segunda. O cron de sábado chama as duas vezes; o crivo de sábado revisa e agenda. Daqui para baixo,
+    // "todaySP" é o dia do POST, não o dia em que a função roda.
+    const adiante = Number(body?.adiante) || 0
+    if (adiante && adiante !== 1 && adiante !== 2) return json({ error: 'adiante aceita 1 ou 2.' }, 400)
+    const todaySP = adiante
+      ? new Date(Date.parse(`${hojeRealSP}T12:00:00Z`) + adiante * 24 * 3600 * 1000).toISOString().slice(0, 10)
+      : hojeRealSP
+    if (adiante && ![0, 1].includes(new Date(`${todaySP}T12:00:00-03:00`).getUTCDay())) {
+      return json({ ok: true, skipped: 'adiante_so_para_domingo_e_segunda', dia: todaySP })
+    }
     if (body?.only_image === true) {
       const inicio = new Date(`${todaySP}T00:00:00-03:00`).toISOString()
       const { data: posts } = await admin
@@ -474,7 +488,17 @@ Deno.serve(async (request: Request) => {
         .eq('platform', platform)
         .gte('created_at', startOfTodayISO)
         .maybeSingle()
-      if (!existing) platformsToGenerate.push(platform)
+      // v29.353.0 — o post deste dia pode ter sido gerado antes (no sábado, com "adiante"): vale o dia do POST
+      // gravado em context.dia. Rejeitado não conta, para o dia não ficar sem conteúdo.
+      const { data: jaDoDia } = await admin
+        .from('content_posts')
+        .select('id')
+        .eq('source', 'ia')
+        .eq('platform', platform)
+        .eq('context->>dia', todaySP)
+        .neq('status', 'rejeitado')
+        .limit(1)
+      if (!existing && !(jaDoDia && jaDoDia.length)) platformsToGenerate.push(platform)
     }
     if (!platformsToGenerate.length) return json({ ok: true, skipped: 'ja_gerado_hoje' })
 

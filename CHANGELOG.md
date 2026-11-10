@@ -1,3 +1,21 @@
+## 29.353.0 — Conteúdo: domingo e segunda passam a ser gerados no sábado (10/11)
+
+Em 08 e 09/11 não saiu post nenhum. O rascunho nasce às 8h do próprio dia, mas quem revisa e agenda é o crivo, que
+roda no computador da barbearia, desligado nos dois dias em que ela fecha. São os dois dias que o Juliano considera
+os mais importantes (boa semana no domingo, ânimo na segunda).
+
+- **`content-generate-daily`:** aceita `{"adiante": 1 | 2}` e gera hoje o conteúdo de amanhã ou de depois de amanhã,
+  só quando o dia-alvo é domingo ou segunda (qualquer outro dia devolve "pulado", sem criar nada). O dia do post fica
+  em `context.dia`, e a checagem de "já gerado" passou a olhar esse campo: o cron das 8h de domingo e de segunda não
+  cria outro por cima do que o sábado deixou. Rejeitado não conta, para o dia não ficar vazio.
+- **Banco (migration 219):** dois crons novos no sábado, 8h03 (domingo) e 8h06 (segunda).
+- **Rotina do crivo (fora do repo):** no sábado revisa os 9 rascunhos e agenda cada um para o próprio dia; rascunho
+  vencido é medido pelo dia do post, não pelo dia em que foi criado.
+- **Testado sem criar post:** `adiante:1` numa terça devolveu "pulado" (alvo era quarta), `adiante:3` devolveu 400 e a
+  chamada normal devolveu "já gerado hoje". **Não testado:** a geração de verdade, que só acontece no sábado 14/11.
+- **Decidido contra o óbvio:** não agendar sozinho, sem crivo, o que o gerador produz. O crivo é a última barreira
+  (regra de 09/09); se o sábado não revisar, domingo e segunda ficam sem post, como hoje, em vez de sair peça sem olhar.
+
 ## 29.352.1 — Crivo das 8h05: regras de permissão com aspas (10/11)
 
 O crivo automático de conteúdo só concluiu em 3 dos últimos 12 dias e 36 rascunhos ficaram parados (todos vencidos,
