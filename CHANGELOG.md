@@ -1,3 +1,15 @@
+## 29.352.1 — Crivo das 8h05: regras de permissão com aspas (10/11)
+
+O crivo automático de conteúdo só concluiu em 3 dos últimos 12 dias e 36 rascunhos ficaram parados (todos vencidos,
+marcados como rejeitados em 10/11). Causa: a rotina baixa a arte com a URL entre aspas e as regras do
+`.claude/settings.json` foram escritas sem aspas, então nunca casaram. O comando pedia permissão todo dia e só andava
+quando o Juliano estava no computador para clicar.
+- **`.claude/settings.json`:** quatro regras novas, com aspas: baixar arte do Supabase e do site para `/tmp/crivo-*`,
+  conferir link do site e chamar `content-generate-image` (que não tinha regra nenhuma). Autorizado pelo Juliano.
+- **Rotina (fora do repo):** novo passo que rejeita rascunho de dia anterior e avisa quais dias ficaram sem post.
+- **Não testado de ponta a ponta:** o modo automático não deixou disparar a rotina daqui. A prova é a execução de
+  quarta 11/11 às 8h05. Domingo e segunda seguem sem rodar com o computador desligado.
+
 ## 29.352.0 — JuIA: erro do banco no cliente, "cabelo e barba" que virou só corte, "2" do convite, data ignorada, link de notícia
 
 Revisão diária de terça 10/11 (conversas de 07/11 08h20 a 10/11 10h; 13 com fala de cliente, 35 mensagens). Cinco
