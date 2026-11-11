@@ -1230,7 +1230,7 @@ ${verifiedPhone?`- WhatsApp: se o cliente quer marcar sem dizer o serviço, puxe
 - Garantia de acabamento: só quando o cliente perguntar, reclamar do resultado ou demonstrar receio de não gostar (nunca ofereça por conta própria nem use como argumento de venda ou de valor). Se o acabamento não ficou como ele queria, pode voltar em até 7 dias corridos do atendimento e a barbearia ajusta sem cobrar. É ajuste, não reembolso — nunca prometa devolução.
 - Reajuste de preços: nunca anuncie por conta própria. O preço que você informa é o do catálogo (o de hoje, ou o "para atendimentos a partir de" quando a data do atendimento já cai na vigência nova), dito de forma neutra. Nunca compare valor velho com novo nem crie urgência. Só se o cliente PERGUNTAR diretamente sobre aumento: os valores foram reajustados a partir de 01/10/2026 — curto, sem justificar, sem desculpa, sem oferecer desconto e sem citar o Clube do Ju.
 - Reação ao preço ("tá caro", "mais barato ali"): nunca peça desculpa, nunca insista, nunca desconto. Em 2-3 linhas, o que sustenta o valor (só verdades): horário marcado e respeitado, sem fila; atendimento sem pressa; acabamento caprichado; ambiente climatizado com café e Wi-Fi; um cliente por vez. Feche com convite leve ("se quiser, posso ver um horário pra você").
-- Fidelidade: o programa de pontos foi ENCERRADO em 27/10/2026 e não aceita adesão nova. Nunca ofereça pontos, cartão fidelidade ou "a cada 10, 1 grátis" como vantagem. Quem já tinha pontos completa até ${FIDELIDADE_FIM_TXT} e ganha um último prêmio; prêmio já ganho continua valendo. NUNCA conte ao cliente que o programa foi encerrado, nem fale em "último prêmio" ou prazo: isso o Juliano comunica pessoalmente. Fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. ${phoneTrustNote}
+- Fidelidade: o programa de pontos foi ENCERRADO em 27/10/2026 e não aceita adesão nova. Nunca ofereça pontos, cartão fidelidade ou "a cada 10, 1 grátis" como vantagem. Quem já tinha pontos completa até ${FIDELIDADE_FIM_TXT} e ganha um último prêmio; prêmio já ganho continua valendo. NUNCA conte ao cliente que o programa foi encerrado, nem fale em "último prêmio" ou prazo: isso o Juliano comunica pessoalmente. Quem ganha o prêmio NÃO volta a juntar pontos: se o cliente perguntar se a contagem recomeça ou se ganha outro prêmio depois, nunca diga que sim; a resposta é que o serviço por nossa conta é um agradecimento pelos 10 primeiros atendimentos, oferecido uma única vez por cliente. Fale de pontos, recompensas, status VIP, última visita ou histórico só se o cliente perguntar. ${phoneTrustNote}
 - "O mesmo de sempre" / "repetir o último": use last_services. Recomendação só quando ele pedir, priorizando preferred_services/last_services, em uma frase. Produtos da última compra só quando ele já estiver falando de produto. Nunca exponha observações internas, etiquetas ou dados privados.`,
 `# CLUBE DO JU (ASSINATURA MENSAL)
 - Só fale do Clube quando o cliente perguntar (assinatura, plano mensal, pacote, mensalidade, "clube"). Nunca ofereça por conta própria no meio de um agendamento.
@@ -2507,6 +2507,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // a assinatura não existia. Agora existe; resposta fixa, conferida (sem o modelo inventar condição).
   reply=textoClubeExplica(clubeVendasAbertas)
   intent='faq';actions=[{label:'Ver os planos',url:'https://www.barbeariadoju.com.br/clube/'}]
+ }
+ // v29.356.0 — Juliano, 11/11/2026 (cliente perguntou na cadeira: "agora é juntar mais 10?"). Quem ganha o prêmio
+ // não volta a pontuar (o banco zera o saldo e só credita quem tem ponto). Perguntada se a contagem recomeça, a
+ // JuIA explica a regra como ela é para o cliente: agradecimento pelos 10 primeiros atendimentos, uma única vez.
+ // Segue sem anunciar encerramento nem prazo (v29.313.0). Vale só para quem tem ou teve ponto: cliente sem
+ // histórico (`completed_visits` < 10, 0 ponto, 0 prêmio) ouviria uma promessa que não existe para ele.
+ const falaDePontos=/\b(pontos?|pontu\w+|fidelidade|premios?|cartao|carimbos?|junt\w+|acumul\w+|gratis|por (nossa|conta da) c\w+)\b/.test(normalizedQuestion)
+ const perguntaSeRecomeca=falaDePontos&&/\b(mais (10|dez|pontos|um|outro)|outros? (10|dez|premio|corte gratis)|outra vez|de novo|novamente|recomec\w+|comeca\w* (tudo |a contar |a juntar )?(de novo|do zero|outra)|continu\w+ (a )?(junt|pontu|acumul|valendo)\w*|volt\w+ a (junt|pontu|cont)\w+|zer(a|ou|ar|ado)|depois (do|que) .{0,25}(premio|ganh\w+)|proximo premio|sempre que)\b/.test(normalizedQuestion)
+ const temHistoricoDePontos=points>0||rewards>0||Number(context?.completed_visits||0)>=10
+ if(perguntaSeRecomeca&&context?.customer_id&&temHistoricoDePontos&&!pediuHumano){
+  const regra='O serviço por nossa conta é um agradecimento pelos seus 10 primeiros atendimentos e é oferecido uma única vez por cliente, por isso a contagem não recomeça depois dele.'
+  const saldo=rewards>0?`${customerFirstName}, você tem ${rewards} serviço(s) por nossa conta pra usar. `
+   :points>0&&fidelidadeAberta()?`${customerFirstName}, você está com ${points} de 10 pontos. Faltam ${Math.max(0,10-points)} para um serviço por nossa conta. `
+   :`${customerFirstName}, `
+  const corpo=saldo.endsWith(', ')?regra.charAt(0).toLowerCase()+regra.slice(1):regra
+  reply=`${saldo}${corpo} Será sempre um prazer receber você na Barbearia do Ju.`
+  intent='faq';handoff=false;actions=[]
  }
  if(intent==='loyalty'){
   // v29.103.0 — achado testando: "o que é a fidelidade?" e "o que é o clube do ju?" recebiam

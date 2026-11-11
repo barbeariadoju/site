@@ -1,3 +1,20 @@
+## 29.356.0 — JuIA: prêmio da fidelidade é uma vez só, e ela sabe dizer isso (11/11)
+
+Pedido do Juliano, com cliente na cadeira perguntando "agora é juntar mais 10?". A regra não mudou (v29.309.0: quem
+tinha ponto completa 10 e ganha um prêmio; quem ganhou e quem é novo não pontua). Faltava a JuIA saber responder.
+
+- **Conferido no banco:** o gatilho `v21_sync_loyalty_on_completed_booking` zera o saldo ao fechar 10 e só credita
+  quem tem ponto. Quem já ganhou não volta a juntar; cliente novo não junta. Nada a mudar ali.
+- **`ju-ia-site`:** pergunta sobre a contagem recomeçar ("juntar mais 10", "ganho outro prêmio depois?", "começa de
+  novo?") tem resposta fixa: o serviço por nossa conta é um agradecimento pelos 10 primeiros atendimentos, oferecido
+  uma única vez por cliente. Com saldo ou prêmio em aberto, o saldo vem antes. O prompt do modelo ganhou a mesma regra,
+  com "nunca diga que sim".
+- **Mantido da v29.313.0:** a JuIA não anuncia encerramento nem prazo, e só fala disso se perguntada.
+- **Decidido contra o óbvio:** cliente sem histórico de pontos (menos de 10 visitas, 0 ponto, 0 prêmio) não recebe
+  essa explicação. Dizer "agradecimento pelos 10 primeiros atendimentos" a quem não pontua seria prometer um prêmio
+  que ele não vai ganhar. Ele continua ouvindo só "você não tem pontos em aberto".
+- **Simulador:** cenários 130a-d; 332/332 numa quarta.
+
 ## 29.355.0 — JuIA: "cortar barba" não é corte, "hora do almoço" é horário (11/11)
 
 Caso seu Zé (11/11, 08h54), achado na revisão diária. O Juliano assumiu a conversa na hora.

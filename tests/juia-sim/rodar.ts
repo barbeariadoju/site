@@ -1827,5 +1827,22 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('129c "horas do almoço" lista os horários perto do meio-dia', /11:30|12:15|13:00/.test(r2.reply) && !/09:00|15:00|18:00/.test(r2.reply) && !/Você prefere/.test(r2.reply), r2.reply)
 }
 
+// 130. v29.356.0 — Juliano, 11/11/2026 (cliente na cadeira: "agora é juntar mais 10?"). Quem pergunta se a contagem
+// recomeça ouve que o prêmio é um agradecimento pelos 10 primeiros atendimentos, uma única vez por cliente.
+// Continua sem falar em encerramento nem prazo, e cliente sem histórico de pontos não ouve a explicação.
+{
+  const regra = /10 primeiros atendimentos/
+  const unica = /única vez/
+  const semAnuncio = (t: string) => !/encerrad|2027|acabou|não existe mais/i.test(t)
+  const r1 = await turno({ msg: 'Agora é juntar mais 10 pontos?', ai: { intent: 'other', reply: 'Isso mesmo, é só continuar juntando!' }, contexto: ctxCliente('Ana Teste', { points: 0, completed_visits: 11 }) })
+  checar('130a "agora é juntar mais 10?" depois do prêmio: prêmio único, sem prometer nova contagem', regra.test(r1.reply) && unica.test(r1.reply) && semAnuncio(r1.reply) && !/continuar juntando/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'depois que eu ganhar o prêmio começa a contar de novo?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 7, completed_visits: 7 }) })
+  checar('130b com saldo: dá o saldo e explica que é uma vez só', /Faltam 3/.test(r2.reply) && unica.test(r2.reply) && semAnuncio(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'ganhei o corte, posso ganhar outro prêmio depois?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Caio Teste', { points: 0, rewards_available: 1, completed_visits: 10 }) })
+  checar('130c com prêmio aberto: lembra do prêmio e explica que é uma vez só', /por nossa conta/.test(r3.reply) && unica.test(r3.reply) && semAnuncio(r3.reply), r3.reply)
+  const r4 = await turno({ msg: 'quantos pontos eu tenho?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Novo Teste', { points: 0, completed_visits: 1 }) })
+  checar('130d pergunta simples de saldo não ganha a explicação', !unica.test(r4.reply) && /não tem pontos/.test(r4.reply), r4.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
