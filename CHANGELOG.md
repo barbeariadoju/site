@@ -1,3 +1,22 @@
+## 29.354.0 — Pesquisa de satisfação sem oferta de remarcar (11/11)
+
+Ordem do Juliano: "pare de oferecer pra remarcar, tá dando muito erro e zero conversões; só pergunta se ficou
+satisfeito, agradece e pede avaliação".
+
+- **Caso Lucas (10/11, 19h23):** respondeu "1", recebeu agradecimento + "Quer já deixar o próximo reservado? Quinta
+  (26/11) às 17:30…" + link da avaliação. Escreveu um elogio ("saí extremamente satisfeito, voltarei mais vezes e irei
+  indicar") e, com a oferta aberta, a JuIA respondeu "Consigo te atender na quinta (26/11) sim! … manhã, tarde ou
+  final do dia?". O elogio foi lido como aceite.
+- **O número:** 77 ofertas enviadas desde 16/09 (v29.193.0); 1 reserva pela JuIA nas 48h seguintes.
+- **`whatsapp-webhook`:** a oferta fica atrás da chave `OFERTA_RETORNO_NA_SAIDA = false`. A resposta ao "satisfeito"
+  volta a ser a de antes da 29.193.0: agradece, pede a avaliação no Google (ou o convite do Instagram para quem já
+  avaliou) e abre espaço para sugestão. O código ficou inerte, não apagado; não religar sem o Juliano pedir.
+- **Banco:** limpas as ofertas penduradas com mais de 48h em `whatsapp_conversations.state` (`pending_rebook` com
+  `after_booking_id`), para um "sim" solto semanas depois não virar reserva.
+- **Não mexido:** a frase do comprovante do balcão ("Da próxima vez, se quiser, é só me chamar aqui que eu já deixo
+  seu horário reservado") — é orientação para quem veio sem marcar, não oferta de data. O convite de retorno do dia 12
+  também segue como está.
+
 ## 29.353.0 — Conteúdo: domingo e segunda passam a ser gerados no sábado (10/11)
 
 Em 08 e 09/11 não saiu post nenhum. O rascunho nasce às 8h do próprio dia, mas quem revisa e agenda é o crivo, que

@@ -2186,8 +2186,15 @@ Deno.serve(async (request: Request) => {
               // oferta aberta iria pra JuIA) e a linha da sugestão: uma pergunta por mensagem.
               // v29.234.0 (caso Otavio, 24/09/2026): cliente de primeira vez ouvia "Pela sua rotina" — sem
               // cadência medida, não existe rotina; a frase sai só quando customer_visit_cadence_days responde.
+              // v29.354.0 — OFERTA DESLIGADA (ordem do Juliano, 11/11/2026: "pare de oferecer pra
+              // remarcar, tá dando muito erro e zero conversões; só pergunta se ficou satisfeito,
+              // agradece e pede avaliação"). Caso Lucas (10/11, 19h23): respondeu ao pedido com um
+              // elogio ("saí extremamente satisfeito, voltarei mais vezes e irei indicar") e, com a
+              // oferta aberta, a JuIA leu como aceite e perguntou "manhã, tarde ou final do dia?".
+              // O código fica inerte atrás da chave; não religar sem o Juliano pedir.
+              const OFERTA_RETORNO_NA_SAIDA = false
               let ofertaRetorno = ''
-              try {
+              if (OFERTA_RETORNO_NA_SAIDA) try {
                 const { data: visita } = await admin.from('bookings').select('service_name, duration_minutes, booking_date, start_time').eq('id', pending.booking_id).maybeSingle()
                 const hojeISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
                 const { count: futuros } = await admin.from('bookings').select('id', { count: 'exact', head: true }).eq('phone_key', phone.slice(-8)).gte('booking_date', hojeISO).in('status', ['confirmed', 'pending']).neq('id', pending.booking_id)
