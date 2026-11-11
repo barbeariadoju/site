@@ -5955,11 +5955,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // v29.309.0 — programa de pontos encerrado (Juliano, 27/10/2026): quem tem 0 ponto não ouve falar
       // de fidelidade; quem tem saldo ouve que é o último prêmio e o prazo (FIDELIDADE_FIM).
       const loyaltyNote=!(verifiedPhone&&hasCustomer)||next.other_person?'':
-        rewardApplied&&freedService?(loyaltyRemaining.length?` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade. Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')}.`:` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, prêmio da fidelidade. Obrigado pela preferência.`):
+        rewardApplied&&freedService?(loyaltyRemaining.length?` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, nosso agradecimento pelos seus 10 primeiros atendimentos. Você paga só ${loyaltyRemaining.map((s:any)=>s.name).join(' + ')}.`:` Boa notícia: seu ${freedService.name} ${next.date===today()?'de hoje':'desse dia'} é por nossa conta, nosso agradecimento pelos seus 10 primeiros atendimentos. Obrigado pela preferência.`):
         rewards>0?` A propósito, você já tem ${rewards} serviço(s) por nossa conta pela fidelidade. É só avisar quando quiser usar.`:
         !fidelidadeAberta()||points<=0?'':
         // v29.189.0 — 1 ponto por serviço (combo do catálogo = 1 item de `chosen`): fecha o cartão quando os pontos + os serviços deste agendamento chegam a 10
-        points+chosen.length>=10?` E esse atendimento completa os seus 10 pontos: o próximo serviço é por nossa conta.`:
+        points+chosen.length>=10?` E esse atendimento completa os seus 10 primeiros: como agradecimento, o próximo serviço é por nossa conta, uma única vez.`:
         // v29.313.0 (Juliano, 28/10, print do Marcelo): o encerramento do programa ele mesmo comunica, na
         // cadeira. A JuIA dá só o saldo, sem "último prêmio" e sem prazo.
         ` A propósito, você está com ${points} ponto(s) de fidelidade. Faltam ${Math.max(0,10-points)} para um serviço por nossa conta.`

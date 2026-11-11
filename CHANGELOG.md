@@ -1,3 +1,21 @@
+## 29.357.0 — Aviso de prêmio já diz que é o agradecimento pelos 10 primeiros atendimentos (11/11)
+
+Pedido do Juliano, na sequência da 29.356.0: usar a mesma frase para anunciar o prêmio a quem completar daqui pra
+frente, porque ela já deixa claro que acontece uma única vez. Nenhum texto fala em encerramento.
+
+- **`loyalty-rewards-notify` (aviso ao completar 10):** "Você completou os seus 10 primeiros atendimentos na Barbearia
+  do Ju e, como agradecimento, o próximo serviço é por nossa conta. É uma recompensa única, oferecida uma vez por
+  cliente." O resto (validade, combo, pessoal) ficou igual.
+- **`_shared/comprovante.ts` (cupom de quem usa o prêmio):** "… foi por nossa conta: é o nosso agradecimento pelos
+  seus 10 primeiros atendimentos, uma recompensa oferecida uma única vez por cliente." Teste atualizado.
+- **`ju-ia-site` (na reserva):** prêmio aplicado sai como "nosso agradecimento pelos seus 10 primeiros atendimentos";
+  reserva que fecha os 10 sai como "completa os seus 10 primeiros: como agradecimento, o próximo serviço é por nossa
+  conta, uma única vez".
+- **Não mexido:** a linha do cupom "Nada a pagar — prêmio do cartão fidelidade" e o "Faltam N para um serviço por
+  nossa conta" de quem ainda está juntando.
+- **Ressalva:** "10 primeiros atendimentos" é a frase pedida. Para cliente antigo que já ganhou prêmio antes, não são
+  literalmente os 10 primeiros.
+
 ## 29.356.0 — JuIA: prêmio da fidelidade é uma vez só, e ela sabe dizer isso (11/11)
 
 Pedido do Juliano, com cliente na cadeira perguntando "agora é juntar mais 10?". A regra não mudou (v29.309.0: quem

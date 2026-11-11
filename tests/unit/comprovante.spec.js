@@ -210,7 +210,7 @@ describe('montarMensagemComprovante', () => {
   // agradecimento na abertura do comprovante, dizendo qual serviço foi por nossa conta.
   it('agradece o prêmio da fidelidade na abertura, com o serviço premiado', () => {
     const inteiro = norm(montarMensagemComprovante({ ...base, servicoNome: 'Barba Express', servicoValor: 25, pagamentoServico: 'fidelidade', fidelidadeServico: 'Barba Express' }));
-    expect(inteiro).toContain('Barba Express de hoje foi por nossa conta: você fechou os 10 pontos do cartão fidelidade');
+    expect(inteiro).toContain('Barba Express de hoje foi por nossa conta: é o nosso agradecimento pelos seus 10 primeiros atendimentos, uma recompensa oferecida uma única vez por cliente');
     expect(inteiro).toContain('Obrigado por ser cliente de casa, Wellington.');
     // v29.309.0 — programa de pontos encerrado: o cartão não recomeça.
     expect(inteiro).not.toContain('conta pro próximo');
@@ -221,7 +221,7 @@ describe('montarMensagemComprovante', () => {
     const semPremio = norm(montarMensagemComprovante(base));
     expect(semPremio).not.toContain('por nossa conta');
     const cortesia = norm(montarMensagemComprovante({ ...base, cortesia: true, pagamentoServico: 'fidelidade' }));
-    expect(cortesia).not.toContain('fechou os 10 pontos');
+    expect(cortesia).not.toContain("10 primeiros atendimentos");
   });
 
   it('convida o walk-in a agendar, numa linha só', () => {
