@@ -1813,5 +1813,19 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('128 link de notícia sozinho: silêncio, sem horário', !String(r.reply || '').trim(), r.reply)
 }
 
+// 129. v29.355.0 — caso seu Zé (11/11, 08h54): "Preciso cortar barba hoje" virou Corte + Barba Express (o "cortar"
+// contou como pedido de corte) e "Horas do almoço" não era período nenhum: a JuIA repetiu a mesma pergunta.
+{
+  const vagasZe = { [dia1]: ['09:00', '11:30', '12:15', '13:00', '15:00', '18:00'] }
+  const r1 = await turno({ msg: 'Preciso cortar barba', state: { date: dia1 }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('José Teste'), vagas: vagasZe })
+  checar('129a "cortar barba" é só a barba, não o combo com corte', /Barba Express/.test(r1.reply) && !/Corte \+ Barba Express/.test(r1.reply) && !(r1.state?.services || []).some((s: string) => /corte/i.test(s)), `${r1.reply} | ${JSON.stringify(r1.state?.services)}`)
+  const r1b = await turno({ msg: 'Quero cortar o cabelo e a barba', state: { date: dia1 }, ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('José Teste'), vagas: vagasZe })
+  checar('129b "cortar o cabelo e a barba" continua sendo o combo', /Corte \+ Barba Express/.test(r1b.reply), r1b.reply)
+  const r2 = await turno({ msg: 'Horas do almoço', state: { date: dia1, services: ['Barba Express'], servicos_escolhidos: ['Barba Express'] },
+    history: [{ role: 'assistant', content: 'Você prefere de manhã ou à tarde?' }],
+    ai: { intent: 'availability', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('José Teste'), vagas: vagasZe })
+  checar('129c "horas do almoço" lista os horários perto do meio-dia', /11:30|12:15|13:00/.test(r2.reply) && !/09:00|15:00|18:00/.test(r2.reply) && !/Você prefere/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

@@ -472,6 +472,11 @@ const detectPeriod=(text:string)=>{
  const neg2=withoutGreeting.match(new RegExp(`\\b${periodoTxt}\\b[^.!?]{0,30}?\\b${negTxt}\\b`))
  const negado=neg1?neg1[neg1.length-1]:(neg2?neg2[1]:'')
  if(negado)return /manha|cedo/.test(negado)?'not_morning':/tarde/.test(negado)?'not_afternoon':'not_evening'
+ // v29.355.0 — caso seu Zé: "Horas do almoço" não era período e a JuIA repetiu "de manhã ou à tarde?".
+ // Almoço = horários das 11h às 13h59; "depois do almoço" é tarde, "antes do almoço" é manhã.
+ if(/\b(depois|apos)\s+(d[oe]\s+)?almoco\b/.test(withoutGreeting))return 'afternoon'
+ if(/\bantes\s+(d[oe]\s+)?almoco\b/.test(withoutGreeting))return 'morning'
+ if(/\balmoco\b/.test(withoutGreeting))return 'lunch'
  if(/\bmanha\b|pela manha|de manha|\bcedo\b/.test(withoutGreeting))return 'morning'
  if(/\btarde\b|pela tarde|de tarde/.test(withoutGreeting))return 'afternoon'
  if(/\bnoite\b|final do dia|fim do dia|depois das 18|apos as 18/.test(withoutGreeting))return 'evening'
@@ -479,6 +484,7 @@ const detectPeriod=(text:string)=>{
 }
 const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
  const hour=slotHour(slot)
+ if(period==='lunch')return hour>=11&&hour<14
  if(period==='morning')return hour<12
  if(period==='afternoon')return hour>=12&&hour<18
  if(period==='evening')return hour>=18
@@ -487,9 +493,9 @@ const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
  if(period==='not_evening')return hour<18
  return true
 })
-const periodLabel=(period:string)=>period==='morning'?'manhã':period==='afternoon'?'tarde':period==='not_morning'?'tarde ou fim do dia':period==='not_afternoon'?'manhã ou fim do dia':period==='not_evening'?'manhã ou tarde':'final do dia'
+const periodLabel=(period:string)=>period==='lunch'?'horário do almoço':period==='morning'?'manhã':period==='afternoon'?'tarde':period==='not_morning'?'tarde ou fim do dia':period==='not_afternoon'?'manhã ou fim do dia':period==='not_evening'?'manhã ou tarde':'final do dia'
 // v29.224.0: "no período da final do dia" (conversa do Tiago, 23/09) — o fim do dia não é "período da".
-const noPeriodo=(period:string)=>period==='evening'?'no final do dia':`no período da ${periodLabel(period)}`
+const noPeriodo=(period:string)=>period==='lunch'?'no horário do almoço':period==='evening'?'no final do dia':`no período da ${periodLabel(period)}`
 // v29.279.0 (pedido do Juliano, 07/10/2026): à tarde a JuIA perguntava "manhã, tarde ou final do dia?" para
 // HOJE — a manhã já tinha passado. A pergunta só cita o período que ainda tem horário livre; hoje, o que está
 // correndo vira "agora à tarde"/"ainda de manhã". Sobrou um período só: não pergunta (null), lista direto.
@@ -501,7 +507,7 @@ function perguntaDoPeriodo(slots:string[],ehHoje:boolean){
  const texto=`Você prefere ${falas.length>2?`${falas.slice(0,-1).join(', ')} ou ${falas[falas.length-1]}`:falas.join(' ou ')}?`
  return {texto,actions:comVaga.map(([,,,rotulo])=>({label:rotulo,message:`Prefiro ${rotulo.toLowerCase()}`}))}
 }
-const periodoFalado=(p:string)=>p==='morning'?'de manhã':p==='afternoon'?'à tarde':p==='evening'?'no fim do dia':p==='not_morning'?'depois do meio-dia':p==='not_afternoon'?'de manhã ou no fim do dia':p==='not_evening'?'até as 18h':''
+const periodoFalado=(p:string)=>p==='lunch'?'na hora do almoço':p==='morning'?'de manhã':p==='afternoon'?'à tarde':p==='evening'?'no fim do dia':p==='not_morning'?'depois do meio-dia':p==='not_afternoon'?'de manhã ou no fim do dia':p==='not_evening'?'até as 18h':''
 // v29.12.0 — caso real 11/08/2026: cliente respondeu "Indiferente" e depois "QQ horário"
 // para a pergunta "manhã, tarde ou final do dia?" e a JuIA repetiu a MESMA pergunta, porque
 // nenhuma dessas respostas casa com um período. "Sem preferência" é uma resposta legítima:
@@ -822,6 +828,10 @@ Deno.serve(async req=>{
  // corte/barba/cor" e o "barba" do cabeçalho virou Barba Express na conta (R$ 140 por raspado + desenho).
  // O webhook não escreve mais isso; aqui tira de conversas que ainda tenham o texto velho.
  message=message.replace(/foto de referência de corte\/barba\/cor/gi,'foto de referência')
+ // v29.355.0 — caso seu Zé (11/11/2026, 08h54): "Preciso cortar barba hoje" saiu como Corte + Barba Express,
+ // porque o verbo "cortar" conta como pedido de corte. "Cortar a barba" é fazer a barba; com cabelo/corte dito
+ // junto ("cortar barba e cabelo") nada muda, o cabelo continua na frase. Só o verbo: "corte barba" é o combo.
+ message=message.replace(/\bcorta(r)?\s+((?:s[oó]\s+)?(?:a\s+|minha\s+)?barba)\b/gi,(_m:string,r:string,resto:string)=>`${r?'fazer':'faz'} ${resto}`)
  // v29.2.0 — código de atribuição que viaja no texto quando a pessoa vem do site
  // pro WhatsApp (ex.: "[#abc12345]"). Tiramos da mensagem ANTES do modelo ver, pra
  // não poluir a conversa, e guardamos pra creditar o agendamento à visita de origem.

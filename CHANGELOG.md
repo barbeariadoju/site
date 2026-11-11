@@ -1,3 +1,16 @@
+## 29.355.0 — JuIA: "cortar barba" não é corte, "hora do almoço" é horário (11/11)
+
+Caso seu Zé (11/11, 08h54), achado na revisão diária. O Juliano assumiu a conversa na hora.
+
+- **"Preciso cortar barba hoje"** saiu como Corte + Barba Express (65 min, R$ 80). O verbo "cortar" contava como
+  pedido de corte. Agora "cortar/corta (a/minha) barba" é lido como fazer a barba. Com cabelo ou corte na mesma frase
+  ("cortar o cabelo e a barba") continua o combo. "Corte barba", sem o verbo, não foi tocado: é como o cliente
+  escreve o combo.
+- **"Horas do almoço"** não era período nenhum e a JuIA repetiu "de manhã ou à tarde?". Agora almoço é um período
+  (horários das 11h às 13h59); "depois do almoço" é tarde e "antes do almoço" é manhã.
+- **Simulador:** cenários 129a-c (os dois falhavam antes da correção); 328/328 numa quarta.
+- **Não coberto:** "não posso no almoço" (negação) segue sem leitura própria.
+
 ## 29.354.0 — Pesquisa de satisfação sem oferta de remarcar (11/11)
 
 Ordem do Juliano: "pare de oferecer pra remarcar, tá dando muito erro e zero conversões; só pergunta se ficou
