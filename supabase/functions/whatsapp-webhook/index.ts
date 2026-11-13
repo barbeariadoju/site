@@ -6,6 +6,7 @@ import { telefoneCanonicoWhatsapp } from '../_shared/telefone-whatsapp.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
 import { mensagemPrazo, diasDaOpcao, linhaValor, somarDiasIso, retornoTipicoDias, mensagemServicoConvite, servicoDaResposta, recusaDoConvite, aceiteTrazDiaOuHora } from '../_shared/convite-retorno.ts'
 import { noticiaDificil, respostaSolidaria } from '../_shared/leitura-cliente.ts'
+import { localizacaoNoSilencio } from '../_shared/localizacao.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos): retorno sugerido na saída e prioridade na oferta.
 import { candidatosRetorno, horarioMaisProximo, diaDaSemana, diasFracosPrimeiro } from '../_shared/dias-fracos.ts'
 // v29.195.1 — resposta ao pedido de confirmação de presença (caso Sr. Magno): número na frente
@@ -1183,6 +1184,19 @@ Deno.serve(async (request: Request) => {
         // pending_unsat em aberto, a mensagem é resposta ao menu: não silencia.
         const unsatPendente = !!((aiState.pending_unsat as { token?: string } | undefined)?.token)
         if (stillActive && !takeoverAssumidoPelaJuia && !unsatPendente) {
+          // v29.359.0 — pergunta de endereço fura o silêncio (decisão do Juliano, 13/11/2026; ver
+          // _shared/localizacao.ts). Só a localização, uma vez por dia; o silêncio e o push continuam.
+          try {
+            const { data: locHoje } = await admin.from('whatsapp_messages').select('id').eq('phone', phone)
+              .eq('direction', 'out').like('body', '%maps.app.goo.gl%').gte('created_at', startOfTodaySP()).limit(1)
+            const blocoLoc = localizacaoNoSilencio(normalize(String(text || '')), Boolean(locHoje?.length))
+            if (blocoLoc) {
+              await sendWhatsapp(phone, blocoLoc, true)
+              console.log('[whatsapp-webhook] endereço respondido durante o silêncio', phone)
+            }
+          } catch (locError) {
+            console.error('[whatsapp-webhook] localizacao no silencio', locError)
+          }
           try {
             const alertKey = `takeover_msg_${phone}`
             const { data: lastAlert } = await admin

@@ -1,3 +1,17 @@
+## 29.359.0 — Pergunta de endereço fura o silêncio de quando o Juliano falou (13/11)
+
+Decisão do Juliano no plano do dia ("Sim, responde"), em cima do caso registrado na 29.358.0: cliente novo pediu
+desconto, ele respondeu "Não" pelo celular e a pergunta seguinte, "E qual o endereço daí?", ficou sem resposta.
+
+- **`whatsapp-webhook`:** com a JuIA calada porque o Juliano falou (v29.339.0), pergunta de endereço ou localização
+  recebe o bloco da localização (link do Maps + endereço). O silêncio continua para todo o resto e o push para o
+  Juliano sai do mesmo jeito.
+- **Exceção estreita, de propósito:** uma vez por dia por conversa (se já saiu link do Maps hoje, não repete), e
+  cliente passando o próprio endereço ou falando de entrega não conta, porque esse número também recebe pedido
+  da drogaria. Regra e texto em `_shared/localizacao.ts` (`localizacaoNoSilencio`), com teste.
+- **Não mexido:** preço, horário e serviço seguem calados depois que ele fala. Ele só pediu o endereço.
+- **Testes:** unit 442 passaram. Os e2e não foram rodados de novo: nada do site mudou desde os 98 de hoje cedo.
+
 ## 29.358.0 — JuIA: "medicação" e foto das caixas + "2 de cada" vão para o Juliano (13/11)
 
 Revisão de sexta (conversas de 11/11 12h a 13/11 10h, 17 clientes). Dois erros reais, os dois no pedido de remédio,

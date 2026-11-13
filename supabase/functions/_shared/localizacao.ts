@@ -19,6 +19,18 @@ export const jaTemLocalizacao = (reply: string) =>
 export const blocoLocalizacao = () =>
   ['Segue a localização da barbearia no Google Maps:', MAPS_URL, ENDERECO_COMPLETO].join('\n')
 
+// v29.359.0 — cliente novo (12/11/2026, 11h32): pediu desconto, o Juliano respondeu "Não" pelo celular e a
+// pergunta seguinte, "E qual o endereço daí?", ficou sem resposta porque a JuIA fica calada o resto do dia
+// depois que ele fala (v29.339.0). Ele não agendou. Decisão do Juliano (13/11): pergunta de endereço fura
+// esse silêncio. Exceção estreita: só o bloco da localização, uma vez por dia por conversa, e a JuIA
+// continua calada para todo o resto. Cliente passando o PRÓPRIO endereço (entrega da drogaria) não conta.
+export const localizacaoNoSilencio = (normalizedMessage: string, jaEnviadaHoje = false): string | null => {
+  const t = String(normalizedMessage || '')
+  if (jaEnviadaHoje || !pediuLocalizacao(t)) return null
+  if (/\b(meu|minha|nosso|nossa)\s+(novo\s+|nova\s+)?(endereco|localizacao|loc)\b|\bentreg/.test(t)) return null
+  return blocoLocalizacao()
+}
+
 // reply: resposta já montada. aguardandoServico: a JuIA está pedindo o serviço e há horário guardado.
 export const comLocalizacao = (normalizedMessage: string, reply: string, aguardandoServico = false) => {
   if (!pediuLocalizacao(normalizedMessage) || jaTemLocalizacao(reply)) return reply

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pediuLocalizacao, jaTemLocalizacao, comLocalizacao } from '../../supabase/functions/_shared/localizacao.ts';
+import { pediuLocalizacao, jaTemLocalizacao, comLocalizacao, localizacaoNoSilencio } from '../../supabase/functions/_shared/localizacao.ts';
 
 // v29.275.1 — caso Renan (06/10/2026, 12h02). Textos como o webhook entrega: normalizados.
 const PERGUNTA = 'Hoje às 18:10 está livre. Qual serviço vai ser?\n*1* — Corte de cabelo';
@@ -46,5 +46,25 @@ describe('comLocalizacao', () => {
     const r = comLocalizacao('me manda a loc', 'Ok.', false);
     expect(r).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(r).not.toContain('?');
+  });
+});
+
+// v29.359.0 — decisão do Juliano (13/11/2026): pergunta de endereço fura o silêncio de quando ele falou.
+describe('localizacaoNoSilencio', () => {
+  it('pergunta de endereço recebe a localização', () => {
+    const r = localizacaoNoSilencio('e qual o endereco dai?');
+    expect(r).toContain('maps.app.goo.gl');
+    expect(r).toContain('Antônio da Cruz, 482');
+    expect(r).not.toContain('?');
+  });
+  it('não repete no mesmo dia', () => {
+    expect(localizacaoNoSilencio('onde fica a barbearia', true)).toBeNull();
+  });
+  it('cliente passando o próprio endereço ou falando de entrega não conta', () => {
+    expect(localizacaoNoSilencio('meu endereco e rua tal, 10')).toBeNull();
+    expect(localizacaoNoSilencio('qual endereco pra entrega?')).toBeNull();
+  });
+  it('conversa comum segue em silêncio', () => {
+    expect(localizacaoNoSilencio('voce nao consegue fazer por 40?')).toBeNull();
   });
 });
