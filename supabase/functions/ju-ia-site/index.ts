@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA, servicoDispensado, avisaAtraso } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, encomendaPorFoto,avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA, servicoDispensado, avisaAtraso } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -1647,7 +1647,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   }
   // v29.315.0 — caso Fernando (28/10/2026, 13h40): pedido de remédio recebeu "Não trabalhamos com medicamentos".
   // Quem pede remédio aqui está falando com o farmacêutico: vai para o Juliano, como pedido de gente.
-  else if(pedeRemedio(q)&&!/\bfarmaceutic/.test(q)){
+  // v29.358.0 — casos Maiko (11/11) e Fernando (12/11): "medicação" e "2 de cada" depois da foto das caixas.
+  else if((pedeRemedio(q)||encomendaPorFoto(q,(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').map((h:any)=>String(h.content||''))))&&!/\bfarmaceutic/.test(q)){
    pediuHumano=true
    reply='Vou passar o seu pedido para o Juliano agora mesmo; ele te responde por aqui assim que puder.'
    intent='handoff';handoff=true;actions=[]

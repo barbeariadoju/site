@@ -1,3 +1,24 @@
+## 29.358.0 — JuIA: "medicação" e foto das caixas + "2 de cada" vão para o Juliano (13/11)
+
+Revisão de sexta (conversas de 11/11 12h a 13/11 10h, 17 clientes). Dois erros reais, os dois no pedido de remédio,
+que desde a 29.315.0 deveria ir direto para o Juliano.
+
+- **Caso Maiko (11/11, 16h11):** "Precisava ver se vc tem uma medicação.." ouviu duas vezes que a barbearia não
+  trabalha com medicamentos. A regra só conhecia "medicamento" e "remédio". Entraram "medicação/medicações" e
+  "antibiótico" (`_shared/leitura-cliente.ts`, `pedeRemedio`). O Juliano respondeu 40 min depois.
+- **Caso Fernando (12/11, 16h27):** mandou a foto das caixas e "2 de cada". A JuIA perguntou "2 de cada o quê?" e
+  leu "Se quiser vou buscar" como oferta dela ("O que você gostaria que eu buscasse?"). Só passou ao Juliano 11 min
+  depois, quando veio o nome com "mg". Agora quantidade solta ("2 de cada", "3 caixas") logo depois de uma foto que
+  não é de corte/barba/cor é encomenda e vira handoff (`encomendaPorFoto`).
+- **Decidido contra o óbvio:** "N de cada" sem foto antes não conta. "Um de cada" pode ser resposta a "corte ou
+  barba?", e mandar isso para o Juliano tiraria a JuIA de uma reserva.
+- **Não corrigido:** cliente novo (12/11, 11h32) perguntou o endereço logo depois de o Juliano responder "Não" ao
+  pedido de desconto, e ficou sem resposta. É a regra da 29.339.0 (Juliano falou, JuIA calada até meia-noite)
+  funcionando como pedido; fica registrado para ele decidir se pergunta de endereço deve furar o silêncio.
+- **Testes:** unit 3 casos novos; simulador cenários 131a-b. 331 ok e 3 falhas (73b, 94, 95a), as mesmas do main
+  sem a mudança, que só aparecem em véspera de sábado.
+- **Publicado:** `ju-ia-site` (verify_jwt mantido: sem chave responde 401).
+
 ## 29.357.0 — Aviso de prêmio já diz que é o agradecimento pelos 10 primeiros atendimentos (11/11)
 
 Pedido do Juliano, na sequência da 29.356.0: usar a mesma frase para anunciar o prêmio a quem completar daqui pra

@@ -67,7 +67,21 @@ export const pedeFalarComJuliano = (q: string, julianoNaUltimaFala = false): boo
 export const pedeRemedio = (q: string): boolean => {
   const t = String(q || '')
   if (/\b(perto|do lado|ao lado|em frente|frente|esquina|depois|antes|vizinh[oa])\b.{0,20}\b(farmacia|drogaria)\b/.test(t)) return false
-  return /\b(remedios?|medicamentos?|comprimidos?|capsulas?|genericos?|drogaria|farmacia|receita medica)\b|\b\d+\s*mg\b/.test(t)
+  // v29.358.0 — caso Maiko (11/11/2026, 16h11): "Precisava ver se vc tem uma medicação.." não casava (só
+  // "medicamento") e ouviu duas vezes que a barbearia não trabalha com isso; o Juliano assumiu 40 min depois.
+  return /\b(remedios?|medicamentos?|medicacao|medicacoes|comprimidos?|capsulas?|genericos?|antibioticos?|drogaria|farmacia|receita medica)\b|\b\d+\s*mg\b/.test(t)
+}
+
+// v29.358.0 — caso Fernando (12/11/2026, 16h27): mandou a foto das caixas e "2 de cada"; a JuIA perguntou
+// "2 de cada o quê?" e leu "Se quiser vou buscar" como oferta dela ("O que você gostaria que eu buscasse?").
+// Só passou ao Juliano 11 min depois, quando veio o nome com "mg". Quantidade solta logo depois de uma foto
+// que não é de corte/barba/cor é encomenda: vai para o Juliano. Sem a foto não conta ("um de cada" pode ser
+// resposta a "corte ou barba?").
+export const encomendaPorFoto = (q: string, falasRecentesDoCliente: string[] = []): boolean => {
+  const t = String(q || '')
+  if (!/\b(\d+|um|uma|dois|duas|tres)\s+(de cada|caixas?|cx|unidades?)\b/.test(t)) return false
+  const fotoSemRelacao = (s: string) => /foto recebida,? sem rela/i.test(String(s || ''))
+  return fotoSemRelacao(t) || falasRecentesDoCliente.slice(-3).some(fotoSemRelacao)
 }
 
 // ---------------------------------------------------------------------------------------------

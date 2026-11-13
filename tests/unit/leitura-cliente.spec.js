@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, avisoDeChegada, aceitaAvisoDeVaga,
+  tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, encomendaPorFoto, avisoDeChegada, aceitaAvisoDeVaga,
   horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino,
   tirarVocativoInicial, prometeRecado, servicoSoPerguntado,
 } from '../../supabase/functions/_shared/leitura-cliente.ts';
@@ -47,6 +47,21 @@ describe('pedeRemedio (caso Fernando, 28/10)', () => {
   it('referência de lugar e conversa comum não contam', () => {
     expect(pedeRemedio('fica perto da farmacia?')).toBe(false);
     expect(pedeRemedio('quero marcar um corte amanha')).toBe(false);
+  });
+});
+
+describe('pedeRemedio e encomendaPorFoto (casos Maiko 11/11 e Fernando 12/11)', () => {
+  const foto = '[foto recebida, sem relação com corte/barba/cor identificada]';
+  it('"medicação" conta como pedido de remédio', () => {
+    expect(pedeRemedio('precisava ver se vc tem uma medicacao')).toBe(true);
+  });
+  it('quantidade solta depois de foto sem relação com corte é encomenda', () => {
+    expect(encomendaPorFoto('2 de cada', ['posso te incomodar', foto])).toBe(true);
+    expect(encomendaPorFoto(foto + ' 2 caixas', [])).toBe(true);
+  });
+  it('sem a foto, "um de cada" não é encomenda', () => {
+    expect(encomendaPorFoto('um de cada', ['oi'])).toBe(false);
+    expect(encomendaPorFoto('quero cortar o cabelo', [foto])).toBe(false);
   });
 });
 

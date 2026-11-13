@@ -1844,5 +1844,17 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('130d pergunta simples de saldo não ganha a explicação', !unica.test(r4.reply) && /não tem pontos/.test(r4.reply), r4.reply)
 }
 
+// 131. v29.358.0 — casos Maiko (11/11/2026, 16h11) e Fernando (12/11/2026, 16h27). "Precisava ver se vc tem uma
+// medicação" ouviu que a barbearia não trabalha com isso; a foto das caixas + "2 de cada" ouviu "2 de cada o quê?".
+// Os dois são pedido para o farmacêutico: handoff, sem recusa e sem pergunta.
+{
+  const r1 = await turno({ msg: 'Tudo bem? Precisava ver se vc tem uma medicação..', history: [{ role: 'assistant', content: 'Boa tarde, Maiko! Como posso te ajudar hoje?' }],
+    ai: { intent: 'other', reply: 'A Barbearia do Ju não trabalha com medicamentos.' }, contexto: ctxCliente('Maiko Teste') })
+  checar('131a "medicação" vira handoff para o Juliano', r1.handoff && /Juliano/.test(r1.reply) && !/não trabalha/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: '2 de cada', history: [{ role: 'assistant', content: 'Pode sim, fique à vontade. Como posso ajudar?' }, { role: 'user', content: '[foto recebida, sem relação com corte/barba/cor identificada]' }],
+    ai: { intent: 'other', reply: 'Claro. Você pode me dizer 2 de cada o quê, por gentileza?' }, contexto: ctxCliente('Fernando Teste') })
+  checar('131b foto + "2 de cada" vira handoff para o Juliano', r2.handoff && /Juliano/.test(r2.reply) && !/o quê/.test(r2.reply), r2.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
