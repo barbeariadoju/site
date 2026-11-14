@@ -59,6 +59,7 @@ const catalogo = [
 type Cenario = {
   msg: string; state?: any; history?: any[]; ai?: any
   contexto?: any; futuros?: any[]; vagas?: Record<string, string[]>; concluidos?: any[]; nomeWhats?: string
+  bloqueiosHoje?: any[] // schedule_blocks manuais de hoje (v29.362.0)
   fechados?: string[] // dias com "Fechar o dia inteiro" marcado no admin (viagem, folga, feriado)
   estendidoOk?: boolean // resposta do extended_close_slot_ok (horário livre fora da grade/do expediente)
   jaConvidadoIG?: boolean // já existe mensagem com o @barbeariadoju_ para este telefone
@@ -82,7 +83,8 @@ const turno = async (c: Cenario) => {
   respostas.tabela = {
     services: () => catalogo, service_price_changes: () => [], products: () => [], marketing_memory: () => [],
     schedule_blocks: (q) => q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'all_day' && f[2] === true)
-      ? (c.fechados || []).map((d) => ({ block_date: d, reason: 'Viagem do Juliano' })) : [],
+      ? (c.fechados || []).map((d) => ({ block_date: d, reason: 'Viagem do Juliano' }))
+      : q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'source' && f[2] === 'manual') ? (c.bloqueiosHoje || []) : [],
     customer_benefits: () => [], site_chat_messages: () => null, conversation_leads: () => null,
     customer_profiles: () => [], whatsapp_attribution: () => [],
     bookings: (q) => q.op === 'select' ? (q.filtros?.some((f: any) => f[0] === 'eq' && f[1] === 'status' && f[2] === 'completed') ? (c.concluidos || [])
@@ -1880,6 +1882,24 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r = await turno({ msg: 'Vc fica aberto até que horas', ai: { intent: 'other', reply: `Boa tarde, Lucas! Hoje fico aberto até as ${lim}h. Qual pomada você quer separar?` }, contexto: ctxCliente('Lucas Teste') })
   const vezes = (String(r.reply).match(/até (as )?\d{1,2}\s*h/gi) || []).length
   checar('133 horário de fechamento dito uma vez só, com o resto da resposta inteiro', vezes <= 1 && /Qual pomada/.test(r.reply), r.reply)
+}
+
+// 134. v29.362.0 — decisão do Juliano (14/11/2026): bloqueio manual que vai até o fim do dia é o horário de fechamento
+// que a JuIA informa. Bloqueio de almoço não muda nada. Só roda em dia aberto e antes do horário do bloqueio.
+{
+  const wd = new Date(hoje + 'T12:00:00Z').getUTCDay()
+  const lim = wd === 6 ? 15 : (wd >= 2 && wd <= 5 ? 19 : 0)
+  const agora = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date())
+  const ini = `${String(lim - 1).padStart(2, '0')}:30`
+  if (lim && agora < ini) {
+    const pergunta = { msg: 'Vc fica aberto até que horas', ai: { intent: 'other', reply: 'Como posso ajudar?' }, contexto: ctxCliente('Lucas Teste') }
+    const r1 = await turno({ ...pergunta, bloqueiosHoje: [{ start_time: `${ini}:00`, end_time: '23:59:00' }] })
+    checar('134a bloqueio manual até o fim do dia vira o horário de fechamento', new RegExp(`até ${lim - 1}h30`).test(r1.reply) && !new RegExp(`até ${lim}h`).test(r1.reply), r1.reply)
+    const r2 = await turno({ ...pergunta, bloqueiosHoje: [{ start_time: '12:00:00', end_time: '13:00:00' }] })
+    checar('134b bloqueio de almoço não muda o horário de fechamento', new RegExp(`até ${lim}h`).test(r2.reply), r2.reply)
+    const r3 = await turno({ ...pergunta, bloqueiosHoje: [{ start_time: '08:30:00', end_time: '23:59:00' }] })
+    checar('134c depois do início do bloqueio: já encerramos', /já encerramos/.test(r3.reply), r3.reply)
+  } else console.log('  (134 pulado: fora do expediente ou perto do fechamento)')
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

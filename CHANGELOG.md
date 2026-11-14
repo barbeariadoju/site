@@ -1,3 +1,17 @@
+## 29.362.0 — JuIA: bloqueio manual até o fim do dia é o horário de fechamento que ela informa (14/11)
+
+Decisão do Juliano no plano do dia ("Sim, usa o bloqueio"), em cima do que ficou registrado na 29.361.0.
+
+- **O caso:** sábado 14/11, agenda bloqueada por ele a partir das 14h. Um cliente perguntou se estava aberto para
+  buscar um produto e a JuIA respondeu "até 15h". O aviso lia só o expediente padrão (19h ter–sex, 15h sábado).
+- **Correção (`ju-ia-site`):** bloqueio manual de hoje que vai até o fim do expediente passa a ser o horário
+  informado ("Hoje atendemos até 14h", "até 18h30"). Depois do início do bloqueio, "Por hoje já encerramos o
+  atendimento."
+- **Estreito de propósito:** só bloqueio `source = manual` e só o que encosta no fim do dia. Bloqueio de almoço não
+  muda nada; o da câmera é ausência momentânea; o do botão Fechar já era tratado (`expediente_hoje`).
+- **Não mexido:** a oferta de horários já respeitava o bloqueio. Mudou só a frase de até que horas atende.
+- **Testes:** simulador com o cenário 134 (3 checagens), 340 ok e as mesmas 3 falhas de sábado. Unit 442 passaram.
+
 ## 29.361.0 — JuIA: horário de fechamento dito uma vez só (caso Lucas, 13 e 14/11)
 
 Achado na revisão diária (conversas de 13/11 10h a 14/11 12h30, 13 clientes com troca de mensagem).

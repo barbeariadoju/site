@@ -4561,12 +4561,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const hourNow=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
   const fechadoHoje=closures.some((c:any)=>String(c?.date||'')===formatDateBR(today()))
   const limite=wd===6?15:(wd>=2&&wd<=5?19:0)
+  // v29.362.0 — decisão do Juliano (14/11/2026): no sábado ele bloqueou a agenda a partir das 14h e a JuIA disse
+  // "até 15h" a um cliente que vinha buscar um produto. Bloqueio manual que vai até o fim do expediente É o horário
+  // de fechamento daquele dia. Só o bloqueio manual e só o que encosta no fim do dia: bloqueio de almoço não conta,
+  // o da câmera é ausência momentânea e o do "Fechar" do painel já é o encerradoPeloExpediente.
+  let fimBloqueio=''
+  if(limite&&!fechadoHoje){
+   try{
+    const {data:bl}=await supabase.from('schedule_blocks').select('start_time,end_time').eq('block_date',today()).eq('all_day',false).eq('source','manual').gte('end_time',`${String(limite).padStart(2,'0')}:00:00`).order('start_time')
+    const ini=(Array.isArray(bl)?bl:[]).filter((b:any)=>String(b?.end_time||'').slice(0,5)>=`${String(limite).padStart(2,'0')}:00`).map((b:any)=>String(b?.start_time||'').slice(0,5)).filter((t:string)=>/^\d\d:\d\d$/.test(t)&&t<`${String(limite).padStart(2,'0')}:00`).sort()[0]
+    if(ini)fimBloqueio=ini
+   }catch(e){console.error('[ju-ia-site] bloqueio do fim do dia',e)}
+  }
+  const limiteTxt=fimBloqueio?`${Number(fimBloqueio.slice(0,2))}h${fimBloqueio.slice(3)==='00'?'':fimBloqueio.slice(3)}`:`${limite}h`
+  const agoraHM=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())
   let aviso=''
   if(fechadoHoje)aviso='Hoje estamos excepcionalmente fechados.'
   else if(!limite)aviso='Hoje estamos fechados (não abrimos domingo e segunda) — voltamos terça às 8h30.'
   else if(hourNow>=limite)aviso=`Hoje já encerramos — atendemos até ${limite}h.`
-  else if(encerradoPeloExpediente)aviso='Por hoje já encerramos o atendimento.'
-  else aviso=/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limite}h.`:`Sim, hoje atendemos até ${limite}h!`
+  else if(encerradoPeloExpediente||(fimBloqueio&&agoraHM>=fimBloqueio))aviso='Por hoje já encerramos o atendimento.'
+  else aviso=/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limiteTxt}.`:`Sim, hoje atendemos até ${limiteTxt}!`
   avisoAbertoHoje=aviso
  }
  // v29.43.0 — ADIAMENTO/DESISTENCIA (caso Bruno, 15/08, 11:28): depois de nao conseguir o
