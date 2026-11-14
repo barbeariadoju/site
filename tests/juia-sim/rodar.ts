@@ -1872,5 +1872,15 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('132e "3" na lista reserva só a Barba Express, mesmo com o modelo devolvendo o combo', r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')?.args?.p_service_name === 'Barba Express', r3.reply)
 }
 
+// 133. v29.361.0 — caso Lucas (13/11/2026, 15h43): "Vc fica aberto até que horas" ouviu "Hoje atendemos até 19h. Hoje
+// fico aberto até as 19h." O aviso de aberto entrava por cima da resposta do modelo, que dizia a mesma coisa.
+{
+  const sab = new Date(hoje + 'T12:00:00Z').getUTCDay() === 6
+  const lim = sab ? 15 : 19
+  const r = await turno({ msg: 'Vc fica aberto até que horas', ai: { intent: 'other', reply: `Boa tarde, Lucas! Hoje fico aberto até as ${lim}h. Qual pomada você quer separar?` }, contexto: ctxCliente('Lucas Teste') })
+  const vezes = (String(r.reply).match(/até (as )?\d{1,2}\s*h/gi) || []).length
+  checar('133 horário de fechamento dito uma vez só, com o resto da resposta inteiro', vezes <= 1 && /Qual pomada/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

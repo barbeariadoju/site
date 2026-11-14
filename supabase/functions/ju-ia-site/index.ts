@@ -6554,7 +6554,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.43.2: "voces atendem hoje?" — o aviso de aberto/fechado entra por ultimo, porque os blocos
  // de fluxo (ex.: "qual servico?") reescrevem o reply inteiro no meio do caminho.
  if(avisoAbertoHoje&&!handoff&&!/atendemos até|estamos fechados|já encerramos|excepcionalmente fechados/i.test(reply)){
-  reply=`${avisoAbertoHoje} ${reply}`.trim()
+  // v29.361.0 — caso Lucas (13/11 15h43 e 14/11 12h15): "Hoje atendemos até 19h. Hoje fico aberto até as 19h." e
+  // "Sim, hoje atendemos até 15h! Boa tarde, Lucas! Estamos abertos hoje até as 15h." O modelo também responde a
+  // pergunta, e o aviso entrava por cima: a mesma informação duas vezes, com o cumprimento no meio. A frase do
+  // modelo que repete o horário de fechamento sai, e o cumprimento fica na frente do aviso.
+  const frases=String(reply||'').split(/(?<=[.!?])\s+/)
+  const repete=(f:string)=>/\b(abert[oa]s?|atend\w+|funcion\w+|fech\w+|encerr\w+)\b[^.!?]{0,40}\bat[ée]\s+(à|a)?s?\s*\d{1,2}\s*(h|:|horas)/i.test(f)&&!/\?/.test(f)
+  const resto=frases.filter((f:string)=>!repete(f))
+  const cumprimento=resto.length&&/^(bom dia|boa tarde|boa noite|oi|ol[áa])\b[^.!?]{0,40}[.!]$/i.test(resto[0])?resto.shift():''
+  reply=[cumprimento,avisoAbertoHoje,resto.join(' ')].filter(Boolean).join(' ').trim()
  }
  // v29.47.0 — caso Frei Bartolomeu (19/08/2026, 13:08): primeiro cliente que pediu pra pagar
  // antecipado pelo WhatsApp. A JuIA passou a chave, mas NÃO o valor — ele teve que perguntar

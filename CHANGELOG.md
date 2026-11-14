@@ -1,3 +1,17 @@
+## 29.361.0 — JuIA: horário de fechamento dito uma vez só (caso Lucas, 13 e 14/11)
+
+Achado na revisão diária (conversas de 13/11 10h a 14/11 12h30, 13 clientes com troca de mensagem).
+
+- **Caso Lucas (13/11, 15h43):** "Vc fica aberto até que horas" ouviu "Hoje atendemos até 19h. Hoje fico aberto até
+  as 19h." No dia seguinte (12h15): "Sim, hoje atendemos até 15h! Boa tarde, Lucas! Estamos abertos hoje até as 15h."
+  O aviso de aberto/fechado entra por código no fim, por cima da resposta do modelo, que já respondia a mesma coisa.
+- **Correção (`ju-ia-site`):** a frase do modelo que repete o horário de fechamento sai, e o cumprimento passa para
+  a frente do aviso. Cenário 133 no simulador.
+- **Não corrigido, registrado:** no sábado 14/11 o Juliano bloqueou a agenda a partir das 14h e a JuIA disse "até
+  15h". O aviso lê o expediente padrão, não o bloqueio manual do dia. O próprio Juliano respondeu "até 14hs" na
+  conversa. Fica para decidir se bloqueio até o fim do dia deve mudar o horário que ela informa.
+- **Testes:** simulador 337 ok, as mesmas 3 falhas de sábado (94, 95a, 112a). Unit 442 passaram.
+
 ## 29.360.0 — JuIA: o "2" da lista é Corte + Barba, não só a barba (caso Flavio, 14/11)
 
 Erro apontado pelo Juliano no plano do dia, com a conversa na tela.
