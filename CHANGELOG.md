@@ -1,3 +1,22 @@
+## 29.360.0 — JuIA: o "2" da lista é Corte + Barba, não só a barba (caso Flavio, 14/11)
+
+Erro apontado pelo Juliano no plano do dia, com a conversa na tela.
+
+- **Caso Flavio (14/11, 07h57):** à pergunta "É corte ou corte + barba? 1 — Corte / 2 — Corte + barba / 3 — Só a
+  barba" ele respondeu "2". A reserva saiu como Barba Express (R$ 35, 25 min) e, na mesma mensagem, veio "Quer
+  incluir a lavagem no seu corte?". Na agenda ficaram 25 minutos para um atendimento de 65.
+- **Causa:** o número virava a frase "Quero Corte + Barba Express" e a escolha voltava para o modelo e para o leitor
+  de texto. O leitor acha "Barba Express" dentro do nome do combo e a regra de troca na família ficava com ela
+  (reproduzido no simulador com o modelo devolvendo lista vazia ou só a barba).
+- **Correção (`ju-ia-site`):** número puro da lista é a resposta inteira. O serviço da lista entra como está, o que
+  o modelo devolveu naquele turno é descartado e a menção lida do texto passa a ser só o serviço escolhido.
+- **Decidido contra o óbvio:** com complemento ("1 com sobrancelha", "2 mas na navalha") nada muda. Ali o cliente
+  está dizendo mais do que o número, e travar no item da lista apagaria o pedido dele (caso Josue, 29.310.0).
+- **Reserva do Flavio:** corrigida à mão para Corte + Barba Express (13:05–14:10, R$ 80), antes de alguém marcar
+  em cima.
+- **Testes:** simulador com o cenário 132 (5 checagens novas, 336 ok). As 3 falhas (94, 95a, 112a) são as de sábado
+  já registradas em 07/11, iguais antes e depois da mudança. Unit 442 passaram. E2e não rodados: nada do site mudou.
+
 ## 29.359.0 — Pergunta de endereço fura o silêncio de quando o Juliano falou (13/11)
 
 Decisão do Juliano no plano do dia ("Sim, responde"), em cima do caso registrado na 29.358.0: cliente novo pediu

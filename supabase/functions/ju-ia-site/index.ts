@@ -1339,6 +1339,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const antesBg=Array.isArray(state?.services)?state.services:[]
   next.services=next.services.filter((n:string)=>antesBg.includes(n)||!familiesOfService(n).has('barba'))
  }
+ // v29.360.0 — caso Flavio (14/11/2026, 07h57): à pergunta "É corte ou corte + barba?" ele respondeu "2" e a reserva
+ // saiu só com a Barba Express (R$ 35, 25 min), seguida de "quer incluir a lavagem no seu corte?". O número virava
+ // "Quero Corte + Barba Express" e a escolha ficava na mão do modelo e do leitor de texto, que acharam "Barba Express"
+ // dentro do nome do combo. Número puro da lista é a resposta inteira: o serviço da lista entra como está, e o que o
+ // modelo pôs de corte/barba no lugar sai. Com complemento ("1 com sobrancelha", "2 mas na navalha") segue como era.
+ if(servicoEscolhidoNaLista&&message===`Quero ${servicoEscolhidoNaLista}`&&findService(servicoEscolhidoNaLista)){
+  next.services=[servicoEscolhidoNaLista,...next.services.filter((n:string)=>n!==servicoEscolhidoNaLista&&familiesOfService(n).size===0)]
+ }
  if(servicoEscolhidoNaLista&&manterNaEscolha.length){
   const fam=normalizeServiceFamilies([...next.services,...manterNaEscolha.filter((n:string)=>!next.services.includes(n))].map((n:string)=>{const s=findService(n);return{name:n,price:s?s.price:0}}))
   next.services=fam.items.map((x:any)=>x.name)
@@ -1401,7 +1409,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  let familySwapNote=''
  {
   const prevServices=Array.isArray(state?.services)?state.services:[]
-  const mentionedLoose=findServicesLoose(message).map((s:any)=>s.name)
+  // v29.360.0 (caso Flavio): número puro da lista cita UM serviço — o da lista. "Barba Express" lido de dentro de
+  // "Quero Corte + Barba Express" virava "Anotado: Barba Express no lugar de Corte + Barba Express".
+  const escolhaPuraDaLista=Boolean(servicoEscolhidoNaLista&&message===`Quero ${servicoEscolhidoNaLista}`&&findService(servicoEscolhidoNaLista))
+  const mentionedLoose=escolhaPuraDaLista?[servicoEscolhidoNaLista]:findServicesLoose(message).map((s:any)=>s.name)
+  if(escolhaPuraDaLista&&Array.isArray(ai.updates?.services))ai.updates.services=[servicoEscolhidoNaLista]
   // v29.11.0: bug real (cliente com "Corte de cabelo" + "Barba Express" já anotados,
   // pergunta de lavagem pendente respondida com "só o corte") — o merge da linha ~433
   // SUBSTITUI next.services inteiro pelo array que o modelo devolve, e o modelo às vezes

@@ -1856,5 +1856,21 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('131b foto + "2 de cada" vira handoff para o Juliano', r2.handoff && /Juliano/.test(r2.reply) && !/o quê/.test(r2.reply), r2.reply)
 }
 
+// 132. v29.360.0 — caso Flavio (14/11/2026, 07h57): à pergunta "É corte ou corte + barba?" ele respondeu "2" e a
+// reserva saiu só com a Barba Express (25 min), seguida de "quer incluir a lavagem no seu corte?". O número da lista é
+// a resposta inteira, qualquer que seja o serviço que o modelo devolva naquele turno.
+{
+  const hist = [{ role: 'user', content: 'Será que ainda tem vaga hj?' }, { role: 'assistant', content: 'Bom dia, Flavio! Consigo te atender hoje, entre 13:05 e 14:15. Qual fica melhor pra você?' }, { role: 'user', content: '13:05 fica perfeito!' }, { role: 'assistant', content: 'Hoje às 13:05 está livre. É corte ou corte + barba?\n*1* — Corte\n*2* — Corte + barba\n*3* — Só a barba' }]
+  for (const [rot, upd] of [['o combo', ['Corte + Barba Express']], ['nada', []], ['só a barba', ['Barba Express']], ['corte e barba soltos', ['Corte de cabelo', 'Barba Express']]] as [string, string[]][]) {
+    const st = { date: dia1, time: '13:05', name: 'Flavio Teste', ditos: { nomes: [], fams: [] }, pending_service_pick: { at: new Date().toISOString() }, last_question: { kind: 'service_pick', at: new Date().toISOString(), reply: 'É corte ou corte + barba?' } }
+    const r = await turno({ msg: '2', state: st, history: hist, ai: { intent: 'book', reply: 'Ok', updates: { services: upd } }, contexto: ctxCliente('Flavio Teste'), vagas: { [dia1]: ['13:05', '13:30'] } })
+    const reserva = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+    checar(`132 "2" na lista reserva Corte + Barba Express (modelo devolveu ${rot})`, reserva?.args?.p_service_name === 'Corte + Barba Express' && JSON.stringify(r.state?.services) === JSON.stringify(['Corte + Barba Express']) && !/no lugar de/.test(r.reply), { reply: r.reply, svc: reserva?.args?.p_service_name })
+  }
+  const st3 = { date: dia1, time: '13:05', name: 'Flavio Teste', pending_service_pick: { at: new Date().toISOString() }, last_question: { kind: 'service_pick', at: new Date().toISOString(), reply: 'É corte ou corte + barba?' } }
+  const r3 = await turno({ msg: '3', state: st3, history: hist, ai: { intent: 'book', reply: 'Ok', updates: { services: ['Corte + Barba Express'] } }, contexto: ctxCliente('Flavio Teste'), vagas: { [dia1]: ['13:05', '13:30'] } })
+  checar('132e "3" na lista reserva só a Barba Express, mesmo com o modelo devolvendo o combo', r3.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')?.args?.p_service_name === 'Barba Express', r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
