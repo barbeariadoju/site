@@ -4456,7 +4456,51 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const diaRecusado=!/\?/.test(q)&&!temPendencia&&diasCitados.size===1&&!extractRequestedTime(message)
    ?(q.match(/\b(hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado)\b[\s\S]{0,20}\b(nao|n) (da|dara|vai dar|consigo|posso|rola|vou poder|tenho como)\b/)||[])[1]||''
    :''
-  if(diaRecusado&&intent!=='cancel'&&intent!=='reschedule'){
+  // v29.363.0 — caso Íthalo (segunda 16/11/2026, 12h04-13h02), apontado pelo Juliano ("sempre acontece isso e é
+  // muito chato"): "Tem vaga para hoje?" → hoje não abre, amanhã tenho. "Era para hoje apenas" → a MESMA oferta de
+  // amanhã de novo. "Nenhum" → "Consigo te atender amanhã sim!". Quem diz que era SÓ para aquele dia está recusando
+  // a sugestão de outro dia: aceita uma vez e encerra, sem reoferecer. Se o dia é aberto (hoje ou amanhã sem vaga),
+  // o Juliano recebe o aviso — encaixe é ele quem decide.
+  const DIAS_RX='hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado'
+  const soNoDiaDe=(t:string)=>((t.match(new RegExp(`\\b(?:so|apenas|somente|unicamente) (?:se for |mesmo )?(?:(?:pra|para) )?(?:o |a |na |no )?(${DIAS_RX})\\b`))
+   ||t.match(new RegExp(`\\b(?:era|e|seria|queria|quero|preciso|precisava|precisaria) (?:so |apenas )?(?:pra|para) (?:o |a )?(${DIAS_RX})(?:-feira)? (?:so|apenas|somente|mesmo)\\b`))
+   ||t.match(new RegExp(`^(?:\\S+ )?(${DIAS_RX})(?:-feira)? (?:so|apenas|somente)[\\s.!]*$`))||[])[1]||'')
+  const ultimaJuIANorm=normalize(ultimaFalaJuIA)
+  const soNoDia=!/\?/.test(q)&&q.length<=60&&!temPendencia&&diasCitados.size<=1&&!extractRequestedTime(message)&&!detectPeriod(q)?soNoDiaDe(q):''
+  // a JuIA tinha sugerido OUTRO dia (ou dito que o pedido não tinha vaga): só aí "só hoje" é recusa
+  const sugeriuOutroDia=(d:string)=>/nao abre|nao estamos abertos|nao tenho mais (vaga|horario)|nao esta disponivel|voltamos ao trabalho/.test(ultimaJuIANorm)
+   ||(ultimaJuIANorm.match(new RegExp(`\\b(${DIAS_RX})\\b`,'g'))||[]).some((x:string)=>x!==d)
+  // "Nenhum" / "nenhum desses" depois de uma lista de horários ou de períodos
+  const recusaNenhum=q.length<=40&&/^(\S+ )?(nenhum|nenhuma)( (deles|delas|desses|dessas|dos dois|das duas|desses horarios|horario|periodo))?( (serve|da|fica bom|me serve))?[\s.!]*$/.test(q)
+   &&(/\b\d{2}:\d{2}\b/.test(ultimaFalaJuIA)||/manha|tarde|final do dia/.test(ultimaJuIANorm))
+  const restricaoAnterior=(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').slice(-3).map((h:any)=>soNoDiaDe(normalize(String(h.content||'')))).find(Boolean)||''
+  const diaSo=soNoDia&&sugeriuOutroDia(soNoDia)?soNoDia:(recusaNenhum&&restricaoAnterior?restricaoAnterior:'')
+  if(diaSo&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+   const isoSo=diaSo==='hoje'?today():diaSo==='amanha'?addDaysISO(today(),1):(weekdayDatesMentioned(diaSo,today())[0]||'')
+   const rotSo=({hoje:'hoje',amanha:'amanhã',terca:'terça',sabado:'sábado'} as Record<string,string>)[diaSo]||diaSo
+   const abertoSo=isoSo&&!diaFechadoInfo(isoSo).fechado&&(isoSo===today()||isoSo===addDaysISO(today(),1))
+   const horaAgora=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
+   const avisaJuliano=abertoSo&&!(isoSo===today()&&horaAgora>=18)
+   reply=next.dismissed&&recusaNenhum?'':avisaJuliano
+    ?`Entendi, era só para ${rotSo}. Vou ver com o Juliano se dá para te encaixar ${rotSo}; se der, te respondo por aqui.`
+    :`Entendi, era só para ${rotSo}. Quando precisar, é só me chamar por aqui que eu vejo um horário para você.`
+   if(avisaJuliano&&!next.dismissed){
+    const psS=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
+    if(psS)await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':psS},body:JSON.stringify({custom:{title:`Cliente quer só ${rotSo}`,body:`${next.name||contextFullName||'Cliente'} queria horário só ${rotSo} e recusou os outros dias. Se der para encaixar, responda no WhatsApp.`,url:'/admin-agenda.html?app=1',tag:`so-${diaSo}-${verifiedPhone||'site'}`}})}).catch(()=>{})
+   }
+   actions=[]
+   intent='other'
+   handoff=false
+   next.date=null;next.time=null;next.period=null
+   next.dismissed=true
+  }else if(recusaNenhum&&!recusaCurtaDaLista&&!temPendencia&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+   // "Nenhum" sem restrição anterior de dia: igual ao "não consigo" curto — pergunta o que serve, sem repetir a lista.
+   reply='Entendi. Qual dia e horário ficariam bons para você? Eu vejo se consigo.'
+   actions=[]
+   intent='other'
+   handoff=false
+   next.date=null;next.time=null;next.period=null
+  }else if(diaRecusado&&intent!=='cancel'&&intent!=='reschedule'){
    const rotulo=({hoje:'hoje',amanha:'amanhã',terca:'terça',sabado:'sábado'} as Record<string,string>)[diaRecusado]||diaRecusado
    reply=`Entendi, ${rotulo} não dá para você. Qual outro dia fica melhor? Eu vejo os horários e já deixo reservado.`
    actions=[]
@@ -4476,7 +4520,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // "mas obrigado" fecha a conversa.
   const adiouComMotivo=!temPedidoNovo&&!temPendencia&&q.length<=140&&!/\?/.test(q)&&(adiou||postponeSignal(q)||/\bvou (ver|falar|conversar) com (a |o |minha |meu )/.test(q))
   const dispensaPura=adiouComMotivo||q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\bmas obrigad|\bagradeco mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
-  if(!diaRecusado&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
+  if(!diaRecusado&&!diaSo&&!recusaNenhum&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
    reply=next.dismissed?'':(adiou||adiouComMotivo?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar ${diaDoPedidoFalado} às ${pedidoDeHoje}; se der, te respondo por aqui.`:recusaCurtaDaLista?'Entendi. Qual horário ficaria bom para você? Eu vejo se consigo, ou te ofereço outro dia.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
    if(pedidoDeHoje&&!next.dismissed){
     const psE=Deno.env.get('PUSH_WEBHOOK_SECRET')?.trim()
@@ -4582,6 +4626,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   else if(encerradoPeloExpediente||(fimBloqueio&&agoraHM>=fimBloqueio))aviso='Por hoje já encerramos o atendimento.'
   else aviso=/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)?`Hoje atendemos até ${limiteTxt}.`:`Sim, hoje atendemos até ${limiteTxt}!`
   avisoAbertoHoje=aviso
+ }else if(/\bate q(ue)? horas?|que horas? .{0,12}(fecha|encerra)|fecha (a|as) que horas?|fica aberto ate/.test(normalizedQuestion)){
+  // v29.363.0 — caso Gui (segunda 16/11/2026, 19h57): "Amanhã até que horas atende?" ouviu "Consigo te atender
+  // amanhã sim! Você prefere de manhã ou à tarde?" — a pergunta ficou sem resposta. Outro dia citado (amanhã ou um
+  // dia da semana): diz o horário daquele dia, pelo dia da semana, e o resto da resposta segue.
+  const semanaA=weekdayDatesMentioned(normalizedQuestion,today())
+  const diaA=/\bamanh[ãa]\b/.test(normalizedQuestion)?addDaysISO(today(),1):(semanaA.length===1?semanaA[0]:'')
+  if(diaA){
+   const wdA=new Date(diaA+'T12:00:00-03:00').getUTCDay()
+   const limA=wdA===6?15:(wdA>=2&&wdA<=5?19:0)
+   const fA=diaFechadoInfo(diaA)
+   const rotA=diaA===addDaysISO(today(),1)?'Amanhã':emDiaCap(diaA)
+   avisoAbertoHoje=fA.fechado||!limA?`${rotA} não estamos abertos.`:`${rotA} atendemos até ${limA}h.`
+  }
  }
  // v29.43.0 — ADIAMENTO/DESISTENCIA (caso Bruno, 15/08, 11:28): depois de nao conseguir o
  // horario que queria, ele escreveu "Esse horário não consigo / Mas deixa, qlq coisa vou

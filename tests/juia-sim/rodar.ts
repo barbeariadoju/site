@@ -1902,5 +1902,33 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   } else console.log('  (134 pulado: fora do expediente ou perto do fechamento)')
 }
 
+// 135. v29.363.0 — caso Íthalo (segunda 16/11/2026, 12h04-13h02): "Tem vaga para hoje?" → hoje não abre, amanhã tenho.
+// "Era para hoje apenas" recebeu a MESMA oferta de amanhã; "Nenhum" recebeu "Consigo te atender amanhã sim!". Quem diz
+// que era só para aquele dia recusou a sugestão: aceita uma vez e encerra, sem reoferecer.
+{
+  const ofertaAmanha = 'Hoje a barbearia não abre (domingo e segunda a gente não abre). Voltamos ao trabalho amanhã e aí consigo te atender entre 08:30 e 17:30. Você prefere manhã, tarde ou final do dia?'
+  const hist = [{ role: 'user', content: 'Bom dia! Tem vaga para hoje?' }, { role: 'assistant', content: ofertaAmanha }]
+  const semReoferta = (r: string) => !/amanhã sim|\b\d{2}:\d{2}\b|manhã, tarde|manhã ou à tarde/i.test(r)
+  const r1 = await turno({ msg: 'Era para hoje apenas', history: hist, ai: { intent: 'availability', reply: 'Ok', updates: { date: dia1 } }, contexto: ctxCliente('Ithalo Teste') })
+  checar('135a "era para hoje apenas" depois da oferta de amanhã: encerra, sem reoferecer', /^Entendi, era só para hoje\./.test(r1.reply) && semReoferta(r1.reply) && r1.state?.dismissed === true, r1.reply)
+  const r2 = await turno({ msg: 'Nenhum', history: [...hist, { role: 'user', content: 'Era para hoje apenas' }, { role: 'assistant', content: ofertaAmanha }], ai: { intent: 'availability', reply: 'Ok', updates: { date: dia1 } }, contexto: ctxCliente('Ithalo Teste') })
+  checar('135b "Nenhum" depois de "só hoje": encerra, sem "amanhã sim"', /era só para hoje/.test(r2.reply) && semReoferta(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'só amanhã mesmo', history: [{ role: 'assistant', content: 'Amanhã não tenho mais vaga. Na quinta (19/11) tenho 08:30, 11:00 ou 15:00. Qual fica melhor?' }], ai: { intent: 'availability', reply: 'Ok' }, contexto: ctxCliente('Teste Amanha') })
+  checar('135c "só amanhã mesmo" depois da oferta de quinta: encerra', /^Entendi, era só para amanhã\./.test(r3.reply) && !/quinta|\d{2}:\d{2}/.test(r3.reply), r3.reply)
+  const r4 = await turno({ msg: 'nenhum desses', history: [{ role: 'assistant', content: 'Amanhã tenho 08:30, 11:30, 14:30 ou 17:30. Qual fica melhor?' }], ai: { intent: 'availability', reply: 'Ok', updates: { date: dia1 } }, contexto: ctxCliente('Teste Nenhum') })
+  checar('135d "nenhum desses" sem restrição de dia: pergunta o que serve, sem repetir a lista', /Qual dia e horário/.test(r4.reply) && !/\d{2}:\d{2}/.test(r4.reply), r4.reply)
+  const r5 = await turno({ msg: 'pode ser amanhã de manhã', history: hist, ai: { intent: 'availability', reply: 'Ok', updates: { date: dia1, period: 'morning' } }, contexto: ctxCliente('Teste Aceita'), vagas: { [dia1]: ['08:30', '09:15', '10:00'] } })
+  checar('135e aceitar a sugestão continua oferecendo normalmente', !/era só para/.test(r5.reply), r5.reply)
+}
+
+// 136. v29.363.0 — caso Gui (segunda 16/11/2026, 19h57): "Amanhã até que horas atende?" ficou sem resposta.
+{
+  const amanhaIso = new Date(new Date(hoje + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0, 10)
+  const amanhaWd = new Date(amanhaIso + 'T12:00:00Z').getUTCDay()
+  const r = await turno({ msg: 'Amanhã até que horas atende ?', ai: { intent: 'availability', reply: 'Consigo te atender amanhã sim!', updates: { date: dia1 } }, contexto: ctxCliente('Gui Teste') })
+  const esperado = amanhaWd === 0 || amanhaWd === 1 ? /Amanhã não estamos abertos/ : new RegExp(`Amanhã atendemos até ${amanhaWd === 6 ? 15 : 19}h`)
+  checar('136 "amanhã até que horas?" responde o horário de amanhã', esperado.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

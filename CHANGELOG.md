@@ -1,3 +1,24 @@
+## 29.363.0 — JuIA: "era só para hoje" e "nenhum" são recusa da sugestão (caso Íthalo, 16/11)
+
+Pedido do Juliano no plano do dia de 17/11: "sempre acontece isso e é muito chato". Revisão das conversas de 14/11
+15h a 17/11 10h (13 clientes com troca de mensagem).
+
+- **Caso Íthalo (segunda 16/11, 12h04-13h02):** "Tem vaga para hoje?" → hoje não abre, amanhã tenho. "Era para hoje
+  apenas" recebeu a MESMA oferta de amanhã, palavra por palavra. "Nenhum" recebeu "Consigo te atender amanhã sim!".
+  A JuIA só reconhecia recusa com "não dá / não consigo / não posso"; quem restringe ("só hoje", "apenas amanhã",
+  "era pra hoje") ou responde "nenhum" passava como pedido e ganhava a oferta de novo.
+- **Correção (`ju-ia-site`):** cliente que diz que era SÓ para um dia, logo depois de a JuIA sugerir outro, recebe
+  "Entendi, era só para hoje. Quando precisar, é só me chamar por aqui…" e a conversa encerra, sem reoferta. Se o
+  dia é aberto (hoje antes das 18h, ou amanhã), a resposta é "vou ver com o Juliano se dá para te encaixar" e ele
+  recebe o push — encaixe é decisão dele. "Nenhum" depois de "só hoje" encerra igual; "nenhum desses" sem
+  restrição pergunta qual dia e horário servem, sem repetir a lista.
+- **Caso Gui (16/11, 19h57):** "Amanhã até que horas atende?" ouviu "Consigo te atender amanhã sim! Manhã ou
+  tarde?", sem resposta. A pergunta de até que horas só era respondida para hoje; agora vale para amanhã e para
+  um dia da semana citado ("Amanhã atendemos até 19h.").
+- **Visto e não mexido:** Rodrigo (17/11) pediu remarcar para hoje 18:00; a JuIA pediu "sim" antes de olhar a
+  agenda e só depois disse que não tinha. O Juliano assumiu na hora. Fica registrado.
+- **Testes:** simulador com os cenários 135 (5 checagens) e 136: 349 ok, 0 falhas (terça).
+
 ## 29.362.0 — JuIA: bloqueio manual até o fim do dia é o horário de fechamento que ela informa (14/11)
 
 Decisão do Juliano no plano do dia ("Sim, usa o bloqueio"), em cima do que ficou registrado na 29.361.0.
