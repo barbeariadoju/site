@@ -1,6 +1,6 @@
 {
-  "_comment": "Coordenadas no quadro original 2304x1296. chair = assento+encosto (centro da caixa da pessoa sentada cai aqui). Espelho (reflexo) fica fora.",
+  "_comment": "Coordenadas no quadro original 2304x1296. Camera nova (17/11/2026, Xiongmai GK7201 no alto, de frente pra bancada): a cadeira fica embaixo no centro. chair = onde cai o centro da caixa da pessoa SENTADA. O espelho (reflexo, metade de cima) e quem esta em pe ao lado ficam fora.",
   "frame_w": 2304, "frame_h": 1296,
-  "chair": [[560, 760], [1180, 760], [1180, 1296], [560, 1296]],
-  "seat_center_y_min": 800
+  "chair": [[960, 870], [1590, 870], [1590, 1296], [960, 1296]],
+  "seat_center_y_min": 870
 }

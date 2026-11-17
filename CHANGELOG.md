@@ -1,3 +1,17 @@
+## 29.364.0 — Câmera nova da cadeira ligada ao contador (17/11)
+
+A câmera antiga queimou na queda de luz de 29/10 e o contador ficou rodando sem imagem desde então (o dia passou a abrir
+pelo Concluir, v29.344.0). O Juliano comprou outra em 17/11: Xiongmai de novo (app iCSee), com vídeo local (RTSP) e ONVIF
+liberados, mesmo caminho `/onvif2`. O `chair_counter.py` não precisou mudar.
+
+- **Enquadramento novo:** a câmera ficou no alto, de frente para a bancada. A cadeira está embaixo, no centro, e o espelho
+  ocupa a metade de cima. `zone.json` refeito: só conta quem tem o centro do corpo no assento (x 960-1590, y 870+ no
+  quadro 2304x1296). O reflexo no espelho e quem está em pé ao lado da cadeira ficam fora. Falta validar com um
+  atendimento de verdade (barbeiro em pé atrás do cliente pode pedir ajuste na zona).
+- **Endereço e acesso da câmera ficam fora do repo**, no `.env` do notebook, como sempre. A câmera veio de fábrica sem
+  senha: o Juliano vai pôr senha pelo iCSee, e o `.env` do notebook precisa ser atualizado junto, senão o contador perde
+  a imagem.
+
 ## 29.363.0 — JuIA: "era só para hoje" e "nenhum" são recusa da sugestão (caso Íthalo, 16/11)
 
 Pedido do Juliano no plano do dia de 17/11: "sempre acontece isso e é muito chato". Revisão das conversas de 14/11
