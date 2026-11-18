@@ -271,9 +271,31 @@ import { applyServiceRule, normalizeServiceSet } from './assets/js/service-rules
   function applyServicoParam(){
     const alvo = slugificar((new URLSearchParams(location.search).get('servico') || '').trim());
     if(!alvo) return;
-    const btn = [...document.querySelectorAll('.service-btn')]
-      .find(b => slugificar(b.dataset.name) === alvo);
-    if(!btn) return;
+    const botoes = [...document.querySelectorAll('.service-btn')];
+    let btn = botoes.find(b => slugificar(b.dataset.name) === alvo);
+    if(!btn){
+      // v29.365.0 — o link do comprovante manda o atendimento inteiro num slug só
+      // ("corte-barba-express-sobrancelha-masculina"). Sem botão igual, quebra o slug nos
+      // serviços que existem, do nome mais longo para o mais curto ("corte-de-cabelo-infantil"
+      // antes de "corte-de-cabelo"). Só aplica se o slug inteiro for consumido.
+      const porTamanho = [...botoes].sort((a, b) => slugificar(b.dataset.name).length - slugificar(a.dataset.name).length);
+      const partes = [];
+      let resto = alvo;
+      while(resto){
+        const achou = porTamanho.find(b => {
+          const s = slugificar(b.dataset.name);
+          return resto === s || resto.startsWith(s + '-');
+        });
+        if(!achou) return;
+        partes.push(achou);
+        resto = resto.slice(slugificar(achou.dataset.name).length).replace(/^-/, '');
+      }
+      // Idempotente (recarga do service worker): só adiciona o que ainda não está no carrinho.
+      partes.forEach(b => { if(!selectedServices.has(b.dataset.name)) addService(b); });
+      showCart();
+      fire('service_preselecionado', { item_name: partes.map(b => b.dataset.name).join(' + '), value: partes.reduce((t, b) => t + Number(b.dataset.price || 0), 0) });
+      return;
+    }
     // Idempotente de propósito: o service worker recarrega a página no
     // 'controllerchange' (ver script.js) e o carrinho persiste em storage —
     // sem esta guarda, a segunda carga somava o mesmo serviço de novo e o

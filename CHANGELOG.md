@@ -1,3 +1,51 @@
+## 29.365.0 — Comprovante enxuto com link do próximo agendamento + 4 correções da JuIA (18/11)
+
+**Comprovante (pedido do Juliano, 18/11: "vamos enxugar esta msg").** O que motivou: o comprovante do Henrique
+(18/11), que usou o prêmio de fidelidade do amigo Marcello, saiu dizendo "é o nosso agradecimento pelos seus 10
+primeiros atendimentos". A frase era longa, falava de um programa encerrado e, nesse caso, era falsa.
+
+- Sai: "à Barbearia do Ju" na abertura, a frase dos 10 atendimentos (fica só "Barba Express de hoje foi por nossa
+  conta."), o Subtotal quando há um item só, a linha "Nada a pagar — prêmio…" (o Total R$ 0,00 já diz) e o
+  "Digite 1 / Digite 2" em duas linhas (vira `*1* Satisfeito · *2* Insatisfeito`). Cabeçalho numa linha só e a
+  forma de pagamento na linha do total. "Prêmio do cartão fidelidade" vira "Prêmio fidelidade".
+- **Entra o link do próximo agendamento, em todo comprovante, antes da pesquisa** (ideia do Juliano). Sem pergunta, de
+  propósito: "quer remarcar?" no Concluir não funciona, o cliente responde "eu entro em contato". O link fica na
+  conversa e ele toca quando quiser. Abre com o serviço de hoje já no carrinho (`?servico=` com o slug do atendimento
+  inteiro) e com `utm_medium=comprovante` para medir no GA4 se converte. Sai sem a prévia do link (`linkPreview:false`),
+  senão o cartão com foto desfaria o enxugamento. Substitui o convite que só o walk-in recebia.
+- Risco pesado contra a recomendação óbvia de não pôr link no WhatsApp depois da restrição de 01/10: vai só para quem
+  acabou de ser atendido, um por vez, e o aviso de chegada já manda link do Maps todo dia. Acompanhar.
+- **Site:** `?servico=` agora entende o atendimento composto ("corte-barba-express-sobrancelha-masculina"): sem botão
+  igual, quebra o slug nos serviços que existem, do mais longo para o mais curto. Idempotente na recarga do service
+  worker (conferido no navegador: R$ 100 antes e depois do reload). `service-cart-v22-5.js?v=29.365.0`.
+
+**JuIA — revisão das conversas de 17/11 10h a 18/11 12h (24 clientes com troca de mensagem).**
+
+- **Caso João (17/11, 14h03):** "As 15h40" e, dez segundos depois, "Seria para o meu irmão, tudo bem?". No segundo
+  turno o estado já tinha o nome dele, então o código não perguntou o nome do irmão; o modelo perguntou sozinho, sem
+  marcar no estado, e o nome do irmão virou "Se quiser marcar um horário…". **O agendamento se perdeu.** Agora o
+  nome que estava no estado é descartado quando o horário é para outra pessoa, e qualquer resposta que peça o nome
+  (do código ou do modelo) deixa a pergunta marcada. Cenários 137a-c.
+- **Caso Raphael (17/11, 11h19, `whatsapp-webhook`):** respondeu "Dia 19" ao "Seu horário ainda não ficou reservado" e
+  ouviu "Entendido, muito obrigado pelo retorno!" — a pesquisa de motivo pendente leu o "dia" como motivo 1. Dia com
+  número, data, dia da semana, hoje/amanhã ou hora é pedido de horário: a pesquisa morre em silêncio e a JuIA atende.
+- **Caso Jessica (17/11, 18h44 e 18h50):** "Nossa, não tem mais cedo?" saiu "Mais cedo não tenho… 11:50. Quer incluir
+  mais alguma coisa? 1 — Sobrancelha…", como se ela tivesse aceitado; agora sai "Quer que eu reserve, ou prefere ver
+  outro dia?". E "Aguardo o retorno", depois de "Vou esperar o Ju responder", recebeu outra lista de horários: mensagem
+  curta de espera de quem disse que espera o Juliano não tem resposta da JuIA. Cenários 139, 140a-b.
+- **Caso Marcel (17/11, 13h29):** trocar Barba Express por Barba na navalha às 18:45 não cabia; a JuIA só disse "já
+  chamei o Juliano", e ele teve de entrar na conversa para passar para 18:30, que estava livre. Agora a recusa procura,
+  no mesmo dia, o horário mais próximo (até 30 min) em que o serviço novo cabe e oferece; o "sim" muda horário e
+  serviço e manda push. Sem horário perto, continua chamando o Juliano. Cenários 138a-d.
+- Visto, não mexido: Débora (18/11) mandou duas mídias depois de perguntar "corte e sombras"; a JuIA respondeu o preço
+  e perguntou se era sobrancelha, sem ver as mídias.
+
+Simulador: 360 ok, 0 falhas. `npm test`: 442 unit + 98 e2e.
+
+**Também em 18/11 (banco, sem código):** prêmio de fidelidade do Marcello baixado no atendimento do Henrique, a
+pedido do Juliano — `loyalty_rewards` → redeemed com o `booking_id` do Henrique e evento `redeem` no histórico do
+Marcello explicando.
+
 ## 29.364.0 — Câmera nova da cadeira ligada ao contador (17/11)
 
 A câmera antiga queimou na queda de luz de 29/10 e o contador ficou rodando sem imagem desde então (o dia passou a abrir

@@ -206,12 +206,16 @@ export const montarCupom = (d: DadosComprovante) => {
   const sinal = d.cortesia ? 0 : Math.min(Math.max(0, Number(d.sinalPago || 0)), total)
 
   const totais: string[] = []
-  if (desconto > 0 || descontoManual > 0 || d.cortesia) totais.push(`Subtotal: ${money(bruto)}`)
+  // v29.365.0 (Juliano, 18/11/2026: "enxuga o que der") — com um item só, o Subtotal repete a linha de cima.
+  const variosItens = itens.length > 1
+  if ((desconto > 0 || descontoManual > 0 || d.cortesia) && variosItens) totais.push(`Subtotal: ${money(bruto)}`)
   if (desconto > 0 && !d.cortesia) {
     // v29.138.0 — a linha diz qual serviço foi o prêmio quando isso importa (combo). "Prêmio"
     // e não "desconto": o cliente trocou 10 carimbos por aquilo, não ganhou abatimento.
+    // v29.365.0 — o serviço só vai entre parênteses quando não é o próprio item (combo).
     const qual = String(d.fidelidadeServico || '').trim()
-    totais.push(`Prêmio do cartão fidelidade${qual ? ` (${qual})` : ''}: -${money(desconto)}`)
+    const qualDiferente = qual && qual !== String(d.servicoNome || '').trim()
+    totais.push(`Prêmio fidelidade${qualDiferente ? ` (${qual})` : ''}: -${money(desconto)}`)
   }
   // O motivo do desconto NÃO sai: é anotação interna, como o da cortesia. Exceção (v29.209.0):
   // presente de aniversário e indicação saem com o nome, porque são benefícios do cliente.
@@ -219,6 +223,7 @@ export const montarCupom = (d: DadosComprovante) => {
   if (d.cortesia) totais.push(`Cortesia (por conta da casa): -${money(bruto)}`)
   if (credito > 0 && totais[0]?.startsWith('Subtotal')) totais[0] = `Subtotal: ${money(bruto + credito)}`
   totais.push(`*Total: ${money(total)}*`)
+  const idxTotal = totais.length - 1
 
   // Com o serviço no prêmio, "fidelidade" não é forma de pagamento do que sobrou: o que
   // ainda foi pago (produto, ou o resto do combo) tem a forma dele; o serviço premiado, nenhuma.
@@ -235,7 +240,7 @@ export const montarCupom = (d: DadosComprovante) => {
     // dela. O que ele precisa saber é que não há nada a pagar.
     totais.push(credito > 0 ? `Serviço por conta da casa; crédito de ${money(credito)} pago${metodoLabel(d.pagamentoServico) ? ` ${metodoLabel(d.pagamentoServico)}` : ''}` : 'Nada a pagar — cortesia da casa')
   } else if (total <= 0 && desconto > 0) {
-    totais.push('Nada a pagar — prêmio do cartão fidelidade')
+    // v29.365.0 — "Nada a pagar — prêmio…" saiu: o Total R$ 0,00 e a linha do prêmio já dizem isso.
   } else if (total <= 0 && descontoManual > 0) {
     totais.push('Nada a pagar')
   } else if (pagoComFidelidade && produtos.length > 0) {
@@ -244,7 +249,8 @@ export const montarCupom = (d: DadosComprovante) => {
   } else if (produtos.length > 0 && pagServico && pagProdutos && pagProdutos !== pagServico) {
     totais.push(`Pago: serviço ${pagServico}, produtos ${pagProdutos}`)
   } else if (pagServico) {
-    totais.push(`Pago ${pagServico}`)
+    // v29.365.0 — forma de pagamento na mesma linha do total: uma linha a menos.
+    totais[idxTotal] = `${totais[idxTotal]}, pago ${pagServico}`
   }
   // A caixinha fica FORA do total (é do barbeiro, não é faturamento), mas SAI no documento:
   // o cliente entregou aquele dinheiro e a conta dele em casa tem que fechar.
@@ -255,9 +261,7 @@ export const montarCupom = (d: DadosComprovante) => {
   const quando = [dia, d.hora ? `às ${d.hora}` : ''].filter(Boolean).join(' ')
 
   return [
-    '*COMPROVANTE DE ATENDIMENTO*',
-    `Nº ${numeroComprovante(d.bookingId, d.data)}${quando ? ` — ${quando}` : ''}`,
-    '',
+    `*COMPROVANTE* Nº ${numeroComprovante(d.bookingId, d.data)}${quando ? ` — ${quando}` : ''}`,
     ...itens,
     '',
     ...totais,
@@ -294,21 +298,38 @@ export const montarMensagemComprovante = (d: DadosComprovante) => {
   // Quem usa o prêmio está usando o último; a frase "o que você fez hoje já conta pro próximo" saiu.
   const usouPremio = !d.cortesia && (Number(d.descontoFidelidade || 0) > 0 || String(d.pagamentoServico || '').toLowerCase() === 'fidelidade')
   const qualPremio = String(d.fidelidadeServico || '').trim()
+  // v29.365.0 (Juliano, 18/11/2026) — mensagem enxugada. Sai "à Barbearia do Ju" (ele acabou de sair daí) e
+  // sai a frase dos "10 primeiros atendimentos": longa, falava do programa encerrado e saiu ERRADA no caso
+  // Henrique (18/11), que usou o prêmio do amigo Marcello. Fica só o fato: o serviço foi por nossa conta.
   const agradecePremio = usouPremio
-    ? `${qualPremio ? `${qualPremio} de hoje foi` : 'O atendimento de hoje foi'} por nossa conta: é o nosso agradecimento pelos seus 10 primeiros atendimentos, uma recompensa oferecida uma única vez por cliente. Obrigado por ser cliente de casa, ${primeiro}.`
+    ? ` ${qualPremio || 'O atendimento'} de hoje foi por nossa conta.`
     : ''
   return [
-    `Olá, ${primeiro}. Muito obrigado pela visita à Barbearia do Ju.`,
-    ...(agradecePremio ? [agradecePremio] : []),
-    ...(caixinha > 0 ? [`E um agradecimento especial pela caixinha, ${primeiro}. É um gesto que não passa despercebido e que eu recebo com muita gratidão.`] : []),
+    `Olá, ${primeiro}. Obrigado pela visita.${agradecePremio}`,
+    ...(caixinha > 0 ? [`E obrigado pela caixinha, ${primeiro}. Recebo com muita gratidão.`] : []),
     '',
     montarCupom(d),
-    ...(d.balcao ? ['', 'Da próxima vez, se quiser, é só me chamar aqui que eu já deixo seu horário reservado.'] : []),
+    '',
+    // v29.365.0 (ideia do Juliano, 18/11/2026) — o link do próximo agendamento vai em TODO comprovante, sem
+    // pergunta: "quer remarcar?" no Concluir não funciona (o cliente responde "eu entro em contato"), o link
+    // fica na conversa e ele toca quando quiser. Abre com o serviço de hoje já escolhido e com UTM para medir.
+    'Para agendar o próximo, é só tocar aqui:',
+    linkProximoAgendamento(d.servicoNome),
     '',
     'Como foi seu atendimento?',
-    'Digite *1* para Satisfeito',
-    'Digite *2* para Insatisfeito',
+    '*1* Satisfeito · *2* Insatisfeito',
   ].join('\n')
+}
+
+/** Slug igual ao do site (service-cart-v22-5.js): sem acento, minúsculo, hífen. */
+export const slugServico = (texto = '') => String(texto || '')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+export const linkProximoAgendamento = (servicoNome?: string) => {
+  const slug = slugServico(servicoNome || '')
+  const servico = slug && slug !== 'venda-de-produtos' ? `servico=${slug}&` : ''
+  return `https://www.barbeariadoju.com.br/agendar/?${servico}utm_source=whatsapp&utm_medium=comprovante&utm_campaign=proximo_horario`
 }
 
 /**

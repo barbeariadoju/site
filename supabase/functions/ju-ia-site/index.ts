@@ -960,6 +960,20 @@ Deno.serve(async req=>{
  // como se fosse o texto do cliente, seguindo pro fluxo normal. Só dispara quando a
  // mensagem é BASICAMENTE o link (pouco texto sobrando), pra não atrapalhar uma mensagem
  // normal que só cita um link de passagem. Vale pros dois canais (site e WhatsApp).
+ // v29.365.0 — caso Jessica (17/11/2026, 18h46-18h50): "Vou esperar o Ju responder, obrigada" e, 4 minutos depois,
+ // "Aguardo o retorno" — que recebeu outra lista de horários. Quem disse que espera o Juliano está esperando o
+ // Juliano: mensagem curta de espera não tem resposta da JuIA (ele vê na conversa).
+ {
+  const qEsp=normalize(message).trim()
+  const esperaJu=/\b(esperar|aguardar|aguardo|espero|esperando|aguardando)\b[^?]{0,20}\b(ju|juliano|ele)\b/
+  const userAntes=[...(Array.isArray(body.history)?body.history:[])].filter((h:any)=>h&&h.role==='user').slice(-3).map((h:any)=>normalize(String(h.content||'')))
+  const disseQueEspera=esperaJu.test(qEsp)||userAntes.some((t:string)=>esperaJu.test(t))
+  const soEspera=qEsp.length<=40&&/^(ok[,.! ]*)?(eu )?(aguardo|fico no aguardo|vou aguardar|aguardando|no aguardo|espero|vou esperar|esperando)\b[^?]*$/.test(qEsp)
+  if(chamadorBackend&&soEspera&&disseQueEspera){
+   await supabase.from('site_chat_messages').insert([{session_id:sessionId,role:'user',content:message,state}]).then(()=>{})
+   return respond({reply:'',intent:'other',state,actions:[],handoff:false})
+  }
+ }
  const linkMatch=message.match(/(https?:\/\/\S+|www\.\S+)/i)
  if(linkMatch&&message.replace(/https?:\/\/\S+|www\.\S+/gi,'').trim().length<15){
   const rawLink=/^https?:\/\//i.test(linkMatch[0])?linkMatch[0]:`https://${linkMatch[0]}`
@@ -1596,6 +1610,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    notaOutraPessoa=parenteO?`Certo, o horário é para ${parenteO[1]==='minha'?'a sua':'o seu'} ${nomeParente}. `:'Certo, o horário é para outra pessoa. '
   }
   next.other_person=true
+  // v29.365.0 — caso João (17/11/2026, 14h03): "As 15h40" foi um turno e "Seria para o meu irmão, tudo bem?" outro. No
+  // segundo, o estado já tinha o nome DELE (do primeiro turno), então a pergunta do nome não saiu pelo código; o modelo
+  // perguntou por conta própria, sem marcar a pergunta no estado, e o nome do irmão virou "Se quiser marcar um
+  // horário…". O agendamento se perdeu. O nome que estava no estado é de quem chama; o de quem senta na cadeira só vale
+  // se veio NESTA mensagem.
+  if(!String(ai.updates?.name||'').trim())delete next.name
   // v29.218.0 — caso Josué (22/09/2026, 21h00): o convite pós-atendimento deixou "Corte de cabelo +
   // Sobrancelha" (o dele) no estado, ele pediu "horário amanhã para meu filho" e saiu "Corte infantil
   // + Corte + Sobrancelha (100 min)". O serviço de quem vai sentar na cadeira é o que ESTA mensagem
@@ -3531,6 +3551,33 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.334.0 — caso Raul: "só cabelo e sobrancelha, pode mandar chave pix" pede a inclusão E a chave. A chave sai
  // depois do "sim", já com o valor novo (pixAposTroca), nunca antes com o valor velho.
  let pixAposTroca:any=null
+ // v29.365.0 — caso Marcel (17/11/2026, 13h29): a troca para Barba na navalha não cabia às 18:45, mas cabia às 18:30 (livre).
+ // A JuIA disse só "não cabe… já chamei o Juliano", e ele teve de entrar na conversa para fazer a mudança. Agora a recusa
+ // já oferece o horário mais próximo em que o serviço novo cabe; o "sim" muda o horário e o serviço juntos.
+ if(state?.pending_swap_move&&verifiedPhone){
+  const mv=state.pending_swap_move
+  delete next.pending_swap_move
+  if(simpleNo&&!simpleYes){
+   reply=`Tudo bem, fica como estava: ${String(mv.old_service||'seu serviço')} às ${mv.old_time}. Qualquer coisa, é só me chamar por aqui.`
+   intent='other';handoff=false;actions=[]
+  }else if(simpleYes&&!simpleNo){
+   const {data:movRows,error:movErr}=await supabase.rpc('phone_reschedule_booking',{p_phone:verifiedPhone,p_booking_id:mv.booking_id,p_new_booking_date:mv.date,p_new_start_time:mv.time,p_extend_close_minutes:0})
+   const movido=Array.isArray(movRows)?movRows[0]:movRows
+   const {data:trocRows,error:trocErr}=movErr||!movido?{data:null,error:movErr||'sem remarcação'}:await supabase.rpc('phone_change_booking_service',{p_phone:verifiedPhone,p_booking_id:mv.booking_id,p_service_name:mv.service,p_service_price:mv.price,p_duration_minutes:mv.duration})
+   const trocado=Array.isArray(trocRows)?trocRows[0]:trocRows
+   if(movErr||!movido||trocErr||!trocado){
+    reply=`Não consegui fazer a mudança agora. Seu horário continua ${movido?`às ${mv.time}`:`às ${mv.old_time}`}${trocado?'':` com ${mv.old_service}`}, e já chamei o Juliano para ajustar.`
+    handoff=true
+   }else{
+    reply=`Prontinho! Seu horário ${emDia(mv.date)} passou para ${mv.time}, com ${mv.service} (${money(mv.price)}).`
+    handoff=false
+    const pushSecretM=Deno.env.get('PUSH_WEBHOOK_SECRET'),supabaseUrlM=Deno.env.get('SUPABASE_URL')
+    if(pushSecretM&&supabaseUrlM)await fetch(`${supabaseUrlM}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretM},body:JSON.stringify({custom:{title:'🔧 Horário e serviço trocados pela JuIA',body:`${customerFirstName||''}\n${formatDateBR(mv.date)}: ${mv.old_time} → ${mv.time}\nDe ${mv.old_service} para ${mv.service}`,url:'/admin-agenda.html?app=1',tag:`booking-swap-move-${mv.booking_id}`}})}).catch(()=>{})
+   }
+   intent='other';actions=[]
+   next.pending_change_service_booking_id=null;next.pending_change_service_new_name=null;next.pending_change_service_composed=null
+  }
+ }
  if(intent==='change_service'){
   const desiredFresh=swapTailService||(ai.intent==='change_service'?chosen[0]:null)||null
   // v29.352.0 — caso João (08/11/2026, 08h09): escolheu "18:00" e, dez segundos depois, escreveu "Cabelo e barba". A
@@ -3566,8 +3613,26 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // confundiu" e ao pedido de falar com o Ju — e o Juliano ajustou na mão. Falha na troca: diz o que houve, mantém o
       // horário como está e chama o Juliano, que pode reorganizar a agenda.
       const horaT=target?String(target.start_time).slice(0,5):''
-      reply=`${horaT?`Às ${horaT}`:'Nesse horário'} não cabe ${desired.name} (cerca de ${desired.duration} min) sem encostar no próximo cliente. Seu horário continua ${target?.service_name?`com ${target.service_name}`:'como está'}, e já chamei o Juliano para ver se ele consegue ajustar.`
-      handoff=true
+      // v29.365.0 — caso Marcel: procura, no mesmo dia, o horário mais próximo (até 30 min antes ou depois) em que o
+      // serviço novo cabe, sem contar o próprio agendamento. Achou: oferece mudar os dois. Não achou: chama o Juliano.
+      let alternativa=''
+      if(target&&horaT){
+       try{
+        const {data:slotsAlt}=await supabase.rpc('get_available_slots_excluding',{p_date:target.booking_date,p_duration_minutes:desired.duration,p_exclude_booking_id:target.id})
+        const minT=(h:string)=>Number(h.slice(0,2))*60+Number(h.slice(3,5))
+        alternativa=(slotsAlt||[]).map((x:any)=>String(x.slot_time).slice(0,5)).filter((h:string)=>h!==horaT&&Math.abs(minT(h)-minT(horaT))<=30)
+         .sort((a:string,b:string)=>Math.abs(minT(a)-minT(horaT))-Math.abs(minT(b)-minT(horaT))||minT(a)-minT(b))[0]||''
+       }catch(altErr){console.error('[ju-ia-site] troca: horário alternativo',altErr)}
+      }
+      if(alternativa){
+       next.pending_swap_move={booking_id:target.id,date:target.booking_date,time:alternativa,old_time:horaT,old_service:target.service_name,service:desired.name,price:desired.price,duration:desired.duration}
+       reply=`Às ${horaT} não cabe ${desired.name} (cerca de ${desired.duration} min) sem encostar no próximo cliente. Às ${alternativa} cabe: quer que eu passe seu horário para ${alternativa}, já com ${desired.name} (${money(desired.price)})? Responda sim ou não.`
+       actions=[{label:`Sim, ${alternativa}`,message:'Sim'},{label:'Não, manter',message:'Não'}]
+       handoff=false
+      }else{
+       reply=`${horaT?`Às ${horaT}`:'Nesse horário'} não cabe ${desired.name} (cerca de ${desired.duration} min) sem encostar no próximo cliente. Seu horário continua ${target?.service_name?`com ${target.service_name}`:'como está'}, e já chamei o Juliano para ver se ele consegue ajustar.`
+       handoff=true
+      }
       next.pending_change_service_new_name=null;next.pending_change_service_composed=null
      }else{
       reply=`Prontinho! Troquei o serviço do seu agendamento de ${formatDateBR(changed.booking_date)} às ${String(changed.start_time).slice(0,5)} para ${changed.service_name} (${money(changed.service_price)}).`
@@ -6587,6 +6652,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // simulador pegou: sem o corte suposto do histórico, cliente antigo passou a cair nesse texto).
  if(/\bmais cedo\b|\bantes (disso|desse|dessa)\b/.test(normalizedQuestion)&&/\?/.test(String(message||''))&&/Sim[,!]/.test(reply)&&/está livre/.test(reply)){
   reply=reply.replace(/^(.*?)Sim[,!]\s*(?:✅\s*)?(.+?) às (\d\d:\d\d) está livre/s,(_m,antes,dia,hora)=>`${antes}Mais cedo não tenho: ${dia} o primeiro horário é ${hora}`)
+  // v29.365.0 — caso Jessica (17/11/2026, 18h44): "Nossa, não tem mais cedo?" saiu "Mais cedo não tenho… o primeiro
+  // horário é 11:50. Quer incluir mais alguma coisa? 1 — Sobrancelha…" — a oferta de complementos, que só cabe depois
+  // do sim, foi junto, como se ela tivesse aceitado. Pergunta não é aceite: tira a oferta e pergunta se reserva.
+  if(/Quer incluir mais alguma coisa\?/.test(reply)){
+   reply=reply.replace(/\s*Quer incluir mais alguma coisa\?[\s\S]*$/,'')+' Quer que eu reserve, ou prefere ver outro dia?'
+   delete next.upsell_offer_options;delete next.upsell_offer_done;delete next.upsell_services_done;delete next.upsell_products_done
+   actions=[]
+  }
  }
  // v29.329.0 (caso Venilson): "seu horário está garantido. Pode vir com tranquilidade" saiu do MODELO para quem não
  // tinha horário nenhum (o das 09:00 já era falta). Promessa de horário só com horário de verdade na agenda.
@@ -6740,6 +6813,9 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
   reply=barbeariaAbertaAgora()?'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder. 🙏':'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar. 🙏'
   intent='handoff';handoff=true;actions=[]
  }
+ // v29.365.0 — caso João (17/11/2026): horário pra outra pessoa, sem o nome dela, e a resposta (do código ou do
+ // modelo) pede o nome: a pergunta fica marcada no estado, para a próxima mensagem (só o nome) fechar a reserva.
+ if(next.other_person&&!next.name&&!next.pending_other_name&&!handoff&&/\bnome\b[^?]*\?/i.test(String(reply||'')))next.pending_other_name=true
  // v29.141.0 — registro único: grava qual pergunta ficou aberta AGORA. A que nasceu neste
  // turno vence; sem pergunta nova, a última continua se ainda estiver aberta; sem nenhuma
  // aberta, o registro zera. O Pix é a de menor prioridade (é oferta passiva, não pergunta).

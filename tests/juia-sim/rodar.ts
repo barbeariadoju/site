@@ -109,6 +109,7 @@ const turno = async (c: Cenario) => {
     create_public_booking_v15: () => (c.reservaErro ? { data: null, error: { message: c.reservaErro } } : { data: 'bk-novo', error: null }),
     whatsapp_cancel_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: dia1, start_time: '08:00:00', service_name: c.cancelado || 'Corte de cabelo' }], error: null }),
     phone_change_booking_service: (a: any) => (c as any).rpcFalha === 'phone_change_booking_service' ? { data: [], error: null } : (() => { const b: any = (c.futuros || []).find((x: any) => x.id === a.p_booking_id) || {}; return { data: [{ ...b, id: a.p_booking_id, service_name: a.p_service_name, service_price: a.p_service_price }], error: null } })(),
+    phone_reschedule_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: a.p_new_booking_date, start_time: a.p_new_start_time + ':00' }], error: null }),
     waitlist_matches_for_slot: () => [],
     sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
     encaixes_possiveis: () => c.buracos || [],
@@ -1928,6 +1929,61 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const r = await turno({ msg: 'Amanhã até que horas atende ?', ai: { intent: 'availability', reply: 'Consigo te atender amanhã sim!', updates: { date: dia1 } }, contexto: ctxCliente('Gui Teste') })
   const esperado = amanhaWd === 0 || amanhaWd === 1 ? /Amanhã não estamos abertos/ : new RegExp(`Amanhã atendemos até ${amanhaWd === 6 ? 15 : 19}h`)
   checar('136 "amanhã até que horas?" responde o horário de amanhã', esperado.test(r.reply), r.reply)
+}
+
+// 137. v29.365.0 — caso João (terça 17/11/2026, 14h03): escolheu 15h40 e emendou "Seria para o meu irmão, tudo bem?".
+// O modelo perguntou o nome completo por conta própria; o nome do irmão chegou sem a pergunta no estado
+// e virou "Se quiser marcar um horário… é só me dizer". O agendamento se perdeu.
+{
+  const oferta = 'Hoje, no período da tarde, tenho horários entre 15:40 e 17:30. Alguns exemplos: 15:40, 16:00, 16:30, 17:00, 17:30. Qual horário fica melhor pra você?'
+  const r1 = await turno({ msg: 'As 15h40\nSeria para o meu irmão, tudo bem?', history: [{ role: 'user', content: 'Teria agenda para hoje à tarde?' }, { role: 'assistant', content: oferta }],
+    ai: { intent: 'other', reply: 'Tudo bem. O atendimento será para seu irmão, com corte de cabelo hoje às 15h40. Qual é o nome completo dele para eu deixar a reserva no nome correto?', updates: { date: hoje, time: '15:40', services: ['Corte de cabelo'] } },
+    contexto: ctxCliente('Joao Teste'), vagas: { [hoje]: ['15:40', '16:00'] } })
+  checar('137a pra o irmão: não reserva no nome de quem chama', !reservou(r1), r1.reply)
+  checar('137a pergunta o nome e guarda a pergunta no estado', r1.state?.pending_other_name === true, { reply: r1.reply, state: r1.state })
+  const r2 = await turno({ msg: 'Pedro Teste Silva', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'other', reply: 'Entendi. Se quiser marcar um horário ou tirar alguma dúvida, é só me dizer por aqui.', updates: {} }, contexto: ctxCliente('Joao Teste'), vagas: { [hoje]: ['15:40', '16:00'] } })
+  const reserva = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+  checar('137b o nome do irmão fica guardado e a reserva segue', r2.state?.name === 'Pedro Teste Silva' && (reserva?.args?.p_customer_name === 'Pedro Teste Silva' || /corte \+ barba\?/i.test(r2.reply)), { reply: r2.reply, nome: r2.state?.name })
+  // Variante: as duas mensagens processadas em turnos separados (15h40 já no estado).
+  const r3 = await turno({ msg: 'Seria para o meu irmão, tudo bem?', state: { date: hoje, time: '15:40', services: ['Corte de cabelo'], name: 'Joao Teste' }, history: [{ role: 'assistant', content: oferta }, { role: 'user', content: 'As 15h40' }],
+    ai: { intent: 'other', reply: 'Tudo bem. O atendimento será para seu irmão, com corte de cabelo hoje às 15h40. Qual é o nome completo dele para eu deixar a reserva no nome correto?', updates: {} },
+    contexto: ctxCliente('Joao Teste'), vagas: { [hoje]: ['15:40', '16:00'] } })
+  checar('137c turno separado: pergunta o nome e guarda a pergunta', !reservou(r3) && r3.state?.pending_other_name === true, { reply: r3.reply, state: r3.state })
+}
+
+// 138. v29.365.0 — caso Marcel (17/11/2026, 13h29): trocar Barba Express por Barba na navalha às 18:45 não cabia, mas
+// 18:30 estava livre. A recusa só chamava o Juliano. Agora oferece o horário que cabe, e o "sim" muda os dois.
+{
+  const fut = [{ id: 'b138', booking_date: dia1, start_time: '18:45:00', service_name: 'Barba Express', status: 'confirmed' }]
+  const r1 = await turno({ msg: 'Sim', state: { pending_change_service_booking_id: 'b138', pending_change_service_new_name: 'Barba na navalha com toalha quente' },
+    ai: { intent: 'change_service', reply: 'Ok', updates: {} }, contexto: ctxCliente('Marcel Teste'), futuros: fut, vagas: { [dia1]: ['18:30'] }, rpcFalha: 'phone_change_booking_service' } as any)
+  checar('138a não cabe às 18:45: oferece 18:30, sem chamar o Juliano', /não cabe/.test(r1.reply) && /Às 18:30 cabe/.test(r1.reply) && r1.handoff !== true && r1.state?.pending_swap_move?.time === '18:30', r1.reply)
+  const r2 = await turno({ msg: 'Sim', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctxCliente('Marcel Teste'), futuros: fut, vagas: { [dia1]: ['18:30'] } })
+  const mov = r2.chamadas.find((x: any) => x.alvo === 'phone_reschedule_booking'), troc = r2.chamadas.find((x: any) => x.alvo === 'phone_change_booking_service')
+  checar('138b "sim" muda horário e serviço', mov?.args?.p_new_start_time === '18:30' && troc?.args?.p_service_name === 'Barba na navalha com toalha quente' && /Prontinho/.test(r2.reply), r2.reply)
+  const r3 = await turno({ msg: 'Não', state: r1.state, history: [{ role: 'assistant', content: r1.reply }], ai: { intent: 'other', reply: 'Ok', updates: {} }, contexto: ctxCliente('Marcel Teste'), futuros: fut })
+  checar('138c "não" mantém como estava', !r3.chamadas.some((x: any) => x.alvo === 'phone_reschedule_booking') && /fica como estava/.test(r3.reply), r3.reply)
+  const r4 = await turno({ msg: 'Sim', state: { pending_change_service_booking_id: 'b138', pending_change_service_new_name: 'Barba na navalha com toalha quente' },
+    ai: { intent: 'change_service', reply: 'Ok', updates: {} }, contexto: ctxCliente('Marcel Teste'), futuros: fut, vagas: { [dia1]: ['10:00'] }, rpcFalha: 'phone_change_booking_service' } as any)
+  checar('138d sem horário perto: continua chamando o Juliano', /não cabe/.test(r4.reply) && /Juliano/.test(r4.reply) && r4.handoff === true, r4.reply)
+}
+
+// 139. v29.365.0 — caso Jessica (17/11/2026, 18h44): "Nossa, não tem mais cedo?" recebeu a oferta de complementos,
+// como se ela tivesse aceitado o 11:50. Pergunta não é aceite.
+{
+  const r = await turno({ msg: 'Nossa, não tem mais cedo?', history: [{ role: 'assistant', content: 'Para corte de cabelo: no sábado, o primeiro horário é 11:50. Quer que eu reserve?' }],
+    state: { date: dia1, services: ['Corte de cabelo'] }, ai: { intent: 'book', reply: 'Ok', updates: { date: dia1, time: '11:50', services: ['Corte de cabelo'] } }, contexto: ctxCliente('Jessica Teste'), vagas: { [dia1]: ['11:50', '13:45'] } })
+  checar('139 "não tem mais cedo?": sem oferta de complementos e sem reservar', !/Quer incluir/.test(r.reply) && !reservou(r) && (/Mais cedo não tenho|mais cedo não tenho/.test(r.reply) || !/Sim!/.test(r.reply)), r.reply)
+}
+
+// 140. v29.365.0 — caso Jessica (17/11/2026, 18h50): "Vou esperar o Ju responder" e depois "Aguardo o retorno" — que
+// recebeu outra lista de horários. Quem espera o Juliano não recebe resposta da JuIA.
+{
+  const r = await turno({ msg: 'Aguardo o retorno', history: [{ role: 'user', content: 'Vou esperar o Ju responder, obrigada' }, { role: 'assistant', content: 'Eu que agradeço, Jessica! Qualquer coisa, é só me chamar por aqui.' }],
+    ai: { intent: 'availability', reply: 'No sábado tenho 08:30, 09:15.', updates: { date: dia1 } }, contexto: ctxCliente('Jessica Teste'), vagas: { [dia1]: ['08:30'] } })
+  checar('140a "Aguardo o retorno" depois de "vou esperar o Ju": silêncio', r.reply === '', r.reply)
+  const r2 = await turno({ msg: 'Aguardo o retorno', history: [{ role: 'assistant', content: 'Reservado! Até lá.' }], ai: { intent: 'other', reply: 'Combinado!', updates: {} }, contexto: ctxCliente('Teste Normal') })
+  checar('140b sem ter falado em esperar o Juliano, segue normal', r2.reply !== '', r2.reply)
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

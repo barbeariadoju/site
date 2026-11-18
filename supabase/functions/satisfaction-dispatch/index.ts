@@ -245,7 +245,8 @@ Deno.serve(async(req:Request)=>{
         const sendResponse=await fetchWithTimeout(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`,{
           method:'POST',
           headers:{'Content-Type':'application/json',apikey:evolutionApiKey},
-          body:JSON.stringify({number:phone,text:semEmoji(waText)}),
+          // v29.365.0 — sem o cartão de prévia do link do agendamento: ele dobraria o tamanho da mensagem enxugada.
+          body:JSON.stringify({number:phone,text:semEmoji(waText),linkPreview:false}),
         })
         whatsappOk=sendResponse.ok
         if(whatsappOk){

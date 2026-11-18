@@ -2328,7 +2328,11 @@ Deno.serve(async (request: Request) => {
           // a pesquisa era de 08/10 (um mês antes) e o "diaa" com letra repetida escapou da saudação. Saudação aceita
           // letra esticada ("oii", "bom diaaa", "boa tardee"), e pesquisa com mais de 3 dias também morre em silêncio.
           const pesquisaVelha = pendingLead && (Date.now() - new Date(String((pendingLead as any).updated_at || 0)).getTime()) > 3 * 24 * 3600 * 1000
-          const abriuConversaNova = pendingLead && (pesquisaVelha || /^(ola+|oi+|oie+|opa+|eai+|e ai+|bo+m dia+|boa tarde+|boa noite+|fala+|salve+)\b/.test(normalize(trimmedText)) || /\b(tem|teria|quero|queria|gostaria|preciso|marcar|agendar|horario|vaga|encaix)\b/.test(normalize(trimmedText)))
+          // v29.365.0 — caso Raphael (17/11/2026, 11h19): o último recado era "Seu horário ainda não ficou reservado. Se quiser,
+          // me diz qual horário que eu reservo", ele respondeu "Dia 19" e ouviu "Entendido, muito obrigado pelo retorno!" — o
+          // \bdia\b do motivo 1 pegou a data. Dia com número, data, dia da semana, hoje/amanhã ou hora é PEDIDO de horário.
+          const pediuDataOuHora = /\b(dia \d{1,2}|\d{1,2}\/\d{1,2}|hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|\d{1,2}(:\d{2}|h\d{0,2}))\b/.test(normalize(trimmedText))
+          const abriuConversaNova = pendingLead && (pesquisaVelha || pediuDataOuHora ||/^(ola+|oi+|oie+|opa+|eai+|e ai+|bo+m dia+|boa tarde+|boa noite+|fala+|salve+)\b/.test(normalize(trimmedText)) || /\b(tem|teria|quero|queria|gostaria|preciso|marcar|agendar|horario|vaga|encaix)\b/.test(normalize(trimmedText)))
           if (abriuConversaNova) {
             await admin.from('conversation_leads').delete().eq('phone', phone)
             console.log('[whatsapp-webhook] pesquisa de motivo encerrada em silêncio: cliente abriu conversa nova', phone)

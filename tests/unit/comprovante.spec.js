@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { montarCupom, montarMensagemComprovante, montarMensagemComprovanteCorrigido, numeroComprovante, ehVendaSoDeProduto, primeiroNome } from '../../supabase/functions/_shared/comprovante.ts';
+import { montarCupom, montarMensagemComprovante, montarMensagemComprovanteCorrigido, numeroComprovante, ehVendaSoDeProduto, primeiroNome, linkProximoAgendamento } from '../../supabase/functions/_shared/comprovante.ts';
 
 // v29.121.0 — o cupom não fiscal é o documento que o cliente guarda como prova do que pagou
 // (caso Wellington, 02/09/2026, que questionou os valores depois do atendimento). Erro de
@@ -40,11 +40,10 @@ describe('numeroComprovante', () => {
 describe('montarCupom', () => {
   it('lista serviço, total e forma de pagamento', () => {
     const cupom = norm(montarCupom(base));
-    expect(cupom).toContain('*COMPROVANTE DE ATENDIMENTO*');
-    expect(cupom).toContain('Nº 020926-4F2A1C — hoje às 19:30');
+    // v29.365.0 — cabeçalho numa linha só, forma de pagamento na linha do total.
+    expect(cupom).toContain('*COMPROVANTE* Nº 020926-4F2A1C — hoje às 19:30');
     expect(cupom).toContain('Corte de cabelo — R$ 45,00');
-    expect(cupom).toContain('*Total: R$ 45,00*');
-    expect(cupom).toContain('Pago no Pix');
+    expect(cupom).toContain('*Total: R$ 45,00*, pago no Pix');
     // v29.126.0: rodape fiscal e endereco removidos — mensagem gigante cansa o cliente
     expect(cupom).not.toContain('Documento sem valor fiscal');
     expect(cupom).not.toContain('Rua Dr');
@@ -68,10 +67,10 @@ describe('montarCupom', () => {
 
   it('abre subtotal e desconto quando houve prêmio de fidelidade', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 50, descontoFidelidade: 20 }));
-    expect(cupom).toContain('Subtotal: R$ 50,00');
-    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 20,00');
-    expect(cupom).toContain('*Total: R$ 30,00*');
-    expect(cupom).toContain('Pago no Pix');
+    // v29.365.0 — um item só: sem Subtotal (repetiria a linha do serviço).
+    expect(cupom).not.toContain('Subtotal');
+    expect(cupom).toContain('Prêmio fidelidade: -R$ 20,00');
+    expect(cupom).toContain('*Total: R$ 30,00*, pago no Pix');
   });
 
   // v29.138.0 — caso Joao (05/09/2026): "Bônus de fidelidade" no Concluir saía com Total R$ 40,00
@@ -81,16 +80,17 @@ describe('montarCupom', () => {
   it('abre subtotal e linha "Desconto" quando houve desconto manual, sem expor o motivo', () => {
     const cupom = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo', servicoValor: 40, desconto: 20 }));
     expect(cupom).toContain('Corte de cabelo — R$ 40,00');
-    expect(cupom).toContain('Subtotal: R$ 40,00');
+    expect(cupom).not.toContain('Subtotal');
     expect(cupom).toContain('Desconto: -R$ 20,00');
-    expect(cupom).toContain('*Total: R$ 20,00*');
-    expect(cupom).toContain('Pago no Pix');
+    expect(cupom).toContain('*Total: R$ 20,00*, pago no Pix');
     expect(cupom).not.toContain('fidelidade');
   });
 
   it('desconto manual nunca passa do serviço nem some com o prêmio da fidelidade', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 50, descontoFidelidade: 20, desconto: 99, produtos: [{ nome: 'Água mineral', valor: 4 }] }));
-    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 20,00');
+    // dois itens (serviço + água): o Subtotal volta
+    expect(cupom).toContain('Subtotal: R$ 54,00');
+    expect(cupom).toContain('Prêmio fidelidade: -R$ 20,00');
     // sobra R$ 30 de serviço; o desconto é limitado a isso e o produto continua devido
     expect(cupom).toContain('Desconto: -R$ 30,00');
     expect(cupom).toContain('*Total: R$ 4,00*');
@@ -120,32 +120,31 @@ describe('montarCupom', () => {
   it('fidelidade sem desconto registrado zera o serviço inteiro', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 40, pagamentoServico: 'fidelidade' }));
     expect(cupom).toContain('Corte de cabelo — R$ 40,00');
-    expect(cupom).toContain('Subtotal: R$ 40,00');
-    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 40,00');
+    expect(cupom).toContain('Prêmio fidelidade: -R$ 40,00');
     expect(cupom).toContain('*Total: R$ 0,00*');
-    expect(cupom).toContain('Nada a pagar — prêmio do cartão fidelidade');
+    // v29.365.0 — o Total R$ 0,00 já diz que não há nada a pagar.
+    expect(cupom).not.toContain('Nada a pagar');
     expect(cupom).not.toContain('Pago com prêmio');
   });
 
   it('fidelidade com produto: só o produto tem forma de pagamento', () => {
     const cupom = norm(montarCupom({ ...base, servicoValor: 40, pagamentoServico: 'fidelidade', produtos: [{ nome: 'Pomada em pó', valor: 38 }], pagamentoProdutos: 'pix' }));
-    expect(cupom).toContain('Prêmio do cartão fidelidade: -R$ 40,00');
+    expect(cupom).toContain('Prêmio fidelidade: -R$ 40,00');
     expect(cupom).toContain('*Total: R$ 38,00*');
     expect(cupom).toContain('Produtos pagos no Pix');
-    expect(cupom).not.toContain('Pago no Pix');
+    expect(cupom).not.toContain('pago no Pix');
   });
 
   it('combo com só um serviço no prêmio: nomeia o serviço e cobra o resto na forma escolhida', () => {
     const cupom = norm(montarCupom({ ...base, servicoNome: 'Corte de cabelo + Barba Express', servicoValor: 65, descontoFidelidade: 40, fidelidadeServico: 'Corte de cabelo', pagamentoServico: 'credito' }));
     expect(cupom).toContain('Corte de cabelo + Barba Express — R$ 65,00');
-    expect(cupom).toContain('Prêmio do cartão fidelidade (Corte de cabelo): -R$ 40,00');
-    expect(cupom).toContain('*Total: R$ 25,00*');
-    expect(cupom).toContain('Pago no crédito');
+    expect(cupom).toContain('Prêmio fidelidade (Corte de cabelo): -R$ 40,00');
+    expect(cupom).toContain('*Total: R$ 25,00*, pago no crédito');
   });
 
   it('mostra as duas formas de pagamento só quando forem diferentes', () => {
     const mesmas = norm(montarCupom({ ...base, produtos: [{ nome: 'Água mineral', valor: 4 }], pagamentoProdutos: 'pix' }));
-    expect(mesmas).toContain('Pago no Pix');
+    expect(mesmas).toContain('*Total: R$ 49,00*, pago no Pix');
     expect(mesmas).not.toContain('produtos');
 
     const diferentes = norm(montarCupom({ ...base, produtos: [{ nome: 'Água mineral', valor: 4 }], pagamentoProdutos: 'dinheiro' }));
@@ -154,7 +153,7 @@ describe('montarCupom', () => {
 
   it('zera o total na cortesia e diz que não há nada a pagar', () => {
     const cupom = norm(montarCupom({ ...base, cortesia: true, cortesiaMotivo: 'João, funcionário', pagamentoServico: '' }));
-    expect(cupom).toContain('Subtotal: R$ 45,00');
+    expect(cupom).not.toContain('Subtotal');
     expect(cupom).toContain('Cortesia (por conta da casa): -R$ 45,00');
     expect(cupom).toContain('*Total: R$ 0,00*');
     expect(cupom).toContain('Nada a pagar — cortesia da casa');
@@ -170,7 +169,7 @@ describe('montarCupom', () => {
 
   it('trata pagamento antecipado confirmado como forma de pagamento', () => {
     const cupom = norm(montarCupom({ ...base, pagamentoServico: '', pagamentoAntecipado: true }));
-    expect(cupom).toContain('Pago no Pix (pago antecipado)');
+    expect(cupom).toContain('*Total: R$ 45,00*, pago no Pix (pago antecipado)');
   });
 
   it('usa o dia do atendimento, não o dia do envio', () => {
@@ -192,17 +191,17 @@ describe('montarCupom', () => {
 describe('montarMensagemComprovante', () => {
   it('abre com o primeiro nome e fecha com a pesquisa 1/2', () => {
     const msg = norm(montarMensagemComprovante(base));
-    expect(msg.startsWith('Olá, Wellington. Muito obrigado pela visita à Barbearia do Ju.')).toBe(true);
+    expect(msg.startsWith('Olá, Wellington. Obrigado pela visita.')).toBe(true);
+    expect(msg).not.toContain('à Barbearia do Ju');
     expect(msg).not.toContain('Se algum valor não bater com o que combinamos');
-    expect(msg).toContain('Digite *1* para Satisfeito');
-    expect(msg).toContain('Digite *2* para Insatisfeito');
+    expect(msg.trim().endsWith('Como foi seu atendimento?\n*1* Satisfeito · *2* Insatisfeito')).toBe(true);
   });
 
   it('agradece a caixinha à parte, só quando houve caixinha', () => {
     const com = norm(montarMensagemComprovante({ ...base, caixinha: 10 }));
     const sem = norm(montarMensagemComprovante(base));
-    expect(com).toContain('agradecimento especial pela caixinha');
-    expect(com.startsWith('Olá, Wellington. Muito obrigado pela visita à Barbearia do Ju.')).toBe(true);
+    expect(com).toContain('E obrigado pela caixinha, Wellington.');
+    expect(com.startsWith('Olá, Wellington. Obrigado pela visita.')).toBe(true);
     expect(sem).not.toContain('caixinha');
   });
 
@@ -210,23 +209,32 @@ describe('montarMensagemComprovante', () => {
   // agradecimento na abertura do comprovante, dizendo qual serviço foi por nossa conta.
   it('agradece o prêmio da fidelidade na abertura, com o serviço premiado', () => {
     const inteiro = norm(montarMensagemComprovante({ ...base, servicoNome: 'Barba Express', servicoValor: 25, pagamentoServico: 'fidelidade', fidelidadeServico: 'Barba Express' }));
-    expect(inteiro).toContain('Barba Express de hoje foi por nossa conta: é o nosso agradecimento pelos seus 10 primeiros atendimentos, uma recompensa oferecida uma única vez por cliente');
-    expect(inteiro).toContain('Obrigado por ser cliente de casa, Wellington.');
+    // v29.365.0 — caso Henrique (18/11/2026): usou o prêmio do amigo e ouviu "seus 10 primeiros atendimentos".
+    // Fica só o fato, na mesma linha da abertura.
+    expect(inteiro.startsWith('Olá, Wellington. Obrigado pela visita. Barba Express de hoje foi por nossa conta.')).toBe(true);
+    expect(inteiro).not.toContain('10 primeiros atendimentos');
     // v29.309.0 — programa de pontos encerrado: o cartão não recomeça.
     expect(inteiro).not.toContain('conta pro próximo');
-    expect(inteiro).toContain('Nada a pagar — prêmio do cartão fidelidade');
+    expect(inteiro).toContain('Prêmio fidelidade: -R$ 25,00');
     const combo = norm(montarMensagemComprovante({ ...base, servicoNome: 'Corte de cabelo + Barba Express', servicoValor: 65, descontoFidelidade: 40, fidelidadeServico: 'Corte de cabelo', pagamentoServico: 'credito' }));
     expect(combo).toContain('Corte de cabelo de hoje foi por nossa conta');
-    expect(combo).toContain('Prêmio do cartão fidelidade (Corte de cabelo): -R$ 40,00');
+    expect(combo).toContain('Prêmio fidelidade (Corte de cabelo): -R$ 40,00');
     const semPremio = norm(montarMensagemComprovante(base));
     expect(semPremio).not.toContain('por nossa conta');
     const cortesia = norm(montarMensagemComprovante({ ...base, cortesia: true, pagamentoServico: 'fidelidade' }));
     expect(cortesia).not.toContain("10 primeiros atendimentos");
   });
 
-  it('convida o walk-in a agendar, numa linha só', () => {
-    const msg = norm(montarMensagemComprovante({ ...base, balcao: true }));
-    expect(msg).toContain('já deixo seu horário reservado');
+  // v29.365.0 (ideia do Juliano, 18/11/2026) — todo comprovante leva o link do próximo agendamento, com o
+  // serviço de hoje já escolhido e UTM para medir no GA4. Substitui o convite que só o walk-in recebia.
+  it('leva o link do próximo agendamento com o serviço de hoje e UTM, antes da pesquisa', () => {
+    const msg = norm(montarMensagemComprovante({ ...base, servicoNome: 'Corte + Lavagem + Barba Express' }));
+    expect(msg).toContain('Para agendar o próximo, é só tocar aqui:\nhttps://www.barbeariadoju.com.br/agendar/?servico=corte-lavagem-barba-express&utm_source=whatsapp&utm_medium=comprovante&utm_campaign=proximo_horario');
+    expect(msg.indexOf('agendar/?')).toBeLessThan(msg.indexOf('Como foi seu atendimento?'));
+    const balcao = norm(montarMensagemComprovante({ ...base, balcao: true }));
+    expect(balcao).toContain('agendar/?servico=corte-de-cabelo&');
+    expect(balcao).not.toContain('já deixo seu horário reservado');
+    expect(linkProximoAgendamento('Raspar a cabeça')).toContain('servico=raspar-a-cabeca&');
   });
 
   it('venda só de produto agradece a compra e não faz a pesquisa', () => {
@@ -234,7 +242,8 @@ describe('montarMensagemComprovante', () => {
     const msg = norm(montarMensagemComprovante(dados));
     expect(ehVendaSoDeProduto(dados)).toBe(true);
     expect(msg).toContain('Obrigado pela compra');
-    expect(msg).not.toContain('Digite *1*');
+    expect(msg).not.toContain('Satisfeito');
+    expect(msg).not.toContain('agendar/?');
   });
 
   it('não usa emoji em lugar nenhum', () => {
@@ -294,8 +303,7 @@ describe('crédito pago a mais e observação para o cliente', () => {
     const c = norm(montarCupom({ ...base, servicoValor: 50, pagamentoServico: 'debito', credito: 50, observacao: 'fica 1 corte de cabelo do Davi já pago' }));
     expect(c).toContain('Corte de cabelo — R$ 50,00');
     expect(c).toContain('Crédito pago antecipado — R$ 50,00');
-    expect(c).toContain('*Total: R$ 100,00*');
-    expect(c).toContain('Pago no débito');
+    expect(c).toContain('*Total: R$ 100,00*, pago no débito');
     expect(c.trim().endsWith('Observação: fica 1 corte de cabelo do Davi já pago')).toBe(true);
   });
   it('sem crédito nem observação, nada muda', () => {
@@ -321,7 +329,7 @@ describe('comprovante corrigido', () => {
     expect(m).toContain('*Total: R$ 80,00*');
   });
   it('não refaz a pesquisa 1/2 e não tem emoji', () => {
-    expect(m).not.toContain('Digite *1*');
+    expect(m).not.toContain('Satisfeito');
     expect(/\p{Extended_Pictographic}/u.test(m)).toBe(false);
   });
 });
