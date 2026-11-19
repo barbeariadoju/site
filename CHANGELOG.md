@@ -1,3 +1,19 @@
+## 29.368.0 — Sinal só para quem falta: cliente novo marca química sem sinal (19/11)
+
+**Decisão do Juliano (19/11), caso Fábio:** "não peça mais sinal pra agendar; o sinal fica só para quem agenda e não aparece,
+como o Venilson e a Graziele". A regra de 17/09 (cliente novo em serviço de química = sinal de R$ 50 pelo Pix) saiu da JuIA.
+
+- `ju-ia-site`: tirados o `SINAL_QUIMICA` e o `quimicaPrimeiraVez`. O trilho do sinal continua inteiro (Pix, prazo de 1 h,
+  `prepay-deadline`) e só é acionado pelos dois casos que ficam:
+  - dois cancelamentos em cima da hora ou faltas seguidas (`sinal_cancelamentos_ativo`, v29.240.0, cenário 41);
+  - cliente em `blocked_customers` (2ª falta automática, v29.341.0, ou bloqueio manual: Venilson e Graziele).
+- Erro meu: hoje às 14h35 mandei ao Fábio, em nome do Juliano, o pedido do sinal de R$ 50 pela regra antiga. A correção
+  vai em mensagem separada.
+- **Achado no simulador:** "Quero alisamento amanhã às 10h" caía na trava do serviço ("É corte ou corte + barba?").
+  "Alisamento" dentro de uma frase não era reconhecido como serviço dito pelo cliente. Só funcionava quando vinha
+  separado por "e" ou vírgula, como no "Pra alisamento e corte" do Fábio. Entrou na lista de palavras
+  (`alisament`/`desondula`, fora o "pós-alisamento", que é a Reconstrução). Cenário 145.
+
 ## 29.367.0 — Domingo e segunda respondidos de cara, com os dias em que atendemos (19/11)
 
 **Pedido do Juliano (19/11), depois do caso Thiago:** quem pede domingo ou segunda deve ouvir logo que não abrimos e a partir

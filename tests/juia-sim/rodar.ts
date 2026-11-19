@@ -2049,5 +2049,14 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   }
 }
 
+// 145. v29.368.0 — regra retirada pelo Juliano (19/11/2026, caso Fábio): cliente novo marca química sem sinal.
+//      O sinal fica só para falta/cancelamento em cima da hora (cenário 41) e para os bloqueados no CRM.
+{
+  const r = await turno({ msg: `Quero alisamento ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: { upsell_offer_done: true },
+    ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Alisamento / Relaxamento'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Fabio Teste', { completed_visits: 0 }), vagas: { [dia1]: ['09:00', '10:00'] } })
+  const cobrou = r.chamadas.some((x: any) => x.alvo === 'bookings' && x.op === 'update' && x.payload?.prepay_amount)
+  checar('145 química em cliente novo: reserva sem sinal', reservou(r) && !/sinal/i.test(r.reply) && !cobrou && !r.state?.sinal_pendente, { reply: r.reply, cobrou })
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
