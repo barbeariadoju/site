@@ -1986,5 +1986,45 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('140b sem ter falado em esperar o Juliano, segue normal', r2.reply !== '', r2.reply)
 }
 
+// 141. v29.366.0 — caso Thiago (18/11/2026, 18h41): "trocar o meu horário para segunda feira dia 23/11" e "Para segunda
+// feira 23/11" (duas vezes) ouviram "Para qual dia você quer mudar?". O dia escrito vale na remarcação.
+{
+  const fut = [{ id: 'b141', booking_date: dia2, start_time: '08:30:00', service_name: 'Corte + Barba Express', duration_minutes: 60, status: 'confirmed' }]
+  const [, m, d] = dia1.split('-')
+  const r1 = await turno({ msg: `Gostaria de ver a possibilidade de trocar o meu horário para dia ${d}/${m}`, ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Thiago Teste'), futuros: fut, vagas: { [dia1]: ['09:00', '14:00'] } })
+  checar('141a pedido de remarcação com o dia: já mostra o dia pedido', !/Para qual dia/.test(r1.reply) && /09:00/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: `Para ${d}/${m}`, state: { pending_reschedule_booking_id: 'b141' }, ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Thiago Teste'), futuros: fut, vagas: { [dia1]: ['09:00', '14:00'] } })
+  checar('141b "Para dd/mm" com a remarcação aberta: usa o dia escrito', !/Para qual dia/.test(r2.reply) && /09:00/.test(r2.reply), r2.reply)
+}
+
+// 142. v29.366.0 — caso Sérgio (18/11/2026, 15h40): horário de hoje, respondeu o aviso de chegada com "Se quiser posso até
+// ir agora" e ouviu "Para qual dia e horário você quer mudar?". Ir agora = adiantar: mostra o que vem antes.
+{
+  const fut = [{ id: 'b142', booking_date: hoje, start_time: '23:00:00', service_name: 'Corte + Barba Express', duration_minutes: 60, status: 'confirmed' }]
+  const r = await turno({ msg: 'Opa\nSe quiser posso até ir agora', ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Sergio Teste'), futuros: fut, vagas: { [hoje]: ['22:00', '23:30'] } })
+  checar('142 "posso ir agora": oferece o horário livre antes do dele, sem perguntar o dia', !/Para qual dia/.test(r.reply) && /22:00/.test(r.reply) && !/23:30/.test(r.reply), r.reply)
+}
+
+// 143. v29.366.0 — caso Fábio (18/11/2026, 18h42): "vocês fazem desondulação, botox… ou é somente corte tradicional e barba?"
+// e "E quanto sai o corte?" deixaram o lead como "Corte de cabelo + Barba Express", e o follow-up das 8h cobrou um serviço que ele
+// nunca pediu.
+{
+  const pergunta = 'Boa tarde, Jô. Me fala uma coisa, nessa barbeira de vocês, vocês fazem desondulação, botox, esses tratamentos aí, ou é somente corte tradicional e barba?'
+  const r1 = await turno({ msg: pergunta, ai: { intent: 'price', reply: 'Fazemos sim', updates: {} }, nomeWhats: 'Fábio' })
+  const lead1 = r1.chamadas.find((x: any) => x.alvo === 'conversation_leads' && x.op === 'upsert')
+  checar('143a pergunta do que a casa faz: lead sem Barba Express', !/Barba Express/.test(String(lead1?.payload?.service_interest || '')), { reply: r1.reply, lead: lead1?.payload?.service_interest, state: r1.state?.services })
+  const r2 = await turno({ msg: 'E quanto sai o corte?', state: r1.state, history: [{ role: 'user', content: pergunta }, { role: 'assistant', content: r1.reply }], ai: { intent: 'price', reply: 'R$ 50', updates: {} }, nomeWhats: 'Fábio' })
+  const lead2 = r2.chamadas.find((x: any) => x.alvo === 'conversation_leads' && x.op === 'upsert')
+  checar('143b "quanto sai o corte?": lead fica só no que ele perguntou', !/Barba Express/.test(String(lead2?.payload?.service_interest || '')), { reply: r2.reply, lead: lead2?.payload?.service_interest, state: r2.state?.services })
+  // 09h15 do dia seguinte: "Ah ótimo irei verificar" depois da lista da manhã caiu no "me embolei" e ficou como lead a cobrar.
+  const listaManha = 'Hoje, no período da manhã, tenho horários entre 10:15 e 11:45 para aproximadamente 95 minutos. Alguns exemplos: 10:15, 10:30, 11:00, 11:30, 11:45. Qual horário fica melhor pra você?'
+  const r3 = await turno({ msg: 'Ah ótimo irei verificar', state: { services: ['Alisamento / Relaxamento', 'Corte de cabelo'], date: hoje, period: 'morning' }, history: [{ role: 'user', content: 'Se fosse pela manhã' }, { role: 'assistant', content: listaManha }],
+    ai: { intent: 'availability', reply: listaManha, updates: {} }, nomeWhats: 'Fábio', vagas: { [hoje]: ['10:15', '10:30'] } })
+  const apagouLead = r3.chamadas.some((x: any) => x.alvo === 'conversation_leads' && x.op === 'delete')
+  checar('143c "irei verificar": fica combinado, sem lista e sem cobrança', /fico no aguardo/.test(r3.reply) && !/\d{2}:\d{2}/.test(r3.reply) && apagouLead, { reply: r3.reply, apagouLead })
+  const r4 = await turno({ msg: 'Vou verificar se tem 10:30?', history: [{ role: 'assistant', content: listaManha }], ai: { intent: 'availability', reply: 'Tenho 10:30 sim.', updates: { date: hoje, time: '10:30' } }, nomeWhats: 'Fábio', vagas: { [hoje]: ['10:15', '10:30'] } })
+  checar('143d com pergunta não é adiamento', !/fico no aguardo/.test(r4.reply), r4.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

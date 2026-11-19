@@ -14,7 +14,7 @@ import { semEmoji } from '../_shared/sem-emoji.ts'
 // v29.193.0 — terça, quarta e quinta (dias fracos) primeiro quando o cliente não tem dia fixo.
 import { selecionarDiasOferta, diaDestaque, somarDias as somarDiasIso, diaDaSemana } from '../_shared/dias-fracos.ts'
 // v29.212.0 — leituras da mensagem do cliente testadas fora deste arquivo (análise de erros de 19/09).
-import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, encomendaPorFoto,avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA, servicoDispensado, avisaAtraso } from '../_shared/leitura-cliente.ts'
+import { tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, encomendaPorFoto,avisoDeChegada, aceitaAvisoDeVaga, escolheAvisoDaOferta, falaDoProprioExpediente, diaRecusado, perguntaSeTemReserva, horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino, tirarVocativoInicial, prometeRecado, servicoSoPerguntado, perguntaDeCatalogoComAlternativa, avisoDeAusencia, noticiaDificil, respostaSolidaria, pinturaPedida, semTrechoDePintura, soBigode, TEXTO_BIGODE_CORTESIA, servicoDispensado, avisaAtraso } from '../_shared/leitura-cliente.ts'
 import { primeiroNome } from '../_shared/primeiro-nome.ts'
 import { textoClubeExplica } from '../_shared/clube-regras.ts'
 import { diasPedidos, pediuLembrete, dataDoLembrete } from '../_shared/adiar-convite.ts'
@@ -522,6 +522,8 @@ const postponeSignal=(text:string)=>/retorno o contato|te retorno|retorno depois
  // "O cabelo do Bernardo tá curto" e "Vou agendar outro dia" não eram adiamento: ela recebeu horários de amanhã, "16:00 não
  // está disponível" (o horário era o DELA), oferta de quinta logo depois de cancelar e "você não tem horário marcado".
  ||esperaParaMarcar(text)
+// v29.366.0 — caso Fábio: "irei verificar", "vou verificar aqui", "vou olhar minha agenda" = adiamento (sem pergunta).
+const vaiVerificar=(text:string)=>!/\?/.test(text)&&/\b(irei|vou|vou so|deixa eu|deixa eu so|preciso) (verificar|conferir|checar|ver aqui|ver certinho|ver direitinho|ver (a|minha) agenda|olhar (a|minha) agenda|ver (no|o) meu (trabalho|horario|servico)|ver (com|meu) (o )?(trabalho|chefe|horario))\b/.test(text)
 const noPeriodPreference=(text:string)=>/\bindiferente\b|tanto faz|\bqq\b|\bqqr\b|\bqlqr\b|\bqualquer\b|nao tenho preferencia|sem preferencia|\bvoce escolhe\b|\bvc escolhe\b|voce que sabe|vc que sabe|o que tiver|o que estiver|qualquer um|pode ser qualquer|(^|\s)(qual|quais) (voce|vc) (tem|puder)/.test(text)
 
 // Antes um array fixo aqui (cópia manual que só divergia com o tempo do catálogo real
@@ -1994,8 +1996,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // amanhã", "somente às 9h" e "só que…" não mexem em nada) e que não seja "não só".
  const soMeioMatch=normalizedQuestion.match(/(?:^|[\s.,!?;])(?:so|somente|apenas)\s+(?!que\b|pra confirmar|confirmando)((?:(?:o|a|um|uma|pra|pro|para|de|do|da)\s+)*)(.+)$/)
  const soMeioCauda=soMeioMatch&&!/\bnao\s+(?:so|somente|apenas)\s/.test(normalizedQuestion)?soMeioMatch[2].split(/[.!?;]/)[0].trim():''
- const soMeio=Boolean(soMeioCauda)&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(soMeioCauda)&&findServicesLoose(soMeioCauda).length>0
- if((/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*(so|somente|apenas)(?:\s+(?:o|a|um|uma|pra|pro|para|de|do|da))*\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion.replace(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*/,'')))||soMeio){
+ // v29.366.0 (caso Fábio): "vocês fazem desondulação… ou é somente corte e barba?" é pergunta do que a casa faz.
+ const soMeio=!perguntaDeCatalogoComAlternativa(normalizedQuestion)&&Boolean(soMeioCauda)&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(soMeioCauda)&&findServicesLoose(soMeioCauda).length>0
+ if((!perguntaDeCatalogoComAlternativa(normalizedQuestion)&&/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*(so|somente|apenas)(?:\s+(?:o|a|um|uma|pra|pro|para|de|do|da))*\b/.test(normalizedQuestion.trim())&&!/\bmais\b|\btambem\b|\be\b.*\be\b/.test(normalizedQuestion.replace(/^(?:(?:e|eh|ok|okay|entao|ta|beleza|blz|ah|bom|certo|tipo),?\s+)*/,'')))||soMeio){
   // v29.142.0 (bateria W15): "só corte de cabelo de criança" — o parser solto casava "Corte de
   // cabelo"; o modelo já tinha devolvido "Corte de cabelo infantil". O modelo tem prioridade;
   // o parser é o plano B. E criança/infantil no texto força o corte infantil.
@@ -2446,7 +2449,8 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // "barboterapia" do texto). Se o cliente emendasse "quero agendar amanhã às 10h",
   // a JuIA somaria os DOIS (R$ 90, 70 min) sem ele ter escolhido nada disso. Um nome
   // que é substring de um serviço já escolhido é o mesmo serviço, não um novo.
-  const newOnes=loose.filter((s:any)=>!soPerguntou(s.name)&&!chosen.some((c:any)=>c.name===s.name||normalize(c.name).includes(normalize(s.name)))&&!(bareBarbaAsk&&s.category==='barba')&&!(bareBarboterapiaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
+  // v29.366.0 (caso Fábio): "vocês fazem X ou é somente corte e barba?" não anota corte nem barba.
+  const newOnes=perguntaDeCatalogoComAlternativa(normalizedQuestion)?[]:loose.filter((s:any)=>!soPerguntou(s.name)&&!chosen.some((c:any)=>c.name===s.name||normalize(c.name).includes(normalize(s.name)))&&!(bareBarbaAsk&&s.category==='barba')&&!(bareBarboterapiaAsk&&s.category==='barba')&&!(bareCabeloAsk&&(s.category==='corte'||s.category==='combo')))
   if(newOnes.length){
    chosen.push(...newOnes)
    // v29.214.1 (caso Danilo): "Corte + barba na navalha" somou "Corte de cabelo" ao combo que já tinha
@@ -3026,6 +3030,25 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // e barba" enquanto remarca uma Barboterapia), aplica a troca de serviço JUNTO com a
   // remarcação — sem isso, o serviço mencionado ficava perdido, porque este fluxo só
   // mexe em data/hora, e o agendamento saía "confirmado" com o serviço antigo mesmo.
+  // v29.366.0 — caso Thiago (18/11/2026, 18h41): "trocar o meu horário para segunda feira dia 23/11" e, duas vezes,
+  // "Para segunda feira 23/11" ouviram "Para qual dia você quer mudar?". O modelo não devolveu a data, e o dia que o
+  // cliente ESCREVEU só valia quando divergia do modelo. Na remarcação, o dia escrito (que não seja o do próprio
+  // agendamento) vale direto; com um agendamento só, a conversa já entra na etapa de mostrar o dia pedido.
+  // Caso Sérgio (18/11/2026, 15h40): com o horário das 16:15, respondeu o aviso de chegada com "Se quiser posso até
+  // ir agora" e ouviu "Para qual dia e horário você quer mudar?" (o Juliano teve que se desculpar). "Ir agora" no
+  // dia do agendamento = adiantar: mostra o que está livre antes do horário dele, sem perguntar o dia.
+  const querIrAgora=/\b(ir|vou|passo|passar|chego|chegar|vir|venho|apareco|aparecer)\s+(ai\s+|la\s+)?agora\b|\bagora mesmo\b|\bja posso (ir|passar|vir)\b/.test(normalizedQuestion)
+  if(!next.pending_reschedule_new_date){
+   const alvoRem=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)||(upcomingBookings.length===1?upcomingBookings[0]:null)
+   const diaEscrito=diaPedidoNaMensagem(message)
+   if(alvoRem&&querIrAgora&&String(alvoRem.booking_date)===today()&&!extractRequestedTime(message)){
+    next.date=today();next.time=null
+    next.pending_reschedule_booking_id=alvoRem.id
+   }else if(alvoRem&&diaEscrito&&diaEscrito>=today()&&diaEscrito!==String(alvoRem.booking_date)){
+    next.date=diaEscrito
+    if(!next.pending_reschedule_booking_id&&!extractRequestedTime(semHorarioDeCompromisso(message))){next.pending_reschedule_booking_id=alvoRem.id;next.time=null}
+   }
+  }
   const rescheduleTarget=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
   const desiredServiceName=chosen.length?chosen.map((s:any)=>s.name).join(' + '):''
   const wantsServiceChange=Boolean(rescheduleTarget)&&Boolean(desiredServiceName)&&normalize(desiredServiceName)!==normalize(String(rescheduleTarget?.service_name||''))
@@ -3246,7 +3269,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // mais cedo" e recebeu "para qual dia?" e depois uma lista com 10:15 e 11:55 — horários DEPOIS do
       // dela. "Mais cedo"/"adiantar" no mesmo dia = só o que vem antes do horário atual ("mais tarde", só
       // o que vem depois), e o dia já é o do próprio agendamento (acima, sem perguntar).
-      const dirRem=horaAtual?(/\b(mais cedo|adiantar|adianta|antecipar|antecipa)\b/.test(normalizedQuestion)?'antes':/\bmais tarde\b/.test(normalizedQuestion)?'depois':''):''
+      const dirRem=horaAtual?(querIrAgora||/\b(mais cedo|adiantar|adianta|antecipar|antecipa)\b/.test(normalizedQuestion)?'antes':/\bmais tarde\b/.test(normalizedQuestion)?'depois':''):''
       if(dirRem){
        const lista=allSlots.filter((t:string)=>dirRem==='antes'?t<horaAtual:t>horaAtual)
        reply=lista.length
@@ -4583,7 +4606,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // diz que vai ver com alguém e volta está adiando, mesmo explicando o porquê: até 140 letras, sem pergunta.
   // Caso Laudiceia (16/10, 18h47): "Só consigo amanhã / Mas obrigado" (amanhã fechado) caiu no "me embolei" —
   // "mas obrigado" fecha a conversa.
-  const adiouComMotivo=!temPedidoNovo&&!temPendencia&&q.length<=140&&!/\?/.test(q)&&(adiou||postponeSignal(q)||/\bvou (ver|falar|conversar) com (a |o |minha |meu )/.test(q))
+  // v29.366.0 — caso Fábio (19/11/2026, 09h15): "Ah ótimo irei verificar" depois da lista da manhã caiu no "me embolei" e
+  // ficou como lead a cobrar. Quem vai verificar a própria agenda está adiando: fica combinado, sem cobrança.
+  const adiouComMotivo=!temPedidoNovo&&!temPendencia&&q.length<=140&&!/\?/.test(q)&&(adiou||postponeSignal(q)||/\bvou (ver|falar|conversar) com (a |o |minha |meu )/.test(q)||vaiVerificar(q))
   const dispensaPura=adiouComMotivo||q.length<=80&&!temPendencia&&recusaDeHorario||q.length<=60&&!temPedidoNovo&&!temPendencia&&(adiou||/\b(nao|n)[\s,.!]*(obrigad|valeu|brigad|precisa|quero (mais|nao)|vou querer)|\bvou deixar\b|\bdeixa (pra|para) (outra|proxima|depois)\b|\bfica pra proxima\b|\bpor enquanto nao\b|\bobrigad[oa] mesmo assim\b|\bmas obrigad|\bagradeco mesmo assim\b|\btudo bem entao\b|\bdepois eu (vejo|marco|falo|chamo)\b|\boutro dia eu (vejo|marco|falo)\b/.test(q))
   if(!diaRecusado&&!diaSo&&!recusaNenhum&&dispensaPura&&intent!=='book'&&intent!=='cancel'&&intent!=='reschedule'&&intent!=='change_service'){
    reply=next.dismissed?'':(adiou||adiouComMotivo?'Combinado, fico no aguardo. Quando decidir, é só me chamar por aqui que eu reservo.':pedidoDeHoje?`Entendi. Vou ver com o Juliano se dá para te encaixar ${diaDoPedidoFalado} às ${pedidoDeHoje}; se der, te respondo por aqui.`:recusaCurtaDaLista?'Entendi. Qual horário ficaria bom para você? Eu vejo se consigo, ou te ofereço outro dia.':'Tranquilo! 😊 Sem problema nenhum — quando quiser dar um trato no visual, é só me chamar por aqui. Até logo! 💈')
@@ -6570,6 +6595,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // serviço, nasce um lead novo naturalmente. Regra do Juliano: "quero que impeça que isto ocorra".
   const adiouLead=next.dismissed===true
    ||/\b(semana que vem|proxima semana|outro dia|outra hora|mais pra frente|fica pra (proxima|outra)|deixa (pra la|pra outra|pra proxima|assim|quieto)|mas deixa|entao deixa|agora nao (da|consigo|vai dar)|nao vai dar (hoje|essa semana)|hoje nao (da|consigo|vai dar))\b/.test(normalizedQuestion)
+   ||vaiVerificar(normalizedQuestion) // v29.366.0 (caso Fábio): "irei verificar"
    ||/\bainda nao (consigo|sei|defin\w*|da pra|tenho certeza)\b|\bnao sei ainda\b|\bsem previsao\b|\bquando (eu )?(conseguir|souber|puder|definir|decidir)\b|\b(te|lhe) aviso\b|\bdepois (eu )?(te )?(falo|aviso|vejo|marco|confirmo|passo|reservo|agendo|chamo|retorno)\b|\b(reservo|agendo|marco) (mais tarde|depois|outra hora)\b|\bvou (ver|olhar|pensar) e (te )?(falo|aviso|confirmo)\b/.test(normalizedQuestion)
    // v29.197.0 (caso Maurício, 16→17/09/2026): "Daqui um mês marcamos... Estou saindo de férias" às
    // 20h51 não caiu em nenhuma frase acima (nenhuma fala em "semana que vem" nem "ainda não sei") —

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   tetoDeInicio, pisoDeHorario, pedeFalarComJuliano, pedeRemedio, encomendaPorFoto, avisoDeChegada, aceitaAvisoDeVaga,
   horarioParaOutraPessoa, querRemarcar, trechosDePerguntaDeExistencia, falarNoMasculino,
-  tirarVocativoInicial, prometeRecado, servicoSoPerguntado,
+  tirarVocativoInicial, prometeRecado, servicoSoPerguntado, perguntaDeCatalogoComAlternativa,
 } from '../../supabase/functions/_shared/leitura-cliente.ts';
 import { primeiroNome } from '../../supabase/functions/_shared/primeiro-nome.ts';
 
@@ -355,5 +355,17 @@ describe('v29.333.0 — caso Thiago: atraso + tirar a lavagem', () => {
     expect(servicoDispensado('quero incluir a lavagem tambem')).toBe('');
     expect(servicoDispensado('tem sobrancelha tambem?')).toBe('');
     expect(avisaAtraso('to chegando')).toBe(false);
+  });
+});
+
+describe('perguntaDeCatalogoComAlternativa (caso Fábio, 18/11/2026)', () => {
+  it('"vocês fazem X ou é somente corte e barba?" é pergunta do que a casa faz', () => {
+    expect(perguntaDeCatalogoComAlternativa('boa tarde, jo. me fala uma coisa, nessa barbeira de voces, voces fazem desondulacao, botox, esses tratamentos ai, ou e somente corte tradicional e barba?')).toBe(true);
+    expect(perguntaDeCatalogoComAlternativa('voces fazem luzes ou so corte?')).toBe(true);
+  });
+  it('com pedido ou sem a alternativa, não é', () => {
+    expect(perguntaDeCatalogoComAlternativa('voces fazem luzes ou so corte? queria marcar amanha')).toBe(false);
+    expect(perguntaDeCatalogoComAlternativa('seria somente o corte')).toBe(false);
+    expect(perguntaDeCatalogoComAlternativa('voces fazem progressiva?')).toBe(false);
   });
 });

@@ -405,3 +405,17 @@ export const servicoDispensado = (q: string): string => {
   return m ? m[1] : ''
 }
 export const avisaAtraso = (q: string): boolean => /\b(atras(ar|ando|ei|o|adinho)|vou demorar|demorar um pouco|transito|engarrafad|preso no|chego (uns|em|daqui)|uns \d+ min)/.test(String(q || ''))
+
+// ---------------------------------------------------------------------------------------------
+// "VOCÊS FAZEM X OU É SÓ CORTE E BARBA?" — v29.366.0, caso Fábio (18/11/2026, 18h42, áudio): "vocês fazem
+// desondulação, botox, esses tratamentos aí, ou é somente corte tradicional e barba?". O "corte e barba"
+// é a alternativa da pergunta sobre o que a casa faz, não pedido; a palavra "barba" entrou como Barba
+// Express e o follow-up das 8h cobrou "Corte de cabelo + Barba Express", que ele nunca pediu. Sem verbo
+// de pedido na mensagem, os serviços dessa pergunta não são anotados.
+// ---------------------------------------------------------------------------------------------
+export const perguntaDeCatalogoComAlternativa = (q: string): boolean => {
+  const t = String(q || '')
+  return /\bou\s+(e\s+|eh\s+|sao\s+|seria\s+|faz(em)?\s+)?(somente|so|soh|apenas|soment)\b/.test(t)
+    && trechosDePerguntaDeExistencia(t).length > 0
+    && !/\b(quero|queria|gostaria|preciso|marca|marcar|agendar|reserva|reservar)\b/.test(t)
+}

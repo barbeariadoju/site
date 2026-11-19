@@ -2062,6 +2062,9 @@ Deno.serve(async (request: Request) => {
             // documento ou envio — e qualquer pergunta que não comece pela nota — é outro assunto: vai pra JuIA.
             || /e-?mail|\bendereco\b|\btelefone\b|\bcontato\b|\bnota fiscal\b|\brecibo\b|\bcupom\b|\b(favor|por favor|pfv|pf)\b|\b(envia|enviar|envie)\b|\bme (manda|mande|passa|passe)\b/.test(normalizedReply)
             || (/\?/.test(text) && !/^[12]\b/.test(normalizedReply.trim()))
+            // v29.366.0 — caso João (18/11/2026, 19h18): depois do comprovante, chamou "Ju" e ouviu "Não entendi. Digite 1 se
+            // ficou satisfeito". Chamar o Juliano pelo nome ou cumprimentar é começo de conversa, não nota: vai pra JuIA.
+            || /^(oi|ola|opa|ei|e ai|eai|fala|salve)?[\s,!.]*(ju+|juliano|jo)[\s,!.?]*$|^(oi|ola|opa|bom dia|boa tarde|boa noite|e ai|eai|fala)\b[\s,!.]*(ju+|juliano|jo|tudo bem|blz|beleza)?[\s,!.?]*$/.test(trimmedNormalized)
           // v28.67.0 (caso Marcelo, 06/08/2026): cliente mandou áudio elogiando e depois
           // escreveu "só elogios hein" — a JuIA respondeu "não entendi" e NÃO disparou o
           // pedido de avaliação no Google. Cliente satisfeito que avaliaria, não avaliou:

@@ -1,3 +1,33 @@
+## 29.366.0 — JuIA: remarcação lê o dia escrito, "posso ir agora", pergunta do que a casa faz, "irei verificar" e "Ju" depois do comprovante (19/11)
+
+**Revisão das conversas de 18/11 15h a 19/11 9h20 (14 clientes com troca de mensagem).** Cinco erros, quatro corrigidos.
+
+- **Caso Thiago (18/11, 18h41):** "trocar o meu horário para segunda feira dia 23/11" e, duas vezes, "Para segunda feira
+  23/11" ouviram "Para qual dia você quer mudar?". Só na terceira veio "segunda não abrimos". O dia que o cliente escreve
+  só valia quando o modelo devolvia OUTRO dia; quando o modelo não devolvia nenhum, se perdia. Na remarcação, o dia
+  escrito (que não seja o do próprio agendamento) agora vale direto e, com um agendamento só, a conversa já mostra o dia
+  pedido no mesmo turno. Cenários 141a-b.
+- **Caso Sérgio (18/11, 15h40):** horário das 16:15, respondeu o aviso de chegada com "Se quiser posso até ir agora" e
+  ouviu "Para qual dia e horário você quer mudar?". **O Juliano teve que entrar e pedir desculpa** ("foi a IA que respondeu
+  você"). "Ir agora" no dia do agendamento = adiantar: mostra só o que está livre antes do horário dele (mesmo caminho do
+  "mais cedo" da Jessica, v29.308.0). Cenário 142.
+- **Caso Fábio (18/11, 18h42, áudio):** "vocês fazem desondulação, botox… ou é somente corte tradicional e barba?" — a regra
+  do "somente X" (v29.273.0) leu "corte e barba" como pedido e anotou Barba Express. O follow-up das 8h saiu "ainda tem
+  interesse em Corte de cabelo + Barba Express", serviço que ele nunca pediu. Pergunta do que a casa faz com alternativa
+  ("ou é só…"), sem verbo de pedido, não anota serviço (`perguntaDeCatalogoComAlternativa` em `_shared/leitura-cliente.ts`,
+  com teste). Cenários 143a-b.
+- **Caso Fábio (19/11, 09h15):** "Ah ótimo irei verificar" depois da lista da manhã caiu no "me embolei" e ficou como lead a
+  cobrar. "Irei/vou verificar", "vou olhar minha agenda" (sem pergunta) = adiamento: "Combinado, fico no aguardo" e o lead
+  sai do funil. Escolhi NÃO pôr isso no `postponeSignal`, porque ele também libera horário de quem tem reserva — "vou
+  verificar" de quem já está marcado não pode cancelar nada. Cenários 143c-d.
+- **Caso João (18/11, 19h18, `whatsapp-webhook`):** chamou "Ju" depois do comprovante e ouviu "Não entendi. Digite 1 se ficou
+  satisfeito". Cumprimento ou o nome do Juliano sozinho é começo de conversa, não nota: vai pra JuIA.
+- **Não corrigido:** Marcelo (18/11, 18h38) mandou o comprovante do Pix depois de o atendimento já estar concluído como "pago
+  no Pix" e ouviu "vou passar pro Juliano conferir". Não está errado (quem confere o Pix é o Juliano), só redundante.
+
+Simulador: 367 ok (eram 360). Gabriel e Marcos ouviram o saldo de pontos ao reservar: está dentro da regra (quem tinha saldo
+em 27/10 continua até completar).
+
 ## 29.365.0 — Comprovante enxuto com link do próximo agendamento + 4 correções da JuIA (18/11)
 
 **Comprovante (pedido do Juliano, 18/11: "vamos enxugar esta msg").** O que motivou: o comprovante do Henrique
