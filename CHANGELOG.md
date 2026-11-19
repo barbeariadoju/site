@@ -1,3 +1,19 @@
+## 29.369.0 — "Me avise" confirma a lista de espera que já existe (caso Dorival, 19/11)
+
+Dorival pediu barba na navalha "agora a tarde" (16h06). A JuIA respondeu do jeito certo: hoje está cheio, nome
+na lista de espera de hoje, e sábado com horários se ele preferir garantir. Ele respondeu "Maravilha / Se tiver
+então, me avise sim", um OK para a espera de hoje. A JuIA o reinscreveu na lista **de sábado**, que ainda tinha
+horário: "Te coloquei na lista de espera pra sábado (21/11)". O Juliano viu e apontou.
+
+- Por quê: a oferta de sábado deixava `pending_waitlist` com a data de sábado, e o "me avise" virava
+  `join_waitlist` sobre essa oferta.
+- Agora: se a última fala da JuIA foi "Deixei seu nome na lista de espera" e o cliente responde "me avise", "ok",
+  "combinado" ou "maravilha", sem horário e sem citar outro dia, a JuIA só confirma: "Combinado, Dorival! Seu nome
+  está na lista de espera de hoje. Se alguém desmarcar, eu te aviso por aqui na hora." Não reinscreve, e a data
+  da conversa volta para a da espera. Escolher o sábado ("pode ser sábado 11:50") segue o fluxo normal.
+- A inscrição do Dorival foi devolvida para hoje direto no banco.
+- Simulador: cenário 146 (a, b, c).
+
 ## 29.368.0 — Sinal só para quem falta: cliente novo marca química sem sinal (19/11)
 
 **Decisão do Juliano (19/11), caso Fábio:** "não peça mais sinal pra agendar; o sinal fica só para quem agenda e não aparece,

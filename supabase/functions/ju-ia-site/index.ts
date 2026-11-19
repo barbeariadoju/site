@@ -1655,6 +1655,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // v29.326.0 (casos Rodrigo e Ronaldo): o cliente ficou na lista de espera (ou o Juliano vai ver o encaixe)
  // — o lead sai do funil, sem o toque das 8h dizendo "hoje tenho alguns horários" por cima.
  let esperaInscrita=false
+ let esperaJaConfirmada=false // v29.369.0 caso Dorival
  // v29.138.0 (caso João, 05/09/2026, 11h59): "Juliano consegue falar comigo?" recebeu
  // "Consigo te atender na terça sim!" e "N quero a inteligência artificial / N ta dando
  // certo" ficou sem resposta. Pedido explícito de gente é determinístico: uma frase curta,
@@ -3479,7 +3480,23 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    intent='join_waitlist'
   }
  }
- if(intent==='join_waitlist'){
+ // v29.369.0 — caso Dorival (19/11/2026, 16h06): pediu barba "agora a tarde", a JuIA já o inscreveu na
+ // espera de HOJE e ofereceu sábado como alternativa. Ele respondeu "Maravilha / Se tiver então, me avise
+ // sim" — um OK para a espera que já existia — e a JuIA o reinscreveu para o SÁBADO, dia que ainda tinha
+ // horário. "Me avise" depois de "Deixei seu nome na lista de espera" só confirma a inscrição feita.
+ const jaNaEsperaDita=/deixei seu nome na lista de espera|seu nome já está na lista de espera/i.test(ultimaFalaJuIA)
+ if(jaNaEsperaDita&&next.espera_inscrita&&next.espera_inscrita>=today()&&!extractRequestedTime(message)
+  &&(intent==='join_waitlist'||/\b(me\s+)?avis[ae]|\bme\s+(chama|fala)|\bpode\s+ser\b|\bcombinado\b|\bfechado\b|\bmaravilha\b|\b(ok|blz|beleza|certo|isso)\b/.test(normalizedQuestion))
+  &&!weekdayDatesMentioned(normalizedQuestion,today()).length&&!/\b(sabado|terca|quarta|quinta|sexta|amanha)\b/.test(normalizedQuestion)){
+  intent='join_waitlist'
+  next.pending_waitlist=null
+  next.date=next.espera_inscrita
+  reply=`Combinado${next.name?`, ${firstName(next.name)}`:''}! Seu nome está na lista de espera ${next.espera_inscrita===today()?'de hoje':emDia(next.espera_inscrita)}. Se alguém desmarcar, eu te aviso por aqui na hora.`
+  actions=[]
+  handoff=false
+  esperaJaConfirmada=true
+ }
+ if(intent==='join_waitlist'&&!esperaJaConfirmada){
   const offer=next.pending_waitlist
   if(!offer){
    intent='availability'

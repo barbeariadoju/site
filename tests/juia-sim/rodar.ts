@@ -2058,5 +2058,19 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('145 química em cliente novo: reserva sem sinal', reservou(r) && !/sinal/i.test(r.reply) && !cobrou && !r.state?.sinal_pendente, { reply: r.reply, cobrou })
 }
 
+// 146. v29.369.0 — caso Dorival (19/11/2026): já inscrito na espera de hoje, com sábado oferecido como alternativa, respondeu
+//      "Maravilha / Se tiver então, me avise sim". É OK para a espera de HOJE, não pedido de espera no sábado.
+{
+  const sabadoD = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const fala = 'Poxa, Dorival, hoje a agenda já está cheia. Deixei seu nome na lista de espera: se alguém desmarcar, te aviso na hora. Se preferir garantir, no sábado tenho alguns horários entre 11:50 e 13:00 (por exemplo 11:50, 12:15, 12:45 ou 13:00).'
+  const st = { espera_inscrita: hoje, date: sabadoD, services: ['Barba na navalha com toalha quente'], name: 'Dorival', pending_waitlist: { date: sabadoD, period: null, service_name: 'Barba na navalha com toalha quente', service_price: 50, duration_minutes: 40 } }
+  for (const [rot, intent] of [['a', 'join_waitlist'], ['b', 'other']]) {
+    const r = await turno({ msg: 'Maravilha\nSe tiver então, me avise sim', state: st, history: [{ role: 'assistant', content: fala }], ai: { intent, reply: 'Ok', updates: {} }, contexto: ctxCliente('Dorival'), vagas: { [sabadoD]: ['11:50', '12:15'] } })
+    checar(`146${rot} "me avise" confirma a espera de hoje, sem reinscrever no sábado`, /lista de espera de hoje/.test(r.reply) && !r.saidas.some((s: any) => s.url.includes('join-waitlist')), r.reply)
+  }
+  const r3 = await turno({ msg: 'Pode ser sábado 11:50', state: st, history: [{ role: 'assistant', content: fala }], ai: { intent: 'book', reply: 'Ok', updates: { date: sabadoD, time: '11:50' } }, contexto: ctxCliente('Dorival'), vagas: { [sabadoD]: ['11:50', '12:15'] } })
+  checar('146c escolher o sábado não vira confirmação de espera', !/lista de espera de hoje/.test(r3.reply), r3.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
