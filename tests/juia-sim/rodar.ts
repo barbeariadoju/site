@@ -2012,10 +2012,11 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   const pergunta = 'Boa tarde, Jô. Me fala uma coisa, nessa barbeira de vocês, vocês fazem desondulação, botox, esses tratamentos aí, ou é somente corte tradicional e barba?'
   const r1 = await turno({ msg: pergunta, ai: { intent: 'price', reply: 'Fazemos sim', updates: {} }, nomeWhats: 'Fábio' })
   const lead1 = r1.chamadas.find((x: any) => x.alvo === 'conversation_leads' && x.op === 'upsert')
-  checar('143a pergunta do que a casa faz: lead sem Barba Express', !/Barba Express/.test(String(lead1?.payload?.service_interest || '')), { reply: r1.reply, lead: lead1?.payload?.service_interest, state: r1.state?.services })
+  // Desondulação = Alisamento / Relaxamento (Juliano, 19/11): esse fica anotado; o "corte e barba" da alternativa, não.
+  checar('143a pergunta do que a casa faz: lead só com o Alisamento (desondulação)', lead1?.payload?.service_interest === 'Alisamento / Relaxamento',{ reply: r1.reply, lead: lead1?.payload?.service_interest, state: r1.state?.services })
   const r2 = await turno({ msg: 'E quanto sai o corte?', state: r1.state, history: [{ role: 'user', content: pergunta }, { role: 'assistant', content: r1.reply }], ai: { intent: 'price', reply: 'R$ 50', updates: {} }, nomeWhats: 'Fábio' })
   const lead2 = r2.chamadas.find((x: any) => x.alvo === 'conversation_leads' && x.op === 'upsert')
-  checar('143b "quanto sai o corte?": lead fica só no que ele perguntou', !/Barba Express/.test(String(lead2?.payload?.service_interest || '')), { reply: r2.reply, lead: lead2?.payload?.service_interest, state: r2.state?.services })
+  checar('143b "quanto sai o corte?": lead fica só no que ele perguntou', !/Barba/.test(String(lead2?.payload?.service_interest || '')) && /Alisamento/.test(String(lead2?.payload?.service_interest || '')),{ reply: r2.reply, lead: lead2?.payload?.service_interest, state: r2.state?.services })
   // 09h15 do dia seguinte: "Ah ótimo irei verificar" depois da lista da manhã caiu no "me embolei" e ficou como lead a cobrar.
   const listaManha = 'Hoje, no período da manhã, tenho horários entre 10:15 e 11:45 para aproximadamente 95 minutos. Alguns exemplos: 10:15, 10:30, 11:00, 11:30, 11:45. Qual horário fica melhor pra você?'
   const r3 = await turno({ msg: 'Ah ótimo irei verificar', state: { services: ['Alisamento / Relaxamento', 'Corte de cabelo'], date: hoje, period: 'morning' }, history: [{ role: 'user', content: 'Se fosse pela manhã' }, { role: 'assistant', content: listaManha }],
@@ -2024,6 +2025,28 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('143c "irei verificar": fica combinado, sem lista e sem cobrança', /fico no aguardo/.test(r3.reply) && !/\d{2}:\d{2}/.test(r3.reply) && apagouLead, { reply: r3.reply, apagouLead })
   const r4 = await turno({ msg: 'Vou verificar se tem 10:30?', history: [{ role: 'assistant', content: listaManha }], ai: { intent: 'availability', reply: 'Tenho 10:30 sim.', updates: { date: hoje, time: '10:30' } }, nomeWhats: 'Fábio', vagas: { [hoje]: ['10:15', '10:30'] } })
   checar('143d com pergunta não é adiamento', !/fico no aguardo/.test(r4.reply), r4.reply)
+}
+
+// 144. v29.367.0 — pedido do Juliano (19/11/2026), depois do caso Thiago: domingo e segunda respondidos de cara, com os dias
+// em que atendemos e os horários do dia aberto de antes (sábado) e de depois (terça). Na remarcação, o horário que o cliente
+// já tem continua garantido e não volta como "novidade".
+{
+  const sabadoAntes = somar(segunda, -2)
+  const temSabado = sabadoAntes >= hoje && new Date(sabadoAntes + 'T12:00:00Z').getUTCDay() === 6
+  const [, ms, ds] = segunda.split('-')
+  const vagas: Record<string, string[]> = { [terca]: ['08:30', '09:00', '14:00', '17:00'], [somar(terca, 1)]: ['10:00'] }
+  if (temSabado) vagas[sabadoAntes] = ['09:00', '11:00']
+  const r1 = await turno({ msg: 'Tem horário segunda?', ai: { intent: 'availability', reply: 'Consigo sim!', updates: { services: ['Corte de cabelo'], date: segunda } }, contexto: ctxCliente('Teste Segunda'), vagas })
+  checar('144a "tem segunda?": não abre + atendemos de terça a sábado + terça', /não abre: atendemos de terça a sábado/.test(r1.reply) && /terça/.test(r1.reply) && (!temSabado || /sábado \(\d{2}\/\d{2}\) também consigo: 09:00 ou 11:00/.test(r1.reply)), r1.reply)
+  const fut = [{ id: 'b144', booking_date: terca, start_time: '08:30:00', service_name: 'Corte + Barba Express', duration_minutes: 60, status: 'confirmed' }]
+  const r2 = await turno({ msg: `Gostaria de trocar o meu horário para segunda feira dia ${ds}/${ms}`, ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Teste Thiago'), futuros: fut, vagas })
+  checar('144b remarcar pra segunda: atendemos de terça a sábado, horário atual garantido, sem oferecer 08:30 de novo',
+    /não estamos abertos: atendemos de terça a sábado/.test(r2.reply) && /às 08:30 continua garantido/.test(r2.reply) && !/Quer remarcar pra esse dia/.test(r2.reply)
+      && !/tenho[^.]*08:30/.test(r2.reply) && (!temSabado || /sábado \(\d{2}\/\d{2}\) tenho 09:00 ou 11:00/.test(r2.reply)), r2.reply)
+  if (temSabado) {
+    const r3 = await turno({ msg: '11:00', state: r2.state, history: [{ role: 'assistant', content: r2.reply }], ai: { intent: 'reschedule', reply: 'Ok', updates: {} }, contexto: ctxCliente('Teste Thiago'), futuros: fut, vagas })
+    checar('144c "11:00" vale pelo sábado oferecido', r3.state?.pending_reschedule_new_date === sabadoAntes && r3.state?.pending_reschedule_new_time === '11:00', { reply: r3.reply, st: r3.state?.pending_reschedule_new_date })
+  }
 }
 
 console.log(`\n${ok} ok, ${falhou} falharam`)

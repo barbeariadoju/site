@@ -1,3 +1,22 @@
+## 29.367.0 — Domingo e segunda respondidos de cara, com os dias em que atendemos (19/11)
+
+**Pedido do Juliano (19/11), depois do caso Thiago:** quem pede domingo ou segunda deve ouvir logo que não abrimos e a partir
+de quando atendemos.
+
+- O agendamento novo já dizia isso desde a v29.143.0. O que mudou ali foi a frase e o sábado:
+  - a frase "(domingo e segunda a gente não abre)" virou ": atendemos de terça a sábado". Diz o que É possível, não só o que não é;
+  - o "Se preferir antes, no sábado (21/11) também consigo." agora sai com os horários ("…também consigo: 09:00 ou 11:00").
+    No caso Thiago, ele teve que perguntar "E sábado 21/11 tem algum horário?". O "11:00" sozinho na resposta vale pelo sábado
+    (`horarios_por_dia`).
+- **A remarcação para dia fechado era o ponto fraco.** Ela respondia "Mas consigo te atender normalmente na terça (24/11)… quer
+  remarcar pra esse dia?", sendo terça 24/11 o dia do PRÓPRIO horário do Thiago, e não falava do sábado. Agora (`ofertaDiaFechadoRem`):
+  "Na segunda (23/11) não estamos abertos: atendemos de terça a sábado. Seu horário na terça (24/11) às 08:30 continua garantido.
+  Se quiser mudar, no sábado (21/11) tenho 09:00 ou 11:00, ou na terça (24/11) tenho 09:00, 14:00 ou 17:00." O horário atual
+  sai da lista. Vale também para fechamento excepcional (viagem, feriado), com o motivo no lugar de "terça a sábado".
+- Não mudei a regra de quem pede domingo/segunda SEM dizer o dia ("tem horário?"): ali a JuIA já oferece o dia aberto mais próximo.
+
+Cenários 144a-c. Simulador: 370 ok.
+
 ## 29.366.0 — JuIA: remarcação lê o dia escrito, "posso ir agora", pergunta do que a casa faz, "irei verificar" e "Ju" depois do comprovante (19/11)
 
 **Revisão das conversas de 18/11 15h a 19/11 9h20 (14 clientes com troca de mensagem).** Cinco erros, quatro corrigidos.

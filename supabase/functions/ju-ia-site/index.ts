@@ -1124,7 +1124,8 @@ Deno.serve(async req=>{
  // evita que soe a fechamento definitivo, e o cliente entende que é rotina, não má vontade.
  const naoAbreFrase=(iso:string)=>{
   const f=diaFechadoInfo(iso)
-  const motivo=f.excepcional?(f.reason?` (${f.reason})`:' (fechamento excepcional nesse dia)'):' (domingo e segunda a gente não abre)'
+  // v29.367.0 (pedido do Juliano, 19/11/2026): domingo/segunda diz de cara os dias em que atendemos.
+  const motivo=f.excepcional?(f.reason?` (${f.reason})`:' (fechamento excepcional nesse dia)'):': atendemos de terça a sábado'
   return `${emDiaCap(iso)} não estamos abertos${motivo}`
  }
  // v28.62.0 (melhoria A, aprovada 05/08): a JuIA não sabia que existia campanha rodando —
@@ -3049,6 +3050,25 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     if(!next.pending_reschedule_booking_id&&!extractRequestedTime(semHorarioDeCompromisso(message))){next.pending_reschedule_booking_id=alvoRem.id;next.time=null}
    }
   }
+  // v29.367.0 (pedido do Juliano, 19/11/2026, depois do caso Thiago): remarcar para domingo/segunda (ou dia fechado) ouvia
+  // "Mas consigo te atender normalmente na terça (24/11)… quer remarcar pra esse dia?" — sendo terça 24/11 o dia do
+  // PRÓPRIO horário dele, e sem falar do sábado (ele teve que perguntar). Agora: diz de cara que não abre e os dias em que
+  // atendemos, garante o horário que ele já tem, e oferece os dois dias abertos mais próximos (antes e depois), com horários.
+  const ofertaDiaFechadoRem=async(alvo:any,pedido:string,dur:number,depois:{date:string,slots:string[]})=>{
+   const diaAlvo=String(alvo?.booking_date||''),horaAlvo=String(alvo?.start_time||'').slice(0,5)
+   const semOAtual=(d:string,xs:string[])=>d===diaAlvo?xs.filter((t:string)=>t!==horaAlvo):xs
+   let antes:any=null
+   try{antes=await diaAbertoAntes(supabase,pedido,dur,today())}catch(_e){antes=null}
+   const opcoes=[antes&&antes.date!==depois.date?{date:antes.date,slots:semOAtual(antes.date,antes.slots)}:null,{date:depois.date,slots:semOAtual(depois.date,depois.slots)}].filter((o:any)=>o&&o.slots.length)
+   const mapa:Record<string,string>={},repetidos=new Set<string>()
+   for(const o of opcoes)for(const t of slotsSample(o.slots)){if(mapa[t])repetidos.add(t);else mapa[t]=o.date}
+   repetidos.forEach((t:string)=>delete mapa[t])
+   next.horarios_por_dia=Object.keys(mapa).length?mapa:null
+   const garantido=diaAlvo&&horaAlvo?` Seu horário ${emDia(diaAlvo)} às ${horaAlvo} continua garantido.`:''
+   if(!opcoes.length)return `${naoAbreFrase(pedido)}.${garantido}`
+   const lista=opcoes.map((o:any)=>`${emDia(o.date)} tenho ${listaOu(slotsSample(o.slots))}`).join(', ou ')
+   return `${naoAbreFrase(pedido)}.${garantido} Se quiser mudar, ${lista}. Qual fica melhor?`
+  }
   const rescheduleTarget=upcomingBookings.find((b:any)=>b.id===next.pending_reschedule_booking_id)
   const desiredServiceName=chosen.length?chosen.map((s:any)=>s.name).join(' + '):''
   const wantsServiceChange=Boolean(rescheduleTarget)&&Boolean(desiredServiceName)&&normalize(desiredServiceName)!==normalize(String(rescheduleTarget?.service_name||''))
@@ -3256,7 +3276,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        // v29.69.0: sem o "(${weekday})" — formatDateBR já sai como "terça (25/08)" na troca
        // determinística do fim da função, e saía "terça (25/08) (terça-feira)" pro cliente.
        reply=diaFechadoInfo(next.date).fechado
-        ?`${naoAbreFrase(next.date)}. Mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+        ?await ofertaDiaFechadoRem(target,next.date,duration,nextAvail)
         :`${emDiaCap(next.date)} não tenho mais vaga. O dia mais próximo que consigo é ${formatDateBR(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
        dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
        actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
@@ -3318,7 +3338,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      const nextAvail=await findNextAvailableDate(supabase,next.date,duration)
      if(nextAvail){
       reply=diaFechadoInfo(next.date).fechado
-        ?`${naoAbreFrase(next.date)}. Mas consigo te atender normalmente ${emDia(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
+        ?await ofertaDiaFechadoRem(target,next.date,duration,nextAvail)
         :`${emDiaCap(next.date)} não tenho mais vaga. O dia mais próximo que consigo é ${formatDateBR(nextAvail.date)}: ${slotsPhrase(nextAvail.slots)}. Quer remarcar pra esse dia?`
       dataPedidaOriginal=dataPedidaOriginal||next.date;next.date=nextAvail.date
       actions=slotsSample(nextAvail.slots).map((t:string)=>({label:t,message:t}))
@@ -5713,7 +5733,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const quando=cap(diaHumano(diaFechadoPedido.date))
    const motivo=diaFechadoPedido.excepcional
     ?(diaFechadoPedido.reason?` (${diaFechadoPedido.reason})`:' (fechada excepcionalmente nesse dia)')
-    :' (domingo e segunda a gente não abre)'
+    :': atendemos de terça a sábado'
    const generica=!effectiveTime&&!effectivePeriod&&/^(Consigo te atender|Perfeito! Para|Para )/.test(reply)
    if(diaFechadoPedido.mesmoDia&&(generica||!effectiveTime||allSlots.includes(effectiveTime))){
     // v29.291.0 (caso Venilson): "Sábado (17/10) a barbearia não abre (Viagem). No sábado (24/10) tenho 08:30, 10:15 ou 12:00."
@@ -5745,7 +5765,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const antes=await diaAbertoAntes(supabase,diaFechadoPedido.date,duration,today())
    if(antes){
     const mesmaHora=effectiveTime&&antes.slots.includes(effectiveTime)?` às ${effectiveTime}`:''
-    reply+=`\n\nSe preferir antes, ${emDia(antes.date)} também consigo${mesmaHora}.`
+    // v29.367.0 (pedido do Juliano, 19/11/2026): o dia de antes já sai com os horários — sem isso o cliente
+    // precisava perguntar "e no sábado, que horas?" (caso Thiago, 18/11).
+    reply+=`\n\nSe preferir antes, ${emDia(antes.date)} também consigo${mesmaHora||`: ${listaOu(slotsSample(antes.slots))}`}.`
+    // "11:00" sozinho na resposta vale pelo dia em que esse horário foi oferecido (horarios_por_dia, v29.291.0).
+    if(!mesmaHora){const mapaAntes:Record<string,string>={};for(const t of slotsSample(antes.slots))if(!allSlots.includes(t))mapaAntes[t]=antes.date;if(Object.keys(mapaAntes).length)next.horarios_por_dia=mapaAntes}
    }
   }
   }
