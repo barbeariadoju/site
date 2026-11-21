@@ -1,3 +1,21 @@
+## 29.370.0 — Banco estourou o limite do plano Free: painel em branco e JuIA calada (21/11)
+
+Sábado, 21/11, de manhã: agenda do painel em branco e JuIA sem responder. Os dados estavam inteiros (5
+atendimentos do dia, 17 futuros). Desde 00h33 a Supabase recusava toda chamada **autenticada** com 401
+(`PGRST303`): o painel logado, a chave secreta das functions, a JuIA, o webhook e todos os crons. Só as
+chamadas anônimas passavam.
+
+- Causa: o banco chegou a **724 MB, com limite de 500 MB no plano Free**. Com isso a Supabase restringe o projeto.
+  Dos 724 MB, **675 MB eram `cron.job_run_details`**: o pg_cron grava uma linha por execução (~6.300 por dia,
+  com os jobs de minuto em minuto) e nunca apaga. Os dados de verdade (agenda, clientes, WhatsApp) ocupam ~35 MB.
+- Feito: histórico do cron zerado, mantendo as últimas 24 h. O banco foi para **39 MB**. Novo job
+  `faxina-historico-cron` (todo dia às 03h30 de Brasília) apaga o que tiver mais de 3 dias. Migração 220.
+- A restrição sai quando a Supabase recalcula o uso. O painel deles avisa que isso pode levar até 1 hora.
+- Contra a recomendação óbvia (assinar o Pro, US$ 25/mês): o problema era lixo de log, não volume do negócio.
+  Com a faxina, o banco fica a menos de 10% do limite.
+- Primeiro tentei recarregar o PostgREST (`notify pgrst`), achando que ele tinha perdido as chaves de assinatura.
+  Não era isso. Quem mostrou a causa foi o selo "EXCEEDING USAGE LIMITS" no painel da Supabase.
+
 ## 29.369.0 — "Me avise" confirma a lista de espera que já existe (caso Dorival, 19/11)
 
 Dorival pediu barba na navalha "agora a tarde" (16h06). A JuIA respondeu do jeito certo: hoje está cheio, nome
