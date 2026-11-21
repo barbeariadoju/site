@@ -1,3 +1,20 @@
+## 29.371.0 — Aviso de dia fechado: dito uma vez só, e só quando há oferta de horário (revisão de 19-21/11)
+
+Revisão das conversas desde quinta 19/11 às 16h: 15 conversas, com o feriado de sexta no meio. Dois erros, os dois no
+aviso de "hoje não abre":
+
+- **Caso Alejandra (sexta 20/11, 09h56):** perguntou "Ta. Aberto hoje" e ouviu *"Hoje estamos excepcionalmente fechados.
+  Hoje a barbearia não abre (Feriado - Consciência Negra)."* O bloco do dia fechado já tinha dito, e o aviso do "abre
+  hoje?" entrou por cima, porque a trava contra repetição não reconhecia "não abre" nem "não estamos abertos". Agora
+  reconhece. Cenário 147.
+- **Caso Jesse (sexta 20/11, 12h09):** já tinha horário no sábado e escreveu "Se tiver alguma desistência antes melhor
+  ainda". Ouviu *"Hoje não estamos abertos (Feriado). Entendi. Vou repassar ao Juliano…"*. O aviso existe para quando a
+  JuIA oferece outro dia (caso Lucas, v29.294.0). Agora só entra se a resposta tiver um horário. Cenário 148.
+- Não é erro: o *"Caso ainda não tenha cortado o cabelo, hoje tenho alguns horários…"* das 08h45 para a Alejandra é o
+  retorno de lead com o texto do Juliano (caso Angelo, v29.290.0).
+- Simulador: 371 ok. Falham 5 que já falhavam antes da mudança e só falham quando o simulador roda num sábado
+  (94, 95a, 112a, 144a, 144b).
+
 ## 29.370.0 — Banco estourou o limite do plano Free: painel em branco e JuIA calada (21/11)
 
 Sábado, 21/11, de manhã: agenda do painel em branco e JuIA sem responder. Os dados estavam inteiros (5

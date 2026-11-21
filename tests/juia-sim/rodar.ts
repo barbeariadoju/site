@@ -2072,5 +2072,22 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('146c escolher o sábado não vira confirmação de espera', !/lista de espera de hoje/.test(r3.reply), r3.reply)
 }
 
+// 147. v29.370.0 — caso Alejandra (feriado 20/11/2026): "Ta. Aberto hoje" num dia fechado diz o fechamento UMA vez
+//      ("excepcionalmente fechados" + "a barbearia não abre" saíam juntos).
+{
+  const r = await turno({ msg: 'Ta. Aberto hoje', ai: { intent: 'availability', reply: 'Hoje a barbearia não abre.', updates: {} }, contexto: ctxCliente('Alejandra'), fechados: [hoje], vagas: { [amanha]: ['12:55', '13:00'] } })
+  const vezes = (r.reply.match(/excepcionalmente fechados|não abre|não estamos abertos/gi) || []).length
+  checar('147 dia fechado dito uma vez só', vezes === 1, r.reply)
+}
+
+// 148. v29.370.0 — caso Jesse (feriado 20/11/2026): com horário marcado, "Se tiver alguma desistência antes melhor ainda"
+//      num dia fechado não ganha "Hoje não estamos abertos" na frente de uma resposta que não oferece horário.
+{
+  const sab = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const fut = [{ id: 'b148', booking_date: sab, start_time: '11:50:00', service_name: 'Raspar a cabeça + Barba Express', duration_minutes: 70, status: 'confirmed' }]
+  const r = await turno({ msg: 'Se tiver alguma desistência antes melhor ainda', ai: { intent: 'availability', reply: 'Entendi. Vou repassar ao Juliano que você tem interesse caso surja uma desistência antes do seu horário.', updates: { date: sab } }, contexto: ctxCliente('Jesse'), futuros: fut, fechados: [hoje] })
+  checar('148 resposta sem oferta de horário não leva o aviso de hoje fechado', !/não estamos abertos/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

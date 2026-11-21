@@ -5793,7 +5793,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  // v29.294.0 (caso Lucas): a oferta do outro dia começa dizendo que hoje não abre — sem isso "Sim, na
  // terça às 14:00 está livre" responde uma pergunta que ele não fez.
- if(hojeFechadoNaoDito&&intent!=='book'&&reply&&!/não abre|não estamos abertos|agenda já está encerrada/.test(reply)){
+ // v29.370.0 — caso Jesse (feriado 20/11/2026, 12h09): já com horário no sábado, escreveu "Se tiver alguma desistência antes
+ // melhor ainda" e ouviu "Hoje não estamos abertos (Feriado - Consciência Negra). Entendi. Vou repassar ao Juliano…". O aviso
+ // existe para a OFERTA de outro dia (caso Lucas); resposta sem horário nenhum não está oferecendo nada, e o aviso só confunde.
+ if(hojeFechadoNaoDito&&intent!=='book'&&reply&&/\b\d{1,2}:\d{2}\b/.test(reply)&&!/não abre|não estamos abertos|agenda já está encerrada/.test(reply)){
   reply=`${encerradoPeloExpediente&&!diaFechadoInfo(today()).fechado?'Por hoje a agenda já está encerrada':naoAbreFrase(today())}. ${reply.replace(/^Sim[!,]?\s*(✅\s*)?/i,'').replace(/^./,(c:string)=>c.toUpperCase())}`
  }
  dropPezinhoSeTemCorte()
@@ -6763,7 +6766,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  }
  // v29.43.2: "voces atendem hoje?" — o aviso de aberto/fechado entra por ultimo, porque os blocos
  // de fluxo (ex.: "qual servico?") reescrevem o reply inteiro no meio do caminho.
- if(avisoAbertoHoje&&!handoff&&!/atendemos até|estamos fechados|já encerramos|excepcionalmente fechados/i.test(reply)){
+ // v29.370.0 — caso Alejandra (feriado 20/11/2026, 09h56): "Ta. Aberto hoje" ouviu "Hoje estamos excepcionalmente fechados.
+ // Hoje a barbearia não abre (Feriado - Consciência Negra)." O bloco do dia fechado já tinha dito, com outras palavras, e o
+ // aviso entrava por cima. "não abre" e "não estamos abertos" também contam como fechamento já dito.
+ if(avisoAbertoHoje&&!handoff&&!/atendemos até|estamos fechados|já encerramos|excepcionalmente fechados|não abre|não estamos abertos/i.test(reply)){
   // v29.361.0 — caso Lucas (13/11 15h43 e 14/11 12h15): "Hoje atendemos até 19h. Hoje fico aberto até as 19h." e
   // "Sim, hoje atendemos até 15h! Boa tarde, Lucas! Estamos abertos hoje até as 15h." O modelo também responde a
   // pergunta, e o aviso entrava por cima: a mesma informação duas vezes, com o cumprimento no meio. A frase do
