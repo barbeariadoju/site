@@ -1,3 +1,28 @@
+## 29.373.0 — JuIA: "apenas 1 pessoa" desfaz o grupo, e nada de reservar horário que não apareceu na conversa (caso Clau)
+
+**O que aconteceu (sábado 21/11, 12h19-12h27, perdemos a cliente):** a Clau perguntou por corte italiano, pediu "2 horários"
+e disse "São duas pessoas". Hoje não cabiam dois cortes, a JuIA ofereceu a terça. Ela respondeu "Pode ser as 13:05,
+apenas para 1 pessoa" e ouviu "me embolei". Depois escreveu "1 horário pode ser o outro eu agendo depois" e saiu
+**"Reservado! terça às 13:00: Corte + Corte (R$ 100)"**, dia e hora que ela nunca disse. Em seguida a JuIA ofereceu
+"hoje 12:55 ou 13:05" (conta feita com 1 corte), ela escolheu 12:55 e ouviu "Hoje não tenho mais vaga" (conta feita
+com os 2 cortes, 80 min). Às 12h41 mandamos o pedido de desculpas com o 13:05 confirmado, mas às 12h44 ela já tinha
+ido para outra barbearia. Horário cancelado.
+
+**Duas causas, duas correções (ju-ia-site v374):**
+- **O grupo grudava.** Só "só eu"/"sozinho" desfaziam o "2 pessoas". Agora "1/uma pessoa", "1 horário", "um só",
+  "só/apenas (para) 1" também desfazem, e a lista volta a um corte só. Cenário 150 (três frases do caso).
+- **Reserva em horário que veio do nada.** Nova trava antes de gravar: horário NOVO neste turno só reserva se
+  apareceu na conversa, ou seja, escrito pelo cliente agora (13:30, 13h30, 13.30, 8:45h, 5:30 da tarde, 18h, "seis
+  horas", "meio dia"), oferecido pela JuIA nas últimas 3 mensagens ou numa escolha pendente. Fora disso a JuIA
+  pergunta: "Só pra confirmar antes de reservar: é na terça (24/11) às 13:00?". Cenário 149 (a, a2, b, c).
+- **Decidido contra a recomendação óbvia:** a primeira versão também exigia que o cliente tivesse dito o DIA. No
+  simulador, isso barrou 10 reservas certas (dia combinado em turno anterior, "pode ser" a uma oferta), então a trava
+  ficou só no horário, que é o que estava errado no caso.
+- **Simulador:** 378 ok. Os 5 que falham (94, 95a, 112a, 144a, 144b) são os de sábado, que falham também no main.
+  A trava só disparou no caso da Clau.
+- **Observação sobre a v29.372.0 da manhã:** o 13:05 oferecido era o horário "colado no próximo" da agenda compacta
+  de sábado, e estava correto para 1 corte. O erro foi a JuIA continuar contando 2 pessoas.
+
 ## 29.372.0 — Piloto: agenda compacta aos sábados (sem sobra de 1 a 39 min)
 
 Pedido do Juliano (21/11): no sábado ele trabalha só até as 15h e a meta é R$ 500 nesse período. A agenda de hoje ficou

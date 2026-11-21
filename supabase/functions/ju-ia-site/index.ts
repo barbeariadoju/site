@@ -1520,7 +1520,17 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    const adults=mAd?num(mAd[1]):mPeople?Math.max(num(mPeople[1])-kids,1):0
    if(adults+kids>=2){next.group_adults=adults;next.group_kids=kids}
   }
-  if(/\bso (eu|pra mim)\b|\bapenas eu\b|\bsozinho\b/.test(nm)){delete next.group_adults;delete next.group_kids}
+  // v29.373.0 — caso Clau (21/11/2026, 12h21): "São duas pessoas" → depois "Pode ser as 13:05, apenas para
+  // 1 pessoa" / "1 horário pode ser o outro eu agendo depois". O grupo de 2 ficou grudado (só "só eu"/
+  // "sozinho" desfaziam) e a lista seguiu "Corte + Corte" (80 min): hoje 13:05 não cabia, a JuIA reservou
+  // terça e depois negou o 12:55 que ela mesma ofereceu. "1/uma pessoa", "1 horário", "um só", "só um"
+  // desfazem o grupo e a lista volta a um atendimento por serviço.
+  const umaPessoa=/\b(1|uma)\s+pessoa\b|\b(1|um)\s+horario\b|\b(um|uma|1)\s+so\b|\b(so|apenas|somente)\s+(para\s+|pra\s+)?(1|um|uma)\b/.test(nm)&&!/\b(1|um|uma)\s+(de\s+cada|para\s+cada|pra\s+cada)\b/.test(nm)
+  if(/\bso (eu|pra mim)\b|\bapenas eu\b|\bsozinho\b/.test(nm)||(umaPessoa&&!mAd&&!mKid&&!mPeople)){
+   const eraGrupo=Number(next.group_adults||0)+Number(next.group_kids||0)>=2
+   delete next.group_adults;delete next.group_kids
+   if(eraGrupo)next.services=[...new Set(next.services as string[])]
+  }
   const gA=Number(next.group_adults||0),gK=Number(next.group_kids||0)
   if(gA+gK>=2){
    const adultName=next.services.find((n:string)=>/^Corte/.test(n)&&!/infantil/.test(n))||'Corte de cabelo'
@@ -5944,6 +5954,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
      actions=OPCOES_SERVICO_CONVITE.map((o)=>({label:`${o.numero} — ${o.nome}`,message:String(o.numero)}))
      intent='other';handoff=false
     }
+   }
+  }
+  // v29.373.0 — TRAVA DO HORÁRIO (caso Clau, 21/11/2026, 12h23): a JuIA ofereceu "na terça (24/11) tenho 09:35,
+  // 12:15, 15:15 ou 18:00", a cliente respondeu "1 horário pode ser o outro eu agendo depois" (falava de UMA pessoa
+  // HOJE) e saiu "Reservado! terça às 13:00" — horário que não apareceu em lugar nenhum da conversa. Horário novo
+  // neste turno só reserva se veio de algum lugar: escrito pelo cliente agora, oferecido pela JuIA nas últimas
+  // mensagens ou numa escolha pendente (pending_fit_choice). Fora disso, pergunta antes de reservar.
+  if(intent==='book'&&next.date&&next.time&&!next.pending_reschedule_booking_id&&String(next.time).slice(0,5)!==String(state?.time||'').slice(0,5)){
+   const t5=String(next.time).slice(0,5),hh=Number(t5.slice(0,2)),mi=t5.slice(3,5)
+   // "17:30", "17h30", "5:30" (tarde), "18h", "seis horas", "meio dia" — o cliente escreve de muitos jeitos.
+   const h12=hh>12?hh-12:hh,porExtenso=['','uma','duas','tres','quatro','cinco','seis','sete','oito','nove','dez','onze','meio dia'][h12]||''
+   const hs=`(?:0?${hh}|0?${h12})`
+   // Número solto só no formato de 24h ("13"); no de 12h precisa do "h"/"horas"/"da tarde" ("1 horário" não é 13h).
+   const rxHora=new RegExp(`\\b${hs}\\s*(:|h|\\.)\\s*${mi}(?!\\d)`+(mi==='00'?`|\\b0?${hh}(\\s*(h|hs|horas?))?\\b(?![:.]\\d)|\\b0?${h12}\\s*(h|hs|horas?|da tarde|da noite)\\b`+(porExtenso?`|\\b${porExtenso}( horas?)?\\b(?! horario)`:''):'')+(mi==='30'&&porExtenso?`|\\b${porExtenso}( horas?)? e meia\\b`:''))
+   const ultimasJuIA=(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='assistant').slice(-3).map((h:any)=>normalize(String(h.content||'')))
+   const pend=[state?.pending_fit_choice?.time,...(Array.isArray(state?.pending_fit_choice?.alts)?state.pending_fit_choice.alts:[])].map((x:any)=>String(x||'').slice(0,5))
+   const deOnde=rxHora.test(normalize(message))||ultimasJuIA.some((t:string)=>new RegExp(`\\b0?${hh}:${mi}\\b`).test(t))||pend.includes(t5)
+   if(!deOnde){
+    console.log('[ju-ia-site] trava do horário: reserva em horário que não apareceu na conversa',JSON.stringify({date:next.date,time:t5}))
+    reply=`Só pra confirmar antes de reservar: é ${emDia(String(next.date))} às ${t5}?`
+    actions=[{label:'Sim',message:'Sim'},{label:'Outro horário',message:'Outro horário'}]
+    intent='other';handoff=false
    }
   }
   if(intent==='book'){

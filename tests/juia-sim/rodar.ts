@@ -2089,5 +2089,36 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('148 resposta sem oferta de horário não leva o aviso de hoje fechado', !/não estamos abertos/.test(r.reply), r.reply)
 }
 
+// 149. v29.373.0 — caso Clau (21/11/2026, 12h23): a JuIA ofereceu a terça como alternativa e a cliente respondeu
+//      "1 horário pode ser o outro eu agendo depois" (uma pessoa, hoje). Saía "Reservado! terça às 13:00" — dia e hora
+//      que ela nunca disse. Agora pergunta antes. Escolher um horário da lista ou dizer "sim" à pergunta com o horário
+//      continua reservando.
+{
+  const ter = proxima(2) === hoje ? somar(hoje, 7) : proxima(2)
+  const fala = 'Poxa, Clau, hoje a agenda já está cheia para os dois atendimentos. Se preferir garantir, na terça (24/11) tenho alguns horários entre 09:35 e 18:00 (por exemplo 09:35, 12:15, 15:15 ou 18:00).'
+  const st = { name: 'Clau', services: ['Corte de cabelo'], ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] }, upsell_offer_done: true }
+  const vagas = { [ter]: ['09:35', '12:15', '13:00', '15:15', '18:00'] }
+  const r = await turno({ msg: '1 horário pode ser o outro eu agendo depois', state: st, history: [{ role: 'assistant', content: fala }], ai: { intent: 'book', reply: 'Reservado!', updates: { date: ter, time: '13:00' } }, contexto: ctxCliente('Clau'), vagas })
+  checar('149a sem dia nem horário escolhidos não reserva', !reservou(r) && /\?/.test(r.reply), r.reply)
+  // Com o estado do caso real (ofertas extras já feitas) é a trava do horário que segura.
+  const stReal = { ...st, upsell_services_done: true, upsell_products_done: true, pix_offered: true, date: ter }
+  const r1b = await turno({ msg: '1 horário pode ser o outro eu agendo depois', state: stReal, history: [{ role: 'assistant', content: fala }], ai: { intent: 'book', reply: 'Reservado!', updates: { date: ter, time: '13:00' } }, contexto: ctxCliente('Clau'), vagas })
+  checar('149a2 estado do caso real: pergunta antes, não reserva', !reservou(r1b) && /\?/.test(r1b.reply), r1b.reply)
+  const r2 = await turno({ msg: '12:15', state: st, history: [{ role: 'assistant', content: fala }], ai: { intent: 'book', reply: 'Reservado!', updates: { date: ter, time: '12:15' } }, contexto: ctxCliente('Clau'), vagas })
+  checar('149b escolher o horário da lista reserva', reservou(r2), r2.reply)
+  const r3 = await turno({ msg: 'Sim', state: { ...st, date: ter, time: '13:00' }, history: [{ role: 'assistant', content: 'Só pra confirmar antes de reservar: é na terça às 13:00?' }], ai: { intent: 'book', reply: 'Reservado!', updates: {} }, contexto: ctxCliente('Clau'), vagas })
+  checar('149c "Sim" à pergunta com o horário reserva', reservou(r3), r3.reply)
+}
+
+// 150. v29.373.0 — caso Clau: "São duas pessoas" e depois "Pode ser as 13:05, apenas para 1 pessoa" — o grupo desfaz
+//      e a lista volta a um corte só (ficava "Corte + Corte", 80 min, e hoje não cabia).
+{
+  const st = { name: 'Clau', services: ['Corte de cabelo', 'Corte de cabelo'], group_adults: 2, group_kids: 0, ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] } }
+  for (const [rot, msg] of [['a', 'Pode ser as 13:05 , apenas para 1 pessoa.'], ['b', '1 horário pode ser o outro eu agendo depois'], ['c', 'pode ser um só']]) {
+    const r = await turno({ msg, state: st, ai: { intent: 'availability', reply: 'Ok', updates: { services: ['Corte de cabelo', 'Corte de cabelo'] } }, contexto: ctxCliente('Clau'), vagas: { [hoje]: ['12:55', '13:05'] } })
+    checar(`150${rot} "uma pessoa" desfaz o grupo`, JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo']) && !r.state?.group_adults, { sv: r.state?.services, reply: r.reply })
+  }
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
