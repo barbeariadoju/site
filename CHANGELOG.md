@@ -1,3 +1,28 @@
+## 29.372.0 — Piloto: agenda compacta aos sábados (sem sobra de 1 a 39 min)
+
+Pedido do Juliano (21/11): no sábado ele trabalha só até as 15h e a meta é R$ 500 nesse período. A agenda de hoje ficou
+8:30-9:50 · 10:00-10:40 · 11:00-11:50 · 11:50-12:55 · 13:45-14:55, com 85 min vagos, 35 deles em sobras de 10, 20 e
+5 min onde não cabe nada. Nos sábados desde 01/10 a média é de 67 min de buraco, ~30 min em sobra menor que um corte.
+**Causa:** a oferta era qualquer horário livre da grade de 15 em 15, então o cliente escolhia 10:00 com o anterior
+terminando às 9:50.
+
+**Regra nova (só sábado, migration 221, `sabado_compacto_ok` chamada dentro de `get_available_slots_excluding`):**
+um horário só aparece se encosta no anterior (ou na abertura 8:30), encosta no próximo (ou no fechamento 15:00), ou
+deixa 40 min ou mais dos dois lados. Encostar sempre pode, então todo vão em que o serviço cabe continua com opção:
+o cliente só escolhe entre menos horários. Para o "encostar no próximo" funcionar fora da grade (próximo às 11:00,
+corte de 40 → 10:20), no sábado entram também os candidatos "início do próximo menos a duração". Hoje, se o vão de
+antes já está correndo, só o lado de depois conta.
+
+- Vale para tudo que usa a oferta: site, JuIA, reagendamento, lista de espera, radar de encaixe e a lista do painel
+  (o painel segue com campo livre). A gravação (`create_public_booking_v15`) não mudou.
+- Conferido antes de aplicar com um sábado simulado (bloqueios de teste num bloco que dá erro de propósito e desfaz
+  tudo): corte de 40 → 9:50, 10:30, 11:10, 12:55, 13:05; quarta-feira idêntica à de antes. Depois de aplicar: sábado
+  28/11 vazio oferece 8:30, 9:15…13:30 e 14:20 (saem 8:45, 9:00 e 13:45-14:15); chamada pública do site respondendo.
+- **Decidido contra a recomendação óbvia:** o mínimo é 40 min (um corte), não 25 (Barba Express). Sobra de 25-39 min
+  no sábado é pouca (~13 min/dia) e quase nunca vira Express; o corte é o que enche o sábado.
+- **Medir em 4 sábados (até 19/12):** minutos de sobra < 40 por sábado (linha de base ~30) e atendimentos/faturamento
+  até as 15h. Funcionou → estender aos outros dias. Para desligar: o `dow = 6` de `sabado_compacto_ok` vira `false`.
+
 ## 29.371.0 — Aviso de dia fechado: dito uma vez só, e só quando há oferta de horário (revisão de 19-21/11)
 
 Revisão das conversas desde quinta 19/11 às 16h: 15 conversas, com o feriado de sexta no meio. Dois erros, os dois no
