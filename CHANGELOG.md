@@ -10,11 +10,17 @@ chamadas anônimas passavam.
   com os jobs de minuto em minuto) e nunca apaga. Os dados de verdade (agenda, clientes, WhatsApp) ocupam ~35 MB.
 - Feito: histórico do cron zerado, mantendo as últimas 24 h. O banco foi para **39 MB**. Novo job
   `faxina-historico-cron` (todo dia às 03h30 de Brasília) apaga o que tiver mais de 3 dias. Migração 220.
-- A restrição sai quando a Supabase recalcula o uso. O painel deles avisa que isso pode levar até 1 hora.
+- **O que destravou foi reiniciar o projeto** (painel da Supabase → Settings → General → Restart project,
+  08h33). A limpeza sozinha não bastou: 10 minutos depois o PGRST303 continuava, mesmo com o banco em 39 MB.
+  Depois do reinício, painel, chave secreta e crons voltaram na hora. O PostgREST tinha travado às 00h33
+  ("Thread killed by timeout manager") e não voltou a validar JWT. O estouro de tamanho deixou o projeto
+  "Unhealthy" e é o suspeito mais provável do travamento, mas isso não está provado.
 - Contra a recomendação óbvia (assinar o Pro, US$ 25/mês): o problema era lixo de log, não volume do negócio.
   Com a faxina, o banco fica a menos de 10% do limite.
-- Primeiro tentei recarregar o PostgREST (`notify pgrst`), achando que ele tinha perdido as chaves de assinatura.
-  Não era isso. Quem mostrou a causa foi o selo "EXCEEDING USAGE LIMITS" no painel da Supabase.
+- Primeiro tentei `notify pgrst, 'reload config'`, que não resolveu. **Se o PGRST303 aparecer de novo em tudo
+  que é autenticado:** confira o tamanho do banco e reinicie o projeto. Os dados não somem com isso.
+- Mensagem de cliente no WhatsApp entre 00h33 e 08h33 pode não ter sido gravada (o webhook não conseguia
+  escrever). Ontem foi feriado e a madrugada teve só 1 chamada de webhook, às 08h29.
 
 ## 29.369.0 — "Me avise" confirma a lista de espera que já existe (caso Dorival, 19/11)
 
