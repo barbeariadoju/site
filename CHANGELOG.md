@@ -1,3 +1,27 @@
+## 29.378.0 — Revisão de SEO de 25/11: perfil do Google corrigido e página de corte atualizada
+
+Diagnóstico (Search Console, 24/08 a 23/11; perfil do Google, semanas de setembro a novembro):
+
+- **Site:** 4,47 mil impressões, 72 cliques, posição média 8 (em 16/09 eram 5,57 mil, 103 e 7,2). "barbearia
+  bragança paulista": 457 impressões, posição 6,6. "barbearia com hora marcada" caiu da 11,4 para a 39, mas é
+  busca do Brasil inteiro e não traz cliente de Bragança.
+- **Maps:** as visualizações subiram em outubro (1,3 mil na semana 41) e voltaram a cerca de 200. O pico veio de
+  busca por endereço, Santa Casa e restaurante, gente que não procurava barbearia. "barbearia bragança paulista"
+  ficou estável (79, 107, 86 por mês), e rota, ligação e clique no site não caíram.
+
+O que mudou:
+
+- **Perfil do Google dizia "aceita somente dinheiro"** (`requires_cash_only=true`), contradizendo cartão e Pix
+  marcados ao lado. Corrigido para falso. Quem lia isso podia desistir antes de chegar.
+- **Link de agendamento no perfil** (`url_appointment`, com as UTMs do Maps): vira o botão "Agendar" no Google.
+- **Descrição do perfil reescrita** com o que é buscado e o que diferencia: hora marcada, um cliente por vez,
+  barbeiro e farmacêutico, lista de serviços e endereço. Sem preço nem link, que a diretriz do Google proíbe.
+- **Página de corte masculino:** 45 → 40 minutos (duração real desde 31/10), e a frase "cabeleireiro masculino em
+  Bragança Paulista". O site não tinha essa palavra, e a busca aparece no Maps e no Search Console (posição 81).
+- Decidido contra a recomendação óbvia (trocar o H1 da home "Cuidar da sua imagem é o meu trabalho" por
+  palavra-chave): o título da página já carrega "Barbearia em Bragança Paulista com hora marcada", e o ganho de um
+  H1 não paga mexer no visual da primeira dobra.
+
 ## 29.377.0 — Fim do "ainda tem interesse?" (caso Filipe)
 
 Às 14h17 de 25/11 o Filipe disse "estou precisando mesmo, mas vou receber só dia 30", e a JuIA respondeu que
