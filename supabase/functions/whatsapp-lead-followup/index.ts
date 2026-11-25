@@ -375,6 +375,20 @@ Deno.serve(async (request: Request) => {
         continue
       }
       const name = firstName(lead.customer_name)
+      // v29.377.0 — caso Filipe (25/11/2026): às 14h17 ele disse "vou receber só dia 30" e a JuIA respondeu
+      // "quando receber, me chama". Às 17h30 saiu "Só passando pra saber se ainda tem interesse em Corte de
+      // cabelo". Pedido do Juliano: essa cobrança não sai mais pra ninguém — quase sempre chega na hora
+      // errada e fora de contexto. Desligados todos os toques de "ainda tem interesse?" (pergunta de preço,
+      // "oi" de cliente antigo, pedido de agendamento que parou, disponibilidade de outro dia). Fica só o
+      // aviso do MESMO dia de que o horário não ficou reservado (caso João, 05/09: ele foi achando que estava
+      // marcado). Lista de espera e vaga reaberta seguem: nascem de vaga real, não de cobrança.
+      const diaDaConversaLead = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(lead.last_message_at))
+      const hojeLead = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(now))
+      if (!(lead.kind === 'availability' && diaDaConversaLead === hojeLead)) {
+        await admin.from('conversation_leads').update({ followup_stage: 2, updated_at: new Date().toISOString() }).eq('phone', lead.phone)
+        nudge1Skipped++
+        continue
+      }
       let text = ''
       if (lead.kind === 'booking_intent') {
         // Caso Fernando (25/08): pediu pra marcar, a JuIA perguntou o serviço e ele sumiu —

@@ -1,3 +1,20 @@
+## 29.377.0 — Fim do "ainda tem interesse?" (caso Filipe)
+
+Às 14h17 de 25/11 o Filipe disse "estou precisando mesmo, mas vou receber só dia 30", e a JuIA respondeu que
+ele chamasse quando recebesse. Às 17h30 o `whatsapp-lead-followup` mandou "Só passando pra saber se ainda tem
+interesse em Corte de cabelo". Pedido do Juliano: essa mensagem não sai mais para ninguém, porque quase sempre
+chega na hora errada e fora de contexto.
+
+- **Desligados todos os toques de cobrança do primeiro estágio:** o "ainda tem interesse?" (pergunta de preço ou
+  serviço), o "ainda estou por aqui" (pedido de agendamento que parou), o "vi que você esteve na barbearia, quer
+  marcar?" (oi de cliente antigo) e o "caso ainda não tenha cortado o cabelo" (disponibilidade pedida em outro
+  dia). O lead é encerrado sem mensagem.
+- **Ficou só o aviso do mesmo dia** "Seu horário ainda não ficou reservado": evita o cliente ir achando que está
+  marcado (caso João, 05/09). A pesquisa de motivo continua só para quem respondeu a esse aviso.
+- **Lista de espera e "abriu vaga" continuam:** nascem de vaga real que o cliente pediu, não de cobrança.
+- Decidido contra a recomendação óbvia (só reescrever o texto): o problema é o momento, não a frase. Quem tem
+  interesse volta pelo convite de retorno do dia 12 e pela reativação de 30 dias, que já têm regra própria.
+
 ## 29.376.0 — Mensagens ao cliente mais curtas, e "2 vagas" vira atendimento para duas pessoas
 
 Continuação do caso Edgard (excesso de palavras). Aprovado pelo Juliano em 25/11.
