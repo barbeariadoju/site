@@ -23,6 +23,16 @@ const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',ye
 // v29.190.0 — caso 12/09 18h41 (sábado à noite): "ele está atendendo na cadeira" com a barbearia
 // fechada. Mesma régua do webhook (naCadeira): terça a sábado, 8h30 às 19h, sábado até 15h.
 const barbeariaAbertaAgora=()=>{const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));const wd=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();return wd>=2&&wd<=6&&h>=8&&h<(wd===6?15:19)}
+// v29.374.0 — caso Thiago (terça 24/11/2026, 07h33): fora do expediente a frase era sempre "ele já encerrou o
+// expediente por hoje", inclusive antes de abrir. E o 🙏 é só de agradecimento (regra de 01/09), não de recado.
+const textoChamaJuliano=()=>{
+ if(barbeariaAbertaAgora())return 'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder.'
+ const h=Number(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()))
+ const wd=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay()
+ if(wd>=2&&wd<=6&&h<8)return 'Claro. Vou avisar o Juliano; ele ainda não começou os atendimentos de hoje e te responde por aqui assim que puder.'
+ if(wd===0||wd===1)return 'Claro. Vou avisar o Juliano; hoje a barbearia não abre, mas ele te responde por aqui assim que puder.'
+ return 'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar.'
+}
 // Minutos desde a meia-noite, no horário de Brasília (pra "agora" da agenda).
 const agoraMinutosSP=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());return Number(p.slice(0,2))*60+Number(p.slice(3,5))}
 const money=(n:number)=>`R$ ${Number(n).toFixed(2).replace('.',',')}`
@@ -1670,7 +1680,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // "Consigo te atender na terça sim!" e "N quero a inteligência artificial / N ta dando
  // certo" ficou sem resposta. Pedido explícito de gente é determinístico: uma frase curta,
  // sem agenda, e handoff (push pro Juliano). Não depende do modelo classificar certo.
- let pediuHumano=false
+ let pediuHumano=false,pediuRemedio=false
  {
   const q=normalize(message)
   // v29.293.0 (caso Moisés, 13/10/2026, 18h06): "Falar com o Junior" recebeu a oferta de amanhã de novo —
@@ -1685,7 +1695,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const pedeHumano=pedeFalarComJuliano(q,ultimaFalaCitaJuliano)||/\b(falar|conversar)\s+(com\s+)?(o\s+)?(juliano|ju|junior|barbeiro|dono|humano|pessoa|atendente|alguem)\b|\b(juliano|ju)\s+(consegue|pode|poderia)\s+(falar|responder)\b|\b(nao|n)\s+(quero|gosto d[ae]|to querendo)\s+(a\s+)?(inteligencia artificial|ia\b|robo|bot|maquina)|\b(chama|chame|chamar|passa|passe)\s+(o\s+)?(juliano|ju|barbeiro|dono)\b|\bquero (uma )?pessoa\b|\b(e|eh|é) (um )?(robo|bot|inteligencia artificial)\?/.test(q)
   if(pedeHumano&&!/\bcancel|remarc|\bpix\b|chave/.test(q)){
    pediuHumano=true
-   reply=barbeariaAbertaAgora()?'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder. 🙏':'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar. 🙏'
+   reply=textoChamaJuliano()
    intent='handoff';handoff=true;actions=[]
    // v29.142.0 (bateria W6): com uma remarcação pendente, o bloco dela reescrevia a resposta
    // por cima do handoff. Pedido de gente encerra qualquer pergunta aberta da JuIA.
@@ -1695,7 +1705,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // Quem pede remédio aqui está falando com o farmacêutico: vai para o Juliano, como pedido de gente.
   // v29.358.0 — casos Maiko (11/11) e Fernando (12/11): "medicação" e "2 de cada" depois da foto das caixas.
   else if((pedeRemedio(q)||encomendaPorFoto(q,(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').map((h:any)=>String(h.content||''))))&&!/\bfarmaceutic/.test(q)){
-   pediuHumano=true
+   pediuHumano=true;pediuRemedio=true
    reply='Vou passar o seu pedido para o Juliano agora mesmo; ele te responde por aqui assim que puder.'
    intent='handoff';handoff=true;actions=[]
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
@@ -2779,6 +2789,14 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  if(!conflictHandled&&(cancelarDireto||cancelPickAnswer||(next.pending_cancel_booking_id&&!rescheduleAsk&&!changeServiceAsk&&!updateProductsAsk)||(cancelAsk&&!cancelNegated&&!cancelHypothetical)))intent='cancel'
 
  let fechouSolidario=false
+ // v29.374.0 — caso Thiago (terça 24/11/2026, 07h33): com o horário das 08:30 marcado, escreveu "estou muito ruim
+ // com cólicas renais… não irei conseguir ir hoje". A leitura achou "remédio" e respondeu "Claro. Vou avisar o
+ // Juliano; ele já encerrou o expediente por hoje"; o horário seguiu marcado e o aviso de chegada saiu às 07h55.
+ // Doente + "não vou conseguir ir", com um único horário marcado, é cancelamento solidário (bloco abaixo).
+ if(!pediuHumano&&intent!=='cancel'&&!extractRequestedTime(message)&&upcomingBookings.length===1&&noticiaDificil(message)
+  &&/\bnao (vou|irei|vai|vou poder|vou dar conta de)( (conseguir|poder|dar))?( (ir|vir|comparecer))?\b|\bnao (consigo|posso|tenho como) (ir|vir|comparecer)\b/.test(normalizedQuestion)){
+  intent='cancel';handoff=false;actions=[]
+ }
  if(intent==='cancel'){
   // v29.304.0 — caso Anderson (24/10/2026, 06h31): "acabei machucando no trabalho, não estou nem andando,
   // deixa para a próxima" levou oferta de horário na terça. Quem cancela por machucado, doença ou luto
@@ -6808,7 +6826,12 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   // modelo que repete o horário de fechamento sai, e o cumprimento fica na frente do aviso.
   const frases=String(reply||'').split(/(?<=[.!?])\s+/)
   const repete=(f:string)=>/\b(abert[oa]s?|atend\w+|funcion\w+|fech\w+|encerr\w+)\b[^.!?]{0,40}\bat[ée]\s+(à|a)?s?\s*\d{1,2}\s*(h|:|horas)/i.test(f)&&!/\?/.test(f)
-  const resto=frases.filter((f:string)=>!repete(f))
+  // v29.374.0 — caso de segunda 23/11/2026, 13h31: "Vc está aberto hoje?" ouviu "Hoje estamos fechados (não abrimos
+  // domingo e segunda) — voltamos terça às 8h30. Sim, hoje é terça-feira e a barbearia funciona das 08:30 às 19:00."
+  // Com o aviso de fechado, a frase do modelo que diz que hoje abre (ou que dia é hoje) sai.
+  const avisoFechado=/fechad|encerramos|não abre|não estamos abertos/i.test(avisoAbertoHoje)
+  const contradiz=(f:string)=>avisoFechado&&/\bhoje\b/i.test(f)&&(/^sim\b/i.test(f)||/\bhoje\b[^.!?]{0,20}\b(é|e)\s+(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)|\bhoje\b[^.!?]{0,40}\b(funciona|abert[oa]s?|atendemos|abrimos|estamos atendendo)\b/i.test(f))&&!/\bn[ãa]o\b/i.test(f)
+  const resto=frases.filter((f:string)=>!repete(f)&&!contradiz(f))
   const cumprimento=resto.length&&/^(bom dia|boa tarde|boa noite|oi|ol[áa])\b[^.!?]{0,40}[.!]$/i.test(resto[0])?resto.shift():''
   reply=[cumprimento,avisoAbertoHoje,resto.join(' ')].filter(Boolean).join(' ').trim()
  }
@@ -6914,7 +6937,8 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
  if(serviceRuleNote&&!/Só pra ajustar|pagar em dobro|já vem incluso/.test(reply))reply=`${serviceRuleNote}\n\n${reply}`
  // v29.142.0 — pedido de gente vence tudo: nenhum bloco de fluxo pode ter reescrito a resposta.
  if(pediuHumano){
-  reply=barbeariaAbertaAgora()?'Claro. Vou avisar o Juliano agora mesmo; ele está atendendo na cadeira e te responde por aqui assim que puder. 🙏':'Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje e te responde por aqui assim que voltar. 🙏'
+  // v29.374.0: o pedido de remédio tem frase própria; esta linha trocava pelo "Claro. Vou avisar o Juliano".
+  reply=pediuRemedio?'Vou passar o seu pedido para o Juliano agora mesmo; ele te responde por aqui assim que puder.':textoChamaJuliano()
   intent='handoff';handoff=true;actions=[]
  }
  // v29.365.0 — caso João (17/11/2026): horário pra outra pessoa, sem o nome dela, e a resposta (do código ou do
@@ -6957,6 +6981,40 @@ No aplicativo do banco vai aparecer o nome "Juliano Bruno Lopes Padilha" e a ins
     handoff=Boolean(handoff||d.handoff)
    }else console.error('[ju-ia-site] segunda parte falhou',r.status,d&&d.error)
   }catch(e){console.error('[ju-ia-site] segunda parte',e)}
+ }
+ // v29.374.0 — dois casos de segunda 23/11/2026: Gui (11h53) "Consegue me atender hoje depois das 19hr?" ouviu
+ // "Consigo te atender amanhã sim!" (o Juliano respondeu na mão: "não tô ficando mais depois das 19h"); e às 13h43
+ // "As 19:30 vc atenderia?" ouviu "só seria possível como uma exceção autorizada pelo Juliano; vou repassar" — promessa
+ // que contraria a decisão dele (limite físico, nunca estender horário). Horário pedido a partir do fechamento daquele
+ // dia (19h de terça a sexta, 15h no sábado) tem resposta fixa: não dá, até que horas vai, e o outro tipo de dia.
+ {
+  const horaPiso=pisoDeHorario(normalizedQuestion)
+  // A hora tem que estar escrita assim pelo cliente: o extrator lê "ultrassom às 7h55" como 19:55 (cenário 52).
+  const horaBruta=horaPiso||extractRequestedTime(message)||''
+  const horaPedida=horaBruta&&new RegExp(`\\b${Number(horaBruta.slice(0,2))}\\s*(:|h\\b|hs\\b|hrs?\\b|horas?\\b)`).test(normalizedQuestion)?horaBruta:''
+  const reservouAgora=/\b(reservad[oa]|prontinho|mudei seu|cancelei|incluíd[oa])\b/i.test(String(reply||''))
+  if(/^\d\d:\d\d$/.test(horaPedida)&&!pediuHumano&&!noticiaTriste&&intent!=='cancel'&&!reservouAgora){
+   const hojeISO=today(),wdHoje=new Date(hojeISO+'T12:00:00-03:00').getUTCDay()
+   const semanaF=weekdayDatesMentioned(normalizedQuestion,hojeISO)
+   const diaF=/\bamanh[ãa]\b/.test(normalizedQuestion)?addDaysISO(hojeISO,1):(semanaF.length===1?semanaF[0]:hojeISO)
+   const wdF=new Date(diaF+'T12:00:00-03:00').getUTCDay()
+   // Dia que não abre (domingo/segunda) sem outro dia citado: vale a regra de terça a sexta.
+   const sabado=wdF===6
+   const limiteF=sabado?'15:00':'19:00'
+   if(horaPedida>=limiteF){
+    const hTxt=horaPiso?`depois das ${Number(horaPiso.slice(0,2))}h${horaPiso.slice(3)==='00'?'':horaPiso.slice(3)}`:`às ${horaPedida}`
+    const fechadoHojeF=diaF===hojeISO&&(wdHoje===0||wdHoje===1)
+    reply=[
+     fechadoHojeF?'Hoje a barbearia não abre: atendemos de terça a sábado.':'',
+     sabado
+      ?`No sábado o atendimento vai até as 15h, então ${hTxt} não consigo. De terça a sexta atendo até as 19h, se ficar melhor pra você.`
+      :`O atendimento vai até as 19h de terça a sexta, então ${hTxt} não consigo. No sábado atendo das 8h30 às 15h, se ficar melhor pra você.`,
+     'Se quiser, vejo um horário mais cedo.'
+    ].filter(Boolean).join(' ')
+    next.time=null;next.period=null
+    intent='other';handoff=false;actions=[]
+   }
+  }
  }
  // v29.212.0 (caso Nuno, 17/09/2026): "vou registrar para avaliação do Juliano" — e nada era registrado.
  // Resposta que promete levar o recado agora leva de verdade: push pro Juliano com a mensagem do cliente.

@@ -69,6 +69,10 @@ export const pedeRemedio = (q: string): boolean => {
   if (/\b(perto|do lado|ao lado|em frente|frente|esquina|depois|antes|vizinh[oa])\b.{0,20}\b(farmacia|drogaria)\b/.test(t)) return false
   // v29.358.0 — caso Maiko (11/11/2026, 16h11): "Precisava ver se vc tem uma medicação.." não casava (só
   // "medicamento") e ouviu duas vezes que a barbearia não trabalha com isso; o Juliano assumiu 40 min depois.
+  // v29.374.0 — caso Thiago (24/11/2026, 07h33): "estou com remédios e mesmo assim tendo cólicas" é relato de quem
+  // está doente, não encomenda — virou "Claro. Vou avisar o Juliano" em vez de solidariedade e cancelamento.
+  if (/\b(estou|to|tou|tomando|tomei|mesmo com|medicad[oa])\b[^.!?]{0,20}\b(remedios?|medicamentos?|medicacao|medicacoes|tramal|dipirona|buscopan|vonal|antibioticos?)\b/.test(t)
+    && !/\b(tem|teria|vende|manda|mandar|consegue|precis\w*|quero|queria|separa|reserva)\b/.test(t)) return false
   return /\b(remedios?|medicamentos?|medicacao|medicacoes|comprimidos?|capsulas?|genericos?|antibioticos?|drogaria|farmacia|receita medica)\b|\b\d+\s*mg\b/.test(t)
 }
 
@@ -368,7 +372,9 @@ export const noticiaDificil = (q: string): boolean => {
 // avisar! Já liberei seu horário. Quer já deixar outro horário marcado? Na terça…". Machucado, acidente,
 // doença do dia a dia (febre, gripe, dengue) também são notícia difícil. "Machucou" sozinho fica de fora
 // de propósito: "a navalha machucou" é reclamação do serviço, não acidente.
-const LESAO = /\b((me |acabei (me )?)?machuquei|acabei (me )?machucando|(estou|to|tou|fiquei|ando) machucad[oa]|me acidentei|(sofri|tive|sofreu|teve) (um |uma )?(acidente|queda|fratura|lesao|torcao|entorse)|quebrei (o|a|meu|minha) \w+|fraturei|torci (o|a|meu|minha) (pe|tornozelo|joelho|braco|pulso|mao|costas)|engessad[oa]|(nao (estou|to|tou) (nem )?|nem (estou|to|tou) )(andando|conseguindo andar|conseguindo levantar)|nao consigo (nem )?andar|de repouso|de atestado|com atestado|com febre|to com febre|estou com febre|gripad[oa]|com (gripe|dengue|covid|virose|pneumonia|catapora|caxumba)|passando mal|passei mal|pronto atendimento)\b/
+const LESAO = /\b((me |acabei (me )?)?machuquei|acabei (me )?machucando|(estou|to|tou|fiquei|ando) machucad[oa]|me acidentei|(sofri|tive|sofreu|teve) (um |uma )?(acidente|queda|fratura|lesao|torcao|entorse)|quebrei (o|a|meu|minha) \w+|fraturei|torci (o|a|meu|minha) (pe|tornozelo|joelho|braco|pulso|mao|costas)|engessad[oa]|(nao (estou|to|tou) (nem )?|nem (estou|to|tou) )(andando|conseguindo andar|conseguindo levantar)|nao consigo (nem )?andar|de repouso|de atestado|com atestado|com febre|to com febre|estou com febre|gripad[oa]|com (gripe|dengue|covid|virose|pneumonia|catapora|caxumba)|passando mal|passei mal|pronto atendimento|colicas?( (renal|renais|forte|fortes))?|calculo renal|pedra nos? rins?|nausead[oa]|enjoad[oa]|vomitando|intoxicacao alimentar|(estou|to|tou) (muito )?(ruim|mal) (com|de|da|do))\b/
+// v29.374.0 — caso Thiago (24/11/2026, 07h33): "Estou muito ruim com cólicas renais a noite toda… muito nauseado"
+// não casava nada acima; cólica, enjoo e "estou muito ruim com" também são doença do próprio cliente.
 
 // Resposta a quem contou notícia difícil. Uma fonte só para o webhook (atalho da confirmação de
 // presença) e a JuIA. Luto pede sentimentos; doença de outra pessoa pede "força para vocês"; o próprio

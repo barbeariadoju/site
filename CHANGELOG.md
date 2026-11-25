@@ -1,3 +1,30 @@
+## 29.374.0 — JuIA: doente que não vem tem o horário liberado, e horário depois do fechamento tem resposta fixa
+
+Revisão das conversas de 21/11 (tarde) a 25/11: 14 conversas, 4 erros reais, todos corrigidos (ju-ia-site v375).
+
+- **Caso Thiago (terça 24/11, 07h33).** Com horário às 08:30, escreveu que passou a noite com cólica renal, "estou com
+  remédios… não irei conseguir ir hoje". A palavra "remédios" fez a mensagem virar pedido de remédio, e a resposta
+  saiu "Claro. Vou avisar o Juliano; ele já encerrou o expediente por hoje… 🙏" (antes da abertura). O horário seguiu
+  marcado e o aviso de chegada saiu às 07h55 para quem estava de cama. O Juliano respondeu na mão às 07h34.
+  Correções: "estou com/tomando remédio" sem pedido não é encomenda; cólica, enjoo e "estou muito ruim com" contam
+  como doença; doente + "não vou conseguir ir" com um horário só vira cancelamento solidário (o bloco do caso
+  Anderson); a frase do "vou avisar o Juliano" passa a dizer a verdade conforme a hora (antes de abrir, dia
+  fechado, depois de fechar) e perdeu o 🙏, que é só de agradecimento. Bônus: o pedido de remédio tinha frase própria,
+  mas o bloco final trocava pela do "Claro. Vou avisar…". Cenário 151 (a-d).
+- **Segunda 23/11, 13h31.** "Vc está aberto hoje?" ouviu "Hoje estamos fechados… Sim, hoje é terça-feira e a barbearia
+  funciona das 08:30 às 19:00." O modelo inventou o dia, e o aviso fixo entrava na frente. Com aviso de fechado, a
+  frase do modelo que diz que hoje abre sai. Cenário 152.
+- **Gui (segunda 23/11, 11h53) e o mesmo cliente de 13h43.** "Consegue me atender hoje depois das 19hr?" ouviu
+  "Consigo te atender amanhã sim!" (o Juliano respondeu: "não tô ficando mais depois das 19h"). "As 19:30 vc
+  atenderia?" ouviu "só seria possível como exceção autorizada pelo Juliano; vou repassar", promessa contra a decisão
+  dele de nunca estender o horário. Agora horário a partir do fechamento daquele dia (19h ter-sex, 15h sáb) tem
+  resposta fixa: não consigo, até que horas vai, e o outro tipo de dia (sábado para quem trabalha fora). Cenário 153.
+- **Decidido contra a recomendação óbvia:** a hora só conta se o cliente escreveu aquele número. O extrator lê
+  "ultrassom às 7h55" como 19:55 e o cenário 52 pegou isso; "8 da noite" fica de fora, de propósito.
+- **Não é erro:** Gabriel (24/11, "por hoje a agenda já está encerrada") estava certo, o Juliano tinha saído para
+  um imprevisto; Regis remarcado de 24 para 26/11 por pedido do Juliano, nenhum dos dois virou falta.
+- **Simulador:** 392 ok, 0 falhas.
+
 ## 29.373.0 — JuIA: "apenas 1 pessoa" desfaz o grupo, e nada de reservar horário que não apareceu na conversa (caso Clau)
 
 **O que aconteceu (sábado 21/11, 12h19-12h27, perdemos a cliente):** a Clau perguntou por corte italiano, pediu "2 horários"

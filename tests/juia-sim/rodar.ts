@@ -2120,5 +2120,40 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   }
 }
 
+// 151. v29.374.0 — caso Thiago (terça 24/11/2026, 07h33): horário das 08:30, "estou muito ruim com cólicas renais… estou
+//      com remédios… não irei conseguir ir hoje". "Remédio" virou pedido de remédio ("Claro. Vou avisar o Juliano; ele já
+//      encerrou o expediente") e o horário seguiu marcado. Agora: cancela, solidariedade, nada de Juliano nem oferta.
+{
+  const msg = 'Desculpa irmão ! Estou muito ruim com cólicas renais a noite toda , se tiver qualquer problema pode ficar em paz que pago meu corte para não te prejudicar também ! Mais infelizmente não irei conseguir ir hoje pois estou com remédios e mesmo assim tendo cólicas e muito nauseado mesmo com vonal'
+  for (const [rot, intent] of [['a', 'other'], ['b', 'reschedule'], ['c', 'handoff']]) {
+    const r = await turno({ msg, ai: { intent, reply: 'Claro.' }, contexto: ctxCliente('Thiago Teste'),
+      futuros: [{ id: 'b151', booking_date: hoje, start_time: '08:30:00', service_name: 'Corte + Barba Express' }], vagas: { [dia1]: ['08:45', '11:30'] } })
+    checar(`151${rot} doente e não vem: cancela com solidariedade, sem "vou avisar o Juliano"`, cancelou(r) && /Sinto muito/.test(r.reply) && !/avisar o Juliano|expediente|\d{2}:\d{2}/.test(r.reply), r.reply)
+  }
+  const r2 = await turno({ msg: 'Preciso de um remédio pra dor de cabeça, você tem aí?', ai: { intent: 'other', reply: 'Não trabalhamos com medicamentos.' }, contexto: ctxCliente('Fernando Teste') })
+  checar('151d pedido de remédio continua indo pro Juliano, com a frase própria', /Vou passar o seu pedido para o Juliano/.test(r2.reply) && !/🙏/.test(r2.reply), r2.reply)
+}
+
+// 152. v29.374.0 — segunda 23/11/2026, 13h31: "Vc está aberto hoje?" ouviu "Hoje estamos fechados… Sim, hoje é terça-feira e
+//      a barbearia funciona das 08:30 às 19:00." Com o aviso de fechado, a frase do modelo que diz que hoje abre sai.
+{
+  const r = await turno({ msg: 'Vc está aberto hoje?', ai: { intent: 'other', reply: 'Sim, hoje é terça-feira e a barbearia funciona das 08:30 às 19:00. Você gostaria de agendar qual serviço?', updates: {} }, contexto: ctxCliente('Cliente Teste'), fechados: [hoje] })
+  checar('152 dia fechado: sem "Sim, hoje é terça" depois do aviso', /fechad|não abre/i.test(r.reply) && !/Sim, hoje|hoje é ter/i.test(r.reply), r.reply)
+}
+
+// 153. v29.374.0 — segunda 23/11/2026: Gui "Consegue me atender hoje depois das 19hr?" ouviu "Consigo te atender amanhã sim!";
+//      "As 19:30 vc atenderia?" ouviu "só como exceção autorizada pelo Juliano; vou repassar". Depois do fechamento: não dá.
+{
+  const r1 = await turno({ msg: 'Consegue me atender hoje depois das 19hr?\nCabelo e barba ?', ai: { intent: 'availability', reply: 'Consigo te atender amanhã sim!', updates: { services: ['Corte + Barba Express'] } }, contexto: ctxCliente('Gui Teste'), vagas: { [hoje]: ['17:00'], [dia1]: ['09:00'] } })
+  checar('153a "depois das 19h": vai até as 19h, não consigo', /até as 19h/.test(r1.reply) && /não consigo/.test(r1.reply) && !/Consigo te atender/.test(r1.reply), r1.reply)
+  const r2 = await turno({ msg: 'As 19:30 vc atenderia?', ai: { intent: 'other', reply: 'O horário normal de atendimento encerra às 19h. Às 19h30 só seria possível como uma exceção autorizada pelo Juliano; vou repassar sua disponibilidade para ele.', updates: {} }, contexto: ctxCliente('Cliente Teste') })
+  checar('153b "às 19:30": sem exceção nem recado prometido', /até as 19h/.test(r2.reply) && !/exceção|repassar/.test(r2.reply) && !r2.saidas.some((s: any) => /Recado de cliente/.test(JSON.stringify(s.body || ''))), r2.reply)
+  const sab = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const r3 = await turno({ msg: 'Sábado às 16h tem?', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: sab, time: '16:00' } }, contexto: ctxCliente('Cliente Teste'), vagas: { [sab]: ['10:00'] } })
+  checar('153c sábado às 16h: sábado vai até as 15h', /sábado o atendimento vai até as 15h/.test(r3.reply), r3.reply)
+  const r4 = await turno({ msg: 'Amanhã às 18:20 tem?', ai: { intent: 'availability', reply: 'Vou ver.', updates: { date: dia1, time: '18:20' } }, contexto: ctxCliente('Cliente Teste'), vagas: { [dia1]: ['18:20'] } })
+  checar('153d horário antes do fechamento segue o fluxo normal', !/não consigo/.test(r4.reply), r4.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
