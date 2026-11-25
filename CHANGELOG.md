@@ -1,3 +1,19 @@
+## 29.375.0 — JuIA: a confirmação da reserva termina em "Te espero na Barbearia do Ju."
+
+- **Caso Edgard (25/11, 10h29).** Respondeu "1" e recebeu: reservado + "Te espero" + saldo de 4 pontos de fidelidade
+  + "faltam 6" + oferta da chave Pix. Reclamou do excesso de palavras. Pedido do Juliano: a mensagem acaba no
+  "Te espero na Barbearia do Ju.".
+- Saíram da confirmação: saldo de pontos e lembrete de prêmio guardado, oferta de Pix antecipado (quem quiser pagar
+  antes ainda pede a chave e recebe com o valor), a oferta 1/2 de incluir serviço depois da reserva e a pergunta
+  "é a sua primeira vez?". O código dessas duas perguntas ficou inerte (`SEM_PERGUNTA_POS_RESERVA`).
+- Ficaram, antes do fecho, só o que muda o horário ou o preço: prêmio de fidelidade aplicado ("Corte por nossa
+  conta (fidelidade)."), barba padrão Express (frase encurtada), nota do Clube, produtos reservados e o sinal de 50%
+  de quem cancelou em cima da hora duas vezes (é condição do horário).
+- **Decidido contra a recomendação óbvia:** a oferta pós-reserva vendia serviço (ticket médio é o gargalo) e a
+  pergunta de primeira visita alimentava a retenção dos Relatórios. Saíram mesmo assim porque o pedido foi
+  explícito e o cliente reclamou; se o ticket médio cair, a oferta volta em outro momento, não na confirmação.
+- Simulador: cenários 62, 72b e 85b reescritos para a regra nova (392/392).
+
 ## 29.374.0 — JuIA: doente que não vem tem o horário liberado, e horário depois do fechamento tem resposta fixa
 
 Revisão das conversas de 21/11 (tarde) a 25/11: 14 conversas, 4 erros reais, todos corrigidos (ju-ia-site v375).

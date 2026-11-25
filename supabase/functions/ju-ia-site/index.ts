@@ -6234,12 +6234,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // v29.43.7 — pedido do Juliano (18/08): oferecer o pagamento antecipado tambem no WhatsApp,
       // mas de forma PASSIVA (sem pergunta, sem rodada extra): uma linha na confirmacao. Quem quiser
       // pede a chave; a JuIA ja sabe passar o Pix. Quando o PagBank liberar, vira link.
-      const prepayNote=verifiedPhone?' Se preferir já deixar pago pelo Pix, é só me pedir a chave 😉':''
-      // v29.54.0 (caso Aletéia, 21/08): ela respondeu só "Quero" a esta oferta. Sem "pix"/"chave"
-      // na frase, a resposta caía no modelo e a chave saiu SEM O VALOR — exatamente o erro que a
-      // v29.47.0 tinha corrigido. Marca a oferta no estado pra um "quero"/"sim" curto na mensagem
-      // seguinte cair no caminho determinístico (chave + valor).
-      if(verifiedPhone)next.pix_offered=true
+      // v29.375.0 — RETIRADO (Juliano, 25/11/2026, caso Edgard: "excesso de palavras"). A confirmação
+      // termina em "Te espero na Barbearia do Ju."; quem quiser pagar antes pede a chave (pixKeyAsk segue).
+      const prepayNote=''
       // v29.68.0 — pedido do Juliano (24/08): a barbearia atende desde 12/03 mas o sistema
       // só registra desde 14/07 — cliente antigo agendando pela 1ª vez no sistema aparecia
       // como "novo" e derrubava a retenção dos Relatórios. Uma pergunta única, só na
@@ -6248,8 +6245,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // v29.139.0 — a oferta única agora vem DEPOIS da reserva, como uma pergunta 1/2. Tem
       // prioridade sobre a pergunta de primeira visita (duas perguntas numeradas na mesma
       // mensagem confundem); a de primeira visita fica pra próxima confirmação.
+      // v29.375.0 (Juliano, 25/11/2026, caso Edgard): a confirmação termina em "Te espero na Barbearia do Ju."
+      // — sem oferta 1/2 depois da reserva e sem a pergunta de primeira visita. Código mantido inerte.
+      const SEM_PERGUNTA_POS_RESERVA=true
       let upsellAsk=''
-      const upsellAfter=String(next.upsell_after_booking||'')
+      const upsellAfter=SEM_PERGUNTA_POS_RESERVA?'':String(next.upsell_after_booking||'')
       delete next.upsell_after_booking
       if(upsellAfter&&findService(upsellAfter)&&bookingId){
        const sAdd=findService(upsellAfter)!
@@ -6264,7 +6264,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        next.upsell_post_booking={id:String(bookingId),date:next.date,time:next.time,services:chosen.map((s:any)=>s.name)}
       }
       let firstVisitAsk=''
-      if(verifiedPhone&&visits===0&&!state?.first_visit_asked&&!upsellAsk){
+      if(!SEM_PERGUNTA_POS_RESERVA&&verifiedPhone&&visits===0&&!state?.first_visit_asked&&!upsellAsk){
        try{
         const fvDigits=String(verifiedPhone).replace(/\D/g,'')
         const fvSem=(fvDigits.length>=12&&fvDigits.startsWith('55'))?fvDigits.slice(2):fvDigits
@@ -6340,9 +6340,15 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
        }catch(clubeErr){console.error('[ju-ia-site] clube na reserva',clubeErr)}
       }
       // v29.290.0 (caso Cauã): barba sem nome foi reservada como Barba Express; o cliente sabe e pode trocar.
-      const barbaPadraoNota=next.barba_padrao&&chosen.some((s:any)=>ehBarbaExpress(s.name))?' A barba ficou na Barba Express (só na máquina); se quiser uma mais completa, na navalha com toalha quente, é só me avisar.':''
+      const barbaPadraoNota=next.barba_padrao&&chosen.some((s:any)=>ehBarbaExpress(s.name))?' A barba é a Express (só na máquina); se preferir na navalha, me avise.':''
       next.barba_padrao=false
-      reply=`✅ Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${barbaPadraoNota}${clubeNota}${prodText} Te espero na Barbearia do Ju.${sinalNote}${clubeCobriuTudo?'':loyaltyNote}${valorSinal>0||clubeCobriuTudo?'':prepayNote}${firstVisitAsk}${upsellAsk}`
+      // v29.375.0 (Juliano, 25/11/2026, caso Edgard): a mensagem TERMINA em "Te espero na Barbearia do Ju.".
+      // Fidelidade só quando muda o preço deste horário (prêmio aplicado), e curto; saldo de pontos, prêmio
+      // guardado, Pix antecipado, oferta 1/2 e "primeira vez?" saíram. O sinal (raro, faltosos) é condição
+      // do horário: vem antes do fecho.
+      const premioNota=clubeCobriuTudo||!(rewardApplied&&freedService)||!(verifiedPhone&&hasCustomer)||next.other_person?'':` ${freedService.name} por nossa conta (fidelidade).`
+      void loyaltyNote;void prepayNote
+      reply=`Reservado! ${firstName(next.name)}, ${emDia(next.date)} às ${next.time}: ${chosen.map((s:any)=>s.name).join(' + ')} (${precoMostrado}).${premioNota}${barbaPadraoNota}${clubeNota}${prodText}${sinalNote} Te espero na Barbearia do Ju.${firstVisitAsk}${upsellAsk}`
       actions=[{label:'Falar com a barbearia',url:'https://wa.me/5511967073038?text='+encodeURIComponent(`Olá, sou ${next.name}. Tenho um agendamento confirmado para ${next.date} às ${next.time}.`),primary:true}]
       next.completed=true
       delete next.piso_horario // v29.343.0: a restrição de horário era desta reserva

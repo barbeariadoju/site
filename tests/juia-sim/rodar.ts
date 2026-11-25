@@ -874,7 +874,8 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
 {
   const r = await turno({ msg: `Quero corte de cabelo ${dia1 === amanha ? 'amanhã' : 'dia ' + dia1.slice(8, 10) + '/' + dia1.slice(5, 7)} às 10h`, state: {},
     ai: { intent: 'book', reply: 'Vou ver.', updates: { services: ['Corte de cabelo'], date: dia1, time: '10:00' } }, contexto: ctxCliente('Lucas Teste'), vagas: { [dia1]: ['09:00', '10:00'] } })
-  checar('62 lavagem: oferece "por mais R$ 10,00" e não "vira"', /incluir a lavagem no seu corte por mais R\$\s?10,00/.test(r.reply) && !/vira R\$/.test(r.reply), r.reply)
+  // v29.375.0 (Juliano, 25/11/2026, caso Edgard): a confirmação termina em "Te espero"; sem oferta depois.
+  checar('62 confirmação termina em "Te espero", sem oferta de lavagem depois', reservou(r) && /Te espero na Barbearia do Ju\.$/.test(r.reply.trim()) && !/lavagem|Digite/.test(r.reply), r.reply)
 }
 
 // ---- v29.276.0: caso Samuel (07/10/2026) — "pintar o cabelo de preto" -------------------------------
@@ -1024,7 +1025,7 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     ai: { intent: 'book', reply: 'Vou ver.', updates: {} }, contexto: ctxCliente('Caua Teste'), vagas: { [hoje]: ['13:45'] } })
   const criou = r.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
   checar('72a reserva Corte + Barba Express sem a lista das barbas', criou?.args?.p_service_name === 'Corte + Barba Express' && !/Pra barba, qual/.test(r.reply), { reply: r.reply, args: criou?.args })
-  checar('72b avisa que dá pra trocar por barba mais completa', /mais completa/.test(r.reply), r.reply)
+  checar('72b avisa que dá pra trocar pela barba na navalha', /na navalha, me avise/.test(r.reply), r.reply)
 }
 
 {
@@ -1270,7 +1271,8 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('85a reserva com 0 ponto: nada de fidelidade', reservou(r0) && !/ponto|fidelidade/i.test(r0.reply), r0.reply)
   const r3 = await reserva(3)
   // v29.313.0 (Juliano, 28/10): o encerramento ele comunica pessoalmente; a JuIA dá só o saldo.
-  checar('85b reserva com saldo: só o saldo, sem encerramento nem prazo', reservou(r3) && /Faltam 7 para um serviço por nossa conta/.test(r3.reply) && !/encerrad|último|2027/.test(r3.reply), r3.reply)
+  // v29.375.0 (caso Edgard): saldo de pontos e Pix saíram da confirmação; ela termina em "Te espero".
+  checar('85b reserva com saldo: sem pontos e sem Pix, termina em "Te espero"', reservou(r3) && !/ponto|fidelidade|Pix|chave/i.test(r3.reply) && /Te espero na Barbearia do Ju\.$/.test(r3.reply.trim()), r3.reply)
   const r4 = await turno({ msg: 'quantos pontos eu tenho?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 0 }) })
   checar('85c sem saldo: não conta que o programa foi encerrado', /não tem pontos/.test(r4.reply) && !/encerrad|último|2027/.test(r4.reply), r4.reply)
   const r5 = await turno({ msg: 'como funciona a fidelidade?', ai: { intent: 'loyalty', reply: 'Vou ver.' }, contexto: ctxCliente('Paulo Teste', { points: 4 }) })
