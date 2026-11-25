@@ -1524,7 +1524,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   const nm=normalize(message)
   const mAd=nm.match(/\b(\d|dois|duas|tres|quatro|cinco)\s+cortes?\b(?!\s*(\+|e)\s*lavagem)/)
   const mKid=nm.match(/\b(\d|um|dois|duas|tres|quatro)\s+(cortes?\s+)?(infanti|crianc)/)
-  const mPeople=nm.match(/\b(\d|dois|duas|tres|quatro|cinco)\s+pessoas\b/)
+  // v29.376.0 — caso Luciano (25/11/2026, 13h23): "Pra depois das 17, você consegue 2 vagas?" não virou grupo;
+  // a JuIA repetiu a lista de horários e o webhook trocou por "me embolei". "2 vagas" e "2 horários seguidos/
+  // juntos" contam como 2 pessoas.
+  const mPeople=nm.match(/\b(\d|dois|duas|tres|quatro|cinco)\s+(pessoas|vagas|lugares)\b/)||nm.match(/\b(\d|dois|duas|tres|quatro|cinco)\s+horarios\s+(seguidos|juntos|em sequencia|um atras do outro|colados)\b/)
   if(mAd||mKid||mPeople){
    const kids=mKid?num(mKid[1]):0
    const adults=mAd?num(mAd[1]):mPeople?Math.max(num(mPeople[1])-kids,1):0
@@ -5654,7 +5657,9 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       intent='book'
      }else if(proximos.length){
       const resto=alternatives.filter((t:string)=>!proximos.includes(t))
-      const sobra=resto.length?` Se preferir outro, tenho ainda: ${resto.slice(0,3).join(', ')}.`:''
+      // v29.376.0 (Juliano, 25/11/2026, caso Edgard: menos palavras): só os dois mais próximos; a lista
+      // "Se preferir outro, tenho ainda: …" saiu da mensagem (os botões do site continuam com os demais).
+      const sobra=''
       // v29.138.0 (pedido do Juliano, 05/09/2026): resposta curta e honesta. Se a própria
       // JuIA tinha oferecido esse horário antes nesta conversa e ele sumiu, foi outro
       // cliente que fechou — dizer isso evita o "mas você me disse que tinha!" (caso João).

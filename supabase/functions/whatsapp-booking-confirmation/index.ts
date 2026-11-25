@@ -126,7 +126,9 @@ Deno.serve(async (request: Request) => {
       // final deixa claro o que acontece se não responder — sem tom de ameaça.
       // v28.66.0: o aviso de "libero automaticamente" saiu junto com a política — não é mais
       // verdade e assustava sem necessidade. O horário fica de pé mesmo sem resposta.
-      const text = `Oi${name ? `, ${name}` : ''}! 😊 Aqui é da Barbearia do Ju. Seu horário de ${dayWord(booking.booking_date)} às ${time} (${booking.service_name}) está guardado pra você.\n\nSó pra eu me organizar, me responde com um número?\n*1* — Confirmo presença ✅\n*2* — Quero remarcar 🔄\n*3* — Preciso cancelar ❌\n\nSeu horário continua reservado de qualquer jeito — se não puder vir, é só avisar. 💈`
+      // v29.376.0 (Juliano, 25/11/2026, caso Edgard: menos palavras). "Confirmo presença" fica: o webhook
+      // reconhece a resposta citada por esse texto.
+      const text = `Oi${name ? `, ${name}` : ''}! ${dayWord(booking.booking_date).charAt(0).toUpperCase() + dayWord(booking.booking_date).slice(1)} às ${time}, ${booking.service_name}, na Barbearia do Ju. Responda com um número:\n*1* — Confirmo presença\n*2* — Quero remarcar\n*3* — Preciso cancelar`
       await sendWhatsapp(booking.customer_phone, text)
       await admin.rpc('mark_confirmation_requested', { p_booking_id: booking.id })
       requestsSent++

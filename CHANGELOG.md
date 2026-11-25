@@ -1,3 +1,21 @@
+## 29.376.0 — Mensagens ao cliente mais curtas, e "2 vagas" vira atendimento para duas pessoas
+
+Continuação do caso Edgard (excesso de palavras). Aprovado pelo Juliano em 25/11.
+
+- **Lembrete da véspera** (`whatsapp-booking-confirmation`, ~330 → ~150 letras): "Oi, Anderson! Amanhã às 10:00, Corte de
+  cabelo, na Barbearia do Ju. Responda com um número:" + 1/2/3. Saíram o "está guardado pra você", o "só pra eu me
+  organizar" e o "continua reservado de qualquer jeito". "Confirmo presença" ficou: o webhook reconhece a resposta
+  citada por esse texto.
+- **Depois do "satisfeito" na pesquisa** (~370 → ~150 letras): "Que ótimo saber disso! Obrigado pela preferência." +
+  um pedido só (avaliação no Google, ou Instagram para quem já avaliou). Saíram "já nos avaliou? responda 1" e o
+  convite de sugestão; o "1" de quem já avaliou continua entendido.
+- **Horário ocupado:** oferece só os dois mais próximos; a lista "Se preferir outro, tenho ainda: …" saiu.
+- **Convite de retorno:** saiu o "Se preferir outra data, é só me dizer qual."
+- **Caso Luciano (25/11, 13h23).** "Pra depois das 17, você consegue 2 vagas?" não foi lido como duas pessoas; a JuIA
+  repetiu a lista de horários, o webhook detectou a repetição e respondeu "me embolei". Agora "2 vagas", "2 lugares"
+  e "2 horários seguidos/juntos" contam como grupo de 2 (cenário 154). O Juliano assumiu a conversa na mão.
+- Simulador 394/394, npm test verde.
+
 ## 29.375.0 — JuIA: a confirmação da reserva termina em "Te espero na Barbearia do Ju."
 
 - **Caso Edgard (25/11, 10h29).** Respondeu "1" e recebeu: reservado + "Te espero" + saldo de 4 pontos de fidelidade

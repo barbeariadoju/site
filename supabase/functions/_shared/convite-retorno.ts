@@ -106,7 +106,9 @@ export const OPCOES_PRAZO: Array<{ numero: number; rotulo: string; dias: number 
 ]
 
 export const mensagemPrazo = (): string =>
-  `Certo. Pra quando você quer deixar reservado?\n${OPCOES_PRAZO.map((o) => `*${o.numero}* — ${o.rotulo}`).join('\n')}\n\nSe preferir outra data, é só me dizer qual.`
+  `Certo. Pra quando você quer deixar reservado?\n${OPCOES_PRAZO.map((o) => `*${o.numero}* — ${o.rotulo}`).join('\n')}`
+// v29.376.0 (Juliano, 25/11/2026, caso Edgard: menos palavras): saiu "Se preferir outra data, é só me dizer qual."
+// — quem escreve uma data continua sendo entendido.
 
 // v29.274.0 — O CONVITE NÃO PRESUME O SERVIÇO (Juliano, 01/10/2026: "deveríamos fazer com que a JuIA não
 // presuma mais os serviços… já foram diversas tentativas"). Até aqui o "1 — Quero sim" reservava o serviço

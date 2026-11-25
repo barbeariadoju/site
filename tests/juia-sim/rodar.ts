@@ -2157,5 +2157,16 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('153d horário antes do fechamento segue o fluxo normal', !/não consigo/.test(r4.reply), r4.reply)
 }
 
+// 154. v29.376.0 — caso Luciano (25/11/2026, 13h23): "Pra depois das 17, você consegue 2 vagas?" não virou grupo, a JuIA
+//      repetiu a lista e saiu "me embolei". "2 vagas" = 2 pessoas; "2 horários seguidos" também.
+{
+  const st = { name: 'Luciano Teste', services: ['Corte de cabelo'], date: amanha, period: 'afternoon', ditos: { nomes: ['Corte de cabelo'], fams: ['corte'] } }
+  for (const [rot, msg] of [['a', 'Pra depois das 17, você consegue 2 vagas?'], ['b', 'Tem 2 horários seguidos?']]) {
+    const r = await turno({ msg, state: st, history: [{ role: 'assistant', content: 'Amanhã, no período da tarde, tenho horários entre 12:00 e 17:15. Qual horário fica melhor pra você?' }],
+      ai: { intent: 'availability', reply: 'Amanhã, no período da tarde, tenho horários entre 12:00 e 17:15.', updates: {} }, contexto: ctxCliente('Luciano Teste'), vagas: { [amanha]: ['13:00', '14:00'] } })
+    checar(`154${rot} "${msg}" vira grupo de 2`, r.state?.group_adults === 2 && JSON.stringify(r.state?.services) === JSON.stringify(['Corte de cabelo', 'Corte de cabelo']), { sv: r.state?.services, reply: r.reply })
+  }
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

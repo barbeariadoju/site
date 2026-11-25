@@ -2239,12 +2239,14 @@ Deno.serve(async (request: Request) => {
                   }
                 }
               } catch (e) { console.error('[whatsapp-webhook] oferta de retorno na saída', e) }
+              // v29.376.0 (Juliano, 25/11/2026, caso Edgard: menos palavras): agradece e um pedido só; saíram
+              // "já nos avaliou? responda 1" e o convite de sugestão. O "1" de quem já avaliou continua entendido.
               const reply = ofertaRetorno
                 ? (alreadyReviewed
-                  ? `Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\n${ofertaRetorno}\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories. Nosso perfil é o *@barbeariadoju_* (com o _ no final!)`
+                  ? `Que bom saber disso! Obrigado pela preferência.\n\n${ofertaRetorno}\n\nSe postar no Instagram, marque o *@barbeariadoju_* (com o _ no final).`
                   : skipGoogleAsk
-                    ? `Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\n${ofertaRetorno}`
-                    : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\n${ofertaRetorno}\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}`)
+                    ? `Que ótimo saber disso! Obrigado pela preferência.\n\n${ofertaRetorno}`
+                    : `Que ótimo saber disso! Obrigado pela preferência.\n\n${ofertaRetorno}\n\nSe puder, deixe sua avaliação no Google (leva menos de um minuto):\n${trackedReviewLink}`)
                 : alreadyReviewed
                 // v29.83.0 (plano de crescimento do IG, 27/08): quem JÁ avaliou no Google
                 // ganha o convite de marcar a barbearia no Instagram — alcance emprestado
@@ -2252,10 +2254,10 @@ Deno.serve(async (request: Request) => {
                 // de avaliação (um CTA por mensagem; o Google vale mais pro SEO local).
                 // ATENÇÃO: existe uma conta homônima @barbeariadoju (SEM underline) — cliente
                 // real já marcou a errada. O underline no fim faz parte do nosso handle.
-                ? 'Que bom saber disso! 😊 Muito obrigado por confiar sempre na Barbearia do Ju.\n\nSe postar o resultado no Instagram, marca a gente que eu reposto nos stories. Nosso perfil é o *@barbeariadoju_* (com o _ no final!)\n\nE se tiver alguma 💬 sugestão, pode deixar aqui.'
+                ? 'Que bom saber disso! Obrigado pela preferência.\n\nSe postar no Instagram, marque o *@barbeariadoju_* (com o _ no final).'
                 : skipGoogleAsk
-                  ? 'Que ótimo saber disso! 😊 Muito obrigado por confiar na Barbearia do Ju — foi um prazer cuidar do seu visual!\n\nEstamos sempre à disposição pra cuidar de você, seja marcando pelo nosso site https://www.barbeariadoju.com.br/agendar/, por aqui no WhatsApp ou direto na barbearia. Será sempre uma honra recebê-lo! 🙏\n\nE se tiver alguma 💬 sugestão pra melhorarmos, pode deixar aqui.'
-                  : `Que ótimo saber disso! 😊 Ficamos muito felizes que você gostou do atendimento.\n\nSe puder deixar sua avaliação no Google, ajuda demais a gente — leva menos de um minuto:\n⭐ ${trackedReviewLink}\n\nSe você *já nos avaliou antes*, responda *1* que eu não peço mais. 😉\n\nE se tiver alguma 💬 sugestão, pode deixar aqui também.`
+                  ? 'Que ótimo saber disso! Obrigado pela preferência.'
+                  : `Que ótimo saber disso! Obrigado pela preferência.\n\nSe puder, deixe sua avaliação no Google (leva menos de um minuto):\n${trackedReviewLink}`
               await sendWhatsapp(phone, reply, true)
               // Marca que a etapa 2 saiu — é isso que permite interpretar um "1" seguinte
               // como "já avaliei" em vez de resposta solta.
