@@ -119,7 +119,15 @@ Deno.serve(async (request: Request) => {
   if (!stale || !stale.length) return json({ ok: true, reactivated: 0 })
 
   // v29.85.0 — mensagem HUMANA na conversa nos últimos 90 min = o Juliano está conduzindo.
-  const humanCutoff = new Date(Date.now() - HUMAN_RECENT_MINUTES * 60 * 1000).toISOString()
+  // v29.379.0 — caso Luciano (25/11/2026): o Juliano escreveu às 13h30, o watchdog soltou a conversa
+  // às ~15h (90 min) e às 17h20 a JuIA respondeu o "Sim" dele com a lista velha e um "17:30 acabou de
+  // ser reservado por outro cliente". A regra do v29.339.0 (Juliano falou HOJE = JuIA calada até o
+  // fim do dia) dependia da bandeira ainda ligada, e era este watchdog que a desligava. Agora a
+  // janela é a maior entre 90 min e o dia inteiro: falou hoje, a conversa fica com ele.
+  const noventaMin = Date.now() - HUMAN_RECENT_MINUTES * 60 * 1000
+  const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const inicioDoDia = new Date(`${hojeSP}T00:00:00-03:00`).getTime()
+  const humanCutoff = new Date(Math.min(noventaMin, inicioDoDia)).toISOString()
   const liberar: string[] = []
   const esperando: { phone: string; nome: string; minutos: number; body: string }[] = []
   let comHumano = 0

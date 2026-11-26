@@ -490,6 +490,12 @@ const detectPeriod=(text:string)=>{
  if(/\bmanha\b|pela manha|de manha|\bcedo\b/.test(withoutGreeting))return 'morning'
  if(/\btarde\b|pela tarde|de tarde/.test(withoutGreeting))return 'afternoon'
  if(/\bnoite\b|final do dia|fim do dia|depois das 18|apos as 18/.test(withoutGreeting))return 'evening'
+ // v29.379.0 — caso seu Zé (25/11/2026, 10h44): "Posso ir agora??" ouviu "Você prefere ainda de manhã ou à tarde?".
+ // Quem quer ir AGORA já disse o período: o de agora (a lista começa no próximo horário livre).
+ if(!/\b(nao|n)\b[^.!?]{0,15}\bagora\b|\bagora (nao|n)\b/.test(withoutGreeting)&&/\b(ir|vou|passo|passar|chego|chegar|vir|venho|apareco|aparecer|atender|atende|encaixar|encaixa)\s+(ai\s+|la\s+|me\s+)?agora\b|\bagora mesmo\b|\bja posso (ir|passar|vir)\b/.test(withoutGreeting)){
+  const m=agoraMinutosSP()
+  return m<12*60?'morning':m<18*60?'afternoon':'evening'
+ }
  return ''
 }
 const slotsForPeriod=(slots:string[],period:string)=>slots.filter(slot=>{
@@ -1710,6 +1716,28 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
   else if((pedeRemedio(q)||encomendaPorFoto(q,(Array.isArray(body.history)?body.history:[]).filter((h:any)=>h&&h.role==='user').map((h:any)=>String(h.content||''))))&&!/\bfarmaceutic/.test(q)){
    pediuHumano=true;pediuRemedio=true
    reply='Vou passar o seu pedido para o Juliano agora mesmo; ele te responde por aqui assim que puder.'
+   intent='handoff';handoff=true;actions=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
+  }
+  // v29.379.0 — caso Nathan (25/11/2026, 14h53): "Eu cortei com você ontem cedo. Você falou que se eu quisesse dar
+  // uma retocada, dava? Queria diminuir um pouquinho mais a lateral. Consigo amanhã?" virou lista de horários e
+  // reserva de Corte de cabelo (R$ 50); o "O meu é retoque" veio depois. O Juliano faz o retoque sem custo, no
+  // intervalo entre atendimentos. Retoque de corte recente é dele: resposta fixa + handoff, sem agenda nem preço.
+  // Retoque de química (tintura, pigmentação, luzes, raiz) é serviço e segue o fluxo normal.
+  else if(!/\b(tint\w*|pigment\w*|luzes|luz|raiz|platinad\w*|nevad\w*|descolor\w*|quimic\w*|alisa\w*|selag\w*|cancel\w*|remarc\w*)\b/.test(q)
+   &&(/\bretoc\w*|\bretoque\b/.test(q)||/\bcortei\b[^.!?]{0,40}\b(ontem|anteontem|essa semana|semana passada|esses dias|sabado|semana retrasada)\b/.test(q)&&/\b(diminuir|baixar|tirar (mais|um pouco)|acertar|ajustar|arrumar|corrigir|repassar)\b/.test(q))){
+   pediuHumano=true
+   reply='Retoque de corte recente é com o Juliano. Já avisei ele, e ele te responde por aqui para combinar o melhor momento.'
+   intent='handoff';handoff=true;actions=[]
+   for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
+  }
+  // v29.379.0 — caso Filipe (25/11/2026, 20h44): "teria como cortar pra mim amanhã, daí eu pago semana que vem?"
+  // ouviu "No momento você não tem horário marcado comigo". Pagar depois (fiado) é decisão do Juliano, nunca
+  // da JuIA: resposta fixa + handoff. O Juliano combinou o Pix e mandou o link na mão.
+  else if(/\b(pago|pagar|pagaria|acerto|acertar|acertaria|transfiro|faco o pix|mando o pix)\b[^.!?]{0,30}\b(semana que vem|proxima semana|depois(?! d[oa]s?\b)|mes que vem|quando (eu )?receber|dia \d{1,2})\b|\bfiado\b|\bpendur(a|ar)\b|\bdepois eu (te )?(pago|acerto)\b/.test(q)
+   &&!/\b(cancel\w*|remarc\w*)\b/.test(q)){
+   pediuHumano=true
+   reply='Sobre o pagamento para depois, quem combina é o Juliano. Já avisei ele, e ele te responde por aqui.'
    intent='handoff';handoff=true;actions=[]
    for(const p of PERGUNTAS)for(const f of p.flags){if(f in state)delete state[f];if(f in next)delete next[f]}
   }
@@ -4578,7 +4606,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  {
   const temPendencia=Object.keys(state||{}).some(k=>k.startsWith('pending_')&&(state as any)[k])
   const q=normalizedQuestion.trim()
-  const temPedidoNovo=/\?|\bmarc|agend|horari|remarc|cancel|quanto|qual |pode ser|tem |teria|preciso|quero (ver|saber|marcar|agendar)/.test(q)
+  // v29.379.0 — caso Felipe (25/11/2026, 18h01): logo depois de cancelar, "Vou verificar um novo horário e retorno.
+  // Obrigado" recebeu "Consigo te atender na sexta sim! Manhã ou tarde?". O "horário" de "verificar um novo horário"
+  // contava como pedido novo e derrubava o adiamento. Quem vai verificar o horário está adiando, não pedindo.
+  const qSemVerificar=q.replace(/\b(verificar|ver|olhar|conferir|checar|pensar (em|num|no)) (um |o |outro |novo |meu |minha |a |uma )*(horario|agenda|dia|data)s?\b/g,' ')
+  const temPedidoNovo=/\?|\bmarc|agend|horari|remarc|cancel|quanto|qual |pode ser|tem |teria|preciso|quero (ver|saber|marcar|agendar)/.test(qSemVerificar)
   // v29.138.0 (caso Carlos, 03/09/2026, 10h25): "Beleza vou ver e te aviso" recebeu a MESMA
   // pergunta de novo ("manhã, tarde ou final do dia?"). Quem diz que vai ver e avisa depois
   // está adiando, não perguntando — resposta é "combinado, fico no aguardo", e só.
@@ -6642,7 +6674,11 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
    // sobra depois do "!" volta a começar com maiúscula.
    if(semNome!==reply)reply=(semNome.charAt(0).toUpperCase()+semNome.slice(1)).replace(/^(.{0,60}?[!?.]\s+)([a-zà-ú])/,(_m:string,a:string,b:string)=>a+b.toUpperCase())
   }
-  reply=`${greetingNow()}${greetName?`, ${greetName}`:''}! ${reply}`
+  // v29.379.0 — caso Felipe (25/11/2026, 18h00): o modelo respondeu só "Boa tarde!" — a limpeza lá de cima
+  // não mexe em resposta que é SÓ saudação (sobraria vazio) — e saiu "Boa noite, Felipe! Boa tarde!".
+  // A saudação do modelo sai aqui também; se não sobrar nada, fica a pergunta padrão.
+  const semSaudModelo=reply.replace(/^\s*(bom dia|boa tarde|boa noite)\b(?:[^!.?]{0,25}[!.?]+|\s*$)\s*/i,'').trim()
+  reply=`${greetingNow()}${greetName?`, ${greetName}`:''}! ${semSaudModelo||'Como posso te ajudar?'}`
  }
  // v29.319.0 — pergunta respondida pela metade. Rogério (29/10, 12h53) pediu "a disponibilidade de horário para
  // hoje, e a sua tabela de preços" e recebeu só os horários; Thiago (11h00) pediu "o seu aplicativo, o que faz

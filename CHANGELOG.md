@@ -1,3 +1,28 @@
+## 29.379.0 — Revisão da JuIA de 26/11: Luciano, Nathan, Felipe, Filipe, seu Zé e Claudio
+
+Revisão de 25/11 05h35 → 26/11. Os erros de Edgard (pontos e Pix na confirmação), Alessio (oferta pós-reserva),
+Luciano ("2 vagas") e Filipe ("ainda tem interesse?") aconteceram antes das correções 29.375-29.377 do mesmo dia.
+Os novos:
+
+- **Caso Luciano (25/11, 17h20).** O Juliano escreveu às 13h30 e, às 17h20, a JuIA respondeu o "Sim" do cliente com a
+  lista velha e "17:30 acabou de ser reservado por outro cliente". A regra do 29.339.0 (Juliano falou hoje = JuIA
+  calada até o fim do dia) dependia da bandeira de atendimento humano ainda ligada, e o `whatsapp-reactivation-watchdog`
+  desligava a bandeira 90 min depois da última mensagem dele. Agora o watchdog não solta conversa em que o Juliano
+  escreveu no mesmo dia.
+- **Caso Nathan (25/11, 14h53).** Áudio pedindo "uma retocada" num corte do dia anterior virou reserva de Corte de
+  cabelo (R$ 50). Retoque de corte recente vai para o Juliano (ele faz sem custo, entre atendimentos): resposta fixa,
+  sem horário nem preço. Retoque de química (tintura, pigmentação, luzes) segue como serviço. Cenário 155.
+- **Caso Felipe (25/11, 18h00-18h02).** "Boa tarde" às 18h saiu "Boa noite, Felipe! Boa tarde!" (o modelo respondeu só
+  com saudação, e a limpeza não mexia em resposta que ficaria vazia). E "Vou verificar um novo horário e retorno"
+  recebeu nova oferta de horário: o "horário" da frase contava como pedido novo. Cenários 156 e 157.
+- **Caso Filipe (25/11, 20h44).** "Teria como cortar amanhã, daí eu pago semana que vem?" ouviu "você não tem horário
+  marcado". Pagar depois é decisão do Juliano: resposta fixa + aviso a ele. "Pagar depois do corte" não conta. Cenário 158.
+- **Caso seu Zé (25/11, 10h44).** "Posso ir agora??" ouviu "prefere de manhã ou à tarde?". Quem quer ir agora já disse
+  o período: o de agora. Cenário 159.
+- **Caso Claudio (25/11, 14h00).** A reativação de 30 dias saiu "Já faz um mês do seu último venda de produtos". Quando
+  a última visita foi compra no balcão, o texto fala da "última visita" (teste em `reativacao.spec.js`).
+- Simulador 402/402, npm test verde.
+
 ## 29.378.0 — Revisão de SEO de 25/11: perfil do Google corrigido e página de corte atualizada
 
 Diagnóstico (Search Console, 24/08 a 23/11; perfil do Google, semanas de setembro a novembro):

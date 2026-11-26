@@ -24,13 +24,19 @@ export function tempoDesde(dias: number): string {
 // stage: 1 = primeiro lembrete (30 dias), 2 = segundo (45), 3+ = os seguintes.
 export function montarMensagemReativacao(opts: { nome?: string; servico: string; dias: number; stage: number }): string {
   const nome = String(opts.nome || '').trim()
-  const servico = String(opts.servico || '').trim() || 'atendimento'
+  // v29.379.0 — caso Claudio (25/11/2026): a última "visita" dele foi uma compra no balcão e saiu
+  // "Já faz um mês do seu último venda de produtos com o Juliano". Venda de produto não é serviço:
+  // o texto passa a falar da última visita.
+  const bruto = String(opts.servico || '').trim()
+  const ehProduto = /venda|produto/i.test(bruto)
+  const servico = ehProduto ? '' : (bruto || 'atendimento')
+  const desde = ehProduto ? 'da sua última visita' : `do seu último ${servico}`
   const tempo = tempoDesde(Number(opts.dias) || 0)
   const saud = `Olá${nome ? `, ${nome}` : ''}. `
   const stage = Number(opts.stage) || 1
-  if (stage <= 1) return `${saud}Aqui é da Barbearia do Ju. Já faz ${tempo} do seu último ${servico} com o Juliano. Quando quiser marcar o próximo, é só responder aqui com o dia ou agendar em ${LINK_AGENDAR}`
-  if (stage === 2) return `${saud}Aqui é da Barbearia do Ju, passando só para lembrar: já faz ${tempo} do seu último ${servico}. Se quiser marcar, responda aqui com o dia ou agende em ${LINK_AGENDAR}`
-  return `${saud}Só um lembrete da Barbearia do Ju: já faz ${tempo} desde o seu último ${servico}. Quando quiser, é só responder com o dia ou agendar em ${LINK_AGENDAR}`
+  if (stage <= 1) return `${saud}Aqui é da Barbearia do Ju. Já faz ${tempo} ${desde}${ehProduto ? '' : ' com o Juliano'}. Quando quiser marcar o próximo, é só responder aqui com o dia ou agendar em ${LINK_AGENDAR}`
+  if (stage === 2) return `${saud}Aqui é da Barbearia do Ju, passando só para lembrar: já faz ${tempo} ${desde}. Se quiser marcar, responda aqui com o dia ou agende em ${LINK_AGENDAR}`
+  return `${saud}Só um lembrete da Barbearia do Ju: já faz ${tempo} ${ehProduto ? 'desde a sua última visita' : `desde o seu último ${servico}`}. Quando quiser, é só responder com o dia ou agendar em ${LINK_AGENDAR}`
 }
 
 // v29.248.0 — Lembrete para quem agendou e cancelou (ou faltou) sem nunca ter vindo

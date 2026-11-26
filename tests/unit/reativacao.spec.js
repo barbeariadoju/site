@@ -84,3 +84,14 @@ describe('montarMensagemFollowupCancelado', () => {
     expect(m).toContain('horário de atendimento')
   })
 })
+
+// v29.379.0 — caso Claudio (25/11): a última visita foi compra no balcão.
+describe('montarMensagemReativacao com venda de produtos', () => {
+  it('fala da última visita, não de "último venda de produtos"', () => {
+    for (const stage of [1, 2, 3]) {
+      const m = montarMensagemReativacao({ nome: 'Claudio', servico: 'venda de produtos', dias: 31, stage })
+      expect(m).not.toMatch(/venda|produto/i)
+      expect(m).toContain('última visita')
+    }
+  })
+})

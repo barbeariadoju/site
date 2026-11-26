@@ -2168,5 +2168,49 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   }
 }
 
+
+// 155. v29.379.0 — caso Nathan (25/11/2026, 14h53): "cortei com você ontem… dar uma retocada… diminuir a lateral, amanhã?"
+//      virou lista de horários e reserva de Corte (R$ 50). Retoque de corte recente é do Juliano: handoff, sem agenda.
+{
+  for (const [rot, msg] of [['a', 'Boa tarde, meu querido. Eu cortei com você ontem cedo. Você falou que se eu quisesse dar uma retocada, dava? Eu queria diminuir um pouquinho mais a lateral. Será que eu consigo fazer com você amanhã?'], ['b', 'O meu é retoque']]) {
+    const r = await turno({ msg, ai: { intent: 'availability', reply: 'Amanhã tenho 08:30, 10:15.', updates: { date: amanha } }, contexto: ctxCliente('Nathan Teste'), vagas: { [amanha]: ['08:30', '10:15'] } })
+    checar(`155${rot} retoque vai pro Juliano, sem horário nem preço`, r.handoff === true && /Juliano/.test(r.reply) && !/\d{2}:\d{2}|R\$/.test(r.reply) && !reservou(r), r.reply)
+  }
+  const r2 = await turno({ msg: 'Quero fazer o retoque da pigmentação da barba', ai: { intent: 'availability', reply: 'Consigo sim.', updates: {} }, contexto: ctxCliente('Cliente Teste') })
+  checar('155c retoque de química segue o fluxo normal', r2.handoff !== true, r2.reply)
+}
+
+// 156. v29.379.0 — caso Felipe (25/11/2026, 18h01): depois de cancelar, "Vou verificar um novo horário e retorno. Obrigado"
+//      recebeu "Consigo te atender na sexta sim! Manhã ou tarde?". É adiamento.
+{
+  const r = await turno({ msg: 'Vou verificar um novo horário e retorno. Obrigado', state: { name: 'Felipe Teste', services: ['Corte de cabelo'] },
+    history: [{ role: 'assistant', content: 'Pronto! Cancelei seu agendamento de amanhã às 11:00. Quer já deixar outro horário marcado para Corte de cabelo? Na sexta tenho 08:30 ou 11:00.' }],
+    ai: { intent: 'availability', reply: 'Consigo te atender na sexta sim! Você prefere de manhã ou à tarde?', updates: {} }, contexto: ctxCliente('Felipe Teste'), vagas: { [dia2]: ['08:30', '11:00'] } })
+  checar('156 "vou verificar um novo horário e retorno" = fico no aguardo', /aguardo/.test(r.reply) && !/\?|\d{2}:\d{2}/.test(r.reply), r.reply)
+}
+
+// 157. v29.379.0 — caso Felipe (25/11/2026, 18h00): "Boa tarde" às 18h ouviu "Boa noite, Felipe! Boa tarde!".
+{
+  const r = await turno({ msg: 'Boa tarde', ai: { intent: 'other', reply: 'Boa tarde!', updates: {} }, contexto: ctxCliente('Felipe Teste'),
+    futuros: [{ id: 'b157', booking_date: amanha, start_time: '11:00:00', service_name: 'Corte de cabelo' }] })
+  checar('157 resposta do modelo que é só saudação não vira saudação dupla', ((r.reply.match(/\b(bom dia|boa tarde|boa noite)\b/gi) || []).length === 1) && r.reply.length > 20, r.reply)
+}
+
+// 158. v29.379.0 — caso Filipe (25/11/2026, 20h44): "teria como cortar amanhã, daí eu pago semana que vem?" ouviu "você não
+//      tem horário marcado". Pagar depois é com o Juliano.
+{
+  const r = await turno({ msg: 'Boa noite meu amigo, teria como cortar pra mim amanha, dai eu pago semana que vem?', ai: { intent: 'other', reply: 'No momento você não tem horário marcado comigo.', updates: {} }, contexto: ctxCliente('Filipe Teste') })
+  checar('158a pagar depois vai pro Juliano', r.handoff === true && /Juliano/.test(r.reply) && !/não tem horário/.test(r.reply), r.reply)
+  const r2 = await turno({ msg: 'Posso pagar depois do corte no cartão?', ai: { intent: 'other', reply: 'Pode sim, o pagamento é feito no final do atendimento.', updates: {} }, contexto: ctxCliente('Cliente Teste') })
+  checar('158b "pagar depois do corte" não é fiado', r2.handoff !== true, r2.reply)
+}
+
+// 159. v29.379.0 — caso seu Zé (25/11/2026, 10h44): "Posso ir agora??" ouviu "Você prefere ainda de manhã ou à tarde?".
+{
+  const r = await turno({ msg: 'Posso ir agora??', state: { name: 'José Teste', services: ['Corte de cabelo'] }, ai: { intent: 'availability', reply: 'Consigo te atender hoje sim!', updates: { date: hoje } }, contexto: ctxCliente('José Teste'),
+    vagas: { [hoje]: ['08:30', '09:15', '10:00', '10:45', '11:30', '13:00', '13:45', '14:30', '15:15', '16:00', '16:45', '17:30', '18:15'] } })
+  checar('159 "posso ir agora" não pergunta o período', !/manhã ou à tarde|de manhã ou|à tarde ou/.test(r.reply), r.reply)
+}
+
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)
