@@ -1590,6 +1590,27 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     console.log('[ju-ia-site] sim à pergunta que nomeia o serviço',JSON.stringify({servicos:next.services,intent}))
    }
   }
+  // v29.380.0 — caso Matheus (26/11/2026, 12h29): "Qual primeiro horário… sábado?" → "o primeiro horário é 08:30. Quer
+  // que eu reserve?" → "Sim, pode reservar" + "obrigado" (6 s depois, juntados num turno só) → "Eu que agradeço…" e
+  // nenhuma reserva. A resposta de primeiro/último horário (pontaRespondida) guardava o horário só em horarios_por_dia,
+  // não em next.time: o "sim" dependia de o modelo achar o 08:30 no histórico, e com o "obrigado" junto a resposta fixa
+  // de agradecimento passou por cima. Sim a essa pergunta, com um único horário oferecido, reserva esse horário.
+  const mapaP=state?.horarios_por_dia&&typeof state.horarios_por_dia==='object'?Object.entries(state.horarios_por_dia as Record<string,string>):[]
+  if(confirmou&&mapaP.length===1&&/Quer que eu reserve\?\s*$/.test(ultimaJuIA.trim())&&!extractRequestedTime(message)){
+   const [hP,dP]=mapaP[0]
+   if(/^\d\d:\d\d$/.test(hP)&&String(dP)>=today()){
+    if(!chosen.length){
+     const nomeadosP=findServicesLoose(ultimaJuIA).filter((s:any,i:number,a:any[])=>s&&a.findIndex((x:any)=>x.name===s.name)===i)
+     if(nomeadosP.length){
+      chosen=nomeadosP;next.services=nomeadosP.map((s:any)=>s.name)
+      next.servicos_escolhidos=[...new Set([...(Array.isArray(next.servicos_escolhidos)?next.servicos_escolhidos:[]),...next.services])]
+     }
+    }
+    next.date=String(dP);next.time=hP;next.horarios_por_dia=null
+    if(chosen.length&&!['cancel','reschedule'].includes(intent))intent=upcomingBookings.some((b:any)=>b&&b.booking_date!==next.date&&['pending','confirmed'].includes(String(b.status||'')))?'availability':'book'
+    console.log('[ju-ia-site] sim ao único horário oferecido',JSON.stringify({date:next.date,time:next.time,servicos:next.services,intent}))
+   }
+  }
  }
  // v29.300.0 — caso Alexandre (22/10/2026, 12h47): com a lista de hoje na mesa, "Pode ser na próxima semana
  // 18:15" virou "Hoje às 18:15 já está ocupado" e, depois de "Pode ser na próxima semana", "Hoje às 18:15. É

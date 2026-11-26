@@ -2212,5 +2212,21 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
   checar('159 "posso ir agora" não pergunta o período', !/manhã ou à tarde|de manhã ou|à tarde ou/.test(r.reply), r.reply)
 }
 
+
+// 160. v29.380.0 — caso Matheus (26/11/2026, 12h29): "Qual primeiro horário… para sábado?" → "o primeiro horário é 08:30.
+//      Quer que eu reserve?" → "Sim, pode reservar" + "obrigado" juntos → "Eu que agradeço" e nenhuma reserva.
+{
+  const sab = proxima(6) === hoje ? somar(hoje, 7) : proxima(6)
+  const vagas = { [sab]: ['08:30', '09:15', '10:00'] }
+  const r1 = await turno({ msg: 'Boa tarde tudo bem? Qual primeiro horário que vc tem disponível para sábado?', state: {},
+    ai: { intent: 'availability', reply: 'No sábado tenho 08:30.', updates: { date: sab } }, contexto: ctxCliente('Matheus Teste'), vagas })
+  checar('160a primeiro horário de sábado oferecido com "Quer que eu reserve?"', /08:30/.test(r1.reply) && /Quer que eu reserve\?/.test(r1.reply), r1.reply)
+  for (const [rot, msg] of [['b', 'Sim, pode reservar\nobrigado'], ['c', 'Sim, pode reservar']]) {
+    const r2 = await turno({ msg, state: r1.state, history: [{ role: 'assistant', content: r1.reply }],
+      ai: { intent: 'other', reply: 'Eu que agradeço!', updates: {} }, contexto: ctxCliente('Matheus Teste'), vagas, vagasPorDuracao: () => ['08:30', '09:15', '10:00'] })
+    const ch = r2.chamadas.find((x: any) => x.alvo === 'create_public_booking_v15')
+    checar(`160${rot} "sim" reserva o 08:30 de sábado (corte)`, !!ch && ch.args?.p_booking_date === sab && String(ch.args?.p_start_time || '').startsWith('08:30') && !/Eu que agradeço/.test(r2.reply), { reply: r2.reply, args: ch?.args })
+  }
+}
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

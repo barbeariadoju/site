@@ -1,3 +1,17 @@
+## 29.380.0 — Caso Matheus: o "sim" ao primeiro horário de sábado não reservava
+
+- **Caso Matheus (26/11, 12h29).** "Qual primeiro horário que vc tem disponível para sábado?" → "Para corte de cabelo:
+  no sábado (28/11), o primeiro horário é 08:30. Quer que eu reserve?" → "Sim, pode reservar" e, 6 s depois,
+  "obrigado". O webhook juntou as duas no mesmo turno (a resposta do primeiro foi descartada como velha, certo), e a
+  JuIA respondeu "Eu que agradeço, Matheus!" sem reservar. O cliente saiu achando que estava marcado.
+- **Causa.** A resposta de primeiro/último horário (29.342.0) guardava o horário oferecido só em `horarios_por_dia`,
+  não em `next.time`, e não gravava o serviço. O "sim" dependia de o modelo achar o 08:30 no histórico. Com o
+  "obrigado" junto, o modelo leu agradecimento e a resposta fixa de agradecimento (29.319.0) fechou a conversa.
+- **Correção.** Sim a "Quer que eu reserve?" com um único horário oferecido reserva esse horário, no dia em que ele foi
+  dito, com o serviço nomeado na pergunta. Não depende mais do modelo. Cenário 160 (falhava 2/3 antes da correção).
+- **Reserva refeita na mão:** sábado 28/11 08:30, Corte de cabelo, canal `juia_whatsapp`.
+- Simulador 405/405.
+
 ## 29.379.0 — Revisão da JuIA de 26/11: Luciano, Nathan, Felipe, Filipe, seu Zé e Claudio
 
 Revisão de 25/11 05h35 → 26/11. Os erros de Edgard (pontos e Pix na confirmação), Alessio (oferta pós-reserva),
