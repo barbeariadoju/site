@@ -1,3 +1,16 @@
+## 29.382.0 — Calendário da agenda conta só quem veio (ausência fora do número)
+
+- **O que mudou:** o numerinho de cada dia no calendário do painel (Agenda) deixou de contar
+  atendimento marcado como **Ausência**. Cancelado já não contava; agora ausência também não.
+  Quarta 25/11 mostrava 7 com o Pedro faltando e passa a mostrar 6.
+- **Por quê:** pedido do Juliano (26/11). O número serve pra bater o olho e ver o movimento real
+  do dia; contando quem faltou, o dia parecia mais cheio do que foi.
+- **O que fica igual:** a lista do dia continua mostrando o atendimento com a etiqueta Ausência
+  (é o histórico da falta, e a regra de 1ª falta gentil / 2ª bloqueia depende dele). Dia futuro não
+  muda nada: lá ainda não existe ausência, só marcado.
+- Bump de `admin-v15-4-agenda.js` e `admin-v15-4-core.js` + `ADMIN_VERSION`/`admin-version.json`
+  (29.382.0), pra o painel aberto recarregar.
+
 ## 29.380.0 — Caso Matheus: o "sim" ao primeiro horário de sábado não reservava
 
 - **Caso Matheus (26/11, 12h29).** "Qual primeiro horário que vc tem disponível para sábado?" → "Para corte de cabelo:
