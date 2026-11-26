@@ -73,6 +73,7 @@ type Cenario = {
   bloqueado?: boolean // is_customer_blocked_v2
   buracos?: any[] // encaixes_possiveis: buracos da agenda onde um encaixe apertado caberia (v29.326.0)
   sinalCancel?: boolean // sinal_cancelamentos_ativo: dois últimos = falta/cancelamento em cima da hora
+  sinalFixo?: boolean // sinal_fixo_ativo: sinal de 50% por decisão do Juliano (v29.381.0)
   cancelado?: string // service_name devolvido pelo whatsapp_cancel_booking (padrão: Corte de cabelo)
   reservaErro?: string // create_public_booking_v15 recusa com esta mensagem (ex.: 'Horário indisponível')
   vagasPorDuracao?: (min: number) => string[] // get_available_slots que depende da duração pedida
@@ -111,7 +112,8 @@ const turno = async (c: Cenario) => {
     phone_change_booking_service: (a: any) => (c as any).rpcFalha === 'phone_change_booking_service' ? { data: [], error: null } : (() => { const b: any = (c.futuros || []).find((x: any) => x.id === a.p_booking_id) || {}; return { data: [{ ...b, id: a.p_booking_id, service_name: a.p_service_name, service_price: a.p_service_price }], error: null } })(),
     phone_reschedule_booking: (a: any) => ({ data: [{ id: a.p_booking_id, booking_date: a.p_new_booking_date, start_time: a.p_new_start_time + ':00' }], error: null }),
     waitlist_matches_for_slot: () => [],
-    sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel),
+    sinal_cancelamentos_ativo: () => Boolean(c.sinalCancel || c.sinalFixo),
+    sinal_fixo_ativo: () => Boolean(c.sinalFixo),
     encaixes_possiveis: () => c.buracos || [],
     phone_missed_bookings: () => c.faltas || [],
     phone_no_show_count: () => c.totalFaltas ?? (c.faltas || []).length,
@@ -635,6 +637,10 @@ console.log(`Simulador da JuIA — hoje ${hoje}, segunda ${segunda}, terça ${te
   checar('41a regra ativa: grava o sinal e o prazo no agendamento', upd?.payload?.prepay_amount === 20 && Boolean(upd?.payload?.prepay_deadline_at), upd?.payload)
   const r2 = await turno({ ...base, sinalCancel: false })
   checar('41b sem a regra: reserva sem sinal', reservou(r2) && !/sinal/i.test(r2.reply), r2.reply)
+  // v29.381.0 — sinal fixo (caso Pedro, 26/11/2026): mesmo sinal, texto sem "dois cancelamentos" e sem "volta ao normal",
+  // com a perda do sinal na falta sem aviso.
+  const r3 = await turno({ ...base, sinalFixo: true })
+  checar('41c sinal fixo: reserva, pede 50% e avisa que a falta sem aviso perde o sinal', reservou(r3) && /sinal de 50% \(R\$\s?20,00\)/.test(r3.reply) && /não é devolvido/.test(r3.reply) && !/dois últimos|voltam a ser marcados/.test(r3.reply), r3.reply)
 }
 
 // 42. Caso Murillo (28/09/2026): último atendimento Corte + Nevou/Platinado. Química não entra no "de

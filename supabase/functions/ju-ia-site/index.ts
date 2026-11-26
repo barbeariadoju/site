@@ -6356,14 +6356,19 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
       // os dois últimos acontecimentos do cliente foram falta ou cancelamento dele com menos de 24 h (o banco
       // decide: sinal_cancelamentos_ativo, migrações 177-178). Mesmo trilho do sinal de química — Pix, prazo
       // de 1 h, prepay-deadline libera o horário. Assinante do Clube fica fora (o Clube tem a regra dele).
-      let cancelamentosSeguidos=false
+      let cancelamentosSeguidos=false,sinalFixo=false
       if(verifiedPhone&&!clubeAssinatura&&bookingId){
        try{const {data:sc}=await supabase.rpc('sinal_cancelamentos_ativo',{p_phone:phone});cancelamentosSeguidos=sc===true}catch(scErr){console.error('[ju-ia-site] sinal_cancelamentos_ativo',scErr)}
+       // v29.381.0 — sinal fixo (decisão do Juliano, caso Pedro 26/11/2026): sempre 50%, comparecer não zera, e a
+       // falta sem aviso de 24 h faz perder o sinal. O texto muda: não são "dois cancelamentos" nem "volta ao normal".
+       if(cancelamentosSeguidos){try{const {data:sf}=await supabase.rpc('sinal_fixo_ativo',{p_phone:phone});sinalFixo=sf===true}catch(sfErr){console.error('[ju-ia-site] sinal_fixo_ativo',sfErr)}}
       }
       const valorSinal=cancelamentosSeguidos?Math.round(Number(price||0)*0.5*100)/100:0
       const pixSinal=`Chave Pix (e-mail): contato@barbeariadoju.com.br — no aplicativo do banco aparece o nome "Juliano Bruno Lopes Padilha" e a instituição "PicPay". Assim que cair, me avisa que o Juliano confere e seu horário fica garantido. O sinal precisa cair em até 1 hora a partir de agora; passado esse prazo, o horário é liberado automaticamente.`
       const sinalNote=cancelamentosSeguidos&&valorSinal>0
-       ?` Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${money(valorSinal)}) pelo Pix, descontado do valor no dia. ${pixSinal} Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.`
+       ?(sinalFixo
+        ?` Como já aconteceu de um horário seu ficar reservado sem atendimento, os seus agendamentos são confirmados com um sinal de 50% (${money(valorSinal)}) pelo Pix, descontado do valor no dia. ${pixSinal} Precisou remarcar? Avisando com 24 horas de antecedência, o sinal vale para a nova data. Sem aviso e sem comparecimento, o sinal não é devolvido, porque cobre o horário que ficou reservado só para você.`
+        :` Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${money(valorSinal)}) pelo Pix, descontado do valor no dia. ${pixSinal} Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.`)
        :''
       if(valorSinal>0){
        // v29.200.0 — prazo de 1h (regra do Juliano, 17/09/2026): o cron prepay-deadline libera o horário
@@ -6375,7 +6380,7 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
         try{
          await supabase.from('bookings').update({prepay_key:'picpay',prepay_amount:valorSinal,prepay_deadline_at:sinalDeadline,updated_at:new Date().toISOString()}).eq('id',bookingId).is('prepay_key',null).is('prepay_confirmed_at',null)
          const pushSecretS=Deno.env.get('PUSH_WEBHOOK_SECRET');const supabaseUrlS=Deno.env.get('SUPABASE_URL')
-         const tituloSinal=`Pedi sinal de ${money(valorSinal)} (2 cancelamentos em cima da hora)`
+         const tituloSinal=`Pedi sinal de ${money(valorSinal)} (${sinalFixo?'sinal fixo, decisão sua':'2 cancelamentos em cima da hora'})`
          if(pushSecretS&&supabaseUrlS)await fetch(`${supabaseUrlS}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecretS},body:JSON.stringify({custom:{title:tituloSinal,body:`${next.name||'Cliente'} reservou ${chosen.map((s:any)=>s.name).join(' + ')} ${emDia(next.date)} às ${next.time}. Confira o extrato do PicPay; caiu = marque o Pix antecipado na Agenda. Sem Pix em 1h, o horário é liberado sozinho.${cancelamentosSeguidos?' Para dispensar este cliente da regra: CRM, card dele.':''}`,url:'/admin-agenda.html?app=1',tag:`sinal-${bookingId}`}})}).catch(()=>{})
         }catch(sinalErr){console.error('[ju-ia-site] sinal',sinalErr)}
        }

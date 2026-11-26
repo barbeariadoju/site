@@ -11,6 +11,27 @@
 - Bump de `admin-v15-4-agenda.js` e `admin-v15-4-core.js` + `ADMIN_VERSION`/`admin-version.json`
   (29.382.0), pra o painel aberto recarregar.
 
+## 29.381.0 — Sinal fixo de 50% por decisão do Juliano (caso Pedro)
+
+- **Caso Pedro (25/11, 17h15).** Agendou Corte + Barba Express pela JuIA, ocupou o horário que outro cliente
+  poderia ter marcado e não veio. Pedido do Juliano em 26/11: "só agenda mediante pagamento de 50% antecipado e,
+  se não comparecer, perde o valor pago".
+- **Por que não `blocked_customers`:** a lista de bloqueio (Venilson) pede o valor INTEIRO e passa o pedido para o
+  Juliano marcar à mão. O pedido aqui é 50%, e o trilho que já faz isso sozinho é o sinal da v29.240.0 (Pix, prazo
+  de 1 h, `prepay-deadline` libera o horário se não cair). Esse sinal, porém, só liga com dois acontecimentos
+  seguidos e desliga quando o cliente comparece.
+- **Banco (migração 222):** tabela `sinal_fixo` (RLS, grant só para `service_role`), função `sinal_fixo_ativo`, e o
+  `sinal_cancelamentos_ativo` passa a dar true também para quem está na lista. Comparecer não tira da lista. O
+  botão "Dispensar" do sinal no CRM tira. Os clientes são gravados direto no banco: o telefone não entra no repo.
+- **Textos (JuIA, confirmação do WhatsApp em `booking-email`, tela do site em `agenda-v15.js`):** para o sinal
+  fixo, sai "os dois últimos horários foram cancelados" e "depois deste atendimento voltam ao normal". Entra "Como
+  já aconteceu de um horário seu ficar reservado sem atendimento" + "avisando com 24 h, o sinal vale para a nova
+  data; sem aviso e sem comparecimento, o sinal não é devolvido" (mesma regra do Venilson). O push diz "sinal
+  fixo, decisão sua".
+- **Não mudou:** a regra automática dos dois cancelamentos continua com o texto e o "volta ao normal" de antes.
+- Simulador 406/406 (cenário 41c). `agenda-v15.js?v=29.381.0`.
+- **Pendência pequena:** o aviso do botão "Sinal" no card do CRM ainda fala em "os dois últimos horários".
+
 ## 29.380.0 — Caso Matheus: o "sim" ao primeiro horário de sábado não reservava
 
 - **Caso Matheus (26/11, 12h29).** "Qual primeiro horário que vc tem disponível para sábado?" → "Para corte de cabelo:

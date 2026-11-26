@@ -158,10 +158,15 @@ Deno.serve(async (request: Request) => {
     // v29.240.0 — sinal pendente (dois cancelamentos em cima da hora; create-public-booking grava o valor e
     // o prazo de 1 h): a confirmação leva a instrução do Pix. Mesmo texto da JuIA.
     const sinalValor = Number(booking.prepay_amount || 0)
+    // v29.381.0 — sinal fixo (decisão do Juliano): o texto não fala em "dois cancelamentos" nem em voltar ao normal.
+    let sinalFixo = false
+    if (sinalValor > 0 && eventType === 'booking_confirmed') {
+      try { const { data: sf } = await admin.rpc('sinal_fixo_ativo', { p_phone: String(booking.customer_phone || '') }); sinalFixo = sf === true } catch (_e) { /* texto padrão */ }
+    }
     const sinalLinha = eventType === 'booking_confirmed' && sinalValor > 0 && booking.prepay_deadline_at && !booking.prepay_confirmed_at
       ? `
 
-Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado com um sinal de 50% (${brl(sinalValor)}) pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br, no nome de Juliano Bruno Lopes Padilha (PicPay). Assim que cair, me avisa por aqui. O sinal precisa cair em até 1 hora; passado esse prazo, o horário é liberado automaticamente. Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.`
+${sinalFixo ? 'Como já aconteceu de um horário seu ficar reservado sem atendimento, os seus agendamentos são confirmados' : 'Como os dois últimos horários foram cancelados em cima da hora, este agendamento é confirmado'} com um sinal de 50% (${brl(sinalValor)}) pelo Pix, descontado do valor no dia. Chave Pix (e-mail): contato@barbeariadoju.com.br, no nome de Juliano Bruno Lopes Padilha (PicPay). Assim que cair, me avisa por aqui. O sinal precisa cair em até 1 hora; passado esse prazo, o horário é liberado automaticamente. ${sinalFixo ? 'Precisou remarcar? Avisando com 24 horas de antecedência, o sinal vale para a nova data. Sem aviso e sem comparecimento, o sinal não é devolvido.' : 'Depois deste atendimento, os próximos voltam a ser marcados normalmente, sem sinal.'}`
       : ''
     let waText = `💈 *Barbearia do Ju*\n${customerLead}`
     if (eventType === 'booking_confirmed') {

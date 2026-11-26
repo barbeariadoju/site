@@ -188,17 +188,19 @@ Deno.serve(async(req:Request)=>{
     // O banco decide (sinal_cancelamentos_ativo). Igual ao da JuIA: o horário fica reservado, o sinal vai
     // pro agendamento com prazo de 1 h (o prepay-deadline libera se não cair), e as instruções saem na
     // confirmação do WhatsApp (booking-email) e na tela. Nunca derruba o agendamento.
-    let sinal=0
+    let sinal=0,sinalFixo=false
     try{
       const {data:ativo}=await admin.rpc('sinal_cancelamentos_ativo',{p_phone:String(body.customer_phone)})
       if(ativo===true){
+        // v29.381.0 — sinal fixo por decisão do Juliano: outro texto (sem "dois cancelamentos").
+        try{const {data:sf}=await admin.rpc('sinal_fixo_ativo',{p_phone:String(body.customer_phone)});sinalFixo=sf===true}catch(_e){}
         const {data:clube}=await admin.from('bookings').select('club_subscription_id').eq('id',id).maybeSingle()
         if(!clube?.club_subscription_id){
           sinal=Math.round(Number(body.service_price||0)*0.5*100)/100
           if(sinal>0){
             const prazo=new Date(Date.now()+60*60*1000).toISOString()
             await admin.from('bookings').update({prepay_key:'picpay',prepay_amount:sinal,prepay_deadline_at:prazo,updated_at:new Date().toISOString()}).eq('id',id).is('prepay_confirmed_at',null)
-            if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:`Pedi sinal de ${sinal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} (2 cancelamentos em cima da hora)`,body:`${String(body.customer_name).trim()} agendou pelo site ${String(body.booking_date).split('-').reverse().join('/')} às ${String(body.start_time).slice(0,5)}. Sem Pix em 1h, o horário é liberado sozinho. Para dispensar este cliente da regra: CRM, card dele.`,url:'/admin-agenda.html?app=1',tag:`sinal-${id}`}})}).catch(()=>{})
+            if(pushSecret)await fetch(`${url}/functions/v1/send-push`,{method:'POST',headers:{'Content-Type':'application/json','x-webhook-secret':pushSecret},body:JSON.stringify({custom:{title:`Pedi sinal de ${sinal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} (${sinalFixo?'sinal fixo, decisão sua':'2 cancelamentos em cima da hora'})`,body:`${String(body.customer_name).trim()} agendou pelo site ${String(body.booking_date).split('-').reverse().join('/')} às ${String(body.start_time).slice(0,5)}. Sem Pix em 1h, o horário é liberado sozinho. Para dispensar este cliente da regra: CRM, card dele.`,url:'/admin-agenda.html?app=1',tag:`sinal-${id}`}})}).catch(()=>{})
           }
         }
       }
@@ -242,6 +244,7 @@ Deno.serve(async(req:Request)=>{
       management_token:managementToken,
       referral,
       sinal,
+      sinal_fixo:sinalFixo,
       manage_url:`/meu-agendamento.html?code=${encodeURIComponent(record.booking_code)}&token=${encodeURIComponent(managementToken)}`
     })
   }catch(error){
