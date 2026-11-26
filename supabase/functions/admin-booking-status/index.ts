@@ -152,7 +152,10 @@ Deno.serve(async (request: Request) => {
     const discountAmount = hasDiscountChange && Number.isFinite(discountAmountRaw) && discountAmountRaw > 0 ? Math.round(discountAmountRaw * 100) / 100 : 0
     const discountReason = String(rawDiscount?.reason || '').trim().slice(0, 120)
     const allowedStatuses = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled']
-    const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade']
+    // v29.383.0 — 'prazo' (caso Filipe, 26/11/2026): corte feito hoje, pagamento combinado para outro dia.
+    // Vem com payment_due_date (YYYY-MM-DD); o comprovante sai com a data e a chave Pix.
+    const allowedPaymentMethods = ['pix', 'debito', 'credito', 'dinheiro', 'fidelidade', 'prazo']
+    const paymentDueDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body?.payment_due_date || '').trim()) ? String(body.payment_due_date).trim() : ''
 
     // selected_products (opcional): array de {name, price} — mesmo formato já usado em
     // create_public_booking_v15/phone_update_booking_products. products_price é sempre
@@ -216,6 +219,12 @@ Deno.serve(async (request: Request) => {
     // v29.233.0: atendimento 100% coberto pelo Clube do Ju também não tem pagamento — conferido
     // logo abaixo, depois de ler o agendamento (a tela manda club_coverage:true).
     const pedeClube = body?.club_coverage === true
+    if (hasPaymentMethodChange && paymentMethod === 'prazo') {
+      const hojeSP = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10)
+      const limite = new Date(Date.now() - 3 * 3600 * 1000 + 90 * 86400 * 1000).toISOString().slice(0, 10)
+      if (!paymentDueDate) return fail('validation_payment_due_date', 'Informe até que dia o cliente vai pagar.', 400, { requestId })
+      if (paymentDueDate < hojeSP || paymentDueDate > limite) return fail('validation_payment_due_date', 'A data de pagamento precisa ser de hoje até 90 dias.', 400, { requestId, paymentDueDate })
+    }
     if (hasStatusChange && status === 'completed' && !hasPaymentMethodChange && !courtesy && !pedeClube) {
       return fail('validation_payment_method', 'Informe a forma de pagamento para concluir o atendimento.', 400, { requestId, paymentMethod })
     }
@@ -255,6 +264,7 @@ Deno.serve(async (request: Request) => {
     const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (hasStatusChange) updatePayload.status = status
     if (hasPaymentMethodChange) updatePayload.payment_method = paymentMethod
+    if (hasPaymentMethodChange && paymentMethod === 'prazo') updatePayload.payment_due_date = paymentDueDate
     if (hasProductsPaymentMethodChange) updatePayload.products_payment_method = productsPaymentMethod
     if (hasGoogleReviewChange) updatePayload.request_google_review = requestGoogleReview
     if (markGoogleReviewed) {

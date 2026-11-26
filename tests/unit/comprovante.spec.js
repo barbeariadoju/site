@@ -333,3 +333,23 @@ describe('comprovante corrigido', () => {
     expect(/\p{Extended_Pictographic}/u.test(m)).toBe(false);
   });
 });
+
+// v29.383.0 (caso Filipe, 26/11/2026) — corte feito hoje, pagamento combinado para o dia 30.
+describe('pagamento a prazo', () => {
+  const d = { ...base, clienteNome: 'Filipe', servicoNome: 'Corte de cabelo', servicoValor: 50, pagamentoServico: 'prazo', pagamentoPrazoAte: '2026-11-30' };
+  const c = norm(montarCupom(d));
+  it('diz quanto falta, até quando, e traz a chave Pix', () => {
+    expect(c).toContain('*Total: R$ 50,00*');
+    expect(c).toContain('*A pagar até 30/11: R$ 50,00*');
+    expect(c).toContain('Chave Pix (e-mail): contato@barbeariadoju.com.br');
+    expect(c).not.toContain(', pago');
+  });
+  it('produto pago na hora sai do valor a pagar', () => {
+    const c2 = norm(montarCupom({ ...d, produtos: [{ nome: 'Pomada', valor: 30 }], pagamentoProdutos: 'pix' }));
+    expect(c2).toContain('Produtos pagos no Pix');
+    expect(c2).toContain('*A pagar até 30/11: R$ 50,00*');
+  });
+  it('mensagem sem emoji', () => {
+    expect(/\p{Extended_Pictographic}/u.test(montarMensagemComprovante(d))).toBe(false);
+  });
+});

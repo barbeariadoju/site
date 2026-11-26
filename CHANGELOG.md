@@ -1,3 +1,25 @@
+## 29.383.0 — Pagamento a prazo no Concluir (caso Filipe)
+
+Pedido do Juliano (26/11/2026): o Filipe cortou hoje e combinou pagar no dia 30. Não havia como concluir sem
+inventar uma forma de pagamento, e o comprovante sairia dizendo "pago no Pix" para quem não pagou.
+
+- **Forma de pagamento nova, "A prazo (paga depois)"**, só no Concluir. Ao tocar, abre "Paga até qual dia?";
+  sem data (ou com data no passado) não conclui. O servidor confere de novo: de hoje até 90 dias.
+- **Comprovante**: em vez de "pago no Pix", sai `*A pagar até 30/11: R$ 50,00*` e, logo abaixo, a chave Pix
+  (e-mail) com o nome e a instituição que aparecem no banco, os mesmos que a JuIA passa. Produto pago na hora
+  sai do valor a pagar ("Produtos pagos no Pix").
+- **Card da agenda**: mostra "A receber até 30/11" em destaque. Quando o dinheiro cair, o Juliano troca a
+  forma no Editar do card (Pix, dinheiro…). Enquanto for 'prazo', está a receber. A data fica gravada.
+- Banco: `payment_method`/`products_payment_method` aceitam 'prazo'; coluna nova `bookings.payment_due_date`
+  (migração 223, sem tabela nova, sem GRANT). Taxa da maquininha: 'prazo' não está em `finance_fee_rates`, conta 0.
+
+Decidido contra o óbvio:
+- **Não** existe cobrança automática no vencimento. Seria uma mensagem de cobrança saindo no nome do
+  Juliano sem ele ver; o primeiro caso é um cliente de confiança. Se virar rotina, entra um lembrete para
+  ELE (push) no dia, não para o cliente.
+- Trocar de 'prazo' para Pix no dia 30 **não** reenvia comprovante: o gatilho do comprovante corrigido só
+  age até o dia seguinte ao atendimento. Pagamento recebido depois não é correção do cupom.
+
 ## 29.382.0 — Calendário da agenda conta só quem veio (ausência fora do número)
 
 - **O que mudou:** o numerinho de cada dia no calendário do painel (Agenda) deixou de contar

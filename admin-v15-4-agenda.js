@@ -361,15 +361,19 @@
       if(msg){msg.textContent=r?.message||'';msg.hidden=!r?.message}
     });
   }
-  function paymentPickerHtml(current=''){
+  // v29.383.0 — prazo=true (só no Concluir): botão "A prazo" + data combinada (caso Filipe, 26/11/2026: corte hoje,
+  // paga dia 30). O comprovante sai com o valor, a data e a chave Pix. No Editar ele só aparece se já é 'prazo'.
+  function paymentPickerHtml(current='',prazo=false){
     const methods=[['pix','Pix'],['debito','Débito'],['credito','Crédito'],['dinheiro','Dinheiro'],['fidelidade','Bônus de fidelidade']]
-    return `<div class="payment-method-grid" data-payment-picker>${methods.map(([v,l])=>`<button type="button" data-payment-option="${v}" class="${current===v?'is-selected':''}">${l}</button>`).join('')}</div>`
+    if(prazo||current==='prazo')methods.push(['prazo','A prazo (paga depois)'])
+    const prazoWrap=prazo?`<div data-prazo-wrap ${current==='prazo'?'':'hidden'} style="margin-top:8px"><label class="field-help" style="display:block">Paga até qual dia? <input type="date" data-prazo-date class="checkout-input" style="margin-top:4px"></label><small class="field-help">O comprovante sai com o valor, essa data e a chave Pix. Quando ele pagar, troque a forma no Editar do card.</small></div>`:''
+    return `<div class="payment-method-grid" data-payment-picker>${methods.map(([v,l])=>`<button type="button" data-payment-option="${v}" class="${current===v?'is-selected':''}">${l}</button>`).join('')}</div>${prazoWrap}`
   }
   function ensureModalStyles(){
     if(document.getElementById('booking-modals-style'))return;
     const style=document.createElement('style');
     style.id='booking-modals-style';
-    style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"],.payment-method-grid button[data-payment-option="fidelidade"]{grid-column:1/-1}.payment-method-grid button.is-selected{border-color:var(--gold);background:rgba(240,201,135,.12);color:var(--gold2)}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:var(--t-base)}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}.booking-edit-card{max-height:88vh;overflow:auto}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}.checkout-total strong{display:block;color:var(--gold2);font-size:var(--t-lg);line-height:1.15;white-space:nowrap}.checkout-total small{display:block;color:#9a9a9a;font-size:var(--t-xs);margin-top:2px}.checkout-total em{display:block;color:#8fd694;font-style:normal;font-size:var(--t-xs);margin-top:1px}.checkout-footer{position:sticky;bottom:-1px;z-index:6;display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#1b1712,#0f0c09);border:1px solid rgba(240,201,135,.4);border-radius:13px;padding:8px 12px;margin-top:16px;box-shadow:0 -8px 22px rgba(0,0,0,.55)}.checkout-footer .checkout-total{flex:1;min-width:0;padding:0;margin:0}.checkout-footer [data-payment-confirm]{width:auto;white-space:nowrap;padding:11px 18px;font-size:var(--t-base);margin:0}.booking-edit-card h3{font-size:var(--t-md);margin:14px 0 6px}.booking-edit-card .payment-method-grid{gap:8px;margin-top:6px}.booking-edit-card .payment-method-grid button{padding:10px 8px;font-size:var(--t-base);border-radius:12px}.checkout-split-toggle{display:block;background:none;border:none;color:#999;font:inherit;font-size:var(--t-sm);cursor:pointer;padding:8px 0 0;text-align:left}.checkout-split-toggle:hover{color:var(--gold2)}@keyframes bdj-payment-flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px rgba(240,201,135,.6)}}.payment-flash{animation:bdj-payment-flash 1s ease 2;border-radius:14px}';
+    style.textContent='.payment-method-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.payment-method-grid button{border:1px solid rgba(240,201,135,.28);background:#141414;color:#f3f3f3;border-radius:14px;padding:14px 10px;font:inherit;font-weight:700;cursor:pointer}.payment-method-grid button:hover{border-color:var(--gold);color:var(--gold2)}.payment-method-grid button[data-payment="fidelidade"],.payment-method-grid button[data-payment-option="fidelidade"],.payment-method-grid button[data-payment-option="prazo"]{grid-column:1/-1}.payment-method-grid button.is-selected{border-color:var(--gold);background:rgba(240,201,135,.12);color:var(--gold2)}.products-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}.products-modal-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;cursor:pointer;font-size:var(--t-base)}.products-modal-option:has(input:checked){border-color:var(--gold);background:rgba(240,201,135,.08)}.products-modal-option small{display:block;color:#999}.booking-edit-card{max-height:88vh;overflow:auto}@media(max-width:600px){.products-modal-grid{grid-template-columns:1fr}}.checkout-total strong{display:block;color:var(--gold2);font-size:var(--t-lg);line-height:1.15;white-space:nowrap}.checkout-total small{display:block;color:#9a9a9a;font-size:var(--t-xs);margin-top:2px}.checkout-total em{display:block;color:#8fd694;font-style:normal;font-size:var(--t-xs);margin-top:1px}.checkout-footer{position:sticky;bottom:-1px;z-index:6;display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#1b1712,#0f0c09);border:1px solid rgba(240,201,135,.4);border-radius:13px;padding:8px 12px;margin-top:16px;box-shadow:0 -8px 22px rgba(0,0,0,.55)}.checkout-footer .checkout-total{flex:1;min-width:0;padding:0;margin:0}.checkout-footer [data-payment-confirm]{width:auto;white-space:nowrap;padding:11px 18px;font-size:var(--t-base);margin:0}.booking-edit-card h3{font-size:var(--t-md);margin:14px 0 6px}.booking-edit-card .payment-method-grid{gap:8px;margin-top:6px}.booking-edit-card .payment-method-grid button{padding:10px 8px;font-size:var(--t-base);border-radius:12px}.checkout-split-toggle{display:block;background:none;border:none;color:#999;font:inherit;font-size:var(--t-sm);cursor:pointer;padding:8px 0 0;text-align:left}.checkout-split-toggle:hover{color:var(--gold2)}@keyframes bdj-payment-flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px rgba(240,201,135,.6)}}.payment-flash{animation:bdj-payment-flash 1s ease 2;border-radius:14px}';
     document.head.appendChild(style);
   }
   // Serviço editável já no "Concluir" (não só no "Editar" depois) — pedido do Juliano
@@ -459,7 +463,7 @@
       // v29.199.1 — sinal (prepay_amount): o aviso diz o valor do sinal e o que falta cobrar; a forma
       // de pagamento pré-selecionada (Pix) é a do restante, e ele troca se o resto veio de outro jeito.
       const sinalPago=prepaid&&Number(booking.prepay_amount||0)>0?Number(booking.prepay_amount):0;
-      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?(sinalPago>0?`<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou <b>sinal de ${money(sinalPago)}</b> no Pix (confirmado por você). Falta cobrar o restante — escolha a forma como ele pagou o resto.</p>`:'<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'):'')+loyaltyNoteHtml+paymentPickerHtml(prepaid?'pix':(temPremio?'fidelidade':''));
+      modal.querySelector('[data-payment-slot]').innerHTML=(prepaid?(sinalPago>0?`<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou <b>sinal de ${money(sinalPago)}</b> no Pix (confirmado por você). Falta cobrar o restante — escolha a forma como ele pagou o resto.</p>`:'<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'):'')+loyaltyNoteHtml+paymentPickerHtml(prepaid?'pix':(temPremio?'fidelidade':''),true);
       modal.querySelector('[data-products-payment-slot]').innerHTML=paymentPickerHtml('');
       modal.querySelector('[data-request-google-review]').checked=true;
       // v29.65.0 — pedido do Juliano (22/08/2026): um clique "já avaliou no Google" que fica
@@ -620,7 +624,7 @@
         const due=Math.max(0,svShow+pr-paidValue)+credito;
         totalBox.innerHTML=`<div class="checkout-total"><strong>Total a cobrar: ${money(due)}</strong><small>${isCourtesy?'cortesia (serviço R$ 0)':`serviços ${money(svShow)}`}${premio>0&&!isCourtesy?` · fidelidade −${money(premio)} (${esc(free.name)})`:''}${desconto>0?(clubeValor>0?` · coberto pelo Clube do Ju −${money(desconto)}`:` · desconto −${money(desconto)}${selectedDiscountPct?` (${selectedDiscountPct}%)`:''}`):''} · produtos ${money(pr)}${credito>0?` · crédito pago a mais +${money(credito)}`:''}${paidValue>0?` · <em style="display:inline">pago online (${paidLabel}) −${money(paidValue)}</em>`:''}</small></div>`;
         // v29.271.0 — o botão diz o que vai gravar: "Concluir · Pix ✓" (ver a forma pré-marcada lá embaixo).
-        const formaNome={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'}[selectedPayment];
+        const formaNome={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade',prazo:'A prazo'}[selectedPayment];
         const btnOk=modal.querySelector('[data-payment-confirm]');
         if(btnOk)btnOk.textContent=formaNome&&!isCourtesy?`Concluir · ${formaNome} ✓`:'Concluir ✓';
       };
@@ -663,7 +667,7 @@
           const jaPago=!!(fresh.prepay_declared_at&&fresh.prepay_confirmed_at);
           const soDeclarado=!!(fresh.prepay_declared_at&&!fresh.prepay_confirmed_at);
           if(jaPago&&!prepaid){
-            slot.innerHTML='<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'+paymentPickerHtml('pix');
+            slot.innerHTML='<p class="privacy-note" style="margin:4px 0 8px">Este cliente já pagou antecipado no Pix (confirmado por você) — forma de pagamento preenchida.</p>'+paymentPickerHtml('pix',true);
             selectedPayment='pix';
           }else if(soDeclarado){
             slot.insertAdjacentHTML('afterbegin','<p class="privacy-note" style="margin:4px 0 8px;color:var(--gold2);font-weight:700">Este cliente diz ter pago por Pix e você ainda não confirmou o recebimento. Confira o extrato antes de concluir.</p>');
@@ -700,6 +704,7 @@
         selectedPayment=selectedPayment===btn.dataset.paymentOption?'':btn.dataset.paymentOption;
         pagamentoTocado=true;paymentSlot.querySelector('[data-payment-hint]')?.remove();
         paymentSlot.querySelectorAll('[data-payment-option]').forEach(b=>b.classList.toggle('is-selected',b.dataset.paymentOption===selectedPayment));
+        {const w=paymentSlot.querySelector('[data-prazo-wrap]');if(w){w.hidden=selectedPayment!=='prazo';if(!w.hidden)w.querySelector('[data-prazo-date]')?.focus()}}
         {const warn=paymentSlot.querySelector('[data-loyalty-warn]');if(warn)warn.hidden=selectedPayment!=='fidelidade'}
       };
       const onProductsPaymentClick=e=>{
@@ -724,6 +729,13 @@
           paymentSlot.classList.remove('payment-flash');void paymentSlot.offsetWidth;paymentSlot.classList.add('payment-flash');
           return
         }
+        // v29.383.0 — a prazo exige a data combinada (sai no comprovante).
+        let dueDate='';
+        if(selectedPayment==='prazo'&&!isCourtesy){
+          dueDate=String(paymentSlot.querySelector('[data-prazo-date]')?.value||'');
+          const hojeIso=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+          if(!dueDate||dueDate<hojeIso){alert('Escolha até que dia o cliente vai pagar (hoje ou depois).');paymentSlot.querySelector('[data-prazo-date]')?.focus();return}
+        }
         // v29.138.0 — prêmio da fidelidade: no combo, exige QUAL serviço e como o resto foi pago;
         // com produto junto, exige a forma de pagamento do produto (o serviço não teve).
         const freeSvc=loyaltyFreeService();
@@ -744,6 +756,7 @@
           payment:isCourtesy?(selectedPayment||''):(selectedPayment==='fidelidade'&&freeSvc&&services.length>=2?selectedRestPayment:selectedPayment),
           loyalty_free_service:(!isCourtesy&&freeSvc)?{name:freeSvc.name,price:Number(freeSvc.price||0)}:null,
           products_payment_method:selectedProductsPayment||null,
+          payment_due_date:dueDate||null,
           products:readChecklistProducts(modal),
           service:{name:services.map(s=>s.name).join(' + '),price:services.reduce((a,s)=>a+s.price,0),duration_minutes:services.reduce((a,s)=>a+s.duration,0)},
           request_google_review:modal.querySelector('[data-request-google-review]').checked&&!alreadyBox.checked&&!jaAvaliou,
@@ -872,7 +885,8 @@
     if(trigger){trigger.disabled=true;trigger.textContent='Salvando…'}
     try{
       const body={booking_id:id,service:result.service,selected_products:result.products};
-      if(result.payment_method)body.payment_method=result.payment_method;
+      // v29.383.0 — 'prazo' sem troca não reenvia (o servidor exigiria a data de novo).
+      if(result.payment_method&&!(result.payment_method==='prazo'&&booking.payment_method==='prazo'))body.payment_method=result.payment_method;
       if(result.products_payment_method)body.products_payment_method=result.products_payment_method;
       const {data,error}=await sb.functions.invoke('admin-booking-status',{body});
       if(error||data?.error){alert(data?.error||error?.message||'Não foi possível salvar as alterações.');return}
@@ -885,12 +899,13 @@
     }finally{if(trigger&&trigger.isConnected){trigger.disabled=false;trigger.textContent=oldText}}
   }
   async function setStatus(id,status,trigger=null){
-    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCreditAmount=0,completionClientNote='',completionCourtesy=false,completionClubCoverage=false,completionCourtesyReason='',completionLoyaltyFree=null,completionDiscount=null,completionStyle=null,completionStylePrefill='';
+    let paymentMethod=null,completionProducts=null,completionService=null,completionProductsPayment=null,completionRequestGoogleReview=null,completionMarkGoogleReviewed=false,completionLoyaltyDelta=0,completionVisitNumber=0,completionTipAmount=0,completionCreditAmount=0,completionClientNote='',completionCourtesy=false,completionClubCoverage=false,completionCourtesyReason='',completionLoyaltyFree=null,completionDiscount=null,completionStyle=null,completionStylePrefill='',completionDueDate=null;
     if(status==='completed'){
       const booking=allBookings.find(x=>x.id===id);
       const choice=await choosePaymentMethod(booking||{});
       if(!choice)return;
       paymentMethod=choice.payment;
+      completionDueDate=choice.payment_due_date||null;
       completionDiscount=choice.discount||null;
       completionLoyaltyFree=choice.loyalty_free_service||null;
       completionProducts=choice.products;
@@ -917,6 +932,7 @@
     try{
       const body={booking_id:id,status};
       if(paymentMethod)body.payment_method=paymentMethod;
+      if(paymentMethod==='prazo'&&completionDueDate)body.payment_due_date=completionDueDate;
       if(completionLoyaltyFree)body.loyalty_free_service=completionLoyaltyFree;
       if(completionProductsPayment)body.products_payment_method=completionProductsPayment;
       if(completionProducts)body.selected_products=completionProducts;

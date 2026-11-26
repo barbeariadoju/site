@@ -67,6 +67,8 @@ const montarDados=(bookingId:string,booking:any,hojeSP:string)=>{
     // v29.335.0 — crédito deixado pago e observação para o cliente, escritos no Concluir (caso Marcelo, 03/11).
     credito:Number(booking?.credit_amount||0),
     observacao:String(booking?.client_note||''),
+    // v29.383.0 — pagamento a prazo: data combinada sai no cupom, junto com a chave Pix (caso Filipe, 26/11).
+    pagamentoPrazoAte:String(booking?.payment_due_date||''),
   }
 }
 
@@ -136,7 +138,7 @@ Deno.serve(async(req:Request)=>{
     await new Promise(r=>setTimeout(r,20000))
     const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}})
     const {data:booking}=await admin.from('bookings')
-      .select('status,receipt_changed_at,customer_name,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note')
+      .select('status,receipt_changed_at,customer_name,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note,payment_due_date')
       .eq('id',bookingIdImediato).maybeSingle()
     if(!booking||booking.status!=='completed') return json({ok:true,skipped:'não concluído'})
     if(String(payload?.updated_at||'')&&new Date(String(payload.updated_at)).getTime()!==new Date(String(booking.receipt_changed_at)).getTime())
@@ -169,7 +171,7 @@ Deno.serve(async(req:Request)=>{
 
   let query=admin
     .from('experience_requests')
-    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note)')
+    .select('id,token,booking_id,bookings(customer_name,customer_email,customer_phone,booking_date,start_time,service_name,service_price,products_price,selected_products,payment_method,products_payment_method,loyalty_discount,loyalty_free_service,discount_amount,discount_reason,tip_amount,courtesy,courtesy_reason,channel,prepay_confirmed_at,prepay_amount,credit_amount,client_note,payment_due_date)')
     .in('status',['pending','failed'])
     .lte('scheduled_for',new Date().toISOString())
   // v29.121.0 — no modo imediato processa SÓ o atendimento recém-concluído. Sem isso, uma

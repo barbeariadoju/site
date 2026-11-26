@@ -72,7 +72,13 @@ export type DadosComprovante = {
   credito?: number
   /** v29.335.0 — observação PARA O CLIENTE, escrita no Concluir. Sai no fim do cupom. */
   observacao?: string
+  /** v29.383.0 — pagamento 'prazo': data combinada (YYYY-MM-DD) para o cliente pagar. */
+  pagamentoPrazoAte?: string
 }
+
+/** v29.383.0 — chave Pix da casa, a mesma que a JuIA passa (ju-ia-site) e a do vale-presente. */
+export const CHAVE_PIX = 'contato@barbeariadoju.com.br'
+const dataBR = (iso?: string) => /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) ? `${iso!.slice(8, 10)}/${iso!.slice(5, 7)}` : ''
 
 /**
  * Primeiro nome, com a inicial maiúscula.
@@ -229,7 +235,18 @@ export const montarCupom = (d: DadosComprovante) => {
   // ainda foi pago (produto, ou o resto do combo) tem a forma dele; o serviço premiado, nenhuma.
   const pagServico = (pagoComFidelidade ? '' : metodoLabel(d.pagamentoServico)) || (d.pagamentoAntecipado ? 'no Pix (pago antecipado)' : '')
   const pagProdutos = metodoLabel(d.pagamentoProdutos) || pagServico
-  if (sinal > 0) {
+  // v29.383.0 — caso Filipe (26/11/2026): corte feito hoje, pagamento combinado para o dia 30. O cupom diz
+  // quanto falta, até quando, e traz a chave Pix — o cliente paga direto da conversa, sem precisar pedir.
+  const aPrazo = !d.cortesia && String(d.pagamentoServico || '').toLowerCase() === 'prazo'
+  if (aPrazo) {
+    if (sinal > 0) totais.push(`Sinal pago antes, no Pix: -${money(sinal)}`)
+    const prodOutro = produtos.length > 0 ? metodoLabel(d.pagamentoProdutos) : ''
+    if (prodOutro) totais.push(`Produtos pagos ${prodOutro}`)
+    const aPagar = Math.max(0, total - sinal - (prodOutro ? produtosValor : 0))
+    const ate = dataBR(d.pagamentoPrazoAte)
+    totais.push(`*A pagar${ate ? ` até ${ate}` : ''}: ${money(aPagar)}*`)
+    totais.push('', `Chave Pix (e-mail): ${CHAVE_PIX}`, 'No aplicativo do banco aparece o nome Juliano Bruno Lopes Padilha, instituição PicPay.')
+  } else if (sinal > 0) {
     totais.push(`Sinal pago antes, no Pix: -${money(sinal)}`)
     const resto = total - sinal
     const pagResto = pagoComFidelidade ? '' : metodoLabel(d.pagamentoServico)

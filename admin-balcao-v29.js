@@ -23,7 +23,7 @@
     if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
     return digits;
   };
-  const PAYMENT_LABELS = { pix: 'Pix', debito: 'Débito', credito: 'Crédito', dinheiro: 'Dinheiro', fidelidade: 'Fidelidade' };
+  const PAYMENT_LABELS = { pix: 'Pix', debito: 'Débito', credito: 'Crédito', dinheiro: 'Dinheiro', fidelidade: 'Fidelidade', prazo: 'A prazo' };
 
   async function auth() {
     if (!sb) { showLogin('Configuração do Supabase ausente.'); return; }

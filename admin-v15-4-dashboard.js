@@ -12,7 +12,7 @@
 //     dos Relatórios/Financeiro: cortesia = 0, prêmio da fidelidade abatido), caixinha à parte,
 //     despesas lançadas hoje e a divisão por forma de pagamento — antes o Financeiro era só mensal;
 //   - lista de espera de hoje (quem pediu vaga pra hoje), e os clientes com ausência.
-  const HOJE_PAGAMENTOS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
+  const HOJE_PAGAMENTOS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade',prazo:'A prazo'};
   // v29.187.0 (pedido do Juliano, 12/09/2026, ~15h40): "nesta tela deveria ter a opção de ver a tela de
   // ontem e dos dias anteriores — queria saber quantos serviços fiz ontem e não achei". A tela Hoje
   // passa a andar por dia: ◀ ▶ no cabeçalho, "Voltar pra hoje" quando está em outro dia, e ?dia=AAAA-MM-DD

@@ -117,7 +117,7 @@
   function whatsappLink(x,type='confirm'){const when=formatDate(x.booking_date,{weekday:'long',day:'2-digit',month:'2-digit'});const msg=type==='reminder'?`Olá, ${x.customer_name}! Lembrete do seu horário amanhã, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`:`Olá, ${x.customer_name}! Seu horário está marcado para ${when}, às ${x.start_time.slice(0,5)}, na Barbearia do Ju. Pode confirmar?`;return whatsappBusinessUrl(x.customer_phone,msg)}
   function parseProducts(x){const p=Array.isArray(x.selected_products)?x.selected_products:[];return p.filter(i=>i&&i.name)}
   function productsHtml(x){const items=parseProducts(x);if(!items.length)return '';return `<div class="admin-products"><span class="admin-products-label">Produtos vendidos</span>${items.map(p=>`<span class="admin-product-chip"><b>${esc(p.name)}</b><small>${money(p.price)}</small></span>`).join('')}<strong class="admin-products-total">${money(x.products_price||items.reduce((a,p)=>a+Number(p.price||0),0))}</strong></div>`}
-  const PAYMENT_LABELS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade'};
+  const PAYMENT_LABELS={pix:'Pix',debito:'Débito',credito:'Crédito',dinheiro:'Dinheiro',fidelidade:'Fidelidade',prazo:'A prazo'};
   // Linha única e compacta (texto discreto, sem caixas) com serviço/produtos/total e a(s)
   // forma(s) de pagamento — pedido do Juliano depois que a 1ª versão (3 caixas + chips de
   // pagamento empilhadas) ficou grande demais e obrigava rolar muito com várias entradas.
@@ -128,7 +128,8 @@
     let pay='';
     if(x.payment_method){
       const hasSplit=x.products_payment_method&&x.products_payment_method!==x.payment_method;
-      const serviceLabel=esc(PAYMENT_LABELS[x.payment_method]||x.payment_method);
+      // v29.383.0 — a prazo: o card diz que está a receber e até quando (troca a forma no Editar quando pagar).
+      const serviceLabel=x.payment_method==='prazo'?`<b style="color:var(--gold2)">A receber${x.payment_due_date?` até ${esc(String(x.payment_due_date).slice(8,10))}/${esc(String(x.payment_due_date).slice(5,7))}`:''}</b>`:esc(PAYMENT_LABELS[x.payment_method]||x.payment_method);
       pay=hasSplit
         ? ` · Serviço ${serviceLabel} / Produtos ${esc(PAYMENT_LABELS[x.products_payment_method]||x.products_payment_method)}`
         : ` · ${serviceLabel}`;
@@ -150,7 +151,7 @@
   // (busca JS sempre na rede) — o problema é a página que já está aberta há horas.
   // Agora a própria tela confere a versão publicada e se atualiza. Só recarrega quando não
   // há nada aberto na frente do usuário; se houver modal, avisa e espera ele fechar.
-  const ADMIN_VERSION='29.382.0'
+  const ADMIN_VERSION='29.383.0'
   // v29.99.0 — TRAVA ANTI-LOOP. Em 29/08 as versões 29.96 a 29.98 subiram o ADMIN_VERSION
   // aqui e esqueceram o admin-version.json (parado no 29.94.0). Como as duas nunca iam
   // ficar iguais, TODA abertura do painel caía direto no location.reload() e recarregava
