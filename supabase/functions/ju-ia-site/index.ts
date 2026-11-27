@@ -2171,7 +2171,10 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
  // nenhuma das formas acima — nem "quanto", nem "qual". Entram: "saber/passar/mandar/dizer o
  // valor", "valor?" sozinho (com ou sem "o"/"e o"/"qual" na frente) e "quanto?" solto.
  // v29.276.0 (caso Samuel): "Fica quanto tudo" — a ordem invertida não casava e virou "sim" à lavagem.
- const askedPrice=/(quanto (custa|e|fica|sai|da|deu|seria|vai (ficar|sair|dar)))|\b(fica|ficou|deu|sai|vai ficar|vai dar) quanto\b|\bquanto (tudo|no total|ao todo)\b|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$|\bqual (seria|e|fica|ficaria|vai ser|deu) o (total|valor)\b|^(e )?(o )?total\s*\??\s*$/.test(normalizedQuestion)
+ // v29.384.0 — caso Lucas (26/11/2026, 12h36): "Barba e corte fica qnt ?" não contava como pergunta de preço
+ // ("qnt" não é "quanto") e ouviu "a agenda já está cheia" sem o valor. Abreviações viram "quanto" só aqui.
+ const qPreco=normalizedQuestion.replace(/\b(?:qnt|qnto|qto|qt)\b/g,'quanto')
+ const askedPrice=/(quanto (custa|e|fica|sai|da|deu|seria|vai (ficar|sair|dar)))|\b(fica|ficou|deu|sai|vai ficar|vai dar) quanto\b|\bquanto (tudo|no total|ao todo)\b|(qual (o |e o )?(valor|preco))|(valor d[oa])|(preco d[oa])|(quanto voces cobram)|\b(saber|passar|passa|mandar|manda|dizer|diz|falar|fala|informar|informa) (o |os |do |da |dos |das )?(valor|valores|preco|precos)\b|^(o |e o |qual |qual o |qual e o )?(valor|valores|preco|precos)\s*\??\s*$|\b(valor|valores|preco|precos)\s*\?|^quanto\s*\??\s*$|\bqual (seria|e|fica|ficaria|vai ser|deu) o (total|valor)\b|^(e )?(o )?total\s*\??\s*$/.test(qPreco)
  const isQuestion=/\?\s*$/.test(String(message||'').trim())||askedPrice
  // v29.153.0 — o valor do que já está escolhido, numa linha, pra sair (a) quando o cliente
  // pergunta o preço no meio do fluxo (rede de segurança no fim, e resposta própria no bloco
@@ -3864,8 +3867,18 @@ Retorne SOMENTE JSON válido: {"reply":"...","intent":"faq|services|availability
     // o corte.. blz" e ouviu "Qual serviço você quer no lugar?" — a troca só sabia SUBSTITUIR ou SOMAR, nunca
     // tirar o que sobrou. "só/somente/apenas X" com X do catálogo vira a lista inteira: confirma "fica só X".
     // "o corte.. blz": corta na pontuação e tira o artigo da frente, senão o catálogo não reconhece.
-    const caudaSo=(normalizedQuestion.match(/(?:^|[\s.,!?;])(?:so|somente|apenas)\s+(?!que\b)(.+)$/)?.[1]||'').split(/[.!?;]/)[0].replace(/^(?:(?:o|a|um|uma|pra|pro|para|de|do|da)\s+)+/,'').trim()
-    const soQuer=caudaSo&&!/\bnao\s+(?:so|somente|apenas)\s/.test(normalizedQuestion)&&!/\bmais\b|\btambem\b/.test(caudaSo)?findServicesLoose(caudaSo):[]
+    // v29.384.0 — caso Maiko (26/11/2026, 15h47): "Marquei só a barba pra sábado, mas no agendamento ta barba e
+    // cabelo" virou "fica só Corte de cabelo" — a cauda do "só" ia até o fim da frase e o "cabelo" da RECLAMAÇÃO
+    // ganhava. A cauda agora para na vírgula e no "mas", e cai a data ("pra sábado") que vem depois do serviço.
+    const caudaSo=(normalizedQuestion.match(/(?:^|[\s.,!?;])(?:so|somente|apenas)\s+(?!que\b)(.+)$/)?.[1]||'').split(/[.!?;,]|\s+mas\s+/)[0].replace(/^(?:(?:o|a|um|uma|pra|pro|para|de|do|da)\s+)+/,'').replace(/\s+(?:pra|pro|para|no|na|de|do|da|em)\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo|dia)\b.*$/,'').trim()
+    let soQuer=caudaSo&&!/\bnao\s+(?:so|somente|apenas)\s/.test(normalizedQuestion)&&!/\bmais\b|\btambem\b/.test(caudaSo)?findServicesLoose(caudaSo):[]
+    // "só a barba" sem dizer qual: fica a barba que JÁ está na reserva (o Maiko tinha a navalha), não a Express.
+    if(soQuer.length===1&&/^barba$/.test(caudaSo)){
+     const reservaN=normalize(String(b.service_name||''))
+     const barbaDaReserva=services.filter((s:any)=>!/\+/.test(s.name)&&/barba/i.test(s.name)&&reservaN.includes(normalize(s.name)))
+      .sort((x:any,y:any)=>y.name.length-x.name.length)[0]
+     if(barbaDaReserva)soQuer=[barbaDaReserva]
+    }
     if(!addSignal&&soQuer.length&&soQuer.length<=2){
      const fica={name:soQuer.map((x:any)=>x.name).join(' + '),price:soQuer.reduce((a:number,x:any)=>a+Number(x.price||0),0),duration:soQuer.reduce((a:number,x:any)=>a+Number(x.duration||0),0)}
      if(normalize(fica.name)===normalize(String(b.service_name||''))){

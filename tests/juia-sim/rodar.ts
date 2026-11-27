@@ -2234,5 +2234,19 @@ const histSamuel = ['Tem horário disponível', 'Para hj', 'É, mas vocês vão 
     checar(`160${rot} "sim" reserva o 08:30 de sábado (corte)`, !!ch && ch.args?.p_booking_date === sab && String(ch.args?.p_start_time || '').startsWith('08:30') && !/Eu que agradeço/.test(r2.reply), { reply: r2.reply, args: ch?.args })
   }
 }
+// 161. v29.384.0 — caso Maiko (26/11/2026, 15h47): reserva "Corte + Barba na navalha com toalha quente" e "Marquei só a
+//      barba pra sábado, mas no agendamento ta barba e cabelo" virou "fica só Corte de cabelo". Fica a barba da reserva.
+{
+  const futuros = [{ id: 'b161', booking_date: dia2, start_time: '12:20:00', service_name: 'Corte + Barba na navalha com toalha quente', status: 'confirmed', duration_minutes: 70 }]
+  const r = await turno({ msg: 'Boa tarde Ju, tudo bem? Marquei só a barba pra sábado, mas no agendamento ta barba e cabelo', state: {},
+    ai: { intent: 'change_service', reply: 'Certo.' }, contexto: ctxCliente('Maiko Teste'), futuros })
+  checar('161 "marquei só a barba, mas tá barba e cabelo" propõe ficar só a barba na navalha', /fica só Barba na navalha com toalha quente/.test(r.reply) && !/fica só Corte/.test(r.reply), r.reply)
+}
+// 162. v29.384.0 — caso Lucas (26/11/2026, 12h36): "Barba e corte fica qnt ?" ouviu "hoje a agenda já está cheia" sem
+//      o valor. "qnt" é "quanto": a resposta tem que trazer o preço.
+{
+  const r = await turno({ msg: 'Barba e corte fica qnt ?', state: { date: hoje, time: '14:30', name: 'Lucas Teste' }, history: [{ role: 'assistant', content: 'Hoje às 14:30 está livre. É corte ou corte + barba? *1* — Corte *2* — Corte + barba *3* — Só a barba' }],
+    ai: { intent: 'book', reply: 'Certo.', updates: { services: ['Corte + Barba Express'] } }, contexto: ctxCliente('Lucas Teste'), vagasPorDuracao: (min: number) => (min <= 45 ? ['14:15', '14:30'] : []) })
+  checar('162 "fica qnt?" responde com o preço', /R\$\s?\d/.test(r.reply), r.reply)}
 console.log(`\n${ok} ok, ${falhou} falharam`)
 if (falhou) Deno.exit(1)

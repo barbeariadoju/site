@@ -1,3 +1,31 @@
+## 29.384.0 — JuIA: "só a barba, mas tá barba e cabelo" e "fica qnt?" (casos Maiko e Lucas, 26/11)
+
+Revisão diária de 27/11/2026 (conversas de 26/11 12h → 27/11 08h30). 15 conversas, 2 erros reais, os dois
+corrigidos no `ju-ia-site`. Simulador: cenários 161 e 162, que falham no código antigo e passam no novo.
+
+- **Caso Maiko (26/11, 15h47):** com a reserva de sábado em "Corte + Barba na navalha com toalha quente",
+  escreveu *"Marquei só a barba pra sábado, mas no agendamento ta barba e cabelo"*, recebeu *"fica só Corte de
+  cabelo?"*, respondeu "Sim", e a reserva virou só o corte, o contrário do que ele pediu. O Juliano consertou
+  na mão às 16h09. A causa: o trecho depois do "só" ia até o fim da frase, e o "cabelo" da reclamação ganhava.
+  Agora esse trecho para na vírgula e no "mas", e a data ("pra sábado") sai da frente.
+  "Só a barba" sem dizer qual fica com a barba **que já estava na reserva** (a navalha do Maiko), não com a
+  Express. Escolhi isso em vez da regra "barba sem nome = Express" porque ali ele está tirando um serviço,
+  não escolhendo um novo.
+- **Caso Lucas (26/11, 12h36):** no meio da reserva das 14:30 perguntou *"Barba e corte fica qnt ?"* e ouviu
+  *"hoje a agenda já está cheia, mas vou ver aqui se consigo te encaixar"*, sem o preço. Depois a conversa
+  desandou (falou do "amanhã às 14:30" que ele nunca pediu, mandou um carrinho do catálogo e caiu no "me
+  embolei"), e o Juliano assumiu. A causa é simples: "qnt" não era lido como "quanto", então a pergunta de
+  preço não existia para a JuIA e a garantia de sempre responder o valor nunca entrava. Agora qnt/qnto/qto/qt
+  contam como "quanto", e a resposta abre com *"Corte + Barba Express sai R$ …"*.
+  **Ficou de fora, de propósito:** quando o combo não cabe no horário escolhido, a resposta ainda não avisa
+  que às 14:30 só cabe o corte. Isso mexe no fluxo de disponibilidade e merece cenário próprio; o erro que
+  fez o cliente desistir de conversar com o robô foi a pergunta sem resposta.
+- Conferido sem erro: Lucas (9955) fechou sábado 11:00 sozinho; Felipe cancelou e recebeu opções de sábado;
+  Matheus confirmou o 08:30 de sábado no lembrete; Regis faltou às 16:00 (1ª falta dele, o Juliano respondeu
+  com gentileza, então nada a fazer); Luis recusou o convite de retorno e a JuIA não insistiu.
+- **As 6 falhas do simulador (73b, 94, 95a, 144a, 144b, 153d) já existiam antes desta mudança**, conferido
+  rodando o código antigo. Dependem do dia da semana (hoje é sexta, véspera de sábado), como já anotado em 30/10.
+
 ## 29.383.0 — Pagamento a prazo no Concluir (caso Filipe)
 
 Pedido do Juliano (26/11/2026): o Filipe cortou hoje e combinou pagar no dia 30. Não havia como concluir sem
